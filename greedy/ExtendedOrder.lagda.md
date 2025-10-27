@@ -1873,10 +1873,11 @@ pdUMany-sorted {r} {c ∷ cs} = pdUMany-aux-sorted {r}  {[]} c cs [  ( pdinstanc
 
 ```
 
-### Theorem : ParseAll is greedy (sorted)
+### Theorem 40 : ParseAll is greedy (sorted)
 
+
+### Aux lemmas 
 ```agda
-
 map-inj-sorted : ∀ { p r : RE } 
   → ( us : List ( U p ) )
   → ( inj : U p → U r )
@@ -1891,24 +1892,71 @@ map-inj-sorted {p} {r} (u₁ ∷ (u₂ ∷  us)) inj >-inc-ev (>-cons u₂us-sor
     ind-hyp : >-sorted {r} (List.map inj (u₂ ∷ us))
     ind-hyp = map-inj-sorted {p} {r} (u₂ ∷ us) inj >-inc-ev u₂us-sorted 
 
-{-
-buildU-is-sorted : ∀ { r : RE } { w : List Char }
-  → (pdi : PDInstance* r w)
-  → *>-Inc pdi 
-  → >-sorted {r} (buildU {r} {w} pdi) 
-buildU-is-sorted {r} {w} (pdinstance* {p} {r} inj s-ev)  (*>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) with ε∈? p
-... | no _ = >-nil
-... | yes ε∈p = map-inj-sorted (mkAllEmptyU ε∈p) inj u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ (mkAllEmptyU-sorted ε∈p)-} 
 
-buildU-all>head-concatmap-buildU : ∀ { r : RE } { w : List Char }
-  → ( pdi : PDInstance* r w )
-  → ( pdis : List (PDInstance* r w ) )
+
+-- this lemma is similar to advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c
+buildU-all>head-concatmap-buildU : ∀ { p r : RE } { pref : List Char } { ε∈p } 
+  → ( p→r : U p → U r )  -- buildU is inlined into map p→r (mkAllEmptyU ε∈p) 
+  → ( s-ev-p-r : ∀ ( u : U p ) → ( proj₁ ( flat {r} (p→r u) ) ≡ pref ++ ( proj₁ (flat {p} u) )) ) -- ^ soundness evidence of the inject function  
+  → ( pdis : List (PDInstance* r pref ) )
   → Ex*>-sorted pdis
-  → Ex*>-maybe pdi (head pdis)
+  → Ex*>-maybe (pdinstance* p→r s-ev-p-r)  (head pdis)
   -------------------------------------------------------------------------------------------
-  → All (λ u₁ → >-maybe  u₁ (head (concatMap (buildU {r} {w}) pdis)) ) (buildU {r} {w} pdi)
-buildU-all>head-concatmap-buildU = {!!} 
+  → All (λ u₁ → >-maybe  u₁ (head (concatMap (buildU {r} {pref}) pdis)) )
+       (List.map p→r (mkAllEmptyU ε∈p))
+buildU-all>head-concatmap-buildU {p} {r} {pref} {ε∈p} p→r s-ev-p-r [] ex*>-nil ex*>-nothing = prf (List.map p→r (mkAllEmptyU ε∈p))
+  where
+    prf : ( us : List (U r)) →   All (λ u₁ → >-maybe u₁ nothing) us 
+    prf [] = []
+    prf (u ∷ us )  = >-nothing ∷ prf us 
+buildU-all>head-concatmap-buildU {p} {r} {pref} {ε∈p} p→r s-ev-p-r
+  (pdi₂@(pdinstance* {p₂} {r} p₂→r s-ev-p₂-r) ∷ pdis) (ex*>-cons pdis-sorted pdi₂>head-pdis) (ex*>-just pdi₁>pdi₂@(*>-pdi pdi₁ pdi₂  u₁→u₂→r₁→r₂→u₁>u₂)) with ε∈? p₂
+  
+... | no ¬ε∈p₂ = buildU-all>head-concatmap-buildU {p} {r} {pref} {ε∈p} p→r s-ev-p-r pdis pdis-sorted (pdi₁>head pdis pdi₂>head-pdis)
+  where
+    pdi₁>head : ( pdis : List (PDInstance* r pref) )
+        →  Ex*>-maybe pdi₂ (head pdis) 
+        →  Ex*>-maybe pdi₁ (head pdis)
+    pdi₁>head [] ex*>-nothing = ex*>-nothing
+    pdi₁>head (pdi₃ ∷ pdis) (ex*>-just pdi₂>pdi₃) = ex*>-just (*>-pdi-trans {r} {pref} {pdi₁} {pdi₂} {pdi₃} pdi₁>pdi₂ pdi₂>pdi₃)    
 
+... | yes ε∈p₂ with mkAllEmptyU ε∈p₂ in eq
+...               | [] = Nullary.contradiction eq (mkAllEmptyU≢[]  ε∈p₂)
+...               | v ∷ vs = go (mkAllEmptyU ε∈p)
+  where
+    go : ( us : List (U p) )
+      →  All (λ u₁ → >-maybe u₁ (just (p₂→r v))) (List.map p→r us )
+    go [] = []
+    go ( u ∷ us ) = >-just (u₁→u₂→r₁→r₂→u₁>u₂ (p→r u) (p₂→r v) rec*₁ rec*₂ ) ∷ go us
+      where
+        rec*₁ : Recons* (p→r u) (pdinstance* p→r s-ev-p-r)
+        rec*₁ with flat u in flat-u-eq 
+        ... | w , w∈p = recons* {p} {r} (p→r u) (w∈p , cong (λ x → p→r x ) unflat-w∈p≡u)
+          where
+            unflat-w∈p≡u : unflat w∈p ≡ u
+            unflat-w∈p≡u =
+              begin
+                unflat w∈p
+              ≡⟨ cong (λ x → unflat (proj₂ x)) (sym flat-u-eq)  ⟩
+                unflat (proj₂ (flat u))
+              ≡⟨ unflat∘proj₂∘flat ⟩
+                u 
+              ∎
+        rec*₂ : Recons* (p₂→r v) (pdinstance* p₂→r s-ev-p₂-r)
+        rec*₂ with flat v in flat-v-eq 
+        ... | w , w∈p₂ = recons* {p₂} {r} (p₂→r v) (w∈p₂ , cong (λ x → p₂→r x ) unflat-w∈p₂≡v)
+          where
+            unflat-w∈p₂≡v : unflat w∈p₂ ≡ v
+            unflat-w∈p₂≡v =
+              begin
+                unflat w∈p₂
+              ≡⟨ cong (λ x → unflat (proj₂ x)) (sym flat-v-eq)  ⟩
+                unflat (proj₂ (flat v))
+              ≡⟨ unflat∘proj₂∘flat ⟩
+                v 
+              ∎              
+              
+  
 concatMap-buildU-sorted : ∀ { r : RE } { w : List Char }
   → ( pdis : List (PDInstance* r w) )
   → Ex*>-sorted pdis
@@ -1929,9 +1977,14 @@ concatMap-buildU-sorted {r} {w} (pdi₁@(pdinstance* {p₁} {r} p₁→r s-ev₁
     us₁-sorted : >-sorted ( List.map p₁→r (mkAllEmptyU ε∈p₁) )
     us₁-sorted =  map-inj-sorted (mkAllEmptyU ε∈p₁) p₁→r  u₁→u₂→u₁>u₂→p₁→r-u₁>p₁→r-u₂ (mkAllEmptyU-sorted ε∈p₁)
 
-    map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis : All (λ u₁ → >-maybe u₁ (head (concatMap buildU (pdinstance* p₂→r s-ev₂ ∷ pdis)))) (buildU (pdinstance* p₁→r s-ev₁)) -- (List.map p₁→r (mkAllEmptyU ε∈p₁))
-    map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis = buildU-all>head-concatmap-buildU pdi₁ (pdi₂ ∷ pdis) pdi₂pdis-sorted  (ex*>-just pdi₁>pdi₂) -- {! !} 
+    map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis : All (λ u₁ → >-maybe u₁ (head (concatMap buildU (pdinstance* p₂→r s-ev₂ ∷ pdis))))
+                                                                                          -- (buildU (pdinstance* p₁→r s-ev₁))
+                                                                                          (List.map p₁→r (mkAllEmptyU ε∈p₁))
+    map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis = buildU-all>head-concatmap-buildU p₁→r s-ev₁ (pdi₂ ∷ pdis) pdi₂pdis-sorted  (ex*>-just pdi₁>pdi₂) 
+```
 
+Main proof:
+```agda
 parseAll-is-greedy : ∀ { r : RE } { w : List Char }
   →  >-sorted {r} (parseAll[ r , w ])
 parseAll-is-greedy {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUMany-sorted  pdUMany-*>-inc 

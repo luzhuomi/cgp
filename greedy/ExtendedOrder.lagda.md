@@ -107,7 +107,6 @@ open Decidable using
   ( Dec; yes; no; ⌊_⌋; True; toWitness; fromWitness; _×-dec_; _⊎-dec_; ¬?)
 
 open import Function using (_∘_ ; flip)
-
 ```
 
 
@@ -774,6 +773,8 @@ pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e) (pdi₁ ∷ pdi₂ 
 -- sub lemma: pdinstance-snd-ex>-sorted END
 --------------------------------------------------------------------------------------------
 
+
+
 -- concatenation of two ex sorted lists of pdis are sorted if all the pdis from the first list are ex-> than the head of the 2nd list. 
 concat-ex-sorted : ∀ { r : RE } { c }
     → ( pdis₁ : List ( PDInstance r c ))
@@ -790,6 +791,22 @@ concat-ex-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex>-cons
   where
     ind-hyp = concat-ex-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs 
 
+
+-- same as the above, instead of ex sorted, it cover sorted 
+concat-sorted : ∀ { r : RE } 
+  → ( us₁ : List ( U r ) )
+  → ( us₂ : List ( U r ) )
+  → >-sorted { r } us₁
+  → >-sorted { r } us₂
+  → All (λ u₁ → >-maybe {r} u₁ (head us₂)) us₁
+  ----------------------------------------------
+  → >-sorted { r } (us₁ ++ us₂)
+concat-sorted []               us₂        >-nil        us₂-sorted    []                            = us₂-sorted
+concat-sorted us₁              []         us₁-sorted   >-nil         _  rewrite (++-identityʳ us₁) = us₁-sorted
+concat-sorted (u₁ ∷ [])        (u₂ ∷ us₂) us₁-sorted   u₂us₂-sorted  (>-just u₁>u₂ ∷ [] )          = >-cons u₂us₂-sorted (>-just u₁>u₂)
+concat-sorted (u₁ ∷ u₁' ∷ us₁) (u₂ ∷ us₂) (>-cons u₁'us₁-sorted (>-just u₁>u₁'))  u₂us₂-sorted (>-just u₁>u₂ ∷ pxs) = >-cons ind-hyp (>-just u₁>u₁')
+  where
+    ind-hyp = concat-sorted (u₁' ∷ us₁) (u₂ ∷ us₂) u₁'us₁-sorted u₂us₂-sorted pxs
 
 
 
@@ -1874,14 +1891,23 @@ map-inj-sorted {p} {r} (u₁ ∷ (u₂ ∷  us)) inj >-inc-ev (>-cons u₂us-sor
     ind-hyp : >-sorted {r} (List.map inj (u₂ ∷ us))
     ind-hyp = map-inj-sorted {p} {r} (u₂ ∷ us) inj >-inc-ev u₂us-sorted 
 
+{-
 buildU-is-sorted : ∀ { r : RE } { w : List Char }
   → (pdi : PDInstance* r w)
   → *>-Inc pdi 
   → >-sorted {r} (buildU {r} {w} pdi) 
 buildU-is-sorted {r} {w} (pdinstance* {p} {r} inj s-ev)  (*>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) with ε∈? p
 ... | no _ = >-nil
-... | yes ε∈p = map-inj-sorted (mkAllEmptyU ε∈p) inj u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ (mkAllEmptyU-sorted ε∈p) 
+... | yes ε∈p = map-inj-sorted (mkAllEmptyU ε∈p) inj u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ (mkAllEmptyU-sorted ε∈p)-} 
 
+buildU-all>head-concatmap-buildU : ∀ { r : RE } { w : List Char }
+  → ( pdi : PDInstance* r w )
+  → ( pdis : List (PDInstance* r w ) )
+  → Ex*>-sorted pdis
+  → Ex*>-maybe pdi (head pdis)
+  -------------------------------------------------------------------------------------------
+  → All (λ u₁ → >-maybe  u₁ (head (concatMap (buildU {r} {w}) pdis)) ) (buildU {r} {w} pdi)
+buildU-all>head-concatmap-buildU = {!!} 
 
 concatMap-buildU-sorted : ∀ { r : RE } { w : List Char }
   → ( pdis : List (PDInstance* r w) )
@@ -1895,13 +1921,16 @@ concatMap-buildU-sorted {r} {w} (pdi@(pdinstance* {p} {r} inj s-ev) ∷ []) (ex*
 concatMap-buildU-sorted {r} {w} (pdi₁@(pdinstance* {p₁} {r} p₁→r s-ev₁ ) ∷ ( pdi₂@(pdinstance* {p₂} {r} p₂→r s-ev₂ ) ∷ pdis ) ) (ex*>-cons pdi₂pdis-sorted (ex*>-just pdi₁>pdi₂)) 
   (inc₁@(*>-inc u₁→u₂→u₁>u₂→p₁→r-u₁>p₁→r-u₂) ∷ ( inc₂@(*>-inc u₁→u₂→u₁>u₂→p₂→r-u₁>p₂→r-u₂) ∷ *>-inc-pdis ) ) with ε∈? p₁
 ... | no _  = concatMap-buildU-sorted {r} {w} (pdi₂ ∷ pdis)  pdi₂pdis-sorted (inc₂ ∷ *>-inc-pdis)
-... | yes ε∈p₁ = {!!}
+... | yes ε∈p₁ = concat-sorted ( List.map p₁→r (mkAllEmptyU ε∈p₁))  (concatMap buildU (pdi₂ ∷ pdis)) us₁-sorted ind-hyp map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis  
   where
     ind-hyp : >-sorted {r} (concatMap buildU (pdi₂ ∷ pdis))
     ind-hyp = concatMap-buildU-sorted {r} {w} (pdi₂ ∷ pdis)  pdi₂pdis-sorted (inc₂ ∷ *>-inc-pdis)
 
     us₁-sorted : >-sorted ( List.map p₁→r (mkAllEmptyU ε∈p₁) )
-    us₁-sorted =  map-inj-sorted (mkAllEmptyU ε∈p₁) p₁→r  u₁→u₂→u₁>u₂→p₁→r-u₁>p₁→r-u₂ (mkAllEmptyU-sorted ε∈p₁)  
+    us₁-sorted =  map-inj-sorted (mkAllEmptyU ε∈p₁) p₁→r  u₁→u₂→u₁>u₂→p₁→r-u₁>p₁→r-u₂ (mkAllEmptyU-sorted ε∈p₁)
+
+    map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis : All (λ u₁ → >-maybe u₁ (head (concatMap buildU (pdinstance* p₂→r s-ev₂ ∷ pdis)))) (buildU (pdinstance* p₁→r s-ev₁)) -- (List.map p₁→r (mkAllEmptyU ε∈p₁))
+    map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis = buildU-all>head-concatmap-buildU pdi₁ (pdi₂ ∷ pdis) pdi₂pdis-sorted  (ex*>-just pdi₁>pdi₂) -- {! !} 
 
 parseAll-is-greedy : ∀ { r : RE } { w : List Char }
   →  >-sorted {r} (parseAll[ r , w ])

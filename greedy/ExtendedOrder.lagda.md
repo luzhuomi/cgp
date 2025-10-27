@@ -3,11 +3,9 @@
 module cgp.greedy.ExtendedOrder where
 
 import cgp.RE as RE
-open RE using (RE; ϕ ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ;
-  ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ; ε∉ϕ ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? ;
-  ϕ≡ ; ϕ≡ϕ ; ϕ≡_+_ ; ϕ≡fst ; ϕ≡snd ; ϕ≡? ; ϕ≢; ϕ≢ε ; ϕ≢$ ; ϕ≢* ; ϕ≢left ; ϕ≢right ; ϕ≢left-right ; ϕ≢_●_ ; ¬ϕ≡r→ϕ≢r ; ϕ≢r→¬ϕ≡r ; 
-  first ; ϕ≢-ε∉→¬first≡[] ;
-  ϕ≡r→ε∉r )
+open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ;
+  ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? ;
+  first ; ε∉r→¬first-r≡[] )
 
 
 import cgp.Utils as Utils
@@ -43,7 +41,8 @@ open PartialDerivative using (
   Recons ; recons ;
   Recons* ; recons* ;
   injId ;
-  pdUMany-aux-cs-[]≡[] ) 
+  pdUMany-aux-cs-[]≡[];
+  parseAll[_,_] ; buildU ) 
 
 
 import cgp.greedy.Order as GreedyOrder
@@ -1123,7 +1122,6 @@ pdUConcat-sorted : ∀ { l r : RE } { ε∈l : ε∈ l } {loc : ℕ } { c : Char
   → Ex>-sorted {l ● r ` loc } {c} (pdUConcat l r ε∈l loc c)
   
 
-pdU-sorted {ϕ} {c} = ex>-nil
 pdU-sorted {ε} {c} = ex>-nil
 pdU-sorted {$ c ` loc } {c'} with c Char.≟ c'
 ...                           | no _ = ex>-nil 
@@ -1408,50 +1406,9 @@ advance-pdi*-with-c-sorted {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r 
 
 ```
 
-### Corollary from pdUMany-complete? 
-
 ```agda
 
--- does not hold
--- counter example in Example-concat-a-phi PartialDerivative
-{- 
-pdUConcat-l-ϕ-c≡[] : ∀ { l r : RE } {ε∈l : ε∈ l } {loc : ℕ } { ϕ≡r : ϕ≡ r } { c : Char }  
-  → pdUConcat l r ε∈l loc c ≡ []
-
-
-pdU-ϕ-c≡[] : ∀ { r : RE } { ϕ≡r : ϕ≡ r } { c : Char }
-    → pdU[ r , c ] ≡ []
-pdU-ϕ-c≡[] {ϕ} {ϕ≡ϕ} {c}  = refl
-pdU-ϕ-c≡[] {l + r ` loc} {ϕ≡ ϕ≡l + ϕ≡r} {c} rewrite pdU-ϕ-c≡[] {l} {ϕ≡l} {c} | pdU-ϕ-c≡[] {r} {ϕ≡r} {c} = refl 
-pdU-ϕ-c≡[] {l ● r ` loc} {ϕ≡fst ϕ≡l} {c} with ε∈? l
-... | yes ε∈l = Nullary.contradiction ε∈l (ε∉r→¬ε∈r (ϕ≡r→ε∉r ϕ≡l))
-... | no ¬ε∈l rewrite pdU-ϕ-c≡[] {l} {ϕ≡l} {c} = refl 
-pdU-ϕ-c≡[] {l ● r ` loc} {ϕ≡snd ϕ≡r} {c} with ε∈? l
-... | yes ε∈l = pdUConcat-l-ϕ-c≡[] {l} {r} {ε∈l} {loc} {ϕ≡r} {c} 
-... | no ¬ε∈l rewrite pdU-ϕ-c≡[] {r} {ϕ≡r} {c} = {!!} 
-
-
-pdUConcat-l-ϕ-c≡[] {ε} {r} {ε∈ε} {loc}  {ϕ≡r} {c} rewrite pdU-ϕ-c≡[] {r} {ϕ≡r} {c}  = refl 
-pdUConcat-l-ϕ-c≡[] {l * ε∈l ` loc₁} {r} {ε∈*} {loc} {ϕ≡r} {c} rewrite pdU-ϕ-c≡[] {r} {ϕ≡r} {c} | ++-identityʳ (List.map (pdinstance-fst {l * ε∈l ` loc₁} {r} {loc} {c}) (List.map pdinstance-star pdU[ l , c ])) = {!!} 
--}
-
--- need?
-{-
--}
--- the rest moved to Trash.lagda.md 
-
-
--- do we still need this ?
-{-
-
-postulate
-  -- we need to include the premise  ϕ≢ r  if we want to verify this. 
-  pdi-∃ : ∀ { r : RE } { c : Char }
-       → ( pdi : PDInstance r c )
-       → ∃[ u ] Recons u pdi
--- pdi-∃ {ε} {c} pdi@(pdinstance {ϕ} {ε} {c} inj s-ev) = EmptyU , (recons EmptyU ({!!} , {!!}))  -- already stuck, because no such inj exists!
-
-
+{- we don't need this? 
 >-pdi-trans : ∀ { r : RE } { c : Char } 
   → { pdi₁ : PDInstance r c }
   → { pdi₂ : PDInstance r c }
@@ -1485,7 +1442,6 @@ first≢[]→¬pdU≡[] : ∀ { r : RE } { c : Char } { cs : List Char }
     → ( first r ≡ c ∷ cs )
     ------------------------
     → ¬ ( pdU[ r , c ] ≡ [] )
-first≢[]→¬pdU≡[] {ϕ} {c} {cs} = λ()
 first≢[]→¬pdU≡[] {ε} {c} {cs} = λ()
 first≢[]→¬pdU≡[] {$ c ` loc} {c₁} {[]} first-c≡c∷[] = prf
   where
@@ -1736,80 +1692,33 @@ first≢[]→¬pdUConcat≡[] {l + s ` loc₁} {r} {ε∈ ε∉l +> ε∈s} {loc
         pdu-l-r≡[] : pdU[ l ● r ` loc₂ ,  c ] ≡ []
         pdu-l-r≡[] = inv-map-[] map-left-pdu-l-r≡[]
 
-{-        
-data Pdi*¬ϕ :  { r : RE } { pref : List Char } → PDInstance* r pref → Set  where 
-  pdi*¬ϕ : ∀ { p r : RE } { pref : List Char } 
-       → ( inj : U p → U r ) -- ^ the injection function 
-       → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ pref ++ ( proj₁ (flat {p} u) )) ) -- ^ soundness evidence of the inject function
-       → ( ϕ≢ p )
-       → Pdi*¬ϕ {r} {pref} (pdinstance* {p} {r} {pref} inj s-ev)
--}
-
-
-data Pdi¬ϕ :  { r : RE } { c : Char } → PDInstance r c → Set  where 
-  pdi¬ϕ : ∀ { p r : RE } { c : Char } 
-       → ( inj : U p → U r ) -- ^ the injection function 
-       → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )
-       → ( ϕ≢ p )
-       → Pdi¬ϕ {r} {c} (pdinstance {p} {r} {c} inj s-ev)
-
-
--- the following does no hold
--- counter example
---  ( a*●ϕ )*  is not phi, but  a*●ϕ ● ( a*●ϕ )* is phi 
-ϕ≢r→Pdi¬ϕ : ∀ { r : RE } { ϕ≢r : ϕ≢ r } { c : Char} 
-  → All Pdi¬ϕ pdU[ r , c ] 
-
-ϕ≢r→Pdi¬ϕ {ϕ} {ϕ≢ϕ}     {c} = Nullary.contradiction ϕ≡ϕ (ϕ≢r→¬ϕ≡r ϕ≢ϕ)
-ϕ≢r→Pdi¬ϕ {ε} {ϕ≢ε}     {c} = []
-ϕ≢r→Pdi¬ϕ {($ c ` _ )} {ϕ≢$}  {c'} with c Char.≟ c'
-... | yes refl =  pdi¬ϕ (λ u → LetterU c)
-                        (λ EmptyU →                 -- ^ soudness ev
-                          begin
-                            [ c ]
-                          ≡⟨⟩
-                            c ∷ []
-                          ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
-                            c ∷ (proj₁ (flat EmptyU))
-                          ∎)
-                        ϕ≢ε
-                        ∷ [] 
-... | no ¬c≡c' = []
-ϕ≢r→Pdi¬ϕ {r * ε∉r ` loc} {ϕ≢*} {c} with ϕ≡? r
-... | yes ϕ≡r = {!!} -- if ϕ≡r, L(r*)≡L(ε), but it does not implies first r = [] 
-... | no ¬ϕ≡r = {!!} 
-  where
-    ind-hyp :  All Pdi¬ϕ pdU[ r , c ]
-    ind-hyp = {!!} 
 
 
 -- postulate
 {-# TERMINATING #-}
--- TODO we need to rewrite a version of this so that we use d→r and s-ev-d-r instead? so that we can show d is not phi too.
--- if d is phi, we run into a non-termination, because of case like ( a*●ϕ )*  the r is not phi, but  a*●ϕ ● ( a*●ϕ )* is phi
-pdi*-∃ : ∀ { r : RE } { ϕ≢r : ϕ≢ r } { pref : List Char }
+pdi*-∃ : ∀ { r : RE } { pref : List Char }
        → ( pdi : PDInstance* r pref )
        → ∃[ u ] Recons* u pdi
 
-pdi*-∃ {r} {ϕ≢r} {pref} pdi@(pdinstance* {d} {r} {pref}  inj s-ev)  with ε∈? d
-... |  yes ε∈d with mkAllEmptyU ε∈d in mkAllEmptyU-e∈p-eq 
-...              | ( e ∷ es ) = inj e , recons* (inj e) ((proj₂ (flat e)) , prf) -- base case, we don't need   pdi∈pdUMany-r-ccs
+pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  inj s-ev)
+  with ε∈? d
+... |  yes ε∈d with (mkAllEmptyU ε∈d )in mkAllEmptyU-e∈p-eq 
+...              | ( e ∷ es ) = inj e , recons* (inj e) ((proj₂ (flat e)) , prf) -- base case, 
   where
     prf  : inj (unflat (Product.proj₂ (flat e))) ≡ inj e
     prf = cong (λ x → inj x ) unflat∘proj₂∘flat
 ...              | [] = Nullary.contradiction  mkAllEmptyU-e∈p-eq ( mkAllEmptyU≢[] ε∈d)     -- we need to create a contradiction here. mkAllEmptyU is not empty
-pdi*-∃ {r} {ϕ≢r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
-    |  no ¬ε∈d with ϕ≡? d -- since r is not phi, d must not be phi, we should be able to find at least one leading letter from d such that
-...            | yes ϕ≡d = {!!}  -- hole #1 : we need to create a contradiction  -- how to get ϕ≢ d ? we should get it from pdi's non-phi property, d ≡ r ⊎ ϕ≢d when pref ≡[] we have p≡r other wise ϕ≢d
-...            | no ¬ϕ≡d with first d in first-d-eq 
-...                       |  []  = Nullary.contradiction first-d-eq (ϕ≢-ε∉→¬first≡[] (¬ϕ≡r→ϕ≢r ¬ϕ≡d) (¬ε∈r→ε∉r ¬ε∈d)) 
-...                       |  ( c₁ ∷ cs₁ ) with pdU[ d , c₁ ] in pdU-d-c₁-eq 
-...                                       | []  =  Nullary.contradiction pdU-d-c₁-eq (first≢[]→¬pdU≡[] first-d-eq)  -- hole #2: since c₁ is in first d, pdU[ d , c₁ ] should not be [] 
-...                                       | (pdi'@(pdinstance {p} {d} {c₁} p→d s-ev-p-d) ∷ _ )
-                                               with pdi*-∃ {r} {ϕ≢r} {pref ∷ʳ c₁} (compose-pdi-with {r} {d} {pref} {c₁} d→r s-ev-d-r pdi' )
-...                                             | ( u , recons* {p} {r} {w} { pref∷ʳc₁ } {p→r} {s-ev-p-r} .u (w∈⟦p⟧ , d→r∘p→d-unflat-w∈⟦p⟧≡u ) )
-                                                  with flat {d} (p→d (unflat w∈⟦p⟧)) in flat-p→d-unflat-w∈⟦p⟧-eq 
-...                                                 | c₁w , c₁w∈⟦d⟧ = prf 
+
+pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
+    |  no ¬ε∈d  with first d in first-d-eq
+...               |  [] =   Nullary.contradiction first-d-eq (ε∉r→¬first-r≡[] {d} {¬ε∈r→ε∉r ¬ε∈d})      
+...               |  ( c₁ ∷ cs₁ ) with pdU[ d , c₁ ] in pdU-d-c₁-eq 
+...                                | []  =  Nullary.contradiction pdU-d-c₁-eq (first≢[]→¬pdU≡[] first-d-eq)  -- since c₁ is in first d, pdU[ d , c₁ ] should not be [] 
+...                                | (pdi'@(pdinstance {p} {d} {c₁} p→d s-ev-p-d) ∷ _ )
+                                          with pdi*-∃ {r} {pref ∷ʳ c₁} (compose-pdi-with {r} {d} {pref} {c₁} d→r s-ev-d-r pdi' )
+...                                         | ( u , recons* {p} {r} {w} { pref∷ʳc₁ } {p→r} {s-ev-p-r} .u (w∈⟦p⟧ , d→r∘p→d-unflat-w∈⟦p⟧≡u ) )
+                                                with flat {d} (p→d (unflat w∈⟦p⟧)) in flat-p→d-unflat-w∈⟦p⟧-eq 
+...                                              | c₁w , c₁w∈⟦d⟧ = prf 
                                                           where
                                                               -- sub goals
                                                               unflat-c₁w∈⟦d⟧≡p→d-unflat-w∈⟦p⟧ :  unflat c₁w∈⟦d⟧ ≡ p→d (unflat w∈⟦p⟧)
@@ -1831,7 +1740,7 @@ pdi*-∃ {r} {ϕ≢r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
 
 
 -- transitivity of *>-pdi 
-*>-pdi-trans : ∀ { r : RE }  { ϕ≢r : ϕ≢ r } { pref : List Char } 
+*>-pdi-trans : ∀ { r : RE }  { pref : List Char } 
   → { pdi₁ : PDInstance* r pref }
   → { pdi₂ : PDInstance* r pref }
   → { pdi₃ : PDInstance* r pref }
@@ -1839,7 +1748,7 @@ pdi*-∃ {r} {ϕ≢r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
   → r , pref ⊢* pdi₂ > pdi₃
   -------------------------------------------  
   → r , pref ⊢* pdi₁ > pdi₃ 
-*>-pdi-trans {r}  { ϕ≢r} {pref}  {pdi₁} {pdi₂} {pdi₃} (*>-pdi pdi₁ pdi₂ u₁→u₂→rec₁→rec₂→u₁>u₂)  (*>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→u₂>u₃)  = *>-pdi pdi₁ pdi₃ *>-ev
+*>-pdi-trans {r} {pref}  {pdi₁} {pdi₂} {pdi₃} (*>-pdi pdi₁ pdi₂ u₁→u₂→rec₁→rec₂→u₁>u₂)  (*>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→u₂>u₃)  = *>-pdi pdi₁ pdi₃ *>-ev
   
   where
     *>-ev : ( u₁ : U r )
@@ -1849,38 +1758,38 @@ pdi*-∃ {r} {ϕ≢r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
           ------------------------------
           → r ⊢ u₁ > u₃
     *>-ev u₁ u₃ recons₁ recons₃ =
-      let u₂-recons₂ = pdi*-∃  {r} {ϕ≢r} {pref} pdi₂ 
+      let u₂-recons₂ = pdi*-∃  {r} {pref} pdi₂ 
       in  >-trans (u₁→u₂→rec₁→rec₂→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂))
                   (u₂→u₃→rec₂→rec₃→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃)  -- where to get u₂ and recons₂ ?
 
     
 
-advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c : ∀ { r : RE } {¬ϕ≡r : ¬ ϕ≡ r}  { pref : List Char } { c : Char }
+advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c : ∀ { r : RE } { pref : List Char } { c : Char }
   → ( pdi :  PDInstance* r pref )
   → ( pdis : List (PDInstance* r pref ) )
   → Ex*>-sorted pdis
   → Ex*>-maybe pdi (head pdis)
   --------------------------------------------------------------------------
   → All (λ pdi₁ → Ex*>-maybe pdi₁ (head (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis))) (advance-pdi*-with-c {r} {pref} {c} pdi)
-advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r} {¬ϕ≡r} {pref} {c} pdi [] ex*>-nil ex*>-nothing = prove (advance-pdi*-with-c {r} {pref} {c} pdi)
+advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r}  {pref} {c} pdi [] ex*>-nil ex*>-nothing = prove (advance-pdi*-with-c {r} {pref} {c} pdi)
   where
     prove : (pdis : List (PDInstance* r  ( pref ∷ʳ c ) ) )
           → All  (λ pdi₁ → Ex*>-maybe pdi₁ nothing) pdis
     prove [] = []
     prove (pdi ∷ pdis) = ex*>-nothing ∷ prove pdis
-advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r} {¬ϕ≡r} {pref} {c}
+advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r}  {pref} {c}
   pdi₁@(pdinstance* {d₁} {r} d₁→r s-ev-d₁r)
   (pdi₂@(pdinstance* {d₂} {r} d₂→r s-ev-d₂r) ∷ pdis) (ex*>-cons pdis-*>sorted pdi₂>head-pdis) (ex*>-just pdi₁>pdi₂@(*>-pdi .pdi₁ .pdi₂ u₁→u₂→rec₁→rec₂→u₁>u₂))
   with pdU[ d₂ , c ] -- this case needs to be reassessed, is the induction correct here? -- TODO: what about ϕ≡ d₂ ? 
                      -- is it even possible? e.g. c,w ∈ d₁ but c,w ∉ d₂, and c,w∈d₃ where d₁ d₂ are partial derivative descendents of r via pref?
                      -- that means 
-... | [] =  advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r} {¬ϕ≡r} {pref} {c}  pdi₁ pdis pdis-*>sorted (pdi₁>head pdis pdi₂>head-pdis) 
+... | [] =  advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r}  {pref} {c}  pdi₁ pdis pdis-*>sorted (pdi₁>head pdis pdi₂>head-pdis) 
   where
     pdi₁>head : ( pdis : List (PDInstance* r pref) )
         →  Ex*>-maybe pdi₂ (head pdis) 
         →  Ex*>-maybe pdi₁ (head pdis)
     pdi₁>head [] ex*>-nothing = ex*>-nothing
-    pdi₁>head (pdi₃ ∷ pdis) (ex*>-just pdi₂>pdi₃) = ex*>-just (*>-pdi-trans {r} {¬ϕ≡r→ϕ≢r ¬ϕ≡r} {pref} {pdi₁} {pdi₂} {pdi₃} pdi₁>pdi₂ pdi₂>pdi₃)
+    pdi₁>head (pdi₃ ∷ pdis) (ex*>-just pdi₂>pdi₃) = ex*>-just (*>-pdi-trans {r} {pref} {pdi₁} {pdi₂} {pdi₃} pdi₁>pdi₂ pdi₂>pdi₃)
 ... | pdi₂' ∷ pdis₂' = go pdU[ d₁ , c ] 
   where
       go : ( pdis₁' : List ( PDInstance d₁ c ) )
@@ -1897,28 +1806,28 @@ advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r} {¬ϕ≡r} {pref}
           ev-> u₁ u₂ recons₁ recons₂ = u₁→u₂→rec₁→rec₂→u₁>u₂ u₁ u₂ (inv-recons*-compose-pdi-with u₁ pdi₁' d₁→r s-ev-d₁r recons₁) (inv-recons*-compose-pdi-with u₂ pdi₂' d₂→r s-ev-d₂r recons₂)  
         
 
-concatmap-advance-pdi*-with-c-sorted : ∀ { r : RE } { ¬ϕ≡r : ¬ ϕ≡ r } { pref : List Char } { c : Char }
+concatmap-advance-pdi*-with-c-sorted : ∀ { r : RE } { pref : List Char } { c : Char }
   → (pdis : List (PDInstance* r pref) )
   → Ex*>-sorted pdis
   → All *>-Inc pdis
   -------------------------------------------------------------------------------------
   → Ex*>-sorted (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-concatmap-advance-pdi*-with-c-sorted {r} {¬ϕ≡r} {pref} {c} [] ex*>-nil []  = ex*>-nil
-concatmap-advance-pdi*-with-c-sorted {r} {¬ϕ≡r} {pref} {c} (pdi ∷ pdis) (ex*>-cons pdis-ex*>-sorted pdi>head-pdis) (*>-inc-pdi ∷ *>-inc-pdis ) = concat-ex*-sorted (advance-pdi*-with-c {r} {pref} {c} pdi) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) advance-pdi*-with-c-pdi-sorted ind-hyp advance-pdi*-with-c-pdi-all>head-ind-hyp
+concatmap-advance-pdi*-with-c-sorted {r}  {pref} {c} [] ex*>-nil []  = ex*>-nil
+concatmap-advance-pdi*-with-c-sorted {r}  {pref} {c} (pdi ∷ pdis) (ex*>-cons pdis-ex*>-sorted pdi>head-pdis) (*>-inc-pdi ∷ *>-inc-pdis ) = concat-ex*-sorted (advance-pdi*-with-c {r} {pref} {c} pdi) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) advance-pdi*-with-c-pdi-sorted ind-hyp advance-pdi*-with-c-pdi-all>head-ind-hyp
   where
     advance-pdi*-with-c-pdi-sorted : Ex*>-sorted (advance-pdi*-with-c {r} {pref} {c} pdi)
     advance-pdi*-with-c-pdi-sorted = advance-pdi*-with-c-sorted pdi *>-inc-pdi
 
     ind-hyp : Ex*>-sorted (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-    ind-hyp = concatmap-advance-pdi*-with-c-sorted {r} {¬ϕ≡r} {pref} {c} pdis pdis-ex*>-sorted *>-inc-pdis
+    ind-hyp = concatmap-advance-pdi*-with-c-sorted {r}  {pref} {c} pdis pdis-ex*>-sorted *>-inc-pdis
 
     advance-pdi*-with-c-pdi-all>head-ind-hyp : All (λ pdi₁ → Ex*>-maybe pdi₁ (head (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis))) (advance-pdi*-with-c pdi)
-    advance-pdi*-with-c-pdi-all>head-ind-hyp =  advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r} {¬ϕ≡r} {pref} {c}  pdi pdis pdis-ex*>-sorted pdi>head-pdis
+    advance-pdi*-with-c-pdi-all>head-ind-hyp =  advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r}  {pref} {c}  pdi pdis pdis-ex*>-sorted pdi>head-pdis
 
 
 
 
-pdUMany-aux-sorted : ∀ { r : RE } { ¬ϕ≡r : ¬ ϕ≡ r }  { pref : List Char }
+pdUMany-aux-sorted : ∀ { r : RE }  { pref : List Char }
   → ( c : Char )
   → ( cs : List Char )
   → ( pdis : List (PDInstance* r pref ) )
@@ -1926,23 +1835,76 @@ pdUMany-aux-sorted : ∀ { r : RE } { ¬ϕ≡r : ¬ ϕ≡ r }  { pref : List Cha
   → All *>-Inc pdis -- we need to thread through *>-Inc for all the sub lemmas so that we can use it in compose-pdi-with-ex*>-head-map-compose-pdi-with 
   -------------------------------------------------------
   → Ex*>-sorted (pdUMany-aux (c ∷ cs) pdis)
-pdUMany-aux-sorted {r} {¬ϕ≡r} {pref} c [] pdis pdis-ex*>-sorted *>-inc-pdis  rewrite (++-identityʳ (pref ∷ʳ c) )   = concatmap-advance-pdi*-with-c-pdis-sorted
+pdUMany-aux-sorted {r}  {pref} c [] pdis pdis-ex*>-sorted *>-inc-pdis  rewrite (++-identityʳ (pref ∷ʳ c) )   = concatmap-advance-pdi*-with-c-pdis-sorted
   where
     concatmap-advance-pdi*-with-c-pdis-sorted : Ex*>-sorted (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-    concatmap-advance-pdi*-with-c-pdis-sorted = concatmap-advance-pdi*-with-c-sorted {r} {¬ϕ≡r} {pref} {c} pdis pdis-ex*>-sorted *>-inc-pdis 
+    concatmap-advance-pdi*-with-c-pdis-sorted = concatmap-advance-pdi*-with-c-sorted {r}  {pref} {c} pdis pdis-ex*>-sorted *>-inc-pdis 
 -- pdis-ex*>-sorted
-pdUMany-aux-sorted {r} {¬ϕ≡r} {pref} c (d ∷ cs) pdis pdis-ex*>-sorted *>-inc-pdis =
-  pdUMany-aux-sorted {r} {¬ϕ≡r} {pref ∷ʳ c} d cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) concatmap-advance-pdi*-with-c-pdis-sorted (concatmap-advance-pdi*-with-c-*>inc pdis *>-inc-pdis)
+pdUMany-aux-sorted {r}  {pref} c (d ∷ cs) pdis pdis-ex*>-sorted *>-inc-pdis =
+  pdUMany-aux-sorted {r}  {pref ∷ʳ c} d cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) concatmap-advance-pdi*-with-c-pdis-sorted (concatmap-advance-pdi*-with-c-*>inc pdis *>-inc-pdis)
   where
     concatmap-advance-pdi*-with-c-pdis-sorted : Ex*>-sorted (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-    concatmap-advance-pdi*-with-c-pdis-sorted = concatmap-advance-pdi*-with-c-sorted {r} {¬ϕ≡r} {pref} {c} pdis pdis-ex*>-sorted *>-inc-pdis 
+    concatmap-advance-pdi*-with-c-pdis-sorted = concatmap-advance-pdi*-with-c-sorted {r}  {pref} {c} pdis pdis-ex*>-sorted *>-inc-pdis 
 
 
   
-pdUMany-sorted : ∀ { r : RE } { ¬ϕ≡r : ¬ ϕ≡ r } { w : List Char }
+pdUMany-sorted : ∀ { r : RE } { w : List Char }
   → Ex*>-sorted {r} {w} pdUMany[ r , w ]
-pdUMany-sorted {r} {¬ϕ≡r} {[]} = ex*>-cons ex*>-nil ex*>-nothing
-pdUMany-sorted {r} {¬ϕ≡r} {c ∷ cs} = pdUMany-aux-sorted {r} {¬ϕ≡r} {[]} c cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (ex*>-cons ex*>-nil ex*>-nothing)  pdUMany-*>-inc
+pdUMany-sorted {r} {[]} = ex*>-cons ex*>-nil ex*>-nothing
+pdUMany-sorted {r} {c ∷ cs} = pdUMany-aux-sorted {r}  {[]} c cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (ex*>-cons ex*>-nil ex*>-nothing)  pdUMany-*>-inc
 
+
+```
+
+### Theorem : ParseAll is greedy (sorted)
+
+```agda
+
+map-inj-sorted : ∀ { p r : RE } 
+  → ( us : List ( U p ) )
+  → ( inj : U p → U r )
+  → ( (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ )
+  → >-sorted {p} us
+  ---------------------------------
+  → >-sorted {r} (List.map inj us)
+map-inj-sorted {p} {r} [] inj >-inc-ev >-nil = >-nil
+map-inj-sorted {p} {r} (u ∷ []) inj >-inc-ev (>-cons >-nil >-nothing)  = >-cons >-nil >-nothing
+map-inj-sorted {p} {r} (u₁ ∷ (u₂ ∷  us)) inj >-inc-ev (>-cons u₂us-sorted (>-just u₁>u₂) )  = >-cons ind-hyp (>-just (>-inc-ev u₁ u₂ u₁>u₂))
+  where
+    ind-hyp : >-sorted {r} (List.map inj (u₂ ∷ us))
+    ind-hyp = map-inj-sorted {p} {r} (u₂ ∷ us) inj >-inc-ev u₂us-sorted 
+
+buildU-is-sorted : ∀ { r : RE } { w : List Char }
+  → (pdi : PDInstance* r w)
+  → *>-Inc pdi 
+  → >-sorted {r} (buildU {r} {w} pdi) 
+buildU-is-sorted {r} {w} (pdinstance* {p} {r} inj s-ev)  (*>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) with ε∈? p
+... | no _ = >-nil
+... | yes ε∈p = map-inj-sorted (mkAllEmptyU ε∈p) inj u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ (mkAllEmptyU-sorted ε∈p) 
+
+
+concatMap-buildU-sorted : ∀ { r : RE } { w : List Char }
+  → ( pdis : List (PDInstance* r w) )
+  → Ex*>-sorted pdis
+  → All *>-Inc pdis
+  → >-sorted {r} (concatMap buildU pdis)
+concatMap-buildU-sorted {r} {w} [] ex*>-nil [] = >-nil
+concatMap-buildU-sorted {r} {w} (pdi@(pdinstance* {p} {r} inj s-ev) ∷ []) (ex*>-cons ex*>-nil ex*>-nothing) ((*>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) ∷ []) with ε∈? p
+... | no _ = >-nil
+... | yes ε∈p rewrite (++-identityʳ (List.map inj (mkAllEmptyU ε∈p))) =  map-inj-sorted (mkAllEmptyU ε∈p) inj u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ (mkAllEmptyU-sorted ε∈p)  
+concatMap-buildU-sorted {r} {w} (pdi₁@(pdinstance* {p₁} {r} p₁→r s-ev₁ ) ∷ ( pdi₂@(pdinstance* {p₂} {r} p₂→r s-ev₂ ) ∷ pdis ) ) (ex*>-cons pdi₂pdis-sorted (ex*>-just pdi₁>pdi₂)) 
+  (inc₁@(*>-inc u₁→u₂→u₁>u₂→p₁→r-u₁>p₁→r-u₂) ∷ ( inc₂@(*>-inc u₁→u₂→u₁>u₂→p₂→r-u₁>p₂→r-u₂) ∷ *>-inc-pdis ) ) with ε∈? p₁
+... | no _  = concatMap-buildU-sorted {r} {w} (pdi₂ ∷ pdis)  pdi₂pdis-sorted (inc₂ ∷ *>-inc-pdis)
+... | yes ε∈p₁ = {!!}
+  where
+    ind-hyp : >-sorted {r} (concatMap buildU (pdi₂ ∷ pdis))
+    ind-hyp = concatMap-buildU-sorted {r} {w} (pdi₂ ∷ pdis)  pdi₂pdis-sorted (inc₂ ∷ *>-inc-pdis)
+
+    us₁-sorted : >-sorted ( List.map p₁→r (mkAllEmptyU ε∈p₁) )
+    us₁-sorted =  map-inj-sorted (mkAllEmptyU ε∈p₁) p₁→r  u₁→u₂→u₁>u₂→p₁→r-u₁>p₁→r-u₂ (mkAllEmptyU-sorted ε∈p₁)  
+
+parseAll-is-greedy : ∀ { r : RE } { w : List Char }
+  →  >-sorted {r} (parseAll[ r , w ])
+parseAll-is-greedy {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUMany-sorted  pdUMany-*>-inc 
 ```
 

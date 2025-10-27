@@ -2,7 +2,7 @@
 module cgp.empty.AllEmptyParseTree where
 
 import cgp.RE as RE
-open RE using (RE; ϕ ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_)
+open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_)
 
 import cgp.Word as Word
 open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈⟦r⟧→¬ε∉r)
@@ -453,7 +453,6 @@ mkAllEmptyU-complete {l ● r ` loc } (ε∈ ε∈l ● ε∈r ) (PairU v u) (fl
 -- this should be moved AllEmptyParseTree.lagda.md 
 mkAllEmptyU≢[] : ∀ { r : RE } ( ε∈r : ε∈ r )
     → ¬ (mkAllEmptyU {r} ε∈r ≡ [] )
-mkAllEmptyU≢[] {ϕ} = λ()
 mkAllEmptyU≢[] {ε} ε∈ε = λ ()
 mkAllEmptyU≢[] {$ c ` _ } = λ()
 mkAllEmptyU≢[] {l * ε∉l ` _ } ε∈* = λ () 

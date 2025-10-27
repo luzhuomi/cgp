@@ -70,14 +70,14 @@ open Decidable using
 
 We use the following EBNF to denote regular expression
 
- r ::= ϕ | ε | ℓ | r ● r  | r + r | r*
+
+ r ::= ϕ |  ε | ℓ | r ● r  | r + r | r*
 
 
-where ϕ denotes the empty regular expression which accepts no input,
 ε denotes the expression that accepts only the empty sequence,  ℓ denotes a literal.
 r ● r denotes a concatenation,  r + r denotes a choice, r* denotes the kleene's star.
 
-
+We drop ϕ from our regular expression languages as there is no parse trees inhabit under it. 
 ### Definition 2 : (non-) nullable regular expressions
 
 The nullablilty of a regular expression is defined inductively
@@ -136,7 +136,6 @@ data ε∉ : RE → Set
 data ε∈ : RE → Set
 
 data RE where
-  ϕ : RE
   ε : RE
   $_`_ : Char → ℕ → RE
   _●_`_ : RE → RE → ℕ → RE
@@ -144,7 +143,6 @@ data RE where
   _*_`_  : ∀ ( r : RE )  → ( ε∉ r ) → ℕ → RE
 
 data ε∉ where
-  ε∉ϕ   : ε∉ ϕ 
   ε∉$   : ∀ { c : Char} { loc : ℕ } → ε∉ ($ c ` loc )
   ε∉fst : ∀ { l r : RE } { loc : ℕ } → ( ε∉ l ) → ( ε∉ (l ● r ` loc) )
   ε∉snd : ∀ { l r : RE } { loc : ℕ } → ( ε∉ r ) → ( ε∉ (l ● r ` loc ) )
@@ -166,7 +164,6 @@ data ε∈ where
 ```agda
 -- → direction
 ε∉r→¬ε∈r : ∀ { r : RE } → (ε∉ r) → ( ¬ (ε∈ r) )
-ε∉r→¬ε∈r { ϕ } = λ x → λ()
 ε∉r→¬ε∈r { ε } = λ()
 ε∉r→¬ε∈r { $ c ` loc } = λ x → λ()
 ε∉r→¬ε∈r { s ● t ` loc } (ε∉fst ε∉s) (ε∈ ε∈s ● ε∈t ) = (ε∉r→¬ε∈r ε∉s) ε∈s
@@ -178,7 +175,6 @@ data ε∈ where
 
 -- decidability of ε∉ r; which is required for the other direction 
 ε∉? : ∀ ( r : RE ) → Dec (ε∉ r)
-ε∉? ϕ               = yes ε∉ϕ
 ε∉? ε               = no   λ { ε∉ε → (ε∉r→¬ε∈r ε∉ε)  ε∈ε }
 ε∉? ( $ c ` loc )   = yes ε∉$
 ε∉? ( r * _ ` loc ) = no   λ { ε∉r* → (ε∉r→¬ε∈r ε∉r*) ε∈* }
@@ -194,7 +190,6 @@ data ε∈ where
 
 -- contrapositive of the ← direction 
 ¬ε∉r→ε∈r : ∀ { r : RE } → ¬ (ε∉ r) → (ε∈ r)
-¬ε∉r→ε∈r { ϕ } ¬ε∉r             = Nullary.contradiction ε∉ϕ ¬ε∉r
 ¬ε∉r→ε∈r { ε } _                 = ε∈ε
 ¬ε∉r→ε∈r { $ c ` loc } ¬ε∉r     = Nullary.contradiction ε∉$ ¬ε∉r
 ¬ε∉r→ε∈r { l ● r ` loc } ¬ε∉l●r with ε∉? l   | ε∉? r
@@ -213,7 +208,6 @@ data ε∈ where
 -- this direction can't be proven? double check
 -- KL: updated: it is proven now. 
 ¬ε∈r→ε∉r : ∀ { r : RE } → ( ¬ (ε∈ r) ) → (ε∉ r)
-¬ε∈r→ε∉r { ϕ } = λ x → ε∉ϕ 
 ¬ε∈r→ε∉r { ε } = λ x → Nullary.contradiction ε∈ε x
 ¬ε∈r→ε∉r { $ c ` loc } = λ ¬ε∈$c → ε∉$
 ¬ε∈r→ε∉r { r * nε ` loc } = λ x → Nullary.contradiction ε∈* x
@@ -232,7 +226,6 @@ data ε∈ where
 -- KL: this is proven now. 
 
 ε∈? : ∀ ( r : RE ) → Dec (ε∈ r)
-ε∈? ϕ              =  no (ε∉r→¬ε∈r ε∉ϕ)
 ε∈? ε              =  yes (ε∈ε)
 ε∈? ($ c ` _)      =  no (ε∉r→¬ε∈r ε∉$)
 ε∈? (r * _ ` _ )   =  yes (ε∈*)
@@ -272,118 +265,8 @@ inv-¬ε∈l+r {l} {r} {loc} ¬ε∈l+r =
 ```
 
 
-#### ϕ testing and decidability
-
 ```agda
-data ϕ≡ :  RE → Set where 
-  ϕ≡ϕ   : ϕ≡ ϕ
-  ϕ≡_+_ : ∀ { l r : RE } { loc : ℕ }
-    → ϕ≡ l
-    → ϕ≡ r
-    ---------------------
-    → ϕ≡ ( l + r ` loc )
-  ϕ≡fst  : ∀ { l r : RE } { loc : ℕ }
-    → ϕ≡ l
-    ----------------------
-    → ϕ≡ ( l ● r ` loc )
-  ϕ≡snd  : ∀ { l r : RE } { loc : ℕ }
-    → ϕ≡ r
-    ----------------------
-    → ϕ≡ ( l ● r ` loc )
-
-
-ϕ≡? : ∀ ( r : RE ) → Dec (ϕ≡ r)
-ϕ≡? ϕ = yes ϕ≡ϕ
-ϕ≡? ε = no λ()
-ϕ≡? ($ c ` loc) = no λ()
-ϕ≡? (l * _ ` _) = no λ()
-ϕ≡? (l + r ` loc) with ϕ≡? l | ϕ≡? r
-... | yes ϕ≡l | yes ϕ≡r = yes (ϕ≡ ϕ≡l + ϕ≡r)
-... | no ¬ϕ≡l | _       = no (λ { ( ϕ≡ ϕ≡l + ϕ≡r ) → ¬ϕ≡l ϕ≡l } )
-... | yes ϕ≡l | no ¬ϕ≡r = no (λ { ( ϕ≡ ϕ≡l + ϕ≡r ) → ¬ϕ≡r ϕ≡r } )
-ϕ≡? (l ● r ` loc) with ϕ≡? l | ϕ≡? r
-... | yes ϕ≡l | _       = yes (ϕ≡fst ϕ≡l)
-... | no ¬ϕ≡l | yes ϕ≡r = yes (ϕ≡snd ϕ≡r)
-... | no ¬ϕ≡l | no ¬ϕ≡r = no (λ { ( ϕ≡fst ϕ≡l ) → ¬ϕ≡l ϕ≡l
-                                ; ( ϕ≡snd ϕ≡r ) → ¬ϕ≡r ϕ≡r } )
-                                
-
-
-data ϕ≢ :  RE → Set where 
-  ϕ≢ε   : ϕ≢ ε
-  ϕ≢$   : ∀ { c : Char } { loc : ℕ }
-    -----------------------------------
-    → ϕ≢ ($ c ` loc)
-    
-  ϕ≢left : ∀ { l r : RE } { loc : ℕ }
-    → ϕ≢ l
-    → ϕ≡ r
-    ---------------------
-    → ϕ≢ ( l + r ` loc )
-
-  ϕ≢right : ∀ { l r : RE } { loc : ℕ }
-    → ϕ≡ l 
-    → ϕ≢ r
-    ---------------------
-    → ϕ≢ ( l + r ` loc )
-
-  ϕ≢left-right : ∀ { l r : RE } { loc : ℕ }
-    → ϕ≢ l
-    → ϕ≢ r    
-    ---------------------
-    → ϕ≢ ( l + r ` loc )
-
-  ϕ≢_●_  : ∀ { l r : RE } { loc : ℕ }
-    → ϕ≢ l
-    → ϕ≢ r    
-    ----------------------
-    → ϕ≢ ( l ● r ` loc )
-  ϕ≢*  : ∀ { l : RE } {ε∉l : ε∉ l} { loc : ℕ }
-    ----------------------
-    → ϕ≢ ( l * ε∉l ` loc )
-
-
-¬ϕ≡r→ϕ≢r : ∀ { r : RE }
-  → ( ¬ ϕ≡ r )
-  ----------------
-  → ϕ≢ r
-¬ϕ≡r→ϕ≢r {ϕ} ¬ϕ≡ϕ = Nullary.contradiction ϕ≡ϕ ¬ϕ≡ϕ
-¬ϕ≡r→ϕ≢r {ε} _    = ϕ≢ε
-¬ϕ≡r→ϕ≢r {$ c ` loc} _ = ϕ≢$
-¬ϕ≡r→ϕ≢r {l * ε∉l ` loc} _ = ϕ≢*
-¬ϕ≡r→ϕ≢r {l ● s ` loc} ¬ϕ≡l●s
-  with ϕ≡? l  | ϕ≡? s
-... | yes ϕ≡l | _       = Nullary.contradiction (ϕ≡fst ϕ≡l) ¬ϕ≡l●s
-... | _       | yes ϕ≡s = Nullary.contradiction (ϕ≡snd ϕ≡s) ¬ϕ≡l●s
-... | no ¬ϕ≡l | no ¬ϕ≡s = ϕ≢ (¬ϕ≡r→ϕ≢r ¬ϕ≡l) ● (¬ϕ≡r→ϕ≢r ¬ϕ≡s)
-¬ϕ≡r→ϕ≢r {l + s ` loc} ¬ϕ≡l+s
-  with ϕ≡? l  | ϕ≡? s
-... | yes ϕ≡l | yes ϕ≡s = Nullary.contradiction (ϕ≡ ϕ≡l + ϕ≡s) ¬ϕ≡l+s
-... | no ¬ϕ≡l | no ¬ϕ≡s = ϕ≢left-right (¬ϕ≡r→ϕ≢r ¬ϕ≡l) (¬ϕ≡r→ϕ≢r ¬ϕ≡s)
-... | no ¬ϕ≡l | yes ϕ≡s = ϕ≢left (¬ϕ≡r→ϕ≢r ¬ϕ≡l) ϕ≡s
-... | yes ϕ≡l | no ¬ϕ≡s = ϕ≢right ϕ≡l (¬ϕ≡r→ϕ≢r ¬ϕ≡s)
-
-
-ϕ≢r→¬ϕ≡r : ∀ { r : RE }
-  → ϕ≢ r
-  ----------------
-  → ( ¬ ϕ≡ r )  
-ϕ≢r→¬ϕ≡r {ϕ} = λ()
-ϕ≢r→¬ϕ≡r {ε} ϕ≢ε = λ()
-ϕ≢r→¬ϕ≡r {$ c ` loc} ϕ≢$ = λ()
-ϕ≢r→¬ϕ≡r {l * ε∉l ` loc} ϕ≢* = λ()
-ϕ≢r→¬ϕ≡r {l ● s ` loc} (ϕ≢ ϕ≢l ● ϕ≢s) = λ { ( ϕ≡fst ϕ≡l ) →  (ϕ≢r→¬ϕ≡r ϕ≢l) ϕ≡l
-                                           ; ( ϕ≡snd ϕ≡s ) →  (ϕ≢r→¬ϕ≡r ϕ≢s) ϕ≡s }
-ϕ≢r→¬ϕ≡r {l + s ` loc} (ϕ≢left ϕ≢l ϕ≡s) = λ { (ϕ≡ ϕ≡l + ϕ≡s ) → (ϕ≢r→¬ϕ≡r ϕ≢l) ϕ≡l }
-ϕ≢r→¬ϕ≡r {l + s ` loc} (ϕ≢right ϕ≡l ϕ≢s ) = λ { (ϕ≡ ϕ≡l + ϕ≡s ) → (ϕ≢r→¬ϕ≡r ϕ≢s) ϕ≡s }
-ϕ≢r→¬ϕ≡r {l + s ` loc} (ϕ≢left-right ϕ≢l ϕ≢s ) = λ { (ϕ≡ ϕ≡l + ϕ≡s ) → (ϕ≢r→¬ϕ≡r ϕ≢s) ϕ≡s }
-
-
-
-
-
 first : RE → List Char
-first ϕ = []
 first ε = []
 first ($ c ` _ ) = [ c ]
 first (l + r ` _ ) = first l ++ first r
@@ -392,44 +275,17 @@ first (l ● s ` _ ) with ε∈? l
 ... | yes ε∈l = first l ++ first s
 ... | no ¬ε∈l = first l 
 
-ϕ≢-ε∉→¬first≡[] : ∀ { r : RE }
-  → ( ϕ≢r : ϕ≢ r )
-  → ( ε∉r : ε∉ r ) 
-  → ¬ ( first r ≡ [] ) 
-ϕ≢-ε∉→¬first≡[] {ϕ}             ϕ≢ϕ   ε∉ϕ   = λ x → ϕ≢r→¬ϕ≡r ϕ≢ϕ ϕ≡ϕ
--- ϕ≢-ε∉→¬first≡[] {ε}             ϕ≢ε   ε∉ε   = λ x → ε∉r→¬ε∈r ε∉ε ε∈ε 
-ϕ≢-ε∉→¬first≡[] {$ c ` _ }      ϕ≢$   ε∉$   = λ c∷[]≡[] → ¬∷≡[] c∷[]≡[]
-ϕ≢-ε∉→¬first≡[] {l + r ` loc }  (ϕ≢left-right ϕ≢l ϕ≢r) (ε∉ ε∉l + ε∉r) = λ first-l++first-r≡[] → (ϕ≢-ε∉→¬first≡[] ϕ≢l ε∉l) (++-conicalˡ (first l) (first r) first-l++first-r≡[]) 
-ϕ≢-ε∉→¬first≡[] {l + r ` loc }  (ϕ≢left ϕ≢l ϕ≡r) (ε∉ ε∉l + ε∉r)       = λ first-l++first-r≡[] → (ϕ≢-ε∉→¬first≡[] ϕ≢l ε∉l) (++-conicalˡ (first l) (first r) first-l++first-r≡[])  
-ϕ≢-ε∉→¬first≡[] {l + r ` loc }  (ϕ≢right ϕ≡l ϕ≢r) (ε∉ ε∉l + ε∉r)      = λ first-l++first-r≡[] → (ϕ≢-ε∉→¬first≡[] ϕ≢r ε∉r) (++-conicalʳ (first l) (first r) first-l++first-r≡[])
-ϕ≢-ε∉→¬first≡[] {l ● r ` loc }  (ϕ≢ ϕ≢l ● ϕ≢r) (ε∉fst ε∉l) with ε∈? l
-... | yes ε∈l = λ first-l++first-r≡[] →  (ε∉r→¬ε∈r ε∉l) ε∈l
-... | no ¬εεl = λ first-l≡[] →  ( ϕ≢-ε∉→¬first≡[] ϕ≢l ε∉l) first-l≡[]
-ϕ≢-ε∉→¬first≡[] {l ● r ` loc }  (ϕ≢ ϕ≢l ● ϕ≢r) (ε∉snd ε∉r) with ε∈? l
-... | yes ε∈l = λ first-l++first-r≡[] →  (ϕ≢-ε∉→¬first≡[] ϕ≢r ε∉r) (++-conicalʳ (first l) (first r) first-l++first-r≡[])
-... | no ¬ε∈l = λ first-l≡[] → ( ϕ≢-ε∉→¬first≡[] ϕ≢l (¬ε∈r→ε∉r ¬ε∈l)) first-l≡[] 
 
 
-
-
-ϕ≡r→ε∉r : ∀ { r : RE } ( ϕ≡r : ϕ≡ r )
-  →  ε∉ r
-ϕ≡r→ε∉r {ϕ} ϕ≡ϕ = ε∉ϕ
-ϕ≡r→ε∉r {l + r ` loc } (ϕ≡ ϕ≡l + ϕ≡r) = ε∉ (ϕ≡r→ε∉r ϕ≡l) + ( ϕ≡r→ε∉r ϕ≡r )
-ϕ≡r→ε∉r {l ● r ` loc } (ϕ≡fst ϕ≡l) = ε∉fst (ϕ≡r→ε∉r ϕ≡l)
-ϕ≡r→ε∉r {l ● r ` loc } (ϕ≡snd ϕ≡r) = ε∉snd (ϕ≡r→ε∉r ϕ≡r)
-
-
-
-
-{-
-first-ϕ●r≡[] : ∀ { l r  : RE } { loc : ℕ } { ϕ≡l : ϕ≡ l }
-  → first ( l ● r ` loc ) ≡ []
-first-ϕ●r≡[]  {ϕ} {r} {loc} {ϕ≡ϕ} = refl
--- first-ϕ●r≡[]  {ε} {r} {loc} {ϕ≡ε} = Nullary.contradiction ϕ≡ε (ϕ≢r→¬ϕ≡r ϕ≢ε)
--- first-ϕ●r≡[]  {$ c ` loc₁} {r} {loc} {ϕ≡$} = Nullary.contradiction ϕ≡$ (ϕ≢r→¬ϕ≡r ϕ≢$)
-first-ϕ●r≡[] {l + s ` loc₁} {r} {loc₂} {ϕ≡ ϕ≡l + ϕ≡s} =  {!!}
--} 
-  
-
+ε∉r→¬first-r≡[] : ∀ { r : RE } { ε∉r : ε∉ r }
+  → ¬ (first r ≡ [] )
+ε∉r→¬first-r≡[] {ε} {ε∉ε} = Nullary.contradiction ε∈ε (ε∉r→¬ε∈r ε∉ε)
+ε∉r→¬first-r≡[] {$ c ` loc} {ε∉$} = ¬∷≡[]
+ε∉r→¬first-r≡[] {l ● r ` loc} {ε∉fst ε∉l} with ε∈? l
+... | yes ε∈l = Nullary.contradiction ε∈l (ε∉r→¬ε∈r ε∉l)
+... | no ¬ε∈l = ε∉r→¬first-r≡[] {l} {ε∉l}
+ε∉r→¬first-r≡[] {l ● r ` loc} {ε∉snd ε∉r} with ε∈? l
+... | yes ε∈l = λ first-l++first-r≡[]  → (ε∉r→¬first-r≡[] {r} {ε∉r}) (++-conicalʳ (first l) (first r) first-l++first-r≡[] )
+... | no ¬ε∈l = ε∉r→¬first-r≡[] {l} {¬ε∈r→ε∉r ¬ε∈l}
+ε∉r→¬first-r≡[] {l + r ` loc} {ε∉ ε∉l + ε∉r} = λ first-l++first-r≡[]  → (ε∉r→¬first-r≡[] {r} {ε∉r}) (++-conicalʳ (first l) (first r) first-l++first-r≡[] ) 
 ```

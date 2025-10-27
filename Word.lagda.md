@@ -2,7 +2,7 @@
 module cgp.Word where
 
 import cgp.RE as RE
-open RE using (RE; ϕ ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_)
+open RE using (RE;  ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_)
 
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap )

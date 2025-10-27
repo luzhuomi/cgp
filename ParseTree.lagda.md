@@ -2,7 +2,7 @@
 module cgp.ParseTree where
 
 import cgp.RE as RE
-open RE using (RE; ϕ ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈ε ; ε∈_●_ ; ε∈* ; ε∈? ; ε∉$ ; ε∉ϕ ; ε∉_+_ ; inv-¬ε∈l+r ; ε∉r→¬ε∈r )
+open RE using (RE;  ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈ε ; ε∈_●_ ; ε∈* ; ε∈? ; ε∉$ ; ε∉_+_ ; inv-¬ε∈l+r ; ε∉r→¬ε∈r )
 
 import cgp.Word as Word
 open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈⟦r⟧→ε∈r ;  []∈⟦r⟧→¬ε∉r)
@@ -386,7 +386,6 @@ inv-flat-pair-snd : ∀ { l r : RE }  { ε∈l : (ε∈ l) } { loc : ℕ } { u :
                 → ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ zs ) )
                   ⊎
                   ( ∃[ xs ] ∃[ ys ] (proj₁ (flat u) ≡ c ∷ xs ) × (proj₁ (flat v) ≡ ys) × ( xs ++ ys ≡ zs ) )
-inv-flat-pair-snd {ϕ} {r} {ε∈l} {loc} {u} {v} {c} {zs} proj1-flat-u-v≡czs         = Nullary.contradiction ε∈l (ε∉r→¬ε∈r ε∉ϕ) 
 inv-flat-pair-snd {$ _ ` _ } {r} {ε∈l} {loc} {u} {v} {c} {zs} proj1-flat-u-v≡czs  = Nullary.contradiction ε∈l (ε∉r→¬ε∈r ε∉$)
 inv-flat-pair-snd {ε} {r} {loc} {ε∈l} {EmptyU} {v} {c} {zs} proj1-flat-u-v≡czs    =  inj₁ (zs , refl , proj1-flat-u-v≡czs , refl)
 inv-flat-pair-snd {f ● s ` loc' } {r} {ε∈ ε∈f ● ε∈s} {loc} {u@(PairU u₁ u₂)} {v} {c} {zs} proj1-flat-u-v≡czs

@@ -5,7 +5,7 @@ This module contains the implementation of the greedy regular expression parsing
 module cgp.greedy.PartialDerivative where
 
 import cgp.RE as RE
-open RE using (RE; ϕ ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉ϕ ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
+open RE using (RE;  ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
 
 import cgp.Word as Word
 open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
@@ -101,7 +101,6 @@ pd( r₁ ● r₂ , ℓ ) ｜ ε ∈ r₁   =
 
 pd[_,_] : RE →  Char → List RE
 pdConcat : ( l :  RE )  → ( r :  RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char)  → List RE
-pd[ ϕ , c ]    = []
 pd[ ε , c ]    = []
 pd[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                      | yes refl = [ ε ]
@@ -476,7 +475,6 @@ inv-assoc-assoc-u≡u {l} {s} {r} {loc₁} {loc₂} {PairU (PairU  v₁ v₂) v�
 pdU[_,_] :  ( r : RE ) → ( c :  Char ) →  List (PDInstance r c)
 pdUConcat : ( l r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char ) → List (PDInstance (l ● r ` loc ) c)
 
-pdU[ ϕ , c ] = [] 
 pdU[ ε , c ] = []
 pdU[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                       | yes refl = [  pdinstance {ε} {$ c ` loc} {c}
@@ -685,7 +683,6 @@ any-recons-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l} { loc
     ----------------------------------------------------------- 
     -- → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatMap (pdinstance-snd {l} {r} {ε∈l} {loc} {c})  pdis) -- inlined to make it easier to prove
     → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis) 
-any-recons-concatmap-pdinstance-snd {ϕ} {r} {ε∈l} {loc} {c} {w} {u} {v} proj1-flat-u≡[] _ _  = Nullary.contradiction ε∈l (ε∉r→¬ε∈r ε∉ϕ) -- getting rid of the ϕ so that mkAllEmptyU gives us non-empty list
 any-recons-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdis any-recons-v-pdis = any-Snd (mkAllEmptyU ε∈l) (mkAllEmptyU-sound ε∈l)  u∈mkAllEmptU-ε∈l pdis any-recons-v-pdis  
   where
 
@@ -813,7 +810,7 @@ pdUConcat-complete : ∀ { l s : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : C
 pdU-complete {ε}           {c}  {w} EmptyU = λ()
 pdU-complete {$ c ` loc}   {c'} {w} (LetterU _) with c Char.≟ c'
 ...                                              | yes refl with w    
-...                                                           |  []  = λ proj1-flat-u≡[] →  here (recons (LetterU c) (ε , refl))
+...                                                           |  []  = λ proj1-flat-u≡[] →  here (recons (LetterU c) (ε , refl)) 
 pdU-complete {$ c ` loc}   {c'} {w} (LetterU c₂) | no  ¬c≡c'  = λ c∷[]≡c'w →  Nullary.contradiction (proj₁ (∷-inj c∷[]≡c'w)) ¬c≡c' 
 pdU-complete {l + s ` loc} {c}  {w} (LeftU u)  proj1-flat-leftu≡cw =   any-left-concat ys
   where
@@ -1235,7 +1232,6 @@ any-recons*-concatmap-advance-with-c : ∀ { r : RE } { pref : List Char } { c :
     → ( pdis : List (PDInstance* r pref) )
     → Any (Recons* {r} {pref} u) pdis
     → Any (Recons* {r} {pref ∷ʳ  c} u) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-any-recons*-concatmap-advance-with-c {ϕ} {pref} {c} {cs} = λ() 
 any-recons*-concatmap-advance-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++ccs ( pdi@(pdinstance* {d} {r} {_pref} d→r s-ev-d-r )  ∷ pdis) any-recons*u-pdis
   with any-recons*u-pdis
 ... | here px@(recons* u' ( w∈⟦d⟧ , d→r-unflat-w∈⟦d⟧≡u' )) = any-left-concat (any-advance-pdi*-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++ccs pdi px)
@@ -1252,7 +1248,6 @@ pdUMany-aux-complete : ∀ { r : RE } { pref : List Char } { suff : List Char }
     → Any (Recons* {r} {pref ++ suff} u) (pdUMany-aux {r} {pref} suff pdis)
 pdUMany-aux-complete {r} {pref} {[]}     u proj1-flat-u≡pref      (pdi ∷ pdis) (here (recons* u' ( w∈⟦p⟧ , inj∘unflatw∈⟦p⟧≡u ))) rewrite (++-identityʳ pref) = here (recons* u (w∈⟦p⟧ , inj∘unflatw∈⟦p⟧≡u))   -- base case
 pdUMany-aux-complete {r} {pref} {[]}     u proj1-flat-u≡pref      (pdi ∷ pdis) (there pxs) rewrite (++-identityʳ pref) = there pxs   -- base case
-pdUMany-aux-complete {ϕ} {pref} {suff}   = λ() 
 pdUMany-aux-complete {r} {pref} {c ∷ cs} u proj1-flat-u≡pref++ccs (pdi ∷ pdis) any-recons*u-pdis  = ind-hyp
   where
 
@@ -1530,27 +1525,3 @@ pdUMany-aux-cs-[]≡[] {r} {pref} [] rewrite (++-identityʳ pref) = refl
 pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs) rewrite (concatMap-advance-pdi*-with-c-[]≡[] {r} {pref} {c})  = pdUMany-aux-cs-[]≡[] {r} {pref ∷ʳ c } cs
 ```
 
-```agda
-module Example-concat-a-phi where 
-
-  a : RE 
-  a = $ 'a' ` 1
-
-  a●ϕ : RE 
-  a●ϕ = a ● ϕ ` 2
-
-  pdis = pdU[ a●ϕ , 'a' ] 
-
-```
-
-should yield
-
-~~~~~~~
-
-pdinstance (mkinjFst (λ u → LetterU 'a'))
-(cgp.greedy.PartialDerivative.sound-ev2 (λ u → LetterU 'a')
- (λ EmptyU₁ →
-    trans (cong (_∷_ 'a') (sym (flat-Uε≡[] EmptyU₁))) refl))
-∷ []
-
-~~~~~~~

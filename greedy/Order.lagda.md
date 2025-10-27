@@ -3,7 +3,7 @@
 module cgp.greedy.Order where
 
 import cgp.RE as RE
-open RE using (RE; ϕ ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉ϕ ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
+open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
 
 
 import cgp.Utils as Utils
@@ -151,7 +151,6 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
   → r ⊢ u₂ > u₃
   -----------------
   → r ⊢ u₁ > u₃
->-trans {ϕ} = λ()
 >-trans {ε} = λ()
 >-trans {$ c ` loc} = λ()
 >-trans {r * ε∉r ` loc} star-cons-nil = λ()
@@ -334,7 +333,6 @@ map-pairU-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (>-cons >-sorted-uus (>-ju
 mkAllEmptyU-sorted : ∀ { r : RE }
   → ( ε∈r : ε∈ r)
   → >-sorted (mkAllEmptyU {r} ε∈r) 
-mkAllEmptyU-sorted {ϕ}                  = λ()
 mkAllEmptyU-sorted {$ c ` loc }         = λ()
 mkAllEmptyU-sorted {ε}             ε∈ε = >-cons >-nil >-nothing
 mkAllEmptyU-sorted {r * nε ` loc}  ε∈* = >-cons >-nil >-nothing 
@@ -575,7 +573,6 @@ pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char
     → All (>-Inc {l ● r ` loc } {c}) (pdUConcat l r ε∈l loc c)
 
 
-pdU->-inc {ϕ} {c} = []
 pdU->-inc {ε} {c} = []
 pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
 ...  | no ¬c≡c' = []

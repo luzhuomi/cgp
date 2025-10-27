@@ -219,6 +219,25 @@ data >-sorted : ∀ { r : RE } ( us : List (U r) ) → Set where
     → >-maybe {r} u (head us)
     --------------------------
     → >-sorted {r} ( u ∷ us  )
+
+
+-- concatenating two sorted lists of parse trees  yields a sorted list.
+concat-sorted : ∀ { r : RE } 
+  → ( us₁ : List ( U r ) )
+  → ( us₂ : List ( U r ) )
+  → >-sorted { r } us₁
+  → >-sorted { r } us₂
+  → All (λ u₁ → >-maybe {r} u₁ (head us₂)) us₁
+  ----------------------------------------------
+  → >-sorted { r } (us₁ ++ us₂)
+concat-sorted []               us₂        >-nil        us₂-sorted    []                            = us₂-sorted
+concat-sorted us₁              []         us₁-sorted   >-nil         _  rewrite (++-identityʳ us₁) = us₁-sorted
+concat-sorted (u₁ ∷ [])        (u₂ ∷ us₂) us₁-sorted   u₂us₂-sorted  (>-just u₁>u₂ ∷ [] )          = >-cons u₂us₂-sorted (>-just u₁>u₂)
+concat-sorted (u₁ ∷ u₁' ∷ us₁) (u₂ ∷ us₂) (>-cons u₁'us₁-sorted (>-just u₁>u₁'))  u₂us₂-sorted (>-just u₁>u₂ ∷ pxs) = >-cons ind-hyp (>-just u₁>u₁')
+  where
+    ind-hyp = concat-sorted (u₁' ∷ us₁) (u₂ ∷ us₂) u₁'us₁-sorted u₂us₂-sorted pxs
+
+
 ```
 
 

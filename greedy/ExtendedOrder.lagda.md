@@ -42,12 +42,13 @@ open PartialDerivative using (
   Recons* ; recons* ;
   injId ;
   pdUMany-aux-cs-[]≡[];
-  parseAll[_,_] ; buildU ) 
+  parseAll[_,_] ; buildU;
+  pdi*-∃ ) 
 
 
 import cgp.greedy.Order as GreedyOrder
 open GreedyOrder using ( _⊢_>_ ; seq₁ ; seq₂ ; choice-ll ; choice-rr ; choice-lr ; star-head ; star-cons-nil ;
-  >-sorted ; >-nil ; >-cons ;
+  >-sorted ; >-nil ; >-cons ; concat-sorted ; 
   mkAllEmptyU-sorted ;
   >-maybe ; >-nothing ; >-just ;
   >-trans ; *>-Inc ; *>-inc ;
@@ -792,22 +793,6 @@ concat-ex-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex>-cons
     ind-hyp = concat-ex-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs 
 
 
--- same as the above, instead of ex sorted, it cover sorted 
-concat-sorted : ∀ { r : RE } 
-  → ( us₁ : List ( U r ) )
-  → ( us₂ : List ( U r ) )
-  → >-sorted { r } us₁
-  → >-sorted { r } us₂
-  → All (λ u₁ → >-maybe {r} u₁ (head us₂)) us₁
-  ----------------------------------------------
-  → >-sorted { r } (us₁ ++ us₂)
-concat-sorted []               us₂        >-nil        us₂-sorted    []                            = us₂-sorted
-concat-sorted us₁              []         us₁-sorted   >-nil         _  rewrite (++-identityʳ us₁) = us₁-sorted
-concat-sorted (u₁ ∷ [])        (u₂ ∷ us₂) us₁-sorted   u₂us₂-sorted  (>-just u₁>u₂ ∷ [] )          = >-cons u₂us₂-sorted (>-just u₁>u₂)
-concat-sorted (u₁ ∷ u₁' ∷ us₁) (u₂ ∷ us₂) (>-cons u₁'us₁-sorted (>-just u₁>u₁'))  u₂us₂-sorted (>-just u₁>u₂ ∷ pxs) = >-cons ind-hyp (>-just u₁>u₁')
-  where
-    ind-hyp = concat-sorted (u₁' ∷ us₁) (u₂ ∷ us₂) u₁'us₁-sorted u₂us₂-sorted pxs
-
 
 
 ---------------------------------------------------------------------------------------------------
@@ -1448,311 +1433,7 @@ advance-pdi*-with-c-sorted {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r 
                   (u₂→u₃→rec₂→rec₃→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃)  -- where to get u₂ and recons₂ ?
 -}
 
--- these two lemmas should be moved to PartialDerivative.lagda.md 
-first≢[]→¬pdUConcat≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { cs : List Char } 
-  → first l ++ first r ≡ c ∷ cs
-  --------------------------------------------------------------------
-  → ¬ ( pdUConcat l r ε∈l loc c ≡ [] ) 
 
-
-first≢[]→¬pdU≡[] : ∀ { r : RE } { c : Char } { cs : List Char }
-    → ( first r ≡ c ∷ cs )
-    ------------------------
-    → ¬ ( pdU[ r , c ] ≡ [] )
-first≢[]→¬pdU≡[] {ε} {c} {cs} = λ()
-first≢[]→¬pdU≡[] {$ c ` loc} {c₁} {[]} first-c≡c∷[] = prf
-  where
-    c≡c₁ : c ≡ c₁
-    c≡c₁ = proj₁ (∷-inj first-c≡c∷[])
-    
-    prf : ¬ ( pdU[ $ c ` loc , c₁ ] ≡ [] )
-    prf pdU-r-c≡[] with c Char.≟ c₁
-    ...             | no ¬c≡c₁ = ¬c≡c₁ c≡c₁ 
-    ...             | yes refl with pdU[ $ c ` loc , c₁ ]  in eq 
-    ...                        | pdi ∷ [] = ¬∷≡[] pdU-r-c≡[]
-first≢[]→¬pdU≡[] { l + r ` loc } {c} {cs} first-l+r≡c∷cs with first l in l-eq | first r in r-eq 
-... | [] | c₁ ∷ cs₁ = prf 
-  where
-    c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ≡ cs)
-    c₁≡c×cs₁≡cs = (∷-inj first-l+r≡c∷cs)
-    ind-hyp : ¬ ( pdU[ r , c₁ ] ≡ [] )
-    ind-hyp =  first≢[]→¬pdU≡[] r-eq   
-    prf : ¬ ( List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ] ++ List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c ] ≡ [] )
-    prf  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁≡cs) =  ind-hyp (inv-map-[] map-right-pdu-r-c≡[])
-      where
-        map-right-pdu-r-c≡[] : List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] ≡ [] 
-        map-right-pdu-r-c≡[] = ++-conicalʳ (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[]
-... | c₁ ∷ cs₁ | cs₂ =  prf
-  where 
-    c₁≡c×cs₁cs₂≡cs : (c₁ ≡ c) × (cs₁ ++ cs₂ ≡ cs)
-    c₁≡c×cs₁cs₂≡cs  = ∷-inj first-l+r≡c∷cs 
-    ind-hyp : ¬ ( pdU[ l , c₁ ] ≡ [] )
-    ind-hyp =  first≢[]→¬pdU≡[] l-eq   
-    prf : ¬ ( List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ] ++ List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c ] ≡ [] )
-    prf  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁cs₂≡cs) =  ind-hyp (inv-map-[] map-left-pdu-l-c≡[])
-      where
-        map-left-pdu-l-c≡[] : List.map (pdinstance-left {l} {r} {loc})  pdU[ l , c₁ ] ≡ [] 
-        map-left-pdu-l-c≡[] = ++-conicalˡ (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[]
-first≢[]→¬pdU≡[] { r * ε∉r ` loc } {c} {cs} first-r*≡c∷cs map-star-pdU-r-c≡[] = ind-hyp (inv-map-[] map-star-pdU-r-c≡[])
-  where
-    ind-hyp : ¬ ( pdU[ r , c ] ≡ [] )
-    ind-hyp = first≢[]→¬pdU≡[] {r} {c} {cs} first-r*≡c∷cs
-
-first≢[]→¬pdU≡[] { l ● r ` loc } {c} {cs} first-l●r≡c∷cs with ε∈? l
-... | no ¬ε∈l = λ map-fst-pdU-l-cs≡[] → ind-hyp (inv-map-[] map-fst-pdU-l-cs≡[])
-  where
-    ind-hyp : ¬ ( pdU[ l , c ] ≡ [] )
-    ind-hyp = first≢[]→¬pdU≡[] {l} {c} {cs} first-l●r≡c∷cs
-... | yes ε∈l = prf
-  where
-    prf : ¬ ( pdUConcat l r ε∈l loc c ≡ [] )
-    prf = first≢[]→¬pdUConcat≡[] first-l●r≡c∷cs 
-
-{-# TERMINATING #-}
-first≢[]→¬pdUConcat≡[] {ε} {r} {ε∈ε} {loc} {c} {cs} first-r≡c∷cs
-  with (zip-es-flat-[]-es {ε} {ε∈ε} (mkAllEmptyU {ε} ε∈ε) (mkAllEmptyU-sound {ε} ε∈ε)) in eq 
-... | [] = λ map-mk-snd-pdi-es → ¬∷≡[] eq   
-... | (EmptyU , flat-[] EmptyU refl ) ∷ xs rewrite ++-identityʳ ( List.map (mk-snd-pdi {ε} {r} {loc} {c} (EmptyU , flat-[] EmptyU refl)) pdU[ r , c ] ) =
-    λ map-mk-snd-pdi-pdu-r-c≡[] → (first≢[]→¬pdU≡[] first-r≡c∷cs) (inv-map-[] map-mk-snd-pdi-pdu-r-c≡[])  
-first≢[]→¬pdUConcat≡[] {l * ε∉l ` loc₁} {r} {ε∈*} {loc₂} {c} {cs} first-l*●r≡c∷cs
-  with first l in first-l-eq  | first r in first-r-eq 
-... | []                      | []        =  λ x → ¬∷≡[] (sym first-l*●r≡c∷cs)
-... | []                      | c₁ ∷ cs₁ rewrite ++-identityʳ (List.map (mk-snd-pdi {l * ε∉l ` loc₁} {r} {loc₂} {c} (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c ]) = prf
-  where
-    c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ≡ cs)
-    c₁≡c×cs₁≡cs = (∷-inj first-l*●r≡c∷cs)
-    ind-hyp : ¬ ( pdU[ r , c₁ ] ≡ [] )
-    ind-hyp =  first≢[]→¬pdU≡[] first-r-eq
-    prf : ¬ ( List.map (pdinstance-fst  {l * ε∉l ` loc₁} {r} {loc₂} {c}) (List.map pdinstance-star pdU[ l , c ]) ++ List.map (mk-snd-pdi (ListU [] , flat-[] (ListU []) refl))  pdU[ r , c ] ≡ [] ) 
-    prf map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁≡cs) = ind-hyp (inv-map-[] (++-conicalʳ (List.map pdinstance-fst (List.map pdinstance-star pdU[ l , c₁ ])) (List.map (mk-snd-pdi (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c₁ ])  map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[]))
-... | c₁ ∷ cs₁               | cs₂       rewrite ++-identityʳ (List.map (mk-snd-pdi {l * ε∉l ` loc₁} {r} {loc₂} {c} (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c ]) = prf 
-  where
-    c₁≡c×cs₁cs₂≡cs : (c₁ ≡ c) × (cs₁ ++ cs₂ ≡ cs)
-    c₁≡c×cs₁cs₂≡cs = (∷-inj first-l*●r≡c∷cs) 
-    ind-hyp : ¬ ( pdU[ l , c₁ ] ≡ [] )
-    ind-hyp =  first≢[]→¬pdU≡[] first-l-eq
-    prf : ¬ ( List.map (pdinstance-fst  {l * ε∉l ` loc₁} {r} {loc₂} {c}) (List.map pdinstance-star pdU[ l , c ]) ++ List.map (mk-snd-pdi (ListU [] , flat-[] (ListU []) refl))  pdU[ r , c ] ≡ [] ) 
-    prf map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁cs₂≡cs) = ind-hyp (inv-map-[] (inv-map-[] (++-conicalˡ (List.map pdinstance-fst (List.map pdinstance-star pdU[ l , c₁ ])) (List.map (mk-snd-pdi (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c₁ ])  map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[])))
-first≢[]→¬pdUConcat≡[] {l ● s ` loc₁} {r} {ε∈ ε∈l ● ε∈s} {loc₂} {c} {cs} first-l●s-●r≡c∷cs with  ε∈? l in l-eq | ε∈? s in s-eq 
-... | no ¬ε∈l | _ = Nullary.contradiction ε∈l ¬ε∈l
-... | yes ε∈l | no ¬ε∈s = Nullary.contradiction ε∈s ¬ε∈s 
-... | yes ε∈l | yes ε∈s = λ x →  ind-hyp (inv-map-[] x)  
-    where
-      first-s●r≡first-s++first-r : first (s ● r ` loc₂) ≡ first s ++ first r
-      first-s●r≡first-s++first-r rewrite s-eq = refl 
-      first-l●s-●r≡first-l-●s●r : first l ++ (first (s ● r ` loc₂)) ≡ c ∷ cs 
-      first-l●s-●r≡first-l-●s●r  = 
-        begin
-          (first l) ++ (first (s ● r ` loc₂)) 
-        ≡⟨ cong ((first l) ++_ )  first-s●r≡first-s++first-r ⟩
-          (first l) ++ ((first s)  ++ (first r)) 
-        ≡⟨ sym ( ++-assoc (first l) (first s) (first r) ) ⟩
-          (first l ++ first s)  ++ first r 
-        ≡⟨ first-l●s-●r≡c∷cs ⟩
-          c ∷ cs 
-        ∎  
-      ind-hyp : ¬ (pdUConcat l ( s ● r ` loc₂) ε∈l loc₁ c ≡ [] )
-      ind-hyp  = first≢[]→¬pdUConcat≡[] {l}  {s ● r ` loc₂} {ε∈l} {loc₁} {c} {cs}   first-l●s-●r≡first-l-●s●r
-first≢[]→¬pdUConcat≡[] {l + s ` loc₁} {r} {ε∈ ε∈l + ε∈s} {loc₂} {c} {cs} first-l+s●r≡c∷cs with  ε∈? l in l-eq | ε∈? s in s-eq 
-... | no ¬ε∈l | _ = Nullary.contradiction ε∈l ¬ε∈l
-... | yes ε∈l | no ¬ε∈s =  Nullary.contradiction ε∈s ¬ε∈s
-... | yes ε∈l | yes ε∈s with first l in first-l-eq
-...            | [] = λ x → ind-hyp-s  ( inv-map-[] (++-conicalʳ (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c)) (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c))  (inv-map-[] x)))
-  where
-    ind-hyp-s : ¬ (pdUConcat s r ε∈s loc₂ c ≡ [] )
-    ind-hyp-s = first≢[]→¬pdUConcat≡[] {s} {r } {ε∈s} {loc₂} {c} {cs} first-l+s●r≡c∷cs
-    
-...            | c₁ ∷ cs₁ = λ x → ind-hyp-l (inv-map-[] (++-conicalˡ (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c)) (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c)) (inv-map-[] x)))
-  where
-    c₁≡c×cs₁++first-s++first-r≡cs : (c₁ ≡ c) × ((cs₁ ++ first s) ++ first r ≡ cs)
-    c₁≡c×cs₁++first-s++first-r≡cs = (∷-inj first-l+s●r≡c∷cs)
-
-    first-l++first-r≡c₁∷cs₁++first-r : first l ++ first r ≡ c₁ ∷ cs₁ ++ first r
-    first-l++first-r≡c₁∷cs₁++first-r =                                              
-      begin
-        first l ++ first r
-      ≡⟨ cong ( _++ first r ) first-l-eq ⟩ 
-        c₁ ∷ cs₁ ++ first r
-      ∎ 
-    
-    ind-hyp-l : ¬ (pdUConcat l r ε∈l loc₂ c ≡ [] )
-    ind-hyp-l rewrite sym (proj₁ c₁≡c×cs₁++first-s++first-r≡cs) |
-                      sym (proj₂ c₁≡c×cs₁++first-s++first-r≡cs)  = first≢[]→¬pdUConcat≡[] {l} {r} {ε∈l} {loc₂} {c₁} {cs₁ ++ first r} first-l++first-r≡c₁∷cs₁++first-r 
-first≢[]→¬pdUConcat≡[] {l + s ` loc₁} {r} {ε∈ ε∈l <+ ε∉s} {loc₂} {c} {cs} first-l+s●r≡c∷cs with  ε∈? l in l-eq
-... | no ¬ε∈l = Nullary.contradiction ε∈l ¬ε∈l
-... | yes ε∈l with first l in first-l-eq | first s in first-s-eq
-...            | []                       | []          = prf   
-  where
-    first-l++first-r≡c∷cs : first l ++ first r ≡ c ∷ cs
-    first-l++first-r≡c∷cs rewrite first-l-eq = first-l+s●r≡c∷cs 
-  
-    ind-hyp : ¬ ( pdUConcat l r ε∈l loc₂ c  ≡ [] )
-    ind-hyp = first≢[]→¬pdUConcat≡[]  {l} {r} {ε∈l} {loc₂} {c} {cs} first-l++first-r≡c∷cs 
-    prf :  ¬ ( List.map (pdinstance-dist {l} {s} {r} {loc₁} {loc₂} {c})  (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ++  List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) ≡ [] )
-    prf map-dist-map-left-pduconcat-l-r++map-right-pdu-s-r≡[] = ind-hyp pduconcat-l-r≡[]
-      where
-        map-left-pduconcat-l-r++map-right-pdu-s-r≡[] : (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ++  List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) ≡ []
-        map-left-pduconcat-l-r++map-right-pdu-s-r≡[] = inv-map-[] map-dist-map-left-pduconcat-l-r++map-right-pdu-s-r≡[]
-        map-left-pduconcat-l-r≡[] : (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ) ≡ []
-        map-left-pduconcat-l-r≡[] = ++-conicalˡ (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ) (List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) map-left-pduconcat-l-r++map-right-pdu-s-r≡[]
-        pduconcat-l-r≡[] : (pdUConcat l r ε∈l loc₂ c) ≡ []
-        pduconcat-l-r≡[] = inv-map-[] map-left-pduconcat-l-r≡[]
-        
-...            | []                       | c₁ ∷ cs₁   = prf
-  where
-    c₁≡c×cs₁++first-r≡cs : (c₁ ≡ c) × ( (cs₁ ++ first r) ≡ cs )
-    c₁≡c×cs₁++first-r≡cs = ∷-inj first-l+s●r≡c∷cs
-
-    first-s●r≡c₁∷cs₁ : (first (s ● r ` loc₂))  ≡ c₁ ∷ cs₁
-    first-s●r≡c₁∷cs₁ with ε∈? s
-    ... | yes ε∈s = Nullary.contradiction ε∈s (ε∉r→¬ε∈r ε∉s)
-    ... | no ¬ε∈s = first-s-eq 
-
-
-    ind-hyp : ¬ ( pdU[ s ● r ` loc₂ , c ] ≡ [] )
-    ind-hyp rewrite sym (proj₁ c₁≡c×cs₁++first-r≡cs) = first≢[]→¬pdU≡[] {s ● r ` loc₂} {c₁} {cs₁} first-s●r≡c₁∷cs₁ 
-
-    prf :  ¬ ( List.map (pdinstance-dist {l} {s} {r} {loc₁} {loc₂} {c})  (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ++  List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) ≡ [] )
-    prf map-dist-map-left-pduconcat-l-r++map-right-pdu-s-r≡[] = ind-hyp pdu-s-r≡[] 
-      where
-        map-left-pduconcat-l-r++map-right-pdu-s-r≡[] : (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ++  List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) ≡ []
-        map-left-pduconcat-l-r++map-right-pdu-s-r≡[] = inv-map-[] map-dist-map-left-pduconcat-l-r++map-right-pdu-s-r≡[]
-        map-right-pdu-s-r≡[] : (List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] )) ≡ []
-        map-right-pdu-s-r≡[] = ++-conicalʳ (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ) (List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) map-left-pduconcat-l-r++map-right-pdu-s-r≡[]
-        pdu-s-r≡[] : pdU[ s ● r ` loc₂ , c ] ≡ []
-        pdu-s-r≡[] = inv-map-[] map-right-pdu-s-r≡[]
-
-...            | c₁ ∷ cs₁                | cs₂  = prf 
-  where
-    c₁≡c×cs₁++cs₂++first-r≡cs : (c₁ ≡ c) × ( ((cs₁ ++ cs₂) ++ first r) ≡ cs )
-    c₁≡c×cs₁++cs₂++first-r≡cs = ∷-inj first-l+s●r≡c∷cs
-
-    first-l++first-r≡c₁∷cs₁++first-r : first l ++ first r ≡ c₁ ∷ cs₁ ++ first r
-    first-l++first-r≡c₁∷cs₁++first-r rewrite first-l-eq = refl 
-    
-    ind-hyp : ¬ (pdUConcat l r ε∈l loc₂ c ≡ [] )
-    ind-hyp rewrite sym (proj₁ c₁≡c×cs₁++cs₂++first-r≡cs )  = first≢[]→¬pdUConcat≡[] {l} {r } {ε∈l} {loc₂} {c₁} {cs₁ ++ first r} first-l++first-r≡c₁∷cs₁++first-r
-
-    prf :  ¬ ( List.map (pdinstance-dist {l} {s} {r} {loc₁} {loc₂} {c})  (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ++  List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) ≡ [] )
-    prf map-dist-map-left-pduconcat-l-r++map-right-pdu-s-r≡[] = ind-hyp pduconcat-l-r≡[]
-      where
-        map-left-pduconcat-l-r++map-right-pdu-s-r≡[] : (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ++  List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) ≡ []
-        map-left-pduconcat-l-r++map-right-pdu-s-r≡[] = inv-map-[] map-dist-map-left-pduconcat-l-r++map-right-pdu-s-r≡[]
-        map-left-pduconcat-l-r≡[] : (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ) ≡ []
-        map-left-pduconcat-l-r≡[] = ++-conicalˡ (List.map pdinstance-left (pdUConcat l r ε∈l loc₂ c) ) (List.map pdinstance-right (pdU[ s ● r ` loc₂ , c ] ) ) map-left-pduconcat-l-r++map-right-pdu-s-r≡[]
-        pduconcat-l-r≡[] : (pdUConcat l r ε∈l loc₂ c) ≡ []
-        pduconcat-l-r≡[] = inv-map-[] map-left-pduconcat-l-r≡[]
-
-first≢[]→¬pdUConcat≡[] {l + s ` loc₁} {r} {ε∈ ε∉l +> ε∈s} {loc₂} {c} {cs} first-l+s●r≡c∷cs with  ε∈? s in s-eq
-... | no ¬ε∈s = Nullary.contradiction ε∈s ¬ε∈s
-... | yes ε∈s with first l in first-l-eq | first s in first-s-eq
-...            | []                       | []       = prf
-  where
-    first-s++first-r≡c∷cs : first s ++ first r ≡ c ∷ cs
-    first-s++first-r≡c∷cs rewrite first-s-eq = first-l+s●r≡c∷cs 
-  
-    ind-hyp : ¬ ( pdUConcat s r ε∈s loc₂ c  ≡ [] )
-    ind-hyp = first≢[]→¬pdUConcat≡[]  {s} {r} {ε∈s} {loc₂} {c} {cs} first-s++first-r≡c∷cs
-
-    prf :  ¬ ( List.map (pdinstance-dist {l} {s} {r} {loc₁} {loc₂} {c})  ( (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ]) ++  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ))  ≡ [] )
-    prf  map-dist-map-left-pdu-l-r++map-right-pduconcat-s-r≡[] = ind-hyp pduconcat-s-r≡[]
-      where
-        map-left-pdu-l-r++map-right-pduconcat-s-r≡[] :  ( (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ]) ++  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ))  ≡ []
-        map-left-pdu-l-r++map-right-pduconcat-s-r≡[] = inv-map-[] map-dist-map-left-pdu-l-r++map-right-pduconcat-s-r≡[] 
-        map-right-pduconcat-s-r≡[] : (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ) ≡ []
-        map-right-pduconcat-s-r≡[] = ++-conicalʳ (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ])  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c))   map-left-pdu-l-r++map-right-pduconcat-s-r≡[]
-        pduconcat-s-r≡[] :  (pdUConcat s r ε∈s loc₂ c) ≡ []
-        pduconcat-s-r≡[] = inv-map-[] map-right-pduconcat-s-r≡[]
-...            | []                       | c₁ ∷ cs₁   = prf  
-  where
-    c₁≡c×cs₁++first-r≡cs : (c₁ ≡ c) × ( (cs₁ ++ first r) ≡ cs )
-    c₁≡c×cs₁++first-r≡cs = ∷-inj first-l+s●r≡c∷cs
-
-    first-s++first-r≡c₁∷cs₁++first-r : first s ++ first r ≡ c₁ ∷ cs₁ ++ first r
-    first-s++first-r≡c₁∷cs₁++first-r rewrite first-s-eq = refl 
-
-    ind-hyp : ¬ ( pdUConcat s r ε∈s loc₂ c ≡ [] )
-    ind-hyp rewrite sym (proj₁ c₁≡c×cs₁++first-r≡cs) = first≢[]→¬pdUConcat≡[] {s} {r} {ε∈s} {loc₂} {c₁} {cs₁ ++ first r}  first-s++first-r≡c₁∷cs₁++first-r
-
-
-    prf :  ¬ ( List.map (pdinstance-dist {l} {s} {r} {loc₁} {loc₂} {c})  ( (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ]) ++  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ))  ≡ [] )
-    prf  map-dist-map-left-pdu-l-r++map-right-pduconcat-s-r≡[] = ind-hyp pduconcat-s-r≡[]
-      where
-        map-left-pdu-l-r++map-right-pduconcat-s-r≡[] :  ( (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ]) ++  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ))  ≡ []
-        map-left-pdu-l-r++map-right-pduconcat-s-r≡[] = inv-map-[] map-dist-map-left-pdu-l-r++map-right-pduconcat-s-r≡[] 
-        map-right-pduconcat-s-r≡[] : (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ) ≡ []
-        map-right-pduconcat-s-r≡[] = ++-conicalʳ (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ])  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c))   map-left-pdu-l-r++map-right-pduconcat-s-r≡[]
-        pduconcat-s-r≡[] :  (pdUConcat s r ε∈s loc₂ c) ≡ []
-        pduconcat-s-r≡[] = inv-map-[] map-right-pduconcat-s-r≡[]
-
-...           | c₁ ∷ cs₁               | cs₂        = prf
-  where
-    c₁≡c×cs₁++cs₂++first-r≡cs : (c₁ ≡ c) × ( ((cs₁ ++ cs₂) ++ first r) ≡ cs )
-    c₁≡c×cs₁++cs₂++first-r≡cs = ∷-inj first-l+s●r≡c∷cs
-
-    first-l●r≡c₁∷cs₁ : (first (l ● r ` loc₂))  ≡ c₁ ∷ cs₁
-    first-l●r≡c₁∷cs₁ with ε∈? l
-    ... | yes ε∈l = Nullary.contradiction ε∈l (ε∉r→¬ε∈r ε∉l)
-    ... | no ¬ε∈l = first-l-eq
-    
-    ind-hyp : ¬ ( pdU[ l ● r ` loc₂ , c ] ≡ [] )
-    ind-hyp rewrite sym (proj₁ c₁≡c×cs₁++cs₂++first-r≡cs) = first≢[]→¬pdU≡[] {l ● r ` loc₂} {c₁} {cs₁} first-l●r≡c₁∷cs₁
-
-    prf :  ¬ ( List.map (pdinstance-dist {l} {s} {r} {loc₁} {loc₂} {c})  ( (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ]) ++  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ))  ≡ [] )
-    prf  map-dist-map-left-pdu-l-r++map-right-pduconcat-s-r≡[] = ind-hyp pdu-l-r≡[] 
-      where
-        map-left-pdu-l-r++map-right-pduconcat-s-r≡[] :  ( (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ]) ++  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c) ))  ≡ []
-        map-left-pdu-l-r++map-right-pduconcat-s-r≡[] = inv-map-[] map-dist-map-left-pdu-l-r++map-right-pduconcat-s-r≡[] 
-
-        map-left-pdu-l-r≡[] : (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ]) ≡ []
-        map-left-pdu-l-r≡[] = ++-conicalˡ  (List.map pdinstance-left pdU[ l ● r ` loc₂ ,  c ])  (List.map pdinstance-right (pdUConcat s r ε∈s loc₂ c))   map-left-pdu-l-r++map-right-pduconcat-s-r≡[]
-        pdu-l-r≡[] : pdU[ l ● r ` loc₂ ,  c ] ≡ []
-        pdu-l-r≡[] = inv-map-[] map-left-pdu-l-r≡[]
-
-
-
--- postulate
-{-# TERMINATING #-}
-pdi*-∃ : ∀ { r : RE } { pref : List Char }
-       → ( pdi : PDInstance* r pref )
-       → ∃[ u ] Recons* u pdi
-
-pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  inj s-ev)
-  with ε∈? d
-... |  yes ε∈d with (mkAllEmptyU ε∈d )in mkAllEmptyU-e∈p-eq 
-...              | ( e ∷ es ) = inj e , recons* (inj e) ((proj₂ (flat e)) , prf) -- base case, 
-  where
-    prf  : inj (unflat (Product.proj₂ (flat e))) ≡ inj e
-    prf = cong (λ x → inj x ) unflat∘proj₂∘flat
-...              | [] = Nullary.contradiction  mkAllEmptyU-e∈p-eq ( mkAllEmptyU≢[] ε∈d)     -- we need to create a contradiction here. mkAllEmptyU is not empty
-
-pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
-    |  no ¬ε∈d  with first d in first-d-eq
-...               |  [] =   Nullary.contradiction first-d-eq (ε∉r→¬first-r≡[] {d} {¬ε∈r→ε∉r ¬ε∈d})      
-...               |  ( c₁ ∷ cs₁ ) with pdU[ d , c₁ ] in pdU-d-c₁-eq 
-...                                | []  =  Nullary.contradiction pdU-d-c₁-eq (first≢[]→¬pdU≡[] first-d-eq)  -- since c₁ is in first d, pdU[ d , c₁ ] should not be [] 
-...                                | (pdi'@(pdinstance {p} {d} {c₁} p→d s-ev-p-d) ∷ _ )
-                                          with pdi*-∃ {r} {pref ∷ʳ c₁} (compose-pdi-with {r} {d} {pref} {c₁} d→r s-ev-d-r pdi' )
-...                                         | ( u , recons* {p} {r} {w} { pref∷ʳc₁ } {p→r} {s-ev-p-r} .u (w∈⟦p⟧ , d→r∘p→d-unflat-w∈⟦p⟧≡u ) )
-                                                with flat {d} (p→d (unflat w∈⟦p⟧)) in flat-p→d-unflat-w∈⟦p⟧-eq 
-...                                              | c₁w , c₁w∈⟦d⟧ = prf 
-                                                          where
-                                                              -- sub goals
-                                                              unflat-c₁w∈⟦d⟧≡p→d-unflat-w∈⟦p⟧ :  unflat c₁w∈⟦d⟧ ≡ p→d (unflat w∈⟦p⟧)
-                                                              unflat-c₁w∈⟦d⟧≡p→d-unflat-w∈⟦p⟧ =
-                                                                begin
-                                                                  unflat c₁w∈⟦d⟧
-                                                                ≡⟨ cong (λ x → unflat ( proj₂ x ) ) (sym flat-p→d-unflat-w∈⟦p⟧-eq)  ⟩
-                                                                  unflat ( proj₂ (flat (p→d (unflat w∈⟦p⟧))) )
-                                                                ≡⟨ unflat∘proj₂∘flat {d} {(p→d (unflat w∈⟦p⟧))} ⟩
-                                                                  p→d (unflat w∈⟦p⟧)
-                                                                ∎
-                                                              d→r-unflat-c₁w∈⟦d⟧≡u : d→r (unflat c₁w∈⟦d⟧) ≡ u
-                                                              d→r-unflat-c₁w∈⟦d⟧≡u rewrite  unflat-c₁w∈⟦d⟧≡p→d-unflat-w∈⟦p⟧ | d→r∘p→d-unflat-w∈⟦p⟧≡u = refl 
-
-                                                              -- main goal 
-                                                              prf : ∃[ u ] Recons* u (pdinstance* d→r s-ev-d-r)
-                                                              prf   = u , recons*   u ( c₁w∈⟦d⟧  ,  d→r-unflat-c₁w∈⟦d⟧≡u )     
 
 
 
@@ -1797,9 +1478,7 @@ advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r}  {pref} {c} pdi [
 advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r}  {pref} {c}
   pdi₁@(pdinstance* {d₁} {r} d₁→r s-ev-d₁r)
   (pdi₂@(pdinstance* {d₂} {r} d₂→r s-ev-d₂r) ∷ pdis) (ex*>-cons pdis-*>sorted pdi₂>head-pdis) (ex*>-just pdi₁>pdi₂@(*>-pdi .pdi₁ .pdi₂ u₁→u₂→rec₁→rec₂→u₁>u₂))
-  with pdU[ d₂ , c ] -- this case needs to be reassessed, is the induction correct here? -- TODO: what about ϕ≡ d₂ ? 
-                     -- is it even possible? e.g. c,w ∈ d₁ but c,w ∉ d₂, and c,w∈d₃ where d₁ d₂ are partial derivative descendents of r via pref?
-                     -- that means 
+  with pdU[ d₂ , c ]
 ... | [] =  advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c {r}  {pref} {c}  pdi₁ pdis pdis-*>sorted (pdi₁>head pdis pdi₂>head-pdis) 
   where
     pdi₁>head : ( pdis : List (PDInstance* r pref) )
@@ -1978,7 +1657,6 @@ concatMap-buildU-sorted {r} {w} (pdi₁@(pdinstance* {p₁} {r} p₁→r s-ev₁
     us₁-sorted =  map-inj-sorted (mkAllEmptyU ε∈p₁) p₁→r  u₁→u₂→u₁>u₂→p₁→r-u₁>p₁→r-u₂ (mkAllEmptyU-sorted ε∈p₁)
 
     map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis : All (λ u₁ → >-maybe u₁ (head (concatMap buildU (pdinstance* p₂→r s-ev₂ ∷ pdis))))
-                                                                                          -- (buildU (pdinstance* p₁→r s-ev₁))
                                                                                           (List.map p₁→r (mkAllEmptyU ε∈p₁))
     map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis = buildU-all>head-concatmap-buildU p₁→r s-ev₁ (pdi₂ ∷ pdis) pdi₂pdis-sorted  (ex*>-just pdi₁>pdi₂) 
 ```

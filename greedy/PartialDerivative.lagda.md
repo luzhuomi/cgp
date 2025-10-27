@@ -98,6 +98,11 @@ pd( r₁ ● r₂ , ℓ ) ｜ ε ∈ r₁   =
 
 
 ```agda
+-- shall we use the special concat ⊙ operator to get rid of the phi?
+_⊙_ : List RE → RE → List RE 
+_⊙_ ls r with ϕ≡? r
+... | yes _ = []
+
 
 pd[_,_] : RE →  Char → List RE
 pdConcat : ( l :  RE )  → ( r :  RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char)  → List RE
@@ -112,6 +117,7 @@ pd[ l ● r ` loc , c ] with ε∈? l
 ...                     | yes ε∈l = pdConcat  l r ε∈l loc c
 ...                     | no ¬ε∈l = List.map (λ l' → l' ● r ` loc ) pd[ l , c ]
 {-# TERMINATING #-}
+pdConcat l  r  ε∈l loc c  = pd[ r  , c ]
 pdConcat ε  r  ε∈ε loc c  = pd[ r  , c ]
 pdConcat (l * ε∉l ` loc₂ ) r ε∈*             loc c = (List.map (λ l' → l' ● r ` loc ) pd[ l * ε∉l ` loc₂ , c ]) ++ pd[ r , c ]
 pdConcat (l ● s ` loc₂ )   r (ε∈ ε∈l ● ε∈s)  loc c = pd[ l ● ( s ● r  ` loc ) ` loc₂ , c ]

@@ -498,25 +498,32 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁bothempty _ _  u₁>u₂) = 
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-          inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
-          inj-u₁≡¬[] = λ()
-          inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
-          inj-u₂≡¬[] = λ()          
-      in seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁notempty _ _  u₁>u₂) = 
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-          inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
-          inj-u₁≡¬[] = λ()
-          inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
-          inj-u₂≡¬[] = λ()          
-      in seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁bothempty _ _  u₁>u₂) =
+      seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
+      where
+        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+        inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
+        inj-u₁≡¬[] rewrite (sound-ev u₁) = λ () 
+        inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
+        inj-u₂≡¬[] rewrite (sound-ev u₂)  = λ()          
+
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁notempty _ _  u₁>u₂) =
+      seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
+      where
+        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+        inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
+        inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
+        inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
+        inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (seq₁oneempty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =
+      {!!} -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
+           -- inj u1 = R [a, a] and inj u2 = L [a] 
+      
+    
 -----------------------------------------------------------------------------------------
 -- aux lemma to show that injSnd is >-strict increasing
 >-inc-injSnd : ∀ {l r p : RE } { loc : ℕ }

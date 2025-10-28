@@ -1,5 +1,11 @@
 This module contains the implementation of the greedy regular expression parsing algorithm that by adapting Antimriov's  partial derivative operation. 
 
+TODO:
+1. modularize the definition of pdU[ _ , _ ] and pdUMany[ _, _ ].
+2. move their properties in the *.Properties.lagda.md modules?
+3. move parseAll to another module
+4. move parseAll properties to another module? 
+
 ```agda
 {-# OPTIONS --rewriting #-}
 module cgp.greedy.PartialDerivative where
@@ -12,7 +18,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star  )
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU )
 
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
@@ -275,9 +281,6 @@ pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis = List.map (mk-snd-pdi 
 -- pdinstance-snd and its sub functions end
 ------------------------------------------------------------------------------------
 
--- issues? currently [ e ●  p | p <- pdU[r , c] ;  e <-  mkAllEmptyU ε∈l ]b
--- we should isnteadl [ e ●  p | e <-  mkAllEmptyU ε∈l ; p <- pdU[ r , c ] ] , so that we have [ (e₁ ● p₁) , (e₁ ● p₂) ... ( e₁ ● pₙ ) , (e₂ ● p₁) , (e₂ ● p₂) ... ( e₂ ● pₙ ) ... ]
--- so as to maintain the sortedness 
 ------------------------------------------------------------------------------------
 -- concatmap-pdinstance-snd
 
@@ -471,6 +474,9 @@ inv-assoc-assoc-u≡u {l} {s} {r} {loc₁} {loc₂} {PairU (PairU  v₁ v₂) v�
   ∎ 
 
 
+-------------------------------------------------------------------------------------------
+-- pdU[_,_] and pdUConcat
+
 
 pdU[_,_] :  ( r : RE ) → ( c :  Char ) →  List (PDInstance r c)
 pdUConcat : ( l r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char ) → List (PDInstance (l ● r ` loc ) c)
@@ -514,8 +520,6 @@ pdUConcat (l + s ` loc₁)    r ε∈l+s loc₂ c =
                             ( ( List.map pdinstance-left pdU[ l ● r ` loc₂  , c ] )
                               ++
                               ( List.map pdinstance-right pdU[ s ● r ` loc₂  , c ] ) )
-
-
 
 ```
 
@@ -564,8 +568,6 @@ Then we say pdi is u-reconstructable w.r.t c iff there exists a word w ∈ ⟦p�
 
 
 ```agda
-
-
 data Recons : { r : RE } { c : Char } → ( u : U r ) → ( PDInstance r c )  → Set where
   recons : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -582,8 +584,16 @@ Let u be a parse tree of r such that (flat u) = c ∷ w for some word w.
 Then there exists a partial derivative instance, pdi ∈ pdU[r,c] , such that
 pdi is u-reconstruable w.r.t c.
 
-```agda
 
+To prove Lemma 19, we need to prove some sub lemmas. 
+
+
+#### Sub Lemmas 19.1 - 19.10 Reconstructability is preserved inductively over pdinstance operations. 
+
+```agda
+-----------------------------------------------------------------------------------------
+-- Sub Lemmas 19.1 - 19.10 BEGIN
+----------------------------------------------------------------------------------------
 
 any-recons-left : ∀ { l r : RE } { loc : ℕ } {c : Char } { w : List Char} { u : U l }
     → ( pdis : List (PDInstance l c) )
@@ -635,29 +645,6 @@ any-recons-star {r} {ε∉r} {loc} {c} {w} {u} {us} ( pdi ∷ pdis' ) (here {pd}
     ∎) )) 
 any-recons-star {r} {ε∉r} {loc} {c} {w} {u} {us} ( pdi ∷ pdis' ) (there {pd} {pds} pxs) = there (any-recons-star {r} {ε∉r} {loc} {c} {w} {u} {us} pdis' pxs) 
 
-{-
-any-recons-snd : ∀ { l r : RE } { ε∈l : ε∈ l} { loc : ℕ }  { c : Char } { w : List Char } { u : U l } { v : U r }
-    → ( proj1-flat-u≡[] : proj₁ (flat u) ≡ [] )
-    → ( pdis : List (PDInstance r c) ) 
-    → Any (Recons {r} {c} v) pdis
-    ----------------------------------------------------------- 
-    -- → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatMap (pdinstance-snd {l} {r} {ε∈l} {loc} {c})  pdis) -- inlined to make it easier to prove
-    → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis) 
-any-recons-snd {ϕ} {r} {ε∈l} {loc} {c} {w} {u} {v} proj1-flat-u≡[] ( pdi ∷ pdis' ) _  = Nullary.contradiction ε∈l (ε∉r→¬ε∈r ε∉ϕ) -- getting rid of the ϕ so that mkAllEmptyU gives us non-empty list
-any-recons-snd {l} {r} {ε∈l} {loc} {c} {w} {u} {v} proj1-flat-u≡[] ( pdi ∷ pdis' ) (here {pd} {pds} (recons {p} {r} {c} {w₁} {inj} {sound-ev}  v' ( w₁∈⟦p⟧ , inj∘unflat≡v' ))) =
-  -- the 2nd parse tree v is found; we need to find the first parse tree u
-  -- any-left-concat (any-Fst (mkAllEmptyU-complete {l} ε∈l u (flat-[] u proj1-flat-u≡[])))
-  where
-    any-Fst : ∀ { es : List (U l) } { s-evs :  All (Flat-[] l) es }  →  (Any ( _≡_ u ) es)  → Any (Recons { l ● r ` loc } {c} (PairU u v))  (map-mk-snd-pdi inj sound-ev es s-evs)
-    any-Fst {es} {s-evs} with  es   | s-evs  
-    ...                   | e ∷ es' | (flat-[] e' proj1-flat-e≡[]) ∷ s-evs'   =  λ { (here refl) →  here (recons (PairU e' v') (w₁∈⟦p⟧ , cong (λ x → PairU e x ) inj∘unflat≡v' ))
-                                                                                   ; (there pxs) → there (any-Fst {es'} {s-evs'} pxs) }
-
-any-recons-snd {l} {r} {ε∈l} {loc} {c} {w} {u} {v} proj1-flat-u≡[] ( pdi ∷ pdis' ) (there {pd} {pds} pxs) = any-right-concat next
-  -- the 2nd parse tree v is not matched, we need to skip n positions (where n is the size of mkAllEmpty ε∈ l
-  where
-    next = any-recons-snd {l} {r} {ε∈l} {loc} {c} {w} {u} {v}  proj1-flat-u≡[] pdis' pxs
--}
 
 
 
@@ -669,8 +656,7 @@ any-recons-pdinstance-snd : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : Li
   → Any (Recons {l ● r ` loc } {c} (PairU e v)) (pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis )
 any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} (flat-[] _ proj₁-flat-e≡[]) [] any-recons-v = Nullary.contradiction any-recons-v ¬Any[]
 any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} (flat-[] _ proj₁-flat-e≡[]) (pdi ∷ pdis) (here (recons v ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡v ))) = here (recons (PairU e v) ( w∈⟦p⟧ ,  cong (λ x → PairU e x ) inj-unflat-w∈⟦p⟧≡v ))
-any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} flat-[]-e@(flat-[] _ proj₁-flat-e≡[]) (pdi ∷ pdis) (there pxs) = -- there (any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} (flat-[] e proj₁-flat-e≡[]) pdis pxs) 
-  there next
+any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} flat-[]-e@(flat-[] _ proj₁-flat-e≡[]) (pdi ∷ pdis) (there pxs) = there next
   where
     next : Any (Recons {l ● r ` loc } {c} (PairU e v)) (pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis )
     next = any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} (flat-[] e proj₁-flat-e≡[]) pdis pxs
@@ -789,6 +775,16 @@ any-recons-assoc {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {u₂} {v} (pdi@(p
               PairU (PairU u₁ u₂) v             
             ∎
 
+
+-----------------------------------------------------------------------------------------
+-- Sub Lemmas 19.1 - 19.10 END
+----------------------------------------------------------------------------------------
+```
+
+#### Main proof for Lemma 19 
+
+```agda
+
 pdU-complete : ∀ { r : RE  } { c : Char } { w : List Char }
   → ( u : U r )  
   → ( proj₁ (flat {r} u) ≡ c ∷ w )
@@ -805,8 +801,6 @@ pdUConcat-complete : ∀ { l s : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : C
 
 
 
-
--- pdU-complete {ϕ}           {c}  {w} u = λ()
 pdU-complete {ε}           {c}  {w} EmptyU = λ()
 pdU-complete {$ c ` loc}   {c'} {w} (LetterU _) with c Char.≟ c'
 ...                                              | yes refl with w    
@@ -922,7 +916,7 @@ pdUConcat-complete {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} u@(RightU u₂)
 
 ```
 
-### Definition 19: Many steps Partial deriviatves with coercion functions `pdUMany[ r , w ]`
+### Definition 20: Many steps Partial deriviatves with coercion functions `pdUMany[ r , w ]` and `PDInstance*`
 
 
 For the ease of establishing the completeness proof of `pdUMany[ r , w ]`, we introduce
@@ -967,13 +961,14 @@ data PDInstance* : ∀ ( r : RE ) ( pref : List Char ) → Set where
                 → ( ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ pref ++ ( proj₁ (flat {p} u) )) ) -- ^ soundness evidence of the inject function
                 ------------------------------------------------
                 → PDInstance* r pref 
-```
 
+```
 
 
 ```agda
 
--- helper function  for pdUMany-aux
+---------------------------------------------------------------------------------------------------------
+-- A helper function  for pdUMany-aux then pdUMany 
 -- compose-pdi-with : copmose a PDInstance with the "downstream" PDinstance* injection and soundness evidence
 
 compose-pdi-with : ∀ { r d : RE } { pref : List Char } { c : Char }
@@ -996,7 +991,8 @@ compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r (pdinstance {p} {d} {c} p→d
                                             pref ∷ʳ c ++ proj₁ (flat u) 
                                           ∎
                                         )
--- helper functions for pdUMany-aux                   
+                                        
+-- helper functions for pdUMany-aux then pdUMany                   
 -- advance-pdi*-with-c : advance a PDInstance* with a character c (by consuming it with pdU) and return a list of PDInstance*
 advance-pdi*-with-c : ∀ { r : RE } { pref : List Char } { c : Char }
                      → PDInstance* r pref
@@ -1004,6 +1000,7 @@ advance-pdi*-with-c : ∀ { r : RE } { pref : List Char } { c : Char }
 advance-pdi*-with-c {r} {pref} {c} (pdinstance* {d} {r} {pref} d→r s-ev-d-r) =
   List.map (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r ) pdU[ d , c ] 
 
+-- pdUMany's helper function 
 pdUMany-aux :  ∀ { r : RE }
                  {pref : List Char}
                → (suff : List Char) 
@@ -1049,59 +1046,14 @@ pdUMany[ r , cs ]         =
    pdUMany-aux {r} {[]} cs [  ( pdinstance* {r} {r} {[]} injId injId-sound ) ]
 
 
-injId-≡ : ∀ { r : RE } { u : U r }
-        → (injId u) ≡ u
-injId-≡ = refl   
+-- injId-≡ : ∀ { r : RE } { u : U r }
+--        → (injId u) ≡ u
+-- injId-≡ = refl   
 
-{-
-
--- working but too complex, involving existential quantifier 
-
-pdUMany-aux :  ∀ { r : RE } { pref : List Char }
-               → (suff : List Char) 
-               → List (PDInstance* r pref)
-               → ∃[ word ] (List (PDInstance* r word )) × ( word ≡ pref ++ suff )
-pdUMany-aux {r} {pref} [] pdis = pref , pdis ,  sym (++-identityʳ pref) 
-pdUMany-aux {r} {pref} (c ∷ cs) pdis =
-  let
-    (word , pdis'' , word≡pref++ccs ) = pdUMany-aux {r} {pref List.∷ʳ c} cs pdis' 
-  in ( word , pdis'' , ( 
-    begin
-      word
-    ≡⟨ word≡pref++ccs ⟩
-      pref ∷ʳ c ++ cs
-    ≡⟨  ∷ʳ-++ pref c cs    ⟩
-      pref ++ ( c ∷ cs )
-    ∎ ) )
-  where
-    pdis' : List (PDInstance* r (pref List.∷ʳ  c))
-    pdis' = concatMap ( λ { (pdinstance* {d} {r} {pref} d→r s-ev-d-r) →
-            List.map ( λ { (pdinstance {p} {d} {c} p→d s-ev-p-d) →
-                           pdinstance* {p} {r} {pref List.∷ʳ c } ( d→r ∘ p→d ) 
-                                       (
-                                        λ u →
-                                          begin
-                                            proj₁ (flat (d→r (p→d u)))
-                                          ≡⟨ s-ev-d-r (p→d u) ⟩
-                                            pref ++ proj₁ (flat (p→d u))
-                                          ≡⟨ cong ( pref ++_ ) (s-ev-p-d u) ⟩
-                                            pref ++ ( c ∷ Product.proj₁ (flat u) )
-                                          ≡⟨ sym ( ∷ʳ-++ pref c (Product.proj₁ (flat u)) ) ⟩ 
-                                            pref List.∷ʳ c ++ proj₁ (flat u) 
-                                          ∎
-                                        ) 
-                                                                                  
-                         } ) pdU[ d , c ]  } ) pdis
-
-pdUMany[_,_] : ( r : RE ) → ( cs : List Char ) → ∃[ word ] (List (PDInstance* r word )) × ( word ≡ cs ) 
-pdUMany[ r , cs ]         =
-  let ( word , pdis'' , word≡cs ) = pdUMany-aux {r} {[]} cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ]
-  in ( word , pdis'' , word≡cs ) 
-
--}
 ```
 
-### Lemma 20 : pdUMany[ r , w ] is sound
+
+### Lemma 21 : pdUMany[ r , w ] is sound
 
 Let r  be a non problematic regular expresion.
 Let w be a word.
@@ -1113,7 +1065,8 @@ Let u be a parse tree of p, then |(f u)| = w ++ | u |, where (f u) is a parse tr
 The proof is given as part of the PDInstance* being computed. 
 
 
-### Definition 21 (Prefix Reconstructability):
+### Definition 22 (Parse Tree Reconstructability of PD Descendants):
+
 Let r be a non problematic regular expression.
 Let pref be a word,
 LEt u be a parse tree of r.
@@ -1137,7 +1090,7 @@ data Recons* : { r : RE } { pref : List Char } → ( u : U r ) → ( PDInstance*
 ```
 
 
-### Lemma 22 : pdUMany[ r , pref ] is complete (ERROR)
+### Lemma (Error, not working) : pdUMany[ r , pref ] is complete 
 
 Let r be a non problematic regular expression.
 Let pref be a word.
@@ -1151,7 +1104,7 @@ pdi is u-reconstructable w.r.t pref.
 
 
 
-### Lemma 22 (Fixed) : pdUMany[ r , w ] is complete ** this should by pdUMany-aux-complete?
+### Lemma 23 (Fixed) : pdUMany[ r , w ] is complete 
 
 Let r be a non problematic regular expression.
 Let w be a word.
@@ -1164,11 +1117,13 @@ pdi is u-reconstructable w.r.t w.
 ** for each step, we take the leading letter c from suffix `suffand snoc it into `pref`.
 
 
+#### Sub Lemma 23.1 - 23.3  : Reconstructibility is preserved inductively over the pdinstance*'s (and pdinstance's) operations
+
 ```agda
 
-
-
--- aux lemmas
+-------------------------------------------------------------------------------------------------------------
+-- Sub Lemma 23.1 - 23.3 BEGIN 
+-------------------------------------------------------------------------------------------------------------
 
 -- TODO the following lemma can be simplified. 
 compose-pdi-with-can-recons* : ∀ { r d : RE } { pref : List Char } { c : Char } 
@@ -1237,8 +1192,15 @@ any-recons*-concatmap-advance-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++c
 ... | here px@(recons* u' ( w∈⟦d⟧ , d→r-unflat-w∈⟦d⟧≡u' )) = any-left-concat (any-advance-pdi*-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++ccs pdi px)
 ... | there pxs = any-right-concat (any-recons*-concatmap-advance-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++ccs pdis pxs )
 
+-------------------------------------------------------------------------------------------------------------
+-- Sub Lemma 23.1 - 23.3 END 
+-------------------------------------------------------------------------------------------------------------
 
+```
 
+#### Sub Lemma 23.4 : Reconstructibility is preserved over pdUMany-aux. 
+
+```agda
 -- completeness for pdUMany-aux function 
 pdUMany-aux-complete : ∀ { r : RE } { pref : List Char } { suff : List Char }
     → ( u : U r )
@@ -1270,10 +1232,11 @@ pdUMany-aux-complete {r} {pref} {c ∷ cs} u proj1-flat-u≡pref++ccs (pdi ∷ p
 
     ind-hyp : Any (Recons* {r} {pref ∷ʳ c ++  cs} u) (pdUMany-aux {r} {pref ∷ʳ c} cs ( concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis) ))
     ind-hyp = pdUMany-aux-complete {r} {pref ∷ʳ c} {cs} u proj1-flat-u≡prefc++cs  (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis))  any-recons*u-pdis'
+```
 
+#### Main proof for Lemma 23 
 
-
-
+```agda
 -- main lemma   
 pdUMany-complete : ∀ { r : RE }
   → ( u : U r )
@@ -1287,7 +1250,7 @@ pdUMany-complete {r} u =
 
 ```
 
-### Definition 22: ParseAll function
+### Definition 24: ParseAll function
 
 ```agda
 
@@ -1333,7 +1296,8 @@ PairU (LeftU EmptyU) (LeftU (LetterU 'a')) ∷
 PairU (RightU (LetterU 'a')) (RightU EmptyU) ∷ []
 ~~~~~~~
 
-### Lemma 24 : buildU is sound
+### Lemma 25 : buildU is sound
+
 Let r be a non problemantic regular expression.
 Let w be a word.
 Let pdi be a partial instance* of r w.r.t w.
@@ -1363,7 +1327,7 @@ buildU-sound {r} {w} (pdinstance* {p} {r} {pref} p→r s-ev) with ε∈? p
 
 ```
 
-### Theorem 25 : ParseAll is sound 
+### Theorem 26 : parseAll is sound 
 
 Let r be a non problematic regular expression.
 Let w be a word.
@@ -1384,7 +1348,7 @@ parseAll-sound {r} {w} = prove-all pdUMany[ r , w ]
 ```
 
 
-### Lemma 25 : buildU is complete
+### Lemma 27 : buildU is complete
 
 Let r be a non problematic regular expression.
 Let u be a parse tree of r.
@@ -1481,7 +1445,7 @@ buildU-complete {r} u pdi@(pdinstance* {p} {r} {proj1-flat-u} inj s-ev-p-r) (rec
 
 
 
-### Theorem 26 : ParseAll is complete
+### Theorem 28 : ParseAll is complete
 
 Let r be a non problematic regular expression.
 Let u be a parse tree of r.
@@ -1511,7 +1475,331 @@ parseAll-complete {r} u = proj₁ (flat u) , find pdinstances any-recons*-pdinst
 ### Auxilary Lemmas needed in the ExtendedOrder.lagda.md proofs.
 
 
-### Lemma: pdUMan-aux returns an empty list of pdinstance*'s given an empty input list of pdinstance*'s .
+#### Aux Lemma: Reconstructibility can be inversedly preserved via the pdinstance's and pdinstance*'s operations.
+
+```agda
+-------------------------------------------------
+-- Inversed reconstructibility Aux Lemmas BEGIN 
+-------------------------------------------------
+
+inv-recons-left : ∀ { l r : RE } { loc : ℕ } { c : Char } 
+    → ( u : U l ) 
+    → ( pdi : PDInstance l c )
+    → Recons (LeftU {l} {r} {loc} u) (pdinstance-left pdi )
+    ---------------------------------------------------------
+    → Recons u pdi
+inv-recons-left {l} {r} {loc} {c} u (pdinstance {p} {l} {c} inj s-ev) (recons (LeftU u') ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡LeftU-u ))
+  = recons u (w∈⟦p⟧ , inv-leftU (inj (unflat w∈⟦p⟧)) u inj-unflat-w∈⟦p⟧≡LeftU-u) 
+
+inv-recons-right : ∀ { l r : RE } { loc : ℕ } { c : Char } 
+    → ( u : U r ) 
+    → ( pdi : PDInstance r c )
+    → Recons (RightU {l} {r} {loc} u) (pdinstance-right pdi )
+    ---------------------------------------------------------
+    → Recons u pdi
+inv-recons-right {l} {r} {loc} {c} u (pdinstance {p} {r} {c} inj s-ev) (recons (RightU u') ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡RightU-u ))
+  = recons u (w∈⟦p⟧ , inv-rightU (inj (unflat w∈⟦p⟧)) u inj-unflat-w∈⟦p⟧≡RightU-u)
+
+
+inv-recons-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( u : U l )
+    → ( v : U r )  
+    → ( pdi : PDInstance l c )
+    → Recons (PairU {l} {r} {loc} u v) (pdinstance-fst pdi )
+    -------------------------------------------------------- 
+    → Recons u pdi
+inv-recons-fst {l} {r} {loc} {c} u v (pdinstance {p} {l} {c} inj s-ev)
+  (recons {p ● r ` loc} {l ● r ` loc} {c} {w'} {inj'} {s-ev'} (PairU u' v') ( _●_⧺_  {xs} {ys} {w'} {p} {r} {loc} xs∈⟦p⟧  ys∈⟦r⟧ xs++ys≡w'  , inj-unflat-w'∈⟦p●r⟧≡PairU-u-v ))
+  = recons {p} {l} {c} {xs} {inj} {s-ev}  u (xs∈⟦p⟧  , proj₁ inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r⟧≡v ) 
+    where 
+      inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r⟧≡v : ( inj (unflat xs∈⟦p⟧) ≡ u ) × ( unflat ys∈⟦r⟧ ≡ v )
+      inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r⟧≡v = inv-pairU (inj (unflat xs∈⟦p⟧)) (unflat ys∈⟦r⟧) u v inj-unflat-w'∈⟦p●r⟧≡PairU-u-v
+
+
+inv-recons-snd : ∀ { l r : RE } { loc : ℕ } { c : Char } 
+  → ( e : U l ) -- empty parse tree from l
+  → ( v : U r )
+  → ( flat-[]-e :  Flat-[] l e )  
+  → ( pdi : PDInstance r c )
+  → Recons (PairU {l} {r} {loc} e v) (mk-snd-pdi ( e , flat-[]-e ) pdi )
+  -----------------------------------------------------------------------
+  → Recons v pdi
+inv-recons-snd {l} {r} {loc} {c} e v ( flat-[] _ proj₁flat-e≡[]) (pdinstance inj s-ev) (recons (PairU _ _ ) ( w∈⟦p⟧ , inj∘unflat-w∈⟦p⟧≡pair-e-v ) )
+  = recons v (w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡v)
+    where
+      e≡e×inj-unflat-w∈⟦p⟧≡v : ( e ≡ e ) × ((inj (unflat w∈⟦p⟧)) ≡ v )
+      e≡e×inj-unflat-w∈⟦p⟧≡v = inv-pairU e (inj (unflat w∈⟦p⟧)) e v inj∘unflat-w∈⟦p⟧≡pair-e-v
+      inj-unflat-w∈⟦p⟧≡v : inj (unflat w∈⟦p⟧) ≡ v
+      inj-unflat-w∈⟦p⟧≡v = proj₂ e≡e×inj-unflat-w∈⟦p⟧≡v 
+
+inv-recons-star : ∀ { r : RE } {ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  → ( u : U r )
+  → ( us : List (U r) )
+  → ( pdi : PDInstance r c )
+  → Recons (ListU {r} {ε∉r} {loc} ( u ∷ us ) ) (pdinstance-star pdi )
+  ---------------------------------------------------------------------
+  → Recons u pdi
+inv-recons-star {r} {ε∉r} {loc} {c} u us (pdinstance {p} {r} {c} inj s-ev)
+  (recons {p ● ( r * ε∉r ` loc ) ` loc } { r * ε∉r ` loc } {c} {w'} {inj'} {s-ev'} (ListU {r} {ε∉r} {loc} ( u ∷ us )) (  _●_⧺_  {xs} {ys} {w'} {p} {r * ε∉r ` loc } {loc} xs∈⟦p⟧ ys∈⟦r*⟧ xs++ys≡w' , inj'-unflat-w'∈⟦p●r*⟧≡ListU-u-us )  ) = recons {p} {r} {c} {xs} {inj} {s-ev}  u (xs∈⟦p⟧  , proj₁ inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r*⟧≡list-us ) 
+    where
+      listu-u-us≡listu-inj-unflat-xs∈⟦p⟧-unListU-unflat-ys∈⟦r*⟧ : ListU (u ∷ us) ≡ ListU (inj (unflat xs∈⟦p⟧) ∷ unListU (unflat ys∈⟦r*⟧))
+      listu-u-us≡listu-inj-unflat-xs∈⟦p⟧-unListU-unflat-ys∈⟦r*⟧ =
+        begin
+          ListU (u ∷ us)
+        ≡⟨ sym  inj'-unflat-w'∈⟦p●r*⟧≡ListU-u-us ⟩
+          mkinjList inj (PairU (unflat xs∈⟦p⟧) (unflat ys∈⟦r*⟧))
+        ≡⟨ cong (λ x →  mkinjList inj (PairU (unflat xs∈⟦p⟧) x) ) ( sym listU∘unListU )  ⟩
+          mkinjList inj (PairU (unflat xs∈⟦p⟧) (ListU (unListU (unflat ys∈⟦r*⟧))))
+        ≡⟨⟩ 
+          ListU (inj (unflat xs∈⟦p⟧) ∷ unListU (unflat ys∈⟦r*⟧))
+        ∎ 
+      inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r*⟧≡list-us : ( inj (unflat xs∈⟦p⟧) ≡ u ) × ( unListU (unflat ys∈⟦r*⟧) ≡ us )
+      inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r*⟧≡list-us = inv-listU (inj (unflat xs∈⟦p⟧)) (unListU (unflat ys∈⟦r*⟧)) u us ((sym listu-u-us≡listu-inj-unflat-xs∈⟦p⟧-unListU-unflat-ys∈⟦r*⟧)) 
+ 
+
+
+inv-recons-assoc : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char}
+  → ( v₁ : U l )
+  → ( v₂ : U s )
+  → ( v₃ : U r )
+  → ( pdi : PDInstance (l ● (s ● r ` loc₂) ` loc₁) c )
+  → Recons (PairU (PairU v₁ v₂) v₃) (pdinstance-assoc pdi )
+  ----------------------------------------------------------------
+  → Recons (PairU v₁ (PairU v₂ v₃)) pdi
+inv-recons-assoc {l} {s} {r} {loc₁} {loc₂} {c}  v₁ v₂ v₃ pdi@(pdinstance inj s-ev)
+  (recons {p} { ( l ● s  ` loc₁ ) ● r ` loc₂} {c} {w} (PairU (PairU v₁ v₂) v₃) ( w∈⟦p⟧ , mkinjAssoc-inj-unflat-w∈⟦p⟧≡pair-pair-v₁v₂v₃))
+    = recons (PairU v₁ (PairU v₂ v₃)) (w∈⟦p⟧ , sym pair-v₁-pair-v₂v₃≡inj-unflat-w∈⟦p⟧)
+    where
+      pair-v₁-pair-v₂v₃≡inj-unflat-w∈⟦p⟧ : PairU v₁ (PairU v₂ v₃) ≡ inj (unflat w∈⟦p⟧) 
+      pair-v₁-pair-v₂v₃≡inj-unflat-w∈⟦p⟧ =
+        begin
+          PairU v₁ (PairU v₂ v₃)
+        ≡⟨⟩
+          assoc (PairU (PairU v₁ v₂) v₃)
+        ≡⟨ cong ( λ x → assoc x ) (sym mkinjAssoc-inj-unflat-w∈⟦p⟧≡pair-pair-v₁v₂v₃ ) ⟩
+          assoc (mkinjAssoc inj (unflat w∈⟦p⟧))
+        ≡⟨⟩
+          assoc (inv-assoc (inj (unflat w∈⟦p⟧)))
+        ≡⟨ assoc-inv-assoc-u≡u ⟩
+          inj (unflat w∈⟦p⟧)  
+        ∎ 
+
+
+
+inv-recons-dist-left  : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char }
+  → ( v₁ : U l )
+  → ( v₃ : U r )
+  → ( pdi :  PDInstance  ( l ● r ` loc₂ )  c )
+  → Recons (PairU {l + s ` loc₁} {r} {loc₂} (LeftU {l} {s} {loc₁} v₁) v₃) (pdinstance-dist (pdinstance-left pdi ))
+  ------------------------------------------------------------------
+  → Recons (dist {l} {s} {r} {loc₁} {loc₂} (PairU (LeftU v₁) v₃)) (pdinstance-left pdi )
+inv-recons-dist-left  v₁ v₃ pdi@(pdinstance inj sev) (recons (PairU (LeftU v₁) v₃) ( w∈⟦p⟧ , inj∘unflat-w∈⟦p⟧≡Pair-left-v₁-v₃ ) ) =
+  recons (dist (PairU (LeftU v₁) v₃)) (w∈⟦p⟧ , sym left-pair-v₁-v₃≡left-inj-unflat-w∈⟦p⟧) 
+  where
+    pair-left-v₁-v₃≡inv-dist-left-inj-unflat-w∈⟦p⟧ : PairU (LeftU v₁) v₃ ≡  inv-dist (LeftU (inj (unflat w∈⟦p⟧)))
+    pair-left-v₁-v₃≡inv-dist-left-inj-unflat-w∈⟦p⟧ =
+      begin
+        PairU (LeftU v₁) v₃
+      ≡⟨ sym inj∘unflat-w∈⟦p⟧≡Pair-left-v₁-v₃ ⟩
+        mkinjDist (λ u → LeftU (inj u)) (unflat w∈⟦p⟧)
+      ≡⟨⟩
+        inv-dist ((λ u → LeftU (inj u)) (unflat w∈⟦p⟧))
+      ≡⟨⟩
+        inv-dist (LeftU (inj (unflat w∈⟦p⟧)))
+      ∎
+    left-pair-v₁-v₃≡left-inj-unflat-w∈⟦p⟧ : LeftU (PairU v₁ v₃) ≡ LeftU (inj (unflat w∈⟦p⟧))
+    left-pair-v₁-v₃≡left-inj-unflat-w∈⟦p⟧ =
+      begin
+        LeftU (PairU v₁ v₃)
+      ≡⟨⟩
+        dist (PairU (LeftU v₁) v₃)
+      ≡⟨ cong (λ x → dist x ) pair-left-v₁-v₃≡inv-dist-left-inj-unflat-w∈⟦p⟧ ⟩ 
+        dist (inv-dist (LeftU (inj (unflat w∈⟦p⟧))))
+      ≡⟨ dist-inv-dist-u≡u ⟩
+        LeftU (inj (unflat w∈⟦p⟧))
+      ∎ 
+
+
+inv-recons-dist-left-collary : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char }
+  → ( v₁ : U l )
+  → ( v₃ : U r )
+  → ( pdi :  PDInstance  ( l ● r ` loc₂ )  c )
+  → Recons (PairU {l + s ` loc₁} {r} {loc₂} (LeftU {l} {s} {loc₁} v₁) v₃) (pdinstance-dist (pdinstance-left pdi ))
+  ------------------------------------------------------------------
+  → Recons (PairU {l} {r} {loc₂} v₁ v₃) pdi 
+inv-recons-dist-left-collary  v₁ v₃ pdi@(pdinstance inj sev) (recons .(PairU (LeftU v₁) v₃) ( w∈⟦p⟧ , inj∘unflat-w∈⟦p⟧≡Pair-left-v₁-v₃) )
+  with inv-recons-dist-left  v₁ v₃ pdi (recons (PairU (LeftU v₁) v₃) ( w∈⟦p⟧ , inj∘unflat-w∈⟦p⟧≡Pair-left-v₁-v₃) )
+... | recons (LeftU (PairU v₁ v₃)) ( w∈⟦p⟧ , left-inj-unflat-w∈⟦p⟧≡left-pair-v₁-v₃ )  =
+  recons (PairU v₁ v₃) ( w∈⟦p⟧ , inv-leftU (inj (unflat w∈⟦p⟧)) (PairU v₁ v₃)   left-inj-unflat-w∈⟦p⟧≡left-pair-v₁-v₃) 
+
+
+
+inv-recons-dist-right  : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char }
+  → ( v₂ : U s )
+  → ( v₃ : U r )
+  → ( pdi :  PDInstance  ( s ● r ` loc₂ )  c )
+  → Recons (PairU {l + s ` loc₁} {r} {loc₂} (RightU {l} {s} {loc₁} v₂) v₃) (pdinstance-dist (pdinstance-right pdi ))
+  ------------------------------------------------------------------
+  → Recons (dist {l} {s} {r} {loc₁} {loc₂} (PairU (RightU v₂) v₃)) (pdinstance-right pdi )
+inv-recons-dist-right  v₂ v₃ pdi@(pdinstance inj sev) (recons (PairU (RightU v₂) v₃) ( w∈⟦p⟧ , inj∘unflat-w∈⟦p⟧≡Pair-right-v₂-v₃ ) ) =
+  recons (dist (PairU (RightU v₂) v₃)) (w∈⟦p⟧ , sym right-pair-v₂-v₃≡right-inj-unflat-w∈⟦p⟧) 
+  where
+    pair-right-v₂-v₃≡inv-dist-right-inj-unflat-w∈⟦p⟧ : PairU (RightU v₂) v₃ ≡  inv-dist (RightU (inj (unflat w∈⟦p⟧)))
+    pair-right-v₂-v₃≡inv-dist-right-inj-unflat-w∈⟦p⟧ =
+      begin
+        PairU (RightU v₂) v₃
+      ≡⟨ sym inj∘unflat-w∈⟦p⟧≡Pair-right-v₂-v₃ ⟩
+        mkinjDist (λ u → RightU (inj u)) (unflat w∈⟦p⟧)
+      ≡⟨⟩
+        inv-dist ((λ u → RightU (inj u)) (unflat w∈⟦p⟧))
+      ≡⟨⟩
+        inv-dist (RightU (inj (unflat w∈⟦p⟧)))
+      ∎
+    right-pair-v₂-v₃≡right-inj-unflat-w∈⟦p⟧ : RightU (PairU v₂ v₃) ≡ RightU (inj (unflat w∈⟦p⟧))
+    right-pair-v₂-v₃≡right-inj-unflat-w∈⟦p⟧ =
+      begin
+        RightU (PairU v₂ v₃)
+      ≡⟨⟩
+        dist (PairU (RightU v₂) v₃)
+      ≡⟨ cong (λ x → dist x ) pair-right-v₂-v₃≡inv-dist-right-inj-unflat-w∈⟦p⟧ ⟩ 
+        dist (inv-dist (RightU (inj (unflat w∈⟦p⟧))))
+      ≡⟨ dist-inv-dist-u≡u ⟩
+        RightU (inj (unflat w∈⟦p⟧))
+      ∎ 
+
+
+inv-recons-dist-right-collary : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char }
+  → ( v₂ : U s )
+  → ( v₃ : U r )
+  → ( pdi :  PDInstance  ( s ● r ` loc₂ )  c )
+  → Recons (PairU {l + s ` loc₁} {r} {loc₂} (RightU {l} {s} {loc₁} v₂) v₃) (pdinstance-dist (pdinstance-right pdi ))
+  ------------------------------------------------------------------
+  → Recons (PairU {s} {r} {loc₂} v₂ v₃) pdi 
+inv-recons-dist-right-collary  v₂ v₃ pdi@(pdinstance inj sev) (recons .(PairU (RightU v₂) v₃) ( w∈⟦p⟧ , inj∘unflat-w∈⟦p⟧≡Pair-right-v₂-v₃) )
+  with inv-recons-dist-right  v₂ v₃ pdi (recons (PairU (RightU v₂) v₃) ( w∈⟦p⟧ , inj∘unflat-w∈⟦p⟧≡Pair-right-v₂-v₃) )
+... | recons (RightU (PairU v₂ v₃)) ( w∈⟦p⟧ , right-inj-unflat-w∈⟦p⟧≡right-pair-v₂-v₃ )  =
+  recons (PairU v₂ v₃) ( w∈⟦p⟧ , inv-rightU (inj (unflat w∈⟦p⟧)) (PairU v₂ v₃)  right-inj-unflat-w∈⟦p⟧≡right-pair-v₂-v₃) 
+
+
+inv-recons*-compose-pdi-with : ∀ { r d : RE } {pref : List Char } { c : Char }
+  → ( u : U r )
+  → ( pdi : PDInstance d c )
+  → ( d→r : U d → U r )
+  → ( s-ev-dr : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+  → Recons* {r} {pref ∷ʳ c}  u (compose-pdi-with d→r s-ev-dr pdi) 
+  ----------------------------------------------------
+  → Recons* {r} {pref} u (pdinstance* d→r s-ev-dr) 
+inv-recons*-compose-pdi-with {r} {d} {pref} {c} u (pdinstance {p} {d} {c} p→d s-ev-pd) d→r s-ev-dr
+  (recons* {p} {r} {w} {pref++c} u ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧ ) ) =
+    recons* {- {d} {r} {c ∷ w} {pref} {d→r} {s-ev-dr} -}  u  ( proj₂ (flat (p→d (unflat w∈⟦p⟧))) , prf )
+    where
+      prf :  d→r (unflat (Product.proj₂ (flat (p→d (unflat w∈⟦p⟧))))) ≡ u
+      prf =
+        begin
+          d→r (unflat (proj₂ (flat (p→d (unflat w∈⟦p⟧)))))
+        ≡⟨ cong (λ x → (d→r x) ) unflat∘proj₂∘flat ⟩
+          d→r (p→d (unflat w∈⟦p⟧))
+        ≡⟨ inj-unflat-w∈⟦p⟧ ⟩ 
+          u
+        ∎
+
+-------------------------------------------------
+-- Inversed reconstructibility Aux Lemmas END
+-------------------------------------------------
+
+```
+
+#### Aux Lemma: Impossibilities of parse tree reconstructions through pdinstance operations.
+
+e.g. we can reconstruct a RightU from a pdinnstance-left operation. 
+
+```agda
+-------------------------------------------------
+-- Impossible reconstructibility Aux Lemmas BEGIN
+-------------------------------------------------
+
+-- A RightU parse tree cannot be reconstructed from a pdinstance-left created pdisntance
+¬recons-right-from-pdinstance-left : ∀ { l r : RE } { loc : ℕ } { c : Char } 
+  → ( u : U r ) 
+  → ( pdi : PDInstance l c )
+    ------------------------------------------------------------
+  → ¬ (Recons (RightU {l} {r} {loc} u) (pdinstance-left pdi ))
+¬recons-right-from-pdinstance-left {l} {r} {loc} {c} u pdi@(pdinstance {p} {l} inj s-ev) (recons {p'} {l + r ` loc } {c} {w} {inj'} {s-ev'} (RightU u) ( w∈⟦p'⟧ , inj∘unflat≡rightu-u ) )
+  = (LeftU≢RightU {l} {r} {loc} (inj (unflat w∈⟦p'⟧)) u)  inj∘unflat≡rightu-u 
+
+
+
+-- A LeftU parse tree cannot be reconstructed from a pdinstance-right created pdisntance
+¬recons-left-from-pdinstance-right : ∀ { l r : RE } { loc : ℕ } { c : Char } 
+  → ( u : U l ) 
+  → ( pdi : PDInstance r c )
+    ------------------------------------------------------------
+  → ¬ (Recons (LeftU {l} {r} {loc} u) (pdinstance-right pdi ))
+¬recons-left-from-pdinstance-right {l} {r} {loc} {c} u pdi@(pdinstance {p} {r} inj s-ev) (recons {p'} {l + r ` loc } {c} {w} {inj'} {s-ev'} (LeftU u) ( w∈⟦p'⟧ , inj∘unflat≡leftu-u ) )
+  = (RightU≢LeftU {l} {r} {loc} (inj (unflat w∈⟦p'⟧)) u) inj∘unflat≡leftu-u
+
+
+¬recons-pair-right-from-pdinstance-dist-left : ∀ { l s r : RE } { loc₁ loc₂ : ℕ } { c : Char }
+  → ( v₂ : U s )
+  → ( v₃ : U r )
+  → ( pdi :  PDInstance  ( l ● r ` loc₂ )  c )
+  -------------------------------------------------------------------------------------------
+  → ¬ (Recons (PairU { l + s ` loc₁ } {r} {loc₂} (RightU {l} {s} {loc₁} v₂) v₃) (pdinstance-dist (pdinstance-left pdi)))
+¬recons-pair-right-from-pdinstance-dist-left {l} {s} {r} {loc₁} {loc₂} {c} v₂ v₃ pdi@(pdinstance inj s-ev)
+  (recons {p} {(l + s ` loc₁) ● r ` loc₂} {c} {w} {inj'} {s-ev'} (PairU (RightU v₂) v₃) ( w∈⟦p⟧ , inj'∘unflatw∈⟦p⟧≡pair-right-v₂-v₂ ) )
+   with inj (unflat w∈⟦p⟧)  
+... | PairU v₁ v₄
+  = (proj₁∘LeftU≢proj₁∘RightU {l} {s} {r} {loc₁} {loc₂}  v₁  v₂ v₄ v₃ )  inj'∘unflatw∈⟦p⟧≡pair-right-v₂-v₂
+
+¬recons-pair-left-from-pdinstance-dist-right : ∀ { l s r : RE } { loc₁ loc₂ : ℕ } { c : Char }
+  → ( v₁ : U l )
+  → ( v₃ : U r )
+  → ( pdi :  PDInstance  ( s ● r ` loc₂ )  c )
+  ------------------------------------------------------------------------------
+  → ¬ (Recons (PairU { l + s ` loc₁ } {r} {loc₂} (LeftU {l} {s} {loc₁} v₁) v₃) (pdinstance-dist (pdinstance-right pdi)))
+¬recons-pair-left-from-pdinstance-dist-right {l} {s} {r} {loc₁} {loc₂} {c} v₁ v₃
+  pdi@(pdinstance inj s-ev)
+  (recons {p} {(l + s ` loc₁) ● r ` loc₂} {c} {w} {inj'} {s-ev'} (PairU (LeftU v₁) v₃) ( w∈⟦p⟧ , inj'∘unflatw∈⟦p⟧≡pair-left-v₁-v₃ ) )
+    with inj (unflat w∈⟦p⟧)
+... | PairU v₂ v₄     
+  = (proj₁∘LeftU≢proj₁∘RightU {l} {s} {r} {loc₁} {loc₂}   v₁ v₂ v₃ v₄)  ( (sym  inj'∘unflatw∈⟦p⟧≡pair-left-v₁-v₃))  
+
+
+-- An ListU [] parse tree cannot be constructed from a pdinstance-map created pdinstance
+¬recons-[]-from-pdinstance-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  -- → ( u : U r )
+  → ( pdi : PDInstance r c )
+  --------------------------------------------------------------
+  → ¬ (Recons (ListU {r} {ε∉r} {loc} []) (pdinstance-star pdi ))
+¬recons-[]-from-pdinstance-star {r} {ε∉r} {loc} {c} pdi@(pdinstance {p} {r} inj s-ev) (recons {p'} {r * ε∉r ` loc} {c} {w} {inj'} {s-ev'} (ListU []) ( w∈⟦p'⟧ , inj∘unflat≡list-[] ) )
+   =  (Word.¬c∷w≡[] {c}  {proj₁ (flat (unflat w∈⟦p'⟧))})  c∷proj₁-flat-unflat-w∈⟦p'⟧≡[]  
+   where
+     proj₁flat-inj'-unflat-w∈⟦p'⟧≡c∷proj₁flat-unflat-w∈⟦p'⟧ : proj₁ (flat ( inj' (unflat w∈⟦p'⟧)) ) ≡ c ∷ proj₁ (flat (unflat w∈⟦p'⟧))
+     proj₁flat-inj'-unflat-w∈⟦p'⟧≡c∷proj₁flat-unflat-w∈⟦p'⟧ = s-ev' (unflat w∈⟦p'⟧)
+     proj₁flat-NilU≡c∷proj₁-flat-unflat-w∈⟦p'⟧ : proj₁ (flat (ListU  {r} {ε∉r} {loc} [])) ≡ c ∷ proj₁ (flat (unflat w∈⟦p'⟧))
+     proj₁flat-NilU≡c∷proj₁-flat-unflat-w∈⟦p'⟧  = 
+       begin
+          proj₁ (flat (ListU  {r} {ε∉r} {loc} []))
+       ≡⟨ cong (λ x →  proj₁ (flat x)) (sym inj∘unflat≡list-[] ) ⟩
+          proj₁ (flat ( inj' (unflat w∈⟦p'⟧)) )
+       ≡⟨ proj₁flat-inj'-unflat-w∈⟦p'⟧≡c∷proj₁flat-unflat-w∈⟦p'⟧ ⟩ 
+          c ∷ proj₁ (flat (unflat w∈⟦p'⟧))
+       ∎
+     c∷proj₁-flat-unflat-w∈⟦p'⟧≡[] : c ∷ proj₁ (flat (unflat w∈⟦p'⟧)) ≡ [] 
+     c∷proj₁-flat-unflat-w∈⟦p'⟧≡[] =
+       begin
+         c ∷ proj₁ (flat (unflat w∈⟦p'⟧))
+       ≡⟨ sym proj₁flat-NilU≡c∷proj₁-flat-unflat-w∈⟦p'⟧ ⟩
+         proj₁ (flat (ListU  {r} {ε∉r} {loc} []))
+       ≡⟨⟩
+         []
+       ∎
+-------------------------------------------------
+-- Impossible reconstructibility Aux Lemmas END 
+-------------------------------------------------       
+```
+
+#### Aux Lemma: pdUMany-aux returns an empty list of pdinstance*'s given an empty input list of pdinstance*'s .
 
 Let r be a non problematic regular expression.
 Let pref and suff be words .
@@ -1530,7 +1818,7 @@ pdUMany-aux-cs-[]≡[] {r} {pref} [] rewrite (++-identityʳ pref) = refl
 pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs) rewrite (concatMap-advance-pdi*-with-c-[]≡[] {r} {pref} {c})  = pdUMany-aux-cs-[]≡[] {r} {pref ∷ʳ c } cs
 ```
 
-### Lemma : first is not empty implies pdU is not empty.
+#### Aux Lemma : first r is not empty implies pdU r is not empty for some c.
 
 Let r be a non problematic regular expression.
 Let c be a character and cs be aword.
@@ -1803,7 +2091,7 @@ first≢[]→¬pdUConcat≡[] {l + s ` loc₁} {r} {ε∈ ε∉l +> ε∈s} {loc
 
 ```
 
-### Lemma: All partial derivative descendants produce some parse tree.
+#### Aux Lemma: All partial derivative descendants produce some parse tree.
 
 Let r be a non problematic regular expression. 
 Let pdi be a partial derivative descendant instance of r w.r.t to prefix pref.

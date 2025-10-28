@@ -3,7 +3,7 @@
 module cgp.antimirov.Order where
 
 import cgp.RE as RE
-open RE using (RE; ϕ ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉ϕ ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
+open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
 
 
 import cgp.Utils as Utils
@@ -22,7 +22,7 @@ open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-
 
 
 import cgp.antimirov.PartialDerivative as PartialDerivative
-open PartialDerivative using ( pdU[_,_] ; PDInstance ; pdinstance ; pdinstance-left ; pdinstance-right;  pdinstance-fst ; mkinjFst ;  pdinstance-snd ; map-mk-snd-pdi ; mk-snd-pdi ; mkinjSnd ; pdinstance-star ; mkinjList ; pdUMany[_,_];  PDInstance* ; pdinstance*  ) 
+open PartialDerivative using ( pdU[_,_] ; PDInstance ; pdinstance ; pdinstance-left ; pdinstance-right;  pdinstance-fst ; mkinjFst ;  pdinstance-snd ; zip-es-flat-[]-es;   mk-snd-pdi ; mkinjSnd ; concatmap-pdinstance-snd; pdinstance-star ; mkinjList ; pdUMany[_,_];  PDInstance* ; pdinstance*  ) 
 
 
 import Data.Char as Char
@@ -83,15 +83,52 @@ is longer than the one captured in
 TODO: the following definition need to be fixed. It is Antimirov's ordering not Greedy ordering
 
 
-### Definition 27 : Greedy ordering among parse trees
+### Definition 27 : Antimirov ordering among parse trees
 
 Let r be a non problematic regular expression
 
 Let v₁ v₂ be parse trees of r.
-We define the odering among v1 and v2 as follows
+We define the ordering among v1 and v2 as follows
 
 
-Note: r ⊢ v₁ > v₂ means v₁ is greedier than v₂ .
+Note: r ⊢ v₁ > v₂ means v₁ is greater than v₂ in Antimirov's ordering. 
+
+
+seq₁ cases:
+  only compare v₁ and v₁' by tag when their both empty and non empty. What about length |v₁'| > length |v₁| ?
+
+
+r = (a* + a*) ● a*
+
+w = a a
+
+u1 = Pair (L [a]) [a]
+u2 = Pair (R [a]) [a]
+
+r ⊢ u1 > u2 for both anti and greedy order
+
+
+what about?
+
+u3 = Pair (L []) [a,a]
+u4 = Pair (R [a,a]) []
+
+if it is greedy u3 > u4
+
+if it is anti u4 > u3
+
+
+what about? 
+
+
+u5 = Pair (L [a]) [a]
+u6 = Pair (R [a,a]) []
+
+
+if it is greedy u5 > u6
+
+if it is anti u5 > u6 
+
 
 ```agda
 infix 4 _⊢_>_
@@ -338,7 +375,6 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
 mkAllEmptyU-sorted : ∀ { r : RE }
   → ( ε∈r : ε∈ r)
   → >-sorted (mkAllEmptyU {r} ε∈r) 
-mkAllEmptyU-sorted {ϕ}                  = λ()
 mkAllEmptyU-sorted {$ c ` loc }         = λ()
 mkAllEmptyU-sorted {ε}             ε∈ε = >-cons EmptyU     [] >-nil (>-nothing EmptyU)
 mkAllEmptyU-sorted {r * nε ` loc}  ε∈* = >-cons (ListU []) [] >-nil (>-nothing (ListU []))
@@ -494,15 +530,13 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 >-inc-injSnd {l} {r} {p} {loc} v inj u₁ u₂ inj-u₁>inj-u₂ = seq₂ refl inj-u₁>inj-u₂
 
 -- aux lemma to show that mk-snd-pdi is >-strict increasing
->-inc-mk-snd-pdi : ∀ { l r p : RE } { loc : ℕ } { c : Char }
-   → ( e : U l ) 
-   → ( inj : U p → U r )
-   → ( sound-ev : ( ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) ) )
-   → (flat-[]-e : Flat-[] l e)
-   → ( (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- >-inc ev for inj
+>-inc-mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
+   → ( e-flat-[]-e : (∃[ e ] Flat-[] l e)  )
+   → ( pdi : PDInstance r c )
+   → >-Inc {r} {c} pdi 
    -------------------------------------------------------------------
-   → >-Inc (mk-snd-pdi {l} {r} {p} {loc} {c} inj sound-ev e flat-[]-e)
->-inc-mk-snd-pdi {l} {r} {p} {loc} {c} e inj s-ev (flat-[] e' proj₁∘flate≡[]) >-inc-inj =
+   → >-Inc (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi) 
+>-inc-mk-snd-pdi {l} {r} {loc} {c} (e , flat-[] e' proj₁∘flate≡[]) (pdinstance {p} {r} {c} inj s-ev) (>-inc >-inc-inj) =
   >-inc (λ u₁ u₂ u₁>u₂ → ( >-inc-injSnd {l} {r} {p} {loc} e inj u₁ u₂  (>-inc-inj u₁ u₂ u₁>u₂))  )
   where
     -- duplicated from mk-snd-pdi from PartialDerivativeParseTree so that the PDInstance can be inferred
@@ -525,28 +559,39 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           )    
 
 -- aux lemma to show that concatMap pdinstance-snd  is >-strict increasing
+
+>-inc-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
+  → ( pdis : List (PDInstance r c ) )
+  → All (>-Inc {r} {c}) pdis
+  ---------------------------------------------------------------------------
+  → All  (>-Inc {l ● r ` loc} {c}) (List.map  (mk-snd-pdi e-flat-[]-e ) pdis )
+>-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e []           [] = [] 
+>-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e (pdi ∷ pdis) (>-inc-pdi ∷ all>-inc-pdis) = (>-inc-mk-snd-pdi e-flat-[]-e pdi >-inc-pdi) ∷ >-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e pdis all>-inc-pdis
+
+>-inc-concatmap-pdinstance-snd-sub :  ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-es  : List ( ∃[ e ] Flat-[] l e ) )
+  → ( pdis : List (PDInstance r c ) )
+  → All (>-Inc {r} {c}) pdis
+  -----------------------------------------------------------------------------------------------------
+  → All (>-Inc {l ● r ` loc} {c}) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) e-flat-[]-es)
+>-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} [] _ _ = []
+>-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} ( e-flat-[]-e ∷ e-flat-[]-es ) pdis all>-inc-pdis =
+  all-concat  (>-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  e-flat-[]-e  pdis all>-inc-pdis)
+              (>-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} e-flat-[]-es pdis all>-inc-pdis)  
+
+
 >-inc-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
                → ( pdis : List (PDInstance r c ) )
                → All (>-Inc {r} {c}) pdis
-               → All (>-Inc {l ● r ` loc} {c}) (concatMap (pdinstance-snd {l} {r} {ε∈l} {loc} {c}) pdis)
->-inc-concatmap-pdinstance-snd [] [] = []
->-inc-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = all-concat (all->-inc-map-mk-snd-pdis es flat-[]-es) ind-hyp
-  where 
+               → All (>-Inc {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
+>-inc-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis all>-inc-pdis = >-inc-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) pdis all>-inc-pdis
+  where
     es : List (U l)
     es = mkAllEmptyU {l} ε∈l
-    flat-[]-es : All (Flat-[] l) es 
-    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
-    all->-inc-map-mk-snd-pdis :
-        ( es :  List (U l) ) -- ^ es and flat-[]-es passed to map-mk-snd-pdi
-      → ( flat-[]-es :  All (Flat-[] l) es  )
-      → All >-Inc ( map-mk-snd-pdi {l} {r} {p} {loc} {c} inj sound-ev es flat-[]-es )
-    all->-inc-map-mk-snd-pdis []          []  = [] 
-    all->-inc-map-mk-snd-pdis ( e ∷ es ) (flat-[]-e ∷ flat-[]-es )  =
-      >-inc-mk-snd-pdi e inj sound-ev flat-[]-e  u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ all->-inc-map-mk-snd-pdis es flat-[]-es 
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l    
 
-    ind-hyp : All (>-Inc {l ● r ` loc} {c}) (concatMap (pdinstance-snd {l} {r} {ε∈l} {loc} {c}) pdis)
-    ind-hyp = >-inc-concatmap-pdinstance-snd  pdis pxs 
 
 
 
@@ -586,7 +631,6 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 -- main lemma proof
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc {r} {c}) pdU[ r , c ]
-pdU->-inc {ϕ} {c} = []
 pdU->-inc {ε} {c} = []
 pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
 ...  | no ¬c≡c' = []
@@ -621,7 +665,7 @@ pdU->-inc {l ● r ` loc} {c}  | yes ε∈l = all-concat  all->-inc-pdis-inj-fro
     ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
     ind-hyp-r = pdU->-inc {r} {c}
 
-    all->-inc-concatmap-pdinstance-snd : All (>-Inc {l ● r ` loc} {c}) (concatMap (pdinstance-snd {l} {r} {ε∈l} {loc} {c})  pdU[ r , c ])
+    all->-inc-concatmap-pdinstance-snd : All (>-Inc {l ● r ` loc} {c}) (concatmap-pdinstance-snd  pdU[ r , c ])
     all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd pdU[ r , c ] ind-hyp-r
 pdU->-inc {r * ε∉r ` loc } {c} = all->-inc-map-star
   where

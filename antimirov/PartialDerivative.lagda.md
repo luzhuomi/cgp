@@ -953,12 +953,11 @@ should yield
 
 ~~~~~~~
 PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (ListU []) ∷
-PairU (LeftU (ListU (LetterU 'a' ∷ []))) (ListU (LetterU 'a' ∷ []))
+PairU (LeftU (ListU (LetterU 'a' ∷ [])))                (ListU (LetterU 'a' ∷ []))
 ∷
 PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (ListU [])
 ∷
-PairU (RightU (ListU (LetterU 'a' ∷ [])))
-(ListU (LetterU 'a' ∷ []))
+PairU (RightU (ListU (LetterU 'a' ∷ [])))                (ListU (LetterU 'a' ∷ []))
 ∷
 PairU (LeftU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])) ∷
 PairU (RightU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))

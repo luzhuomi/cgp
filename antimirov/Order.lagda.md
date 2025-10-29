@@ -134,6 +134,7 @@ if it is anti u5 > u6
 infix 4 _⊢_>_
 
 data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
+  {-
   seq₁bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     →  proj₁ (flat v₁)  ≡ [] 
     →  proj₁ (flat v₁') ≡ [] 
@@ -159,7 +160,18 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     → r ⊢ v₂ > v₂'
     -------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+  -}
 
+  seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁' : U l } { v₂ v₂' : U r }
+    → v₂ ≡ v₂'
+    → l ⊢ v₁ > v₁'
+    -------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
+  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁' : U l } { v₂ v₂' : U r }
+    → r ⊢ v₂' > v₂  -- right not greedy 
+    -------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
@@ -215,14 +227,19 @@ module ExampleAntimirov where
   t2 : U a*●a*
   t2 = PairU (ListU []) (ListU (LetterU 'a' ∷ []))
 
+  {-
   ev1 : ¬ ((proj₁ (flat {(( $ 'a' ` 1 ) * ε∉$ ` 2)} (ListU (LetterU 'a' ∷ [])))) ≡ [])
   ev1 = λ()
 
   ev2 : (proj₁ (flat {(( $ 'a' ` 1 ) * ε∉$ ` 2)} (ListU []))) ≡ []
   ev2 = refl
+  -}
+
+  ev2 : ( ( $ 'a' ` 3 ) * ε∉$ ` 4 ) ⊢ ListU (LetterU 'a' ∷ []) > ListU []
+  ev2 = star-cons-nil 
 
   t1>t2 : a*●a* ⊢  t1 > t2 
-  t1>t2 = seq₁oneempty ev1 ev2
+  t1>t2 = seq₂  ev2
 ```
 
 
@@ -319,7 +336,6 @@ map-pairU-empty-sorted : ∀ { l r : RE } { loc : ℕ }
   → All (Flat-[] l) us
   → >-sorted {l} us   
   → >-sorted {r} vs
-  -- → >-sorted {l ● r ` loc } (concatMap (λ u₁ → map (PairU u₁) vs) us) -- desugared to foldr _++_ [] for the ease of checking/eye-verifcation 
   → >-sorted {l ● r ` loc } (List.foldr _++_ [] (List.map (λ u₁ → List.map (PairU u₁) vs) us))
 map-pairU-empty-sorted  {l} {r} {loc} []        vs []             >-sorted-[]                         >-sorted-vs  = >-nil
 map-pairU-empty-sorted  {l} {r} {loc} (u ∷ [])  vs all-flat-[]-u  (>-cons _ _ >-nil (>-nothing u) )   >-sorted-vs rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (PairU {l} {r} {loc} u) vs)))  = map-pair-u-vs-sorted u vs >-sorted-vs
@@ -359,7 +375,8 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
     combine {u} {u'} {[]}      {us} {[]}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {[]}      {us} {vs}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {t ∷ []} {us} {v ∷ vs} u>u'  (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons _ _ >-sorted-map-pair-u-ts u-t>head-map-pair-u-ts)  >-sorted-ys =
-      >-cons (PairU u t) (List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) (v ∷ vs)) (u' ∷ us))) >-sorted-ys (>-just (PairU u t) (PairU u' v) (seq₁bothempty flat-u≡[] flat-u'≡[] u>u')) 
+      >-cons (PairU u t) (List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) (v ∷ vs)) (u' ∷ us))) >-sorted-ys (>-just (PairU u t) (PairU u' v) ? )
+        -- (seq₁bothempty flat-u≡[] flat-u'≡[] u>u')) 
     combine {u} {u'} {t ∷ t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons _ _ >-sorted-map-pair-u-tts u-t>head-map-pair-u-tts) >-sorted-ys =
       >-cons (PairU u t) (List.map (PairU u) (t' ∷ ts) ++ List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) vs) (u' ∷ us))) ind-hyp' u-t>head-map-pair-u-tts
       where
@@ -498,6 +515,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
+    {-
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁bothempty _ _  u₁>u₂) =
       seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
       where
@@ -520,9 +538,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (seq₁oneempty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =
-      {!!} -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
-           -- inj u1 = R [a, a] and inj u2 = L [a] 
-      
+      {!!}
+      where
+        inj-u₁>inj-u₂ = {!!} 
+        inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
+        inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
+        inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
+        inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()      
+        -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a], 
+        -- inj u1 = R [a, a] and inj u2 = L [a]
+        -- the inj would be different? they are from different pdi?
+    -} 
     
 -----------------------------------------------------------------------------------------
 -- aux lemma to show that injSnd is >-strict increasing
@@ -618,6 +644,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (r * ε∉r ` loc) ⊢ (injList uv₁) > (injList uv₂)
+    >-inc-ev (PairU u₁ v₁@(ListU vs₁)) (PairU u₂ v₂@(ListU vs₂)) (seq₂ v₂>v₁) = ?
+    {-              
     >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁bothempty _ _ u₁>u₂) = 
       let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
       in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
@@ -634,7 +662,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-
+   -}
 -- main lemma proof
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc {r} {c}) pdU[ r , c ]

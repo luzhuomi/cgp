@@ -520,9 +520,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (seq₁oneempty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =
-      {!!} -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
-           -- inj u1 = R [a, a] and inj u2 = L [a] 
-      
+      seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
+           -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
+           -- inj u1 = R [a, a] and inj u2 = L [a]
+           -- not possible, >-inc the pdinstance {l} {c} ensure that u₁>u₂
+           -- and nothing of the pdinstance can inject values of both  R x and L y 
+      where
+        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ {!!} 
+        inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
+        inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
+        inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
+        inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()      
     
 -----------------------------------------------------------------------------------------
 -- aux lemma to show that injSnd is >-strict increasing

@@ -127,7 +127,7 @@ u6 = Pair (R [a,a]) []
 
 if it is greedy u5 > u6
 
-if it is anti u5 > u6 
+if it is anti u5 > u6, but why? clearly in this not right non greedy.  if it is right non greedy, u6 > u5!!
 
 
 ```agda

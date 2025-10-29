@@ -134,7 +134,26 @@ if it is anti u5 > u6, but why? clearly in this not right non greedy.  if it is 
 infix 4 _⊢_>_
 
 data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
-  {-
+  -- still not quite right, u5 and u6 case 
+  seq₁w-≡ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    →  proj₁ (flat v₁)  ≡  proj₁ (flat v₁')
+    → l ⊢ v₁ > v₁' 
+    ------------------------------------------------------------------
+    →  ( l ● r ` loc ) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+    
+  seq₁pref : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r } -- TODO: Not sure whether it is correct. Search for the TODO below
+    →  ∃[ c ] ∃[ cs ] ( proj₁ (flat v₁)  ≡ proj₁ (flat v₂) ++ (c ∷ cs) )
+    →  proj₁ (flat v₁') ≡ []     
+    ------------------------------------------------------------------
+    →  ( l ● r ` loc ) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+    
+  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → v₁ ≡ v₁'
+    → r ⊢ v₂ > v₂'
+    -------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
+{-
   seq₁bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     →  proj₁ (flat v₁)  ≡ [] 
     →  proj₁ (flat v₁') ≡ [] 
@@ -154,14 +173,13 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     → l ⊢ v₁ > v₁' 
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')    
-
   seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → v₁ ≡ v₁'
     → r ⊢ v₂ > v₂'
     -------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-  -}
-
+  -} 
+  {- right not greedy -- not working 
   seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁' : U l } { v₂ v₂' : U r }
     → v₂ ≡ v₂'
     → l ⊢ v₁ > v₁'
@@ -172,7 +190,7 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     → r ⊢ v₂' > v₂  -- right not greedy 
     -------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-
+  -}
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
 
@@ -234,12 +252,10 @@ module ExampleAntimirov where
   ev2 : (proj₁ (flat {(( $ 'a' ` 1 ) * ε∉$ ` 2)} (ListU []))) ≡ []
   ev2 = refl
   -}
-
-  ev2 : ( ( $ 'a' ` 3 ) * ε∉$ ` 4 ) ⊢ ListU (LetterU 'a' ∷ []) > ListU []
-  ev2 = star-cons-nil 
+    
 
   t1>t2 : a*●a* ⊢  t1 > t2 
-  t1>t2 = seq₂  ev2
+  t1>t2 = seq₁pref ( 'a' , ( [] , refl )) 
 ```
 
 
@@ -375,8 +391,7 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
     combine {u} {u'} {[]}      {us} {[]}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {[]}      {us} {vs}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {t ∷ []} {us} {v ∷ vs} u>u'  (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons _ _ >-sorted-map-pair-u-ts u-t>head-map-pair-u-ts)  >-sorted-ys =
-      >-cons (PairU u t) (List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) (v ∷ vs)) (u' ∷ us))) >-sorted-ys (>-just (PairU u t) (PairU u' v) ? )
-        -- (seq₁bothempty flat-u≡[] flat-u'≡[] u>u')) 
+      >-cons (PairU u t) (List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) (v ∷ vs)) (u' ∷ us))) >-sorted-ys (>-just (PairU u t) (PairU u' v) (seq₁w-≡ flat-u≡[] flat-u'≡[] u>u'))
     combine {u} {u'} {t ∷ t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons _ _ >-sorted-map-pair-u-tts u-t>head-map-pair-u-tts) >-sorted-ys =
       >-cons (PairU u t) (List.map (PairU u) (t' ∷ ts) ++ List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) vs) (u' ∷ us))) ind-hyp' u-t>head-map-pair-u-tts
       where
@@ -442,7 +457,7 @@ Let pdi be a PDInstance  w.r.t r and c.
 We say pdi is >-inc (strict increasing) iff, 
   1. p is the partial derivative inhabited in pdi, and
   2. inj is the injection function from parse trees of p to parse trees of r.
-  3. for all parse trees of p, u₁ and u₂ where p ⊢ u₁ > u₂
+  3. for all parse trees of p, u₁ and u₂ |u₁| = |u₂| where p ⊢ u₁ > u₂
   Then r ⊢ inj u₁ > inj u₂ 
 
 ```agda
@@ -450,7 +465,7 @@ We say pdi is >-inc (strict increasing) iff,
 data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
+    → ( (u₁ : U p) → (u₂ : U p) → proj₁ (flat u₁) ≡ proj₁ (flat u₂) →  p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
     → >-Inc {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 ```
 
@@ -467,16 +482,18 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     → All (>-Inc {l} {c}) pdis
     → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-left pdis)
 >-inc-map-left [] [] = []
->-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+>-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis)
+  (>-inc u₁→u₂→proj₁flat-u₁≡proj₁flat-u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = >-inc >-inc-ev   ∷ >-inc-map-left pdis pxs
   where
     >-inc-ev : ∀ (u₁ : U p)
               → (u₂ : U p)
+              → (proj₁ (flat u₁) ≡ proj₁ (flat u₂)) 
               → p ⊢ u₁ > u₂
               --------------
               → (l + r ` loc) ⊢ LeftU (inj u₁) > LeftU (inj u₂)
-    >-inc-ev u₁ u₂ u₁>u₂ =
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  u₁>u₂
+    >-inc-ev u₁ u₂ proj₁flat-u₁≡proj₁flat-u₂ u₁>u₂ =
+      let inj-u₁>inj-u₂ = u₁→u₂→proj₁flat-u₁≡proj₁flat-u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ proj₁flat-u₁≡proj₁flat-u₂ u₁>u₂
       in choice-ll inj-u₁>inj-u₂
 
 
@@ -486,16 +503,18 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     → All (>-Inc {r} {c}) pdis
     → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-right pdis)
 >-inc-map-right [] [] = []
->-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c} inj sound-ev) ∷ pdis) (>-inc  u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+>-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c} inj sound-ev) ∷ pdis)
+  (>-inc  u₁→u₂→proj₁flat-u₁≡proj₁flat-u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = >-inc >-inc-ev  ∷ >-inc-map-right pdis pxs
   where
     >-inc-ev : ∀ (u₁ : U p)
               → (u₂ : U p)
+              → (proj₁ (flat u₁) ≡ proj₁ (flat u₂))               
               → p ⊢ u₁ > u₂
               --------------
               → (l + r ` loc) ⊢ RightU (inj u₁) > RightU (inj u₂)
-    >-inc-ev u₁ u₂ u₁>u₂ =
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  u₁>u₂
+    >-inc-ev u₁ u₂ proj₁flat-u₁≡proj₁flat-u₂ u₁>u₂ =
+      let inj-u₁>inj-u₂ = u₁→u₂→proj₁flat-u₁≡proj₁flat-u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ proj₁flat-u₁≡proj₁flat-u₂ u₁>u₂
       in choice-rr inj-u₁>inj-u₂
 
 
@@ -512,43 +531,36 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     injFst = mkinjFst inj
     >-inc-ev : ∀ (uv₁ : U ( p ● r ` loc ))
               → (uv₂ : U ( p ● r ` loc ))
+              → (proj₁ (flat uv₁) ≡ proj₁ (flat uv₂))                             
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
-    {-
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁bothempty _ _  u₁>u₂) =
-      seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) proj₁flat-uv₁≡proj₁flat-uv₂ (seq₁w-≡ proj₁flat-u₁≡proj₁flat-u₂   u₁>u₂) =
+      seq₁w-≡ ?  inj-u₁>inj-u₂
       where
-        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ ?  u₁>u₂ -- since u1=u2=[] => |v1|=|v2|
         inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
         inj-u₁≡¬[] rewrite (sound-ev u₁) = λ () 
         inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
         inj-u₂≡¬[] rewrite (sound-ev u₂)  = λ()          
 
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁notempty _ _  u₁>u₂) =
-      seq₁notempty inj-u₁≡¬[]  inj-u₂≡¬[] inj-u₁>inj-u₂
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) proj₁flat-uv₁≡proj₁flat-uv₂ (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
+        where
+          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
+          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+          
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) proj₁flat-uv₁≡proj₁flat-uv₂ (seq₁pref ( c , ( cs , proj₁flat-u₁≡proj₁-flat-u₂++ccs ) )) =
+      seq₁pref ? 
+           -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
+           -- inj u1 = R [a, a] and inj u2 = L [a]
+           -- not possible, >-inc the pdinstance {l} {c} ensure that u₁>u₂
+           -- and nothing of the pdinstance can inject values of both  R x and L y 
       where
-        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ {!!} 
         inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
         inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
         inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
         inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
-        where
-          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
-          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (seq₁oneempty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =
-      {!!}
-      where
-        inj-u₁>inj-u₂ = {!!} 
-        inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
-        inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
-        inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
-        inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()      
-        -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a], 
-        -- inj u1 = R [a, a] and inj u2 = L [a]
-        -- the inj would be different? they are from different pdi?
-    -} 
     
 -----------------------------------------------------------------------------------------
 -- aux lemma to show that injSnd is >-strict increasing
@@ -641,28 +653,24 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
     >-inc-ev : ∀ (uv₁ : U ( p ● (r * ε∉r ` loc ) ` loc ))
               → (uv₂ : U ( p ● (r * ε∉r ` loc ) ` loc ))
+              → (proj₁ (flat uv₁) ≡ proj₁ (flat uv₂))                                           
               → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (r * ε∉r ` loc) ⊢ (injList uv₁) > (injList uv₂)
-    >-inc-ev (PairU u₁ v₁@(ListU vs₁)) (PairU u₂ v₂@(ListU vs₂)) (seq₂ v₂>v₁) = ?
-    {-              
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁bothempty _ _ u₁>u₂) = 
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) proj₁flat-uv₁≡proj₁flat-uv₂ (seq₁w-≡ proj₁flat-u₁≡proj₁flat-u₂  u₁>u₂) = 
       let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
       in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁oneempty proj₁flatu₁≢[] proj₁flatu₂≡[]) = 
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) proj₁flat-uv₁≡proj₁flat-uv₂ (seq₁pref ( c , cs , proj₁flat-u₁≡proj₁flat-u₂++ccs )) = 
       let inj-u₁>inj-u₂ = >-ev u₁ u₂ {!!} -- TODO: we can't use >-ev here, which >-ev : (u₃ u₄ : U p) → p ⊢ u₃ > u₄ → r ⊢ inj u₃ > inj u₄
                                           -- we need something stronger, >-inj : (u₃ u₄ : U p) → ¬ (Flat-[] p u₃) →  (Flat-[] p u₄) → inj u₃ > inj u₄
                                           -- but inj is "hidden" existentially inside PDinstance 
-      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁notempty _ _ u₁>u₂) = 
-      let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
       in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
     >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₂  u₁≡u₂ list-vs₁>list-vs₂ ) =
       (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-   -}
+
 -- main lemma proof
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc {r} {c}) pdU[ r , c ]

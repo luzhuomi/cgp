@@ -928,13 +928,31 @@ module ExampleParseAll where
   ex_ts = parseAll[ a*●a* , [ 'a' ] ]
 
 
+
+  ε+a●a+ε : RE 
+  ε+a●a+ε = let a₁ = $ 'a' ` 1
+                a₃ = $ 'a' ` 3 
+            in (ε + a₁ ` 2) ● ( a₃ + ε ` 4) ` 5
+  ex_vs :  List ( U ε+a●a+ε )
+  ex_vs = parseAll[ ε+a●a+ε , [ 'a' ] ]
+
+
   a*+a*●a* : RE
   a*+a*●a* = ( ( ( $ 'a' ` 1 ) * ε∉$ ` 2 ) + ( ( $ 'a' ` 3 ) * ε∉$ ` 4) ` 5 ) ● ( ( $ 'a' ` 6 ) * ε∉$ ` 7 ) ` 8
 
   ex_us :  List ( U a*+a*●a* )
   ex_us = parseAll[ a*+a*●a* ,  'a' ∷ 'a' ∷ []  ]
   
+
+
+  pdMany-aux : List RE → List Char → List RE
+  pdMany-aux rs [] = rs
+  pdMany-aux rs ( c ∷ cs ) =  pdMany-aux (concatMap (λ r → pd[ r , c ] ) rs) cs 
+
+  pdMany[_,_] : RE → List Char → List RE
+  pdMany[ r , w ] = pdMany-aux [ r ] w
   
+  pds = pdMany[ a*+a*●a* ,  'a' ∷ 'a' ∷ []  ]
   
 
 ```
@@ -946,6 +964,7 @@ should yield
 PairU (ListU (LetterU 'a' ∷ [])) (ListU []) ∷
 PairU (ListU []) (ListU (LetterU 'a' ∷ [])) ∷ []
 ~~~~~~~
+
 
 ExampleParseAll.ex_us
 

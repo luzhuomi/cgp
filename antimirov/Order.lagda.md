@@ -536,7 +536,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
            -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
            -- inj u1 = R [a, a] and inj u2 = L [a]
            -- not possible, >-inc the pdinstance {l} {c} ensure that u₁>u₂
-           -- and nothing of the pdinstance can inject values of both  R x and L y 
+           -- and nothing of the pdinstance can inject values of both  R x and L y
+           -- we need to argue that the inj functions do not inject inside a RightU or LeftU tags
+           -- in short, we need a stronger definition of >-inc which says that the injection function does not inject inside LeftU or RightU 
       where
         inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ {!!} 
         inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])

@@ -524,7 +524,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → ( ( p ● q ` loc₂ ) ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
-    >-inc-ev = {!!} 
+    >-inc-ev (PairU (PairU u₁ u₂) v₁) (PairU (PairU u₃ u₄) v₂) (seq₂ refl v₁>v₂) = seq₂ refl v₁>v₂
+    >-inc-ev (PairU (PairU u₁ u₂) v₁) (PairU (PairU u₃ u₄) v₂) (seq₁oneempty ¬proj₁flat-u₁++proj₁flat-u₂≡[] proj₁flat-u₃++proj₁flat-u₄≡[]) = {!!}
+      {-
+      Goal: (l ● r ` loc) ⊢ injFst (PairU (PairU u₁ u₂) v₁) > injFst (PairU (PairU u₃ u₄) v₂)
+        injFst (PairU (PairU u₁ u₂) v₁ ≡ PairU (inj (PairU u₁ u₂)) v₁
+        injFst (PairU (PairU u₃ u₄) v₂ ≡ PairU (inj (PairU u₃ u₄)) v₂
+        we need to show (PairU u₁ u₂) > (PairU u₃ u₄) in order to use  u₁→u₂→u₁>u₂→inj-u₁>inj-u₂
+        
+      -}
+    >-inc-ev (PairU (PairU u₁ u₂) v₁) (PairU (PairU u₃ u₄) v₂) (seq₁sameword proj₁flat-u₁++proj₁flat-u₂≡proj₁flat-u₃++proj₁flat-u₄ pair-u₁-u₂>pair-u₃-u₄) = {!!}
+    >-inc-ev (PairU (PairU u₁ u₂) v₁) (PairU (PairU u₃ u₄) v₂) (seq₁notempty ¬proj₁flat-u₁++proj₁flat-u₂≡[] ¬proj₁flat-u₃++proj₁flat-u₄≡[] pair-u₁-u₂>pair-u₃-u₄) = {!!}     
   
 {-  
 >-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)

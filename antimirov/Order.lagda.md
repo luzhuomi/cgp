@@ -159,25 +159,25 @@ if it is anti u5 > u6, but why? clearly in this not right non greedy.  if it is 
 infix 4 _⊢_>_
 
 data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
-  seq₁sameword : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+  seq₁sameword : ∀ { l r : RE } { loc : ℕ } { m : Mono ( l ● r ` loc ) } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     →  proj₁ (flat v₁)  ≡ proj₁ (flat v₁')
     → l ⊢ v₁ > v₁' 
     ------------------------------------------------------------------
     →  ( l ● r ` loc ) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
     
-  seq₁oneempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r } -- TODO: Not sure whether it is correct. Search for the TODO below
+  seq₁oneempty : ∀ { l r : RE }  { loc : ℕ } { m : Mono ( l ● r ` loc ) } { v₁ v₁'  : U l } { v₂ v₂' : U r } -- TODO: Not sure whether it is correct. Search for the TODO below
     →  ( ¬ ( proj₁ (flat v₁)  ≡ [] ))
     →  proj₁ (flat v₁') ≡ []     
     ------------------------------------------------------------------
     →  ( l ● r ` loc ) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
     
-  seq₁notempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+  seq₁notempty : ∀ { l r : RE } { loc : ℕ } { m : Mono ( l ● r ` loc ) } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → ¬ ( proj₁ (flat v₁) ≡ [] )
     → ¬ ( proj₁ (flat v₁') ≡ [] )    
     → l ⊢ v₁ > v₁' 
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')    
-  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+  seq₂ : ∀ { l r : RE } { loc : ℕ } { m : Mono ( l ● r ` loc ) } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → v₁ ≡ v₁'
     → r ⊢ v₂ > v₂'
     -------------------------------------------------------------------

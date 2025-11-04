@@ -179,8 +179,13 @@ data _,_⊨_>_ where
 
 data _⊢_>_ where
 
-
-  {-
+  seq-mono : ∀ { l r : RE } { loc : ℕ } { ml : Mono l } { v₁ v₁' : U l } { v₂ v₂' : U r }
+    → proj₁ (flat v₁) ++ proj₁ (flat v₂) ≡ proj₁ (flat v₁') ++ proj₁ (flat v₂')
+    → ( l ● r ` loc ) , mono-● ml ⊨ PairU v₁ v₂ > PairU v₁' v₂'
+    -------------------------------------------------------------------
+    → ( l ● r ` loc ) ⊢  PairU v₁ v₂ > PairU v₁' v₂'
+    
+  -- any overlapping rules with the above? 
   seq₁sameword : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     →  proj₁ (flat v₁)  ≡ proj₁ (flat v₁')
     → l ⊢ v₁ > v₁' 
@@ -196,16 +201,16 @@ data _⊢_>_ where
   seq₁notempty : ∀ { l r : RE } { loc : ℕ }  { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → ¬ ( proj₁ (flat v₁) ≡ [] )
     → ¬ ( proj₁ (flat v₁') ≡ [] )    
+    → ¬ ( proj₁ (flat v₁)  ≡ proj₁ (flat v₁') ) 
     → l ⊢ v₁ > v₁' 
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')    
+
   seq₂ : ∀ { l r : RE } { loc : ℕ }  { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → v₁ ≡ v₁'
     → r ⊢ v₂ > v₂'
     -------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-  -} 
-
 
 
   {- right not greedy -- not working 
@@ -220,6 +225,7 @@ data _⊢_>_ where
     -------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
   -}
+  
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
 
@@ -283,7 +289,7 @@ module ExampleAntimirov where
 
 
   t1>t2 : a*●a* ⊢  t1 > t2 
-  -- t1>t2 = seq₁oneempty ev1 ev2 
+  t1>t2 = seq₁oneempty ev1 ev2 
 ```
 
 

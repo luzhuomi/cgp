@@ -575,7 +575,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
   where
     injFst : U (( p ● q ` loc₂ ) ● r ` loc)   → U (l ● r ` loc ) 
     injFst = mkinjFst inj
-    >-inc-ev : ∀ (uv₁ : U ( ( p ● q ` loc₂ ) ● r ` loc ))
+    >-inc-ev : ∀ (uv₁ : U ( ( p ● q ` loc₂ ) ● r ` loc ))c
               → (uv₂ : U ( ( p ● q ` loc₂ ) ● r ` loc ))
               → ( ( p ● q ` loc₂ ) ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------

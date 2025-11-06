@@ -952,7 +952,32 @@ module ExampleParseAll where
   pdMany[_,_] : RE → List Char → List RE
   pdMany[ r , w ] = pdMany-aux [ r ] w
   
-  pds = pdMany[ a*+a*●a* ,  'a' ∷ 'a' ∷ []  ]
+  pds1  = pdMany[ a*+a*●a* ,  'a' ∷ 'a' ∷ []  ]
+  {-
+((ε ● ($ 'a' ` 1) * ε∉$ ` 2 ` 2) ● ($ 'a' ` 6) * ε∉$ ` 7 ` 8) ∷
+(ε ● ($ 'a' ` 6) * ε∉$ ` 7 ` 7) ∷
+((ε ● ($ 'a' ` 3) * ε∉$ ` 4 ` 4) ● ($ 'a' ` 6) * ε∉$ ` 7 ` 8) ∷
+(ε ● ($ 'a' ` 6) * ε∉$ ` 7 ` 7) ∷
+(ε ● ($ 'a' ` 6) * ε∉$ ` 7 ` 7) ∷ []
+  -}
+  pds1'  = pdMany[ a*+a*●a* ,  'a' ∷ []  ]
+  {-
+((ε ● ($ 'a' ` 1) * ε∉$ ` 2 ` 2) ● ($ 'a' ` 6) * ε∉$ ` 7 ` 8) ∷
+((ε ● ($ 'a' ` 3) * ε∉$ ` 4 ` 4) ● ($ 'a' ` 6) * ε∉$ ` 7 ` 8) ∷
+(ε ● ($ 'a' ` 6) * ε∉$ ` 7 ` 7) ∷ []
+
+  -}
+
+
+  a*+a*●a*+a* : RE
+  a*+a*●a*+a* = ( ( ( $ 'a' ` 1 ) * ε∉$ ` 2 ) + ( ( $ 'a' ` 3 ) * ε∉$ ` 4) ` 5 ) ● ( ( ( $ 'a' ` 6 ) * ε∉$ ` 7 ) + ( ( $ 'a' ` 8 ) * ε∉$ ` 9 ) ` 10 ) ` 11 
+
+
+
+  ex_ws :  List ( U a*+a*●a*+a* )
+  ex_ws = parseAll[ a*+a*●a*+a* ,  'a' ∷ 'a' ∷ []  ]
+
+  pds2  = pdMany[ a*+a*●a*+a* ,  'a' ∷ 'a' ∷ []  ]
   
 
 ```
@@ -981,6 +1006,41 @@ PairU (RightU (ListU (LetterU 'a' ∷ [])))                (ListU (LetterU 'a' �
 PairU (LeftU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])) ∷
 PairU (RightU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
 ∷ []
+~~~~~~~
+
+
+ExampleParseAll.ex_ws
+
+should yield
+
+~~~~~~~
+
+PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (LeftU (ListU []))
+∷
+PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (RightU (ListU []))
+∷
+PairU (LeftU (ListU (LetterU 'a' ∷ [])))               (LeftU (ListU (LetterU 'a' ∷ [])))
+∷
+PairU (LeftU (ListU (LetterU 'a' ∷ [])))               (RightU (ListU (LetterU 'a' ∷ [])))
+∷
+PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (LeftU (ListU []))
+∷
+PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (RightU (ListU []))
+∷
+PairU (RightU (ListU (LetterU 'a' ∷ [])))              (LeftU (ListU (LetterU 'a' ∷ [])))
+∷
+PairU (RightU (ListU (LetterU 'a' ∷ [])))              (RightU (ListU (LetterU 'a' ∷ [])))
+∷
+PairU (LeftU (ListU []))                               (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))
+∷
+PairU (LeftU (ListU []))                               (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))
+∷
+PairU (RightU (ListU []))                              (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))
+∷
+PairU (RightU (ListU []))                              (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))
+∷ []
+
+
 ~~~~~~~
 
 

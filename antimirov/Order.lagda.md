@@ -678,6 +678,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
            -- How do we use it in the later proof to ensure advance-c-pdi pdi > all concat advance-c-pdi pdis, knowing pdi∷pdis is sorted
              -- check compose-pdi-with-ex*>-head-map-compose-pdi-with,
              -- it seems ok!
+
+           -- Further more Pair (L []) [a] and Pair (R [a]) [] are not of a mono tail type, i.e.
+           -- Mono p and |v₁| > |v₂| implies p ⊢ v₁ > v₂ ?? double check
       where
         inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ {!!} 
         inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])

@@ -668,7 +668,16 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
            -- not possible, >-inc the pdinstance {l} {c} ensure that u₁>u₂
            -- and nothing of the pdinstance can inject values of both  R x and L y
            -- we need to argue that the inj functions do not inject inside a RightU or LeftU tags
-           -- in short, we need a stronger definition of >-inc which says that the injection function does not inject inside LeftU or RightU 
+           -- in short, we need a stronger definition of >-inc which says that the injection function does not inject inside LeftU or RightU
+
+           -- UPDATE:  Pair (L []) [a] must be produced by a mk-snd-pdi (L []) inj where inj gives us [a].
+           --          Pair (R [a]) [] must be produced by a mkinjFst
+
+           -- if this is true, it makes >-Inc weaker than the greedy version.
+           --   same treatmeant should be applied to *>-Inc 
+           -- How do we use it in the later proof to ensure advance-c-pdi pdi > all concat advance-c-pdi pdis, knowing pdi∷pdis is sorted
+             -- check compose-pdi-with-ex*>-head-map-compose-pdi-with,
+             -- it seems ok!
       where
         inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ {!!} 
         inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])

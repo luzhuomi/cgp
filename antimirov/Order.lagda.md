@@ -700,16 +700,18 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
            -- Further more Pair (L []) [a] and Pair (R [a]) [] are not of a mono tail type, i.e.
            -- Mono p and |v₁| > |v₂| implies p ⊢ v₁ > v₂ ?? double check
       where
-        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ {!!} 
+        mono-p : Mono p
+        mono-p = {!!} 
+        length-proj₁flat-u₁>length-proj₁flat-u₂ : List.length (proj₁ (flat u₁)) Nat.> List.length (proj₁ (flat  u₂))
+        length-proj₁flat-u₁>length-proj₁flat-u₂ = Nat.z<s 
+        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ (mono-length->→> {p} {mono-p} u₁ u₂ length-proj₁flat-u₁>length-proj₁flat-u₂)
         inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
         inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
         inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
         inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()
         ¬inj-u₁≡inj-u₂ : ¬ ( proj₁ (flat (inj u₁)) ≡ proj₁ (flat (inj u₂)))
         ¬inj-u₁≡inj-u₂ rewrite (sound-ev u₁) | (sound-ev u₂) = λ c∷proj₁flatu₁≡c∷proj₁flatu₂ →  ¬proj₁flat-u₁≡[]  (Eq.trans (proj₂ (Utils.∷-inj c∷proj₁flatu₁≡c∷proj₁flatu₂))  proj₁flat-u₂≡[])
-        mono-p : Mono 
-        length-proj₁flat-inj-u₁>length-proj₁flat-inj-u₂ : List.length (proj₁ (flat (inj u₁))) Nat.> List.length (proj₁ (flat (inj u₂)))
-        length-proj₁flat-inj-u₁>length-proj₁flat-inj-u₂ = {!!} 
+
         
         
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  

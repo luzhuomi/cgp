@@ -339,6 +339,7 @@ postulate
     ---------------------------------------------------------------
     → r ⊢  v₁ > v₂ 
 
+  
 
 
 
@@ -679,7 +680,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         inj-u₂≡¬[] rewrite (sound-ev u₂)  = λ()          
 
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (seq₁oneempty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[] ) =
-      seq₁notempty  inj-u₁≡¬[] inj-u₂≡¬[] {!!} inj-u₁>inj-u₂ 
+      seq₁notempty  inj-u₁≡¬[] inj-u₂≡¬[]  ¬inj-u₁≡inj-u₂ inj-u₁>inj-u₂ 
            -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
            -- inj u1 = R [a, a] and inj u2 = L [a]
            -- not possible, >-inc the pdinstance {l} {c} ensure that u₁>u₂
@@ -704,7 +705,13 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
         inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
         inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()
-
+        ¬inj-u₁≡inj-u₂ : ¬ ( proj₁ (flat (inj u₁)) ≡ proj₁ (flat (inj u₂)))
+        ¬inj-u₁≡inj-u₂ rewrite (sound-ev u₁) | (sound-ev u₂) = λ c∷proj₁flatu₁≡c∷proj₁flatu₂ →  ¬proj₁flat-u₁≡[]  (Eq.trans (proj₂ (Utils.∷-inj c∷proj₁flatu₁≡c∷proj₁flatu₂))  proj₁flat-u₂≡[])
+        mono-p : Mono 
+        length-proj₁flat-inj-u₁>length-proj₁flat-inj-u₂ : List.length (proj₁ (flat (inj u₁))) Nat.> List.length (proj₁ (flat (inj u₂)))
+        length-proj₁flat-inj-u₁>length-proj₁flat-inj-u₂ = {!!} 
+        
+        
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 

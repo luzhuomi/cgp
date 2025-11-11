@@ -35,10 +35,10 @@ open import Data.List.Relation.Unary.Any using (Any; here; there ; map)
 import Data.List.Membership.Propositional
 open Data.List.Membership.Propositional using (_∈_)
 
-open import Function using (_∘_ ; flip)
+open import Function using (_∘_ ; flip )
 
 import Relation.Nullary as Nullary 
-open Nullary using (¬_)
+open Nullary using (¬_ ; contraposition)
 
 ```
 
@@ -118,13 +118,8 @@ foldr++ys-map-λ_→[]-xs≡ys (x ∷ xs) ys = foldr++ys-map-λ_→[]-xs≡ys xs
 ¬∷≡[] = λ()  
 
 
-
-contraposition : ∀ {A B : Set}
-  → (A → B)
-    -----------
-  → (¬ B → ¬ A)
-contraposition f ¬y x = ¬y (f x)
-
+¬0>0 : ¬ 0 > 0
+¬0>0 = λ () 
 
 length≡0→[] : ∀ { A : Set } { xs : List A }
   → List.length xs ≡ 0

@@ -7,7 +7,7 @@ open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_
 
 
 import cgp.Utils as Utils
-open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  )
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 )
 
 
 import cgp.Word as Word
@@ -332,14 +332,20 @@ data >-sorted : ∀ { r : RE } ( us : List (U r) ) → Set where
 
 ```agda
 
-postulate
-  mono-length->→> : ∀ { r : RE } { m : Mono r }
+-- postulate
+mono-length->→> : ∀ { r : RE } { m : Mono r }
     → (v₁ v₂ : U r )
     → List.length (proj₁ (flat v₁)) Nat.> List.length (proj₁ (flat v₂))
     ---------------------------------------------------------------
     → r ⊢  v₁ > v₂ 
-
-  
+mono-length->→> {ε} {mono-ε} EmptyU EmptyU length-proj₁flat-empty>length-proj₁flat-empty = prf
+  where
+    length-[]≡0 : List.length (proj₁ (flat EmptyU))  ≡ 0
+    length-[]≡0 = refl
+    prf : ε ⊢ EmptyU > EmptyU
+    prf rewrite length-[]≡0 =  Nullary.contradiction length-proj₁flat-empty>length-proj₁flat-empty ¬0>0
+    
+mono-length->→> {l ● r ` loc } {mono-● mono-l} (PairU v₁ v₂) (PairU v₁' v₂') length-proj₁flat-v₁v₂>length-proj₁flat-v₁'v₂' = {!!}    
 
 
 

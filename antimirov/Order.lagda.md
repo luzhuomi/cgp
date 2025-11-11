@@ -345,7 +345,10 @@ mono-length->→> {ε} {mono-ε} EmptyU EmptyU length-proj₁flat-empty>length-p
     prf : ε ⊢ EmptyU > EmptyU
     prf rewrite length-[]≡0 =  Nullary.contradiction length-proj₁flat-empty>length-proj₁flat-empty ¬0>0
     
-mono-length->→> {l ● r ` loc } {mono-● mono-l} (PairU v₁ v₂) (PairU v₁' v₂') length-proj₁flat-v₁v₂>length-proj₁flat-v₁'v₂' = {!!}    
+mono-length->→> {l ● r ` loc } {mono-● mono-l} (PairU v₁ v₂) (PairU v₁' v₂') length-proj₁flat-v₁v₂>length-proj₁flat-v₁'v₂' = {!!}
+  -- how to apply induction?
+  -- case 1 |v₁| > |v₁'| induction! but what is the base case? 
+  -- case 2 |v₁| <= |v₁' | → |v₂| > |v₂'|
 
 
 

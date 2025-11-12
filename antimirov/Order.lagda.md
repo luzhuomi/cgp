@@ -7,7 +7,7 @@ open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_
 
 
 import cgp.Utils as Utils
-open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 )
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
 
 
 import cgp.Word as Word
@@ -162,78 +162,50 @@ if it is anti u5 > u6, but why? clearly in this not right non greedy.  if it is 
 ```agda
 infix 3 _⊢_>_
 
-data _,_⊨_>_ : ∀ (r : RE ) → (m : Mono r ) → U r → U r → Set
 
-data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set
+data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where 
+  seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    →   l ⊢ v₁ >  v₁'   
+    ------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
-data _,_⊨_>_ where
-  mono>-seq₁ : ∀ { l r : RE } { loc : ℕ } { ml : Mono l } { v₁ v₁' : U l } { v₂ v₂' : U r } 
-    → proj₁ (flat v₁) ≡ proj₁ (flat v₁')
-    → l , ml ⊨ v₁ > v₁'
-    ------------------------------------------------------------
-    → ( l ● r ` loc ) , mono-● ml ⊨ PairU v₁ v₂ > PairU v₁' v₂'
-  mono>-seq₂ : ∀ { l r : RE } { loc : ℕ } { ml : Mono l } { v₁ v₁' : U l } { v₂ v₂' : U r }
+  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → v₁ ≡ v₁'
     → r ⊢ v₂ > v₂'
-    -----------------------------------------------------------
-    → ( l ● r ` loc ) , mono-● ml ⊨ PairU v₁ v₂ > PairU v₁' v₂' 
+    -------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
-data _⊢_>_ where
   {-
-  seq-mono : ∀ { l r : RE } { loc : ℕ } { ml : Mono l } { v₁ v₁' : U l } { v₂ v₂' : U r }
-    → proj₁ (flat v₁) ++ proj₁ (flat v₂) ≡ proj₁ (flat v₁') ++ proj₁ (flat v₂')
-    → ( l ● r ` loc ) , mono-● ml ⊨ PairU v₁ v₂ > PairU v₁' v₂'
-    -------------------------------------------------------------------
-    → ( l ● r ` loc ) ⊢  PairU v₁ v₂ > PairU v₁' v₂'
-    
-  -- any overlapping rules with the above?
-  -}
-
-  -- issues
-  --  1. seq₁sameword and seq₁notempty are overlapping
-  --  2. if we remove one of them, we face exhaustiveness issues.
-  --  3. use the mono rule ? 
-  seq₁sameword : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
-    →  proj₁ (flat v₁)  ≡ proj₁ (flat v₁')
-    → l ⊢ v₁ > v₁' 
-    ------------------------------------------------------------------
-    →  ( l ● r ` loc ) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-
-  seq₁oneempty : ∀ { l r : RE }  { loc : ℕ }  { v₁ v₁'  : U l } { v₂ v₂' : U r } -- TODO: Not sure whether it is correct. Search for the TODO below
-    →  ( ¬ ( proj₁ (flat v₁)  ≡ [] ))  
-    →  proj₁ (flat v₁') ≡ []      -- this case should not happen if l ● r is a mono? 
-    ------------------------------------------------------------------
-    →  ( l ● r ` loc ) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-    
-  seq₁notempty : ∀ { l r : RE } { loc : ℕ }  { v₁ v₁'  : U l } { v₂ v₂' : U r }
-    → ¬ ( proj₁ (flat v₁) ≡ [] )
-    → ¬ ( proj₁ (flat v₁') ≡ [] )
-    → ¬ ( proj₁ (flat v₁)  ≡ proj₁ (flat v₁') ) -- otherwise overlapp with sameword,
-    → l ⊢ v₁ > v₁' 
-    ------------------------------------------------------------------
-    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')    
-
-  seq₂ : ∀ { l r : RE } { loc : ℕ }  { v₁ v₁'  : U l } { v₂ v₂' : U r }
-    → v₁ ≡ v₁'
-    → r ⊢ v₂ > v₂'
-    -------------------------------------------------------------------
-    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-
-  {- right not greedy -- not working 
-  seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁' : U l } { v₂ v₂' : U r }
-    → v₂ ≡ v₂'
-    → l ⊢ v₁ > v₁'
-    -------------------------------------------------------------------
-    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-
-  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁' : U l } { v₂ v₂' : U r }
-    → r ⊢ v₂' > v₂  -- right not greedy 
-    -------------------------------------------------------------------
-    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
-  -}
-  
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
+  -}
+  
+  choice-lr-bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+    → proj₁ (flat v₁) ≡ []
+    → proj₁ (flat v₂) ≡ []
+    -------------------------------------------------------------------    
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
+
+
+  choice-lr-notempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+    → ¬ proj₁ (flat v₁) ≡ []
+    → ¬ proj₁ (flat v₂) ≡ []
+    -------------------------------------------------------------------    
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
+
+  choice-lr-rempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+    → ¬ proj₁ (flat v₁) ≡ []
+    → proj₁ (flat v₂) ≡ []
+    -------------------------------------------------------------------    
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
+
+
+  choice-lr-lempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+    → proj₁ (flat v₁) ≡ []
+    → ¬ proj₁ (flat v₂) ≡ []
+    -------------------------------------------------------------------    
+    → ( l + r ` loc ) ⊢ (RightU v₂) > (LeftU v₁)
+
 
 
   choice-ll : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } 
@@ -287,16 +259,50 @@ module ExampleAntimirov where
   t2 = PairU (ListU []) (ListU (LetterU 'a' ∷ []))
 
 
-  ev1 : ¬ ((proj₁ (flat {(( $ 'a' ` 1 ) * ε∉$ ` 2)} (ListU (LetterU 'a' ∷ [])))) ≡ [])
-  ev1 = λ()
-
-  ev2 : (proj₁ (flat {(( $ 'a' ` 1 ) * ε∉$ ` 2)} (ListU []))) ≡ []
-  ev2 = refl
-
-
   t1>t2 : a*●a* ⊢  t1 > t2 
-  t1>t2 = seq₁oneempty ev1 ev2
+  t1>t2 = seq₁ star-cons-nil 
+
+
+  ε+a●a+ε : RE 
+  ε+a●a+ε = let a₁ = $ 'a' ` 1
+                a₃ = $ 'a' ` 3 
+            in (ε + a₁ ` 2) ● ( a₃ + ε ` 4) ` 5
+
+  t3 : U ε+a●a+ε
+  t3 = PairU (RightU (LetterU 'a')) (RightU EmptyU)
+
+  t4 : U ε+a●a+ε
+  t4 = PairU (LeftU EmptyU) (LeftU (LetterU 'a'))
+
+  t3>t4 : ε+a●a+ε ⊢ t3 > t4 
+  t3>t4 = seq₁ (choice-lr-lempty refl λ () )
+
+
+  a*+a*●a* : RE
+  a*+a*●a* = ( ( ( $ 'a' ` 1 ) * ε∉$ ` 2 ) + ( ( $ 'a' ` 3 ) * ε∉$ ` 4) ` 5 ) ● ( ( $ 'a' ` 6 ) * ε∉$ ` 7 ) ` 8
+
+  t5 : U a*+a*●a*
+  t5 = PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (ListU []) 
+  t6 : U a*+a*●a*
+  t6 = PairU (LeftU (ListU (LetterU 'a' ∷ [])))                (ListU (LetterU 'a' ∷ [])) 
+  t7 : U a*+a*●a*
+  t7 = PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (ListU [])
+  t8 : U a*+a*●a*
+  t8 = PairU (RightU (ListU (LetterU 'a' ∷ [])))                (ListU (LetterU 'a' ∷ []))
   
+  t6>t7 : a*+a*●a* ⊢ t6 > t7
+  t6>t7 = seq₁ (choice-lr-notempty  (λ ()) λ () )
+
+  t9 : U a*+a*●a*
+  t9 = PairU (LeftU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+  t10 : U a*+a*●a*
+  t10 = PairU (RightU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+
+  t8>t9 : a*+a*●a* ⊢ t8 > t9
+  t8>t9 = seq₁ (choice-lr-lempty refl λ() )
+
+  t9>t10 : a*+a*●a* ⊢ t9 > t10
+  t9>t10 = seq₁ (choice-lr-bothempty refl refl)
 ```
 
 
@@ -327,31 +333,6 @@ data >-sorted : ∀ { r : RE } ( us : List (U r) ) → Set where
     → >-maybe {r} u (head us)
     --------------------------
     → >-sorted {r} ( u ∷ us  )
-```
-
-
-```agda
-
--- postulate
-mono-length->→> : ∀ { r : RE } { m : Mono r }
-    → (v₁ v₂ : U r )
-    → List.length (proj₁ (flat v₁)) Nat.> List.length (proj₁ (flat v₂))
-    ---------------------------------------------------------------
-    → r ⊢  v₁ > v₂ 
-mono-length->→> {ε} {mono-ε} EmptyU EmptyU length-proj₁flat-empty>length-proj₁flat-empty = prf
-  where
-    length-[]≡0 : List.length (proj₁ (flat EmptyU))  ≡ 0
-    length-[]≡0 = refl
-    prf : ε ⊢ EmptyU > EmptyU
-    prf rewrite length-[]≡0 =  Nullary.contradiction length-proj₁flat-empty>length-proj₁flat-empty ¬0>0
-    
-mono-length->→> {l ● r ` loc } {mono-● mono-l} (PairU v₁ v₂) (PairU v₁' v₂') length-proj₁flat-v₁v₂>length-proj₁flat-v₁'v₂' = {!!}
-  -- how to apply induction?
-  -- case 1 |v₁| > |v₁'| induction! but what is the base case? 
-  -- case 2 |v₁| <= |v₁' | → |v₂| > |v₂'|
-
-
-
 ```
 
 
@@ -392,20 +373,24 @@ map-rightU-sorted ( u ∷ (v ∷ us) ) (>-cons _ _  >-sorted-us (>-just u v u>v)
            (>-just (RightU u) (RightU v) (choice-rr u>v))
   
 
-map-leftU-rightU-sorted : ∀ { l r : RE } { loc : ℕ }
+-- weakened compared to the version on greedy.Order
+-- we assume all us and vs are empty parse trees
+map-leftU-rightU-sorted : ∀ { l r : RE } { ε∈l : ε∈ l } { ε∈r : ε∈ r } { loc : ℕ }
   → ( us : List (U l) )
   → ( vs : List (U r) )
   → >-sorted {l} us   
   → >-sorted {r} vs
+  → All (Flat-[] l) us   
+  → All (Flat-[] r) vs  
   → >-sorted {l + r ` loc } ((List.map LeftU us) ++ (List.map RightU vs))
-map-leftU-rightU-sorted               []  vs    >-sorted-l-[] >-sorted-r-vs = map-rightU-sorted vs >-sorted-r-vs
-map-leftU-rightU-sorted {l} {r} {loc} us               []        >-sorted-l-us >-sorted-r-[] rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (LeftU {l} {r} {loc}) us)))
+map-leftU-rightU-sorted               []  vs    >-sorted-l-[] >-sorted-r-vs _ _ = map-rightU-sorted vs >-sorted-r-vs
+map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} us               []        >-sorted-l-us >-sorted-r-[] _ _ rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (LeftU {l} {r} {loc}) us)))
   = map-leftU-sorted us >-sorted-l-us 
-map-leftU-rightU-sorted {l} {r} {loc} (u ∷ [])        (v ∷ vs) >-sorted-l-uus >-sorted-r-vs
-  = >-cons (LeftU u) (List.map LeftU [] ++ List.map RightU (v ∷ vs)) (map-rightU-sorted (v ∷ vs) >-sorted-r-vs) (>-just (LeftU u) (RightU v) choice-lr)
-map-leftU-rightU-sorted {l} {r} {loc} (u ∷ u' ∷ us)   (v ∷ vs) >-sorted-l-uuus >-sorted-r-vvs with >-sorted-l-uuus
+map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u ∷ [])        (v ∷ vs) >-sorted-l-uus >-sorted-r-vs ((flat-[] _ proj₁flatu≡[]) ∷ []) ((flat-[] _ proj₁flatv≡[]) ∷ all-flat-[]-vs)
+  = >-cons (LeftU u) (List.map LeftU [] ++ List.map RightU (v ∷ vs)) (map-rightU-sorted (v ∷ vs) >-sorted-r-vs) (>-just (LeftU u) (RightU v) (choice-lr-bothempty proj₁flatu≡[] proj₁flatv≡[]) ) --  choice-lr)
+map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u ∷ u' ∷ us)   (v ∷ vs) >-sorted-l-uuus >-sorted-r-vvs ((flat-[] _ proj₁flatu≡[]) ∷ all-flat-[]-uus) all-flat-[]-vvs  with >-sorted-l-uuus
 ... | >-cons {l} _ _ >-sorted-uus (>-just u₁ u₁' u>u' ) 
-  = >-cons (LeftU u) (List.map LeftU (u' ∷ us) ++ List.map RightU (v ∷ vs)) (map-leftU-rightU-sorted (u' ∷ us) (v ∷ vs)  >-sorted-uus  >-sorted-r-vvs ) ((>-just (LeftU u₁) (LeftU u₁') (choice-ll u>u' ))) 
+  = >-cons (LeftU u) (List.map LeftU (u' ∷ us) ++ List.map RightU (v ∷ vs)) (map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u' ∷ us) (v ∷ vs)  >-sorted-uus  >-sorted-r-vvs all-flat-[]-uus all-flat-[]-vvs) ((>-just (LeftU u₁) (LeftU u₁') (choice-ll u>u' ))) 
 
 
           
@@ -456,7 +441,7 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
     combine {u} {u'} {[]}      {us} {[]}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {[]}      {us} {vs}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {t ∷ []} {us} {v ∷ vs} u>u'  (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons _ _ >-sorted-map-pair-u-ts u-t>head-map-pair-u-ts)  >-sorted-ys = 
-      >-cons (PairU u t) (List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) (v ∷ vs)) (u' ∷ us))) >-sorted-ys (>-just (PairU u t) (PairU u' v) (seq₁sameword (trans flat-u≡[] (sym flat-u'≡[])) u>u'))
+      >-cons (PairU u t) (List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) (v ∷ vs)) (u' ∷ us))) >-sorted-ys (>-just (PairU u t) (PairU u' v) (seq₁ u>u') ) -- (seq₁sameword (trans flat-u≡[] (sym flat-u'≡[])) u>u'))
     combine {u} {u'} {t ∷ t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons _ _ >-sorted-map-pair-u-tts u-t>head-map-pair-u-tts) >-sorted-ys =
       >-cons (PairU u t) (List.map (PairU u) (t' ∷ ts) ++ List.foldr _++_ [] (List.map (λ u₂ → List.map (PairU u₂) vs) (u' ∷ us))) ind-hyp' u-t>head-map-pair-u-tts
       where
@@ -487,7 +472,7 @@ mkAllEmptyU-sorted {l + r  ` loc}  (ε∈ ε∉l +> ε∈r) = map-rightU-sorted 
     es = mkAllEmptyU ε∈r 
     ind-hyp : >-sorted  (mkAllEmptyU ε∈r)
     ind-hyp = mkAllEmptyU-sorted {r} ε∈r
-mkAllEmptyU-sorted {l + r  ` loc}  (ε∈ ε∈l + ε∈r) =  map-leftU-rightU-sorted l-es r-es l-ind-hyp r-ind-hyp
+mkAllEmptyU-sorted {l + r  ` loc}  (ε∈ ε∈l + ε∈r) =  map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} l-es r-es l-ind-hyp r-ind-hyp (mkAllEmptyU-sound {l} ε∈l) (mkAllEmptyU-sound {r} ε∈r)
   where
     r-es : List (U r)
     r-es = mkAllEmptyU ε∈r 
@@ -504,7 +489,7 @@ mkAllEmptyU-sorted {l ● r ` loc }  (ε∈ ε∈l ● ε∈r ) = map-pairU-empt
     r-es = mkAllEmptyU ε∈r 
     r-ind-hyp : >-sorted  (mkAllEmptyU ε∈r)
     r-ind-hyp = mkAllEmptyU-sorted {r} ε∈r
-    
+
 
     l-es : List (U l)
     l-es = mkAllEmptyU ε∈l
@@ -588,80 +573,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
                → All (>-Inc {l} {c}) pdis
                → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
 >-inc-map-fst [] [] = []
-{-
->-inc-map-fst {l} {r} {loc} {c} ((pdinstance {ε} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-=  >-inc >-inc-ev ∷ >-inc-map-fst pdis pxs
-where
-injFst : U (ε ● r ` loc)   → U (l ● r ` loc ) 
-injFst = mkinjFst inj
->-inc-ev : ∀ (uv₁ : U ( ε ● r ` loc ))
-→ (uv₂ : U ( ε ● r ` loc ))
-→ (ε ● r ` loc )  ⊢ uv₁ > uv₂
-------------------------------------
-→ (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
->-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) (seq₂ refl v₁>v₂) =  seq₂ refl v₁>v₂
->-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) (seq₁oneempty ¬[]≡[] []≡[]) = Nullary.contradiction []≡[] ¬[]≡[]   
 
->-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p ● q ` loc₂} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-=  >-inc >-inc-ev  ∷ >-inc-map-fst pdis pxs
-where
-injFst : U (( p ● q ` loc₂ ) ● r ` loc)   → U (l ● r ` loc ) 
-injFst = mkinjFst inj
->-inc-ev : ∀ (uv₁ : U ( ( p ● q ` loc₂ ) ● r ` loc ))
-→ (uv₂ : U ( ( p ● q ` loc₂ ) ● r ` loc ))
-→ ( ( p ● q ` loc₂ ) ● r ` loc )  ⊢ uv₁ > uv₂
-------------------------------------
-→ (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
->-inc-ev (PairU (PairU v₁ v₂) v₃) (PairU (PairU v₄ v₅) v₆) (seq₂ refl v₃>v₆) = seq₂ refl v₃>v₆
->-inc-ev (PairU (PairU v₁ v₂) v₃) (PairU (PairU v₄ v₅) v₆) (seq₁oneempty ¬proj₁flat-v₁++proj₁flat-v₂≡[] proj₁flat-v₄++proj₁flat-v₅≡[]) =
--- when proj₁flat-v₄++proj₁flat-v₅≡[] ,
---  this parse tree is generated by mkAllEmptyU 
---                            or by mk-snd-pdi
-seq₁notempty {!!} {!!} {!!} {!!}
-{-
-Goal: (l ● r ` loc) ⊢ injFst (PairU (PairU v₁ v₂) v₃) > injFst (PairU (PairU v₄ v₅) v₆)
-injFst (PairU (PairU v₁ v₂) v₃ ≡ PairU (inj (PairU v₁ v₂)) v₃
-injFst (PairU (PairU v₄ v₅) v₆ ≡ PairU (inj (PairU v₄ v₅)) v₆
-
-
-Note that u₁ = (PairU v₁ v₂) and u₂ = (PairU v₄ v₅)
-given  ¬proj₁flat-v₁++proj₁flat-v₂≡[], and proj₁flat-v₄++proj₁flat-v₅≡[],
-
-in order to use  u₁→u₂→u₁>u₂→inj-u₁>inj-u₂
-
-we need to show (PairU v₁ v₂) > (PairU v₄ v₅) 
-
-sub case 1 v₁≡v₄ ,  then v₂ is not empty,  v₅ is empty. For seq₂ to hold as the evidence,  we need to show q ⊢ v₂ > v₅ .
-but how? does |v₂| > |v₅| imply v₂ > v₅? what if v₂ is R [a] and v₅ is L [] that would invalidate
-|v₂| > |v₅| implying v₂ > v₅.
-However, that's not possible, because L [] will be in another pdi!
-but how? to tell? monommial ordering?
-
-or because the emptiness of LeftU (ListU []) is not possible?
-
-all empty parse trees must be and will only be created by mkAllEmptyU.
-mkAllEmptyU is called at two locations.
-1) the base case of parseAll
-2) the inductive case of pdU via mk-snd-pdi
-
-if it is 1)  ¬proj₁flat-v₁++proj₁flat-v₂≡[] can't be true, because (PairU (PairU v₁ v₂) v₃) must be generated by the same call of mkAllEmptyU, how to enforce it in the lemma? 
-if it is 2) 
-                           it might then be use as the first argument of mk-snd-pdi?
-                           note that mk-snd-pdi takes an empty parse tree as 1st arg , an injection and a 2nd parse tree u.
-                           so mk-snd-pdi will not produce an entirely empty PairU (PairU v₄ v₅) v₆. v₆ must've been injected.
-                          However, this won't be true as the top level injection is mkinjFst which tries to inject something into the first component of PairU (PairU v₄ v₅) v₆. There has to be some EmptyU in PairU v₄ v₅. Since v₅ is (L []), the EmptyU must be in v₄. It implies the EmptyU must be in v₁.
-                            v₂ is not empty, v₅ is empty. v₂ is not produced by mkAllEmpty, v₅ is. which means
-                              (PairU v₁ v₂) and (PairU v₄ v₅) were produced by different injection functions, but they are from the same pdi. TODO: how to enforce this in the lemma?
-                                   
-                   
-          sub case 2 v₁ is empty, then v₂ is not empty, v₄ and v₅ are empty. via seq₁sameword we need to show v₁ > v₄ , same induction, coz v₁ and v₄ must be parse trees of p ≡ s ● t? 
-              sub case 3 v₁ is not empty, then (PairU v₁ v₂) > (PairU v₄ v₅) w/ evidence seq₁oneempty
-
-        
-      -}
-    >-inc-ev (PairU (PairU v₁ v₂) v₃) (PairU (PairU v₄ v₅) v₆) (seq₁sameword proj₁flat-v₁++proj₁flat-v₂≡proj₁flat-v₄++proj₁flat-v₅ pair-v₁-v₂>pair-v₄-v₅) = {!!}
-    >-inc-ev (PairU (PairU v₁ v₂) v₃) (PairU (PairU v₄ v₅) v₆) (seq₁notempty ¬proj₁flat-v₁++proj₁flat-v₂≡[] ¬proj₁flat-v₄++proj₁flat-v₅≡[] ¬proj₁flat-v₁++proj₁flat-v₂≡proj₁flat-v₄++proj₁flat-v₅  pair-v₁-v₂>pair-v₄-v₅) = {!!}     
-  -}
 >-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = (>-inc >-inc-ev)  ∷  >-inc-map-fst pdis pxs
   where
@@ -672,69 +584,9 @@ if it is 2)
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁sameword proj₁flat-u₁≡proj₁flat-u₂   u₁>u₂) =
-      seq₁sameword proj₁flat-inj-u₁≡proj₁flat-inj-u₂  inj-u₁>inj-u₂
-      where
-        proj₁flat-inj-u₁≡proj₁flat-inj-u₂ : proj₁ (flat (inj u₁)) ≡ proj₁ (flat (inj u₂))
-        proj₁flat-inj-u₁≡proj₁flat-inj-u₂ rewrite sound-ev u₁ | sound-ev u₂ | proj₁flat-u₁≡proj₁flat-u₂  = refl 
-        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂ -- since u1=u2=[] => |v1|=|v2|
-
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] proj₁flat-u₁≢proj₁flat-u₂ u₁>u₂) =
-      seq₁notempty inj-u₁≡¬[] inj-u₂≡¬[]  ¬proj₁flat-inj-u₁≡proj₁flatinj-u₂ inj-u₁>inj-u₂
-      where
-        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂ 
-        inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
-        inj-u₁≡¬[] rewrite (sound-ev u₁) = λ () 
-        inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
-        inj-u₂≡¬[] rewrite (sound-ev u₂)  = λ()
-        ¬proj₁flat-inj-u₁≡proj₁flatinj-u₂ : ¬ proj₁ (flat (inj u₁)) ≡ proj₁ (flat (inj u₂))
-        ¬proj₁flat-inj-u₁≡proj₁flatinj-u₂ rewrite (sound-ev u₁) | (sound-ev u₂) = λ proj₁-flat-inj-u₁≡proj₁-flat-inj-u₂ →  proj₁flat-u₁≢proj₁flat-u₂ (proj₂ (Utils.∷-inj proj₁-flat-inj-u₁≡proj₁-flat-inj-u₂)) 
-
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (seq₁oneempty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[] ) =
-      seq₁notempty  inj-u₁≡¬[] inj-u₂≡¬[]  ¬inj-u₁≡inj-u₂ inj-u₁>inj-u₂ 
-           -- would it be possible if u1 = R [a], v1 = [] and u2 = L [], v2 = [a]
-           -- inj u1 = R [a, a] and inj u2 = L [a]
-           -- not possible, >-inc the pdinstance {l} {c} ensure that u₁>u₂
-           -- and nothing of the pdinstance can inject values of both  R x and L y
-           -- we need to argue that the inj functions do not inject inside a RightU or LeftU tags
-           -- in short, we need a stronger definition of >-inc which says that the injection function does not inject inside LeftU or RightU
-
-           -- UPDATE:  Pair (L []) [a] must be produced by a mk-snd-pdi (L []) inj where inj gives us [a].
-           --          Pair (R [a]) [] must be produced by a mkinjFst
-
-           -- if this is true, it makes >-Inc weaker than the greedy version.
-           --   same treatmeant should be applied to *>-Inc 
-           -- How do we use it in the later proof to ensure advance-c-pdi pdi > all concat advance-c-pdi pdis, knowing pdi∷pdis is sorted
-             -- check compose-pdi-with-ex*>-head-map-compose-pdi-with,
-             -- it seems ok!
-
-           -- Further more Pair (L []) [a] and Pair (R [a]) [] are not of a mono tail type, i.e.
-           -- Mono p and |v₁| > |v₂| implies p ⊢ v₁ > v₂ ?? double check
-      where
-        mono-p : Mono p
-        mono-p = {!!}
-        
-        length-proj₁flat-u₁>length-proj₁flat-u₂ : List.length (proj₁ (flat u₁)) Nat.> List.length (proj₁ (flat  u₂))
-        length-proj₁flat-u₁>length-proj₁flat-u₂  = prf
-          where
-            ¬length-proj₁flat-u₁≡0 : ¬ List.length (proj₁ (flat u₁)) ≡ 0 
-            ¬length-proj₁flat-u₁≡0 = ¬≡[]→¬length≡0 ¬proj₁flat-u₁≡[]
-            length-proj₁flat-u₁>0 : List.length (proj₁ (flat u₁)) Nat.> 0 
-            length-proj₁flat-u₁>0 = ¬≡0→>0 ¬length-proj₁flat-u₁≡0
-            length-proj₁flat-u₂≡0 : List.length (proj₁ (flat u₂)) ≡ 0 
-            length-proj₁flat-u₂≡0 = []→length≡0 proj₁flat-u₂≡[]
-            prf : List.length (proj₁ (flat u₁)) Nat.> List.length (proj₁ (flat  u₂))
-            prf rewrite length-proj₁flat-u₂≡0  = length-proj₁flat-u₁>0
-            
-        inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ (mono-length->→> {p} {mono-p} u₁ u₂ length-proj₁flat-u₁>length-proj₁flat-u₂)
-        inj-u₁≡¬[] : ¬ ( proj₁ (flat (inj u₁)) ≡ [])
-        inj-u₁≡¬[] rewrite (sound-ev u₁) = λ()
-        inj-u₂≡¬[] : ¬ ( proj₁ (flat (inj u₂)) ≡ [])
-        inj-u₂≡¬[] rewrite (sound-ev u₂) = λ()
-        ¬inj-u₁≡inj-u₂ : ¬ ( proj₁ (flat (inj u₁)) ≡ proj₁ (flat (inj u₂)))
-        ¬inj-u₁≡inj-u₂ rewrite (sound-ev u₁) | (sound-ev u₂) = λ c∷proj₁flatu₁≡c∷proj₁flatu₂ →  ¬proj₁flat-u₁≡[]  (Eq.trans (proj₂ (Utils.∷-inj c∷proj₁flatu₁≡c∷proj₁flatu₂))  proj₁flat-u₂≡[])
-
-        
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁  u₁>u₂) = 
+      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+      in seq₁ inj-u₁>inj-u₂
         
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where
@@ -836,15 +688,9 @@ if it is 2)
               → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (r * ε∉r ` loc) ⊢ (injList uv₁) > (injList uv₂)
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁sameword  proj₁flat-u₁≡proj₁flat-u₂  u₁>u₂) = 
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁  u₁>u₂) = 
       let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
-      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁oneempty ¬proj₁flat-u₁≡[]  proj₁flat-u₂≡[])  = 
-      let inj-u₁>inj-u₂ = >-ev u₁ u₂ {!!} 
-                                          -- TODO: we can't use >-ev here, which >-ev : (u₃ u₄ : U p) → p ⊢ u₃ > u₄ → r ⊢ inj u₃ > inj u₄
-                                          -- we need something stronger, >-inj : (u₃ u₄ : U p) → ¬ (Flat-[] p u₃) →  (Flat-[] p u₄) → inj u₃ > inj u₄
-                                          -- but inj is "hidden" existentially inside PDinstance 
-      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
+      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂    
     >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₂  u₁≡u₂ list-vs₁>list-vs₂ ) =
       (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
         where

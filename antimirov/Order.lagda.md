@@ -11,7 +11,7 @@ open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat {- ; ¬≡[]→¬l
 
 
 import cgp.Word as Word
-open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
+open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈⟦r⟧→¬ε∉r )
 
 
 import cgp.ParseTree as ParseTree
@@ -38,7 +38,7 @@ import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ )
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ )
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -313,13 +313,31 @@ Note : The > order is transitive.
 ```agda
 
 
+¬proj₁flat-list-x∷xs≡[] : ∀ { r : RE } { ε∉r : ε∉ r } {loc : ℕ } { u : U r } { us : List ( U r ) }
+  → ¬ ( proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us))) ≡ [] )
+¬proj₁flat-list-x∷xs≡[] {r} {ε∉r} {loc} {u} {us}
+  with flat u     | flat (ListU {r} {ε∉r} {loc} us)
+...  | xs , xs∈r | ys , ys∈r* = prf
+     where
+       prf : ¬ (xs ++ ys ≡ [])
+       prf xs++ys≡[] = Nullary.contradiction ε∉r  ([]∈⟦r⟧→¬ε∉r []∈r) 
+         where
+           xs≡[] : xs ≡ []
+           xs≡[] = ++-conicalˡ xs ys xs++ys≡[]
+           []∈r : [] ∈⟦ r ⟧
+           []∈r = Eq.subst (λ x → x ∈⟦ r ⟧) xs≡[] xs∈r
+
+
 []>r→r≡[] : ∀ { r : RE } { u v : U r }
     → proj₁ (flat u) ≡ []
     → r ⊢ u > v
     ----------------------
     → proj₁ (flat v) ≡ [] 
 []>r→r≡[] {ε} {EmptyU} {EmptyU} refl = λ() 
-
+-- []>r→r≡[] {$ c ` loc} {LetterU _} {LetterU _ } = λ()
+[]>r→r≡[] { l * ε∉l ` loc } {ListU []} {ListU []} refl = λ()
+[]>r→r≡[] { l * ε∉l ` loc } {ListU (x ∷ xs)} {ListU ys} proj₁-flat-list-x∷xs≡[] =
+  Nullary.contradiction proj₁-flat-list-x∷xs≡[] (¬proj₁flat-list-x∷xs≡[] {l} {ε∉l} {loc} {x} {xs})
 
 >-trans : { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ > u₂
@@ -338,13 +356,35 @@ Note : The > order is transitive.
 >-trans {l + r ` loc } {LeftU v₁} {RightU v₂} {RightU v₃}  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])  (choice-rr v₂>v₃)
   with proj₁ (flat {r} v₃) in flat-v₃-eq 
 ... | []       = choice-lr-bothempty proj₁flatv₁≡[] flat-v₃-eq 
-... | (c ∷ cs) = Nullary.contradiction ([]>r→r≡[]  proj₁flatv₂≡[] v₂>v₃)  ¬proj₁flat-v₃≡[]
+... | (c ∷ cs) = Nullary.contradiction ([]>r→r≡[]  proj₁flatv₂≡[] v₂>v₃)  ¬proj₁flatv₃≡[]
     where
-      ¬proj₁flat-v₃≡[] :  ¬ Product.proj₁ (flat v₃) ≡ []
-      ¬proj₁flat-v₃≡[] rewrite flat-v₃-eq  =  Utils.¬∷≡[] 
+      ¬proj₁flatv₃≡[] :  ¬ Product.proj₁ (flat v₃) ≡ []
+      ¬proj₁flatv₃≡[] rewrite flat-v₃-eq  =  Utils.¬∷≡[]
+      
 >-trans {l + r ` loc }  (choice-rr v₁>v₂)         (choice-rr v₂>v₃) = choice-rr (>-trans v₁>v₂ v₂>v₃)
 >-trans {l + r ` loc }  (choice-ll v₁>v₂)         (choice-ll v₂>v₃) = choice-ll (>-trans v₁>v₂ v₂>v₃)
->-trans {l + r ` loc }  (choice-ll v₁>v₂)         (choice-lr-bothempty x y)  = {!!}
+>-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll v₁>v₂)   (choice-lr-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[])
+  with proj₁ (flat {l} v₁) in flat-v₁-eq
+... | []       = choice-lr-bothempty flat-v₁-eq proj₁flatv₃≡[]
+... | (c ∷ cs) = choice-lr-rempty ¬proj₁flatv₁≡[] proj₁flatv₃≡[]
+    where
+      ¬proj₁flatv₁≡[] : ¬ Product.proj₁ (flat v₁) ≡ []
+      ¬proj₁flatv₁≡[] rewrite flat-v₁-eq  =  Utils.¬∷≡[] 
+>-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll v₁>v₂)   (choice-lr-rempty ¬proj₁flatv₂≡[] proj₁flatv₃≡[])
+  with proj₁ (flat {l} v₁) in flat-v₁-eq
+... | [] = choice-lr-bothempty flat-v₁-eq proj₁flatv₃≡[]
+... | (c ∷ cs) = choice-lr-rempty ¬proj₁flatv₁≡[] proj₁flatv₃≡[] 
+    where
+      ¬proj₁flatv₁≡[] : ¬ Product.proj₁ (flat v₁) ≡ []
+      ¬proj₁flatv₁≡[] rewrite flat-v₁-eq  =  Utils.¬∷≡[]
+>-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll v₁>v₂)   (choice-lr-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[])
+  with proj₁ (flat {l} v₁) in flat-v₁-eq
+... | [] = {!!} -- but v₂ is not empty
+... | (c ∷ cs) = choice-lr-notempty  ¬proj₁flatv₁≡[] ¬proj₁flatv₃≡[]
+    where
+      ¬proj₁flatv₁≡[] : ¬ Product.proj₁ (flat v₁) ≡ []
+      ¬proj₁flatv₁≡[] rewrite flat-v₁-eq  =  Utils.¬∷≡[]
+
 >-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₁ v₂>v₃)      = seq₁ (>-trans v₁>v₂ v₂>v₃) 
 >-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
 >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')

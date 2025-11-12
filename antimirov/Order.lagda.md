@@ -160,7 +160,7 @@ if it is anti u5 > u6, but why? clearly in this not right non greedy.  if it is 
 
 
 ```agda
-infix 3 _⊢_>_
+infix 4 _⊢_>_
 
 
 data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where 
@@ -242,6 +242,8 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
 > Is the above relation reflexive? No, hence it is not even a preorder.
 
 
+
+
 ### Example Antimirov Order
 
 For exapmle we find that
@@ -303,6 +305,50 @@ module ExampleAntimirov where
 
   t9>t10 : a*+a*●a* ⊢ t9 > t10
   t9>t10 = seq₁ (choice-lr-bothempty refl refl)
+```
+
+
+Note : The > order is transitive. 
+
+```agda
+
+
+[]>r→r≡[] : ∀ { r : RE } { u v : U r }
+    → proj₁ (flat u) ≡ []
+    → r ⊢ u > v
+    ----------------------
+    → proj₁ (flat v) ≡ [] 
+[]>r→r≡[] {ε} {EmptyU} {EmptyU} refl = λ() 
+
+
+>-trans : { r : RE } { u₁ u₂ u₃ : U r }
+  → r ⊢ u₁ > u₂
+  → r ⊢ u₂ > u₃
+  -----------------
+  → r ⊢ u₁ > u₃
+>-trans {ε} = λ()
+>-trans {$ c ` loc} = λ()
+>-trans {r * ε∉r ` loc} star-cons-nil = λ()
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃)  = star-head (>-trans v₁>v₂ v₂>v₃)
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil  = star-cons-nil
+>-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
+>-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ 
+>-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
+>-trans {l + r ` loc } {LeftU v₁} {RightU v₂} {RightU v₃}  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])  (choice-rr v₂>v₃)
+  with proj₁ (flat {r} v₃) in flat-v₃-eq 
+... | []       = choice-lr-bothempty proj₁flatv₁≡[] flat-v₃-eq 
+... | (c ∷ cs) = Nullary.contradiction ([]>r→r≡[]  proj₁flatv₂≡[] v₂>v₃)  ¬proj₁flat-v₃≡[]
+    where
+      ¬proj₁flat-v₃≡[] :  ¬ Product.proj₁ (flat v₃) ≡ []
+      ¬proj₁flat-v₃≡[] rewrite flat-v₃-eq  =  Utils.¬∷≡[] 
+>-trans {l + r ` loc }  (choice-rr v₁>v₂)         (choice-rr v₂>v₃) = choice-rr (>-trans v₁>v₂ v₂>v₃)
+>-trans {l + r ` loc }  (choice-ll v₁>v₂)         (choice-ll v₂>v₃) = choice-ll (>-trans v₁>v₂ v₂>v₃)
+>-trans {l + r ` loc }  (choice-ll v₁>v₂)         (choice-lr-bothempty x y)  = {!!}
+>-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₁ v₂>v₃)      = seq₁ (>-trans v₁>v₂ v₂>v₃) 
+>-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
+>-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
+>-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃ 
 ```
 
 

@@ -200,12 +200,11 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
 
 
-  choice-lr-lempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    → proj₁ (flat v₁) ≡ []
-    → ¬ ( proj₁ (flat v₂) ≡ [] ) 
+  choice-rl-rempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U r } { v₂ : U l }
+    → ¬ ( proj₁ (flat v₁) ≡ [] )
+    →  proj₁ (flat v₂) ≡ [] 
     -------------------------------------------------------------------    
-    → ( l + r ` loc ) ⊢ (RightU v₂) > (LeftU v₁)
-
+    → ( l + r ` loc ) ⊢ (RightU v₁) > (LeftU v₂)
 
 {-
   choice-ll : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } 
@@ -319,7 +318,7 @@ module ExampleAntimirov where
   t4 = PairU (LeftU EmptyU) (LeftU (LetterU 'a'))
 
   t3>t4 : ε+a●a+ε ⊢ t3 > t4 
-  t3>t4 = seq₁ (choice-lr-lempty refl λ () )
+  t3>t4 = seq₁ (choice-rl-rempty ( λ () ) refl  )
 
 
   a*+a*●a* : RE
@@ -343,7 +342,7 @@ module ExampleAntimirov where
   t10 = PairU (RightU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
 
   t8>t9 : a*+a*●a* ⊢ t8 > t9
-  t8>t9 = seq₁ (choice-lr-lempty refl λ() )
+  t8>t9 = seq₁ (choice-rl-rempty (λ () ) refl )
 
   t9>t10 : a*+a*●a* ⊢ t9 > t10
   t9>t10 = seq₁ (choice-lr-bothempty refl refl)
@@ -429,7 +428,7 @@ Note : The > order is transitive.
 >-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-rr-bothempty _ proj₁flatv₃≡[] v₂>v₃) = choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₃≡[] 
 >-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-rr-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[] v₂>v₃) = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[]
 >-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-rr-rempty ¬proj₁flatv₂≡[] proj₁flatv₃≡[]) = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[]
->-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-lr-lempty proj₁flatv₃≡[] ¬proj₁flatv₂≡[])  =  Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[] 
+>-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-rl-rempty ¬proj₁flatv₂≡[] proj₁flatv₃≡[])  =  Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[] 
 
 >-trans {l + r ` loc }  (choice-lr-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₂≡[])        (choice-rr-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[] v₂>v₃) = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[]
 >-trans {l + r ` loc }  (choice-lr-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₂≡[])        (choice-rr-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[] v₂>v₃) = choice-lr-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₃≡[]

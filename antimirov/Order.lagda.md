@@ -188,13 +188,13 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
 
 
   choice-lr-notempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    → ¬ proj₁ (flat v₁) ≡ []
-    → ¬ proj₁ (flat v₂) ≡ []
+    → ¬ ( proj₁ (flat v₁) ≡ [] ) 
+    → ¬ ( proj₁ (flat v₂) ≡ [] )
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
 
   choice-lr-rempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    → ¬ proj₁ (flat v₁) ≡ []
+    → ¬ (proj₁ (flat v₁) ≡ [] ) 
     → proj₁ (flat v₂) ≡ []
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
@@ -202,20 +202,62 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
 
   choice-lr-lempty : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
     → proj₁ (flat v₁) ≡ []
-    → ¬ proj₁ (flat v₂) ≡ []
+    → ¬ ( proj₁ (flat v₂) ≡ [] ) 
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (RightU v₂) > (LeftU v₁)
 
 
-
+{-
   choice-ll : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } 
     →  l ⊢ v₁ >  v₁'
     -------------------------------------------------------------------
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
+-}
+  choice-ll-bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
+    → proj₁ (flat v₁) ≡ []
+    → proj₁ (flat v₁') ≡ [] 
+    →  l ⊢ v₁ >  v₁'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
 
+  choice-ll-notempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
+    → ¬ (proj₁ (flat v₁) ≡ [])
+    → ¬ (proj₁ (flat v₁') ≡ [])
+    →  l ⊢ v₁ >  v₁'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
 
+  choice-ll-lempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
+    → proj₁ (flat v₁) ≡ []
+    → ¬ (proj₁ (flat v₁') ≡ [])
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
+
+{-
   choice-rr : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r } 
     →  r ⊢ v₂ >  v₂'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (RightU v₂) > (RightU v₂')
+-}
+
+
+  choice-rr-bothempty : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
+    → proj₁ (flat v₂) ≡ []
+    → proj₁ (flat v₂') ≡ []  
+    →  r ⊢ v₂ >  v₂'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (RightU v₂) > (RightU v₂')
+
+  choice-rr-notempty : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
+    → ¬ (proj₁ (flat v₂) ≡ [])
+    → ¬ (proj₁ (flat v₂') ≡ [])
+    →  r ⊢ v₂ >  v₂'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (RightU v₂) > (RightU v₂')
+
+  choice-rr-lempty : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r } 
+    → proj₁ (flat v₂) ≡ []
+    → ¬ (proj₁ (flat v₂') ≡ [])
     -------------------------------------------------------------------
     → ( l + r ` loc ) ⊢ (RightU v₂) > (RightU v₂')
 
@@ -338,8 +380,8 @@ Note : The > order is transitive.
 []>r→r≡[] { l * ε∉l ` loc } {ListU []} {ListU []} refl = λ()
 []>r→r≡[] { l * ε∉l ` loc } {ListU (x ∷ xs)} {ListU ys} proj₁-flat-list-x∷xs≡[] =
   Nullary.contradiction proj₁-flat-list-x∷xs≡[] (¬proj₁flat-list-x∷xs≡[] {l} {ε∉l} {loc} {x} {xs})
-[]>r→r≡[] { l + r ` loc }   {LeftU v₁}       {LeftU v₂} proj₁-flat-left-v₁≡[]  (choice-ll v₁>v₂) = []>r→r≡[] proj₁-flat-left-v₁≡[] v₁>v₂ 
-[]>r→r≡[] { l + r ` loc }   {RightU v₁}     {RightU v₂} proj₁-flat-right-v₁≡[] (choice-rr v₁>v₂) = []>r→r≡[] proj₁-flat-right-v₁≡[] v₁>v₂ 
+[]>r→r≡[] { l + r ` loc }   {LeftU v₁}       {LeftU v₂} proj₁-flat-left-v₁≡[]  (choice-ll-bothempty proj₁-flat-v₁≡[] proj₁-flat-v₂≡[] v₁>v₂) = proj₁-flat-v₂≡[] -- []>r→r≡[] proj₁-flat-left-v₁≡[] v₁>v₂ 
+[]>r→r≡[] { l + r ` loc }   {RightU v₁}     {RightU v₂} proj₁-flat-right-v₁≡[] (choice-rr-bothempty proj₁-flat-v₁≡[] proj₁-flat-v₂≡[] v₁>v₂) = proj₁-flat-v₂≡[] -- []>r→r≡[] proj₁-flat-right-v₁≡[] v₁>v₂ 
 []>r→r≡[] { l + r ` loc }   {LeftU v₁}      {RightU v₂} proj₁-flat-left-v₁≡[]  (choice-lr-bothempty proj₁-flat-v₁≡[] proj₁-flat-v₂≡[]) = proj₁-flat-v₂≡[]
 []>r→r≡[] { l + r ` loc }   {LeftU v₁}      {RightU v₂} proj₁-flat-left-v₁≡[]  (choice-lr-notempty ¬proj₁-flat-v₁≡[] ¬proj₁-flat-v₂≡[]) =  Nullary.contradiction  proj₁-flat-left-v₁≡[]  ¬proj₁-flat-v₁≡[] 
 []>r→r≡[] { l + r ` loc }   {LeftU v₁}      {RightU v₂} proj₁-flat-left-v₁≡[]  (choice-lr-rempty ¬proj₁-flat-v₁≡[] proj₁-flat-v₂≡[]) =  Nullary.contradiction  proj₁-flat-left-v₁≡[]  ¬proj₁-flat-v₁≡[] 
@@ -384,7 +426,7 @@ Note : The > order is transitive.
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ 
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
->-trans {l + r ` loc } {LeftU v₁} {RightU v₂} {RightU v₃}  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])  (choice-rr v₂>v₃)
+>-trans {l + r ` loc } {LeftU v₁} {RightU v₂} {RightU v₃}  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])  (choice-rr-bothempty _  proj₁flatv₃≡[] v₂>v₃)
   with proj₁ (flat {r} v₃) in flat-v₃-eq 
 ... | []       = choice-lr-bothempty proj₁flatv₁≡[] flat-v₃-eq 
 ... | (c ∷ cs) = Nullary.contradiction ([]>r→r≡[]  proj₁flatv₂≡[] v₂>v₃)  ¬proj₁flatv₃≡[]
@@ -392,29 +434,24 @@ Note : The > order is transitive.
       ¬proj₁flatv₃≡[] :  ¬ Product.proj₁ (flat v₃) ≡ []
       ¬proj₁flatv₃≡[] rewrite flat-v₃-eq  =  Utils.¬∷≡[]
       
->-trans {l + r ` loc }  (choice-rr v₁>v₂)         (choice-rr v₂>v₃) = choice-rr (>-trans v₁>v₂ v₂>v₃)
->-trans {l + r ` loc }  (choice-ll v₁>v₂)         (choice-ll v₂>v₃) = choice-ll (>-trans v₁>v₂ v₂>v₃)
->-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll v₁>v₂)   (choice-lr-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[])
+>-trans {l + r ` loc }  (choice-rr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[] v₁>v₂)   (choice-rr-bothempty _ proj₁flatv₃≡[] v₂>v₃) = choice-rr-bothempty proj₁flatv₁≡[] proj₁flatv₃≡[]  (>-trans v₁>v₂ v₂>v₃)
+>-trans {l + r ` loc }  (choice-ll-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[] v₁>v₂)   (choice-ll-bothempty _ proj₁flatv₃≡[] v₂>v₃) = choice-ll-bothempty proj₁flatv₁≡[] proj₁flatv₃≡[]  (>-trans v₁>v₂ v₂>v₃)
+>-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[] v₁>v₂)   (choice-lr-bothempty _  proj₁flatv₃≡[])
   with proj₁ (flat {l} v₁) in flat-v₁-eq
 ... | []       = choice-lr-bothempty flat-v₁-eq proj₁flatv₃≡[]
 ... | (c ∷ cs) = choice-lr-rempty ¬proj₁flatv₁≡[] proj₁flatv₃≡[]
     where
       ¬proj₁flatv₁≡[] : ¬ Product.proj₁ (flat v₁) ≡ []
       ¬proj₁flatv₁≡[] rewrite flat-v₁-eq  =  Utils.¬∷≡[] 
->-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll v₁>v₂)   (choice-lr-rempty ¬proj₁flatv₂≡[] proj₁flatv₃≡[])
+>-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₂≡[] v₁>v₂)   (choice-lr-rempty ¬proj₁flatv₂≡[] proj₁flatv₃≡[])
   with proj₁ (flat {l} v₁) in flat-v₁-eq
-... | [] = choice-lr-bothempty flat-v₁-eq proj₁flatv₃≡[]
+... | [] = Nullary.contradiction ¬proj₁flatv₁≡[] ? -- flat-v₁-eq 
 ... | (c ∷ cs) = choice-lr-rempty ¬proj₁flatv₁≡[] proj₁flatv₃≡[] 
-    where
-      ¬proj₁flatv₁≡[] : ¬ Product.proj₁ (flat v₁) ≡ []
-      ¬proj₁flatv₁≡[] rewrite flat-v₁-eq  =  Utils.¬∷≡[]
->-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll v₁>v₂)   (choice-lr-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[])
+>-trans {l + r ` loc }  {LeftU v₁} {LeftU v₂} {RightU v₃} (choice-ll-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₂≡[] v₁>v₂)   (choice-lr-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[])
   with proj₁ (flat {l} v₁) in flat-v₁-eq
-... | [] = {!!} -- but v₂ is not empty
+... | [] = {!Nullary.contradiction ¬proj₁flatv₁≡[] flat-v₁-eq!} -- but v₂ is not empty
 ... | (c ∷ cs) = choice-lr-notempty  ¬proj₁flatv₁≡[] ¬proj₁flatv₃≡[]
-    where
-      ¬proj₁flatv₁≡[] : ¬ Product.proj₁ (flat v₁) ≡ []
-      ¬proj₁flatv₁≡[] rewrite flat-v₁-eq  =  Utils.¬∷≡[]
+
 
 >-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₁ v₂>v₃)      = seq₁ (>-trans v₁>v₂ v₂>v₃) 
 >-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
@@ -478,7 +515,7 @@ map-leftU-sorted ( u ∷ (v ∷ us) ) (>-cons _ _  >-sorted-us (>-just u v u>v))
   = >-cons (LeftU u)
            (List.map LeftU (v ∷ us))
            (map-leftU-sorted (v ∷ us) >-sorted-us)
-           (>-just (LeftU u) (LeftU v) (choice-ll u>v))
+           (>-just (LeftU u) (LeftU v) ? )  -- (choice-ll u>v))
 
 
 map-rightU-sorted : ∀ { l r : RE } { loc : ℕ }
@@ -492,7 +529,7 @@ map-rightU-sorted ( u ∷ (v ∷ us) ) (>-cons _ _  >-sorted-us (>-just u v u>v)
   = >-cons (RightU u)
            (List.map RightU (v ∷ us))
            (map-rightU-sorted (v ∷ us) >-sorted-us)
-           (>-just (RightU u) (RightU v) (choice-rr u>v))
+           (>-just (RightU u) (RightU v) ? ) -- (choice-rr u>v))
   
 
 -- weakened compared to the version on greedy.Order
@@ -512,7 +549,7 @@ map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u ∷ [])        (v ∷
   = >-cons (LeftU u) (List.map LeftU [] ++ List.map RightU (v ∷ vs)) (map-rightU-sorted (v ∷ vs) >-sorted-r-vs) (>-just (LeftU u) (RightU v) (choice-lr-bothempty proj₁flatu≡[] proj₁flatv≡[]) ) --  choice-lr)
 map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u ∷ u' ∷ us)   (v ∷ vs) >-sorted-l-uuus >-sorted-r-vvs ((flat-[] _ proj₁flatu≡[]) ∷ all-flat-[]-uus) all-flat-[]-vvs  with >-sorted-l-uuus
 ... | >-cons {l} _ _ >-sorted-uus (>-just u₁ u₁' u>u' ) 
-  = >-cons (LeftU u) (List.map LeftU (u' ∷ us) ++ List.map RightU (v ∷ vs)) (map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u' ∷ us) (v ∷ vs)  >-sorted-uus  >-sorted-r-vvs all-flat-[]-uus all-flat-[]-vvs) ((>-just (LeftU u₁) (LeftU u₁') (choice-ll u>u' ))) 
+  = >-cons (LeftU u) (List.map LeftU (u' ∷ us) ++ List.map RightU (v ∷ vs)) (map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u' ∷ us) (v ∷ vs)  >-sorted-uus  >-sorted-r-vvs all-flat-[]-uus all-flat-[]-vvs) ((>-just (LeftU u₁) (LeftU u₁') ? )) -- (choice-ll u>u' ))) 
 
 
           
@@ -666,7 +703,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (l + r ` loc) ⊢ LeftU (inj u₁) > LeftU (inj u₂)
     >-inc-ev u₁ u₂ u₁>u₂ =
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  u₁>u₂
-      in choice-ll inj-u₁>inj-u₂
+      in choice-ll-notempty ? ?  inj-u₁>inj-u₂
 
 
 
@@ -686,7 +723,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (l + r ` loc) ⊢ RightU (inj u₁) > RightU (inj u₂)
     >-inc-ev u₁ u₂ u₁>u₂ =
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  u₁>u₂
-      in choice-rr inj-u₁>inj-u₂
+      in choice-rr-notempty ? ?  inj-u₁>inj-u₂
 
 
 

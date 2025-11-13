@@ -429,7 +429,7 @@ Note : The > order is transitive.
 >-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-rr-bothempty _ proj₁flatv₃≡[] v₂>v₃) = choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₃≡[] 
 >-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-rr-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[] v₂>v₃) = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[]
 >-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-rr-rempty ¬proj₁flatv₂≡[] proj₁flatv₃≡[]) = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[]
-
+>-trans {l + r ` loc }  (choice-lr-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[])         (choice-lr-lempty proj₁flatv₃≡[] ¬proj₁flatv₂≡[])  =  Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[] 
 
 >-trans {l + r ` loc }  (choice-lr-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₂≡[])        (choice-rr-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[] v₂>v₃) = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[]
 >-trans {l + r ` loc }  (choice-lr-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₂≡[])        (choice-rr-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[] v₂>v₃) = choice-lr-notempty ¬proj₁flatv₁≡[] ¬proj₁flatv₃≡[]

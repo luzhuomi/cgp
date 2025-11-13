@@ -366,15 +366,19 @@ Note : The > order is transitive.
     prf rewrite ind-hyp = {!!} -- can't be proven, we need to weaken the lemma, to require proj₁ (flat u) ≡ proj₁ (flat v)
 
 
->-trans : { r : RE } { u₁ u₂ u₃ : U r } 
+>-trans : { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ > u₂
   → r ⊢ u₂ > u₃
+  -- it seems not right.
+  -- adding this two requires the same word requirement in all sub exp levels.
+  -- → proj₁ (flat u₁) ≡ proj₁ (flat u₂) 
+  -- → proj₁ (flat u₂) ≡ proj₁ (flat u₃) 
   -----------------
   → r ⊢ u₁ > u₃
 >-trans {ε} = λ()
 >-trans {$ c ` loc} = λ()
 >-trans {r * ε∉r ` loc} star-cons-nil = λ()
->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃)  = star-head (>-trans v₁>v₂ v₂>v₃)
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃) = star-head (>-trans v₁>v₂ v₂>v₃)
 >-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
 >-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil  = star-cons-nil
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)

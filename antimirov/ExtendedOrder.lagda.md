@@ -105,6 +105,10 @@ open Decidable using
 open import Function using (_∘_ ; flip)
 ```
 
+TODO:
+1. it seems that we the extended order for anti is defined (weakened) by same flattened word.
+  1.1. this is because without the premise |u|=|v| >-trans is not valid. (ref to antimirov Order)
+2. if this the same flattened word requirement is valid, do we still need pdi*-∃?  if it is still needed; should the same flatten word requirement applies? 
 
 ### Definition 36 : (Extended) greedy ordering among PDInstances 
 

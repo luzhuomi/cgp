@@ -338,8 +338,35 @@ Note : The > order is transitive.
 []>r→r≡[] { l * ε∉l ` loc } {ListU []} {ListU []} refl = λ()
 []>r→r≡[] { l * ε∉l ` loc } {ListU (x ∷ xs)} {ListU ys} proj₁-flat-list-x∷xs≡[] =
   Nullary.contradiction proj₁-flat-list-x∷xs≡[] (¬proj₁flat-list-x∷xs≡[] {l} {ε∉l} {loc} {x} {xs})
+[]>r→r≡[] { l + r ` loc }   {LeftU v₁}       {LeftU v₂} proj₁-flat-left-v₁≡[]  (choice-ll v₁>v₂) = []>r→r≡[] proj₁-flat-left-v₁≡[] v₁>v₂ 
+[]>r→r≡[] { l + r ` loc }   {RightU v₁}     {RightU v₂} proj₁-flat-right-v₁≡[] (choice-rr v₁>v₂) = []>r→r≡[] proj₁-flat-right-v₁≡[] v₁>v₂ 
+[]>r→r≡[] { l + r ` loc }   {LeftU v₁}      {RightU v₂} proj₁-flat-left-v₁≡[]  (choice-lr-bothempty proj₁-flat-v₁≡[] proj₁-flat-v₂≡[]) = proj₁-flat-v₂≡[]
+[]>r→r≡[] { l + r ` loc }   {LeftU v₁}      {RightU v₂} proj₁-flat-left-v₁≡[]  (choice-lr-notempty ¬proj₁-flat-v₁≡[] ¬proj₁-flat-v₂≡[]) =  Nullary.contradiction  proj₁-flat-left-v₁≡[]  ¬proj₁-flat-v₁≡[] 
+[]>r→r≡[] { l + r ` loc }   {LeftU v₁}      {RightU v₂} proj₁-flat-left-v₁≡[]  (choice-lr-rempty ¬proj₁-flat-v₁≡[] proj₁-flat-v₂≡[]) =  Nullary.contradiction  proj₁-flat-left-v₁≡[]  ¬proj₁-flat-v₁≡[] 
+[]>r→r≡[] { l + r ` loc }   {RightU v₁}     {LeftU v₂} proj₁-flat-left-v₁≡[]  (choice-lr-lempty proj₁-flat-v₂≡[] ¬proj₁-flat-v₁≡[]) = proj₁-flat-v₂≡[]
+[]>r→r≡[] { l ● r ` loc }   {PairU v₁ v₂}   {PairU v₁' v₂'} proj₁-flat-pair-v₁-v₂≡[] (seq₂ v₁≡v₁' v₂>v₂') = prf
+  where
+    proj₁flatv₁≡[] : (proj₁ (flat v₁)) ≡ []
+    proj₁flatv₁≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) proj₁-flat-pair-v₁-v₂≡[]     
+    proj₁flatv₂≡[] : (proj₁ (flat v₂)) ≡ []
+    proj₁flatv₂≡[] = ++-conicalʳ (proj₁ (flat v₁)) (proj₁ (flat v₂)) proj₁-flat-pair-v₁-v₂≡[] 
+    ind-hyp : proj₁ (flat v₂') ≡ []
+    ind-hyp = []>r→r≡[] {r} {v₂} {v₂'} proj₁flatv₂≡[] v₂>v₂'
+    prf : proj₁ (flat (PairU {l} {r} {loc}  v₁' v₂')) ≡ []
+    prf rewrite (sym v₁≡v₁') |  proj₁flatv₁≡[] | ind-hyp =  refl
+[]>r→r≡[] { l ● r ` loc }   {PairU v₁ v₂}   {PairU v₁' v₂'} proj₁-flat-pair-v₁-v₂≡[] (seq₁ v₁>v₁') =  prf
+  where
+    proj₁flatv₁≡[] : (proj₁ (flat v₁)) ≡ []
+    proj₁flatv₁≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) proj₁-flat-pair-v₁-v₂≡[]  
+    proj₁flatv₂≡[] : (proj₁ (flat v₂)) ≡ []
+    proj₁flatv₂≡[] = ++-conicalʳ (proj₁ (flat v₁)) (proj₁ (flat v₂)) proj₁-flat-pair-v₁-v₂≡[] 
+    ind-hyp : proj₁ (flat v₁') ≡ []
+    ind-hyp = []>r→r≡[] {l} {v₁} {v₁'} proj₁flatv₁≡[] v₁>v₁' 
+    prf : proj₁ (flat (PairU {l} {r} {loc}  v₁' v₂')) ≡ []
+    prf rewrite ind-hyp = {!!} -- can't be proven, we need to weaken the lemma, to require proj₁ (flat u) ≡ proj₁ (flat v)
 
->-trans : { r : RE } { u₁ u₂ u₃ : U r }
+
+>-trans : { r : RE } { u₁ u₂ u₃ : U r } 
   → r ⊢ u₁ > u₂
   → r ⊢ u₂ > u₃
   -----------------
@@ -388,7 +415,12 @@ Note : The > order is transitive.
 >-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₁ v₂>v₃)      = seq₁ (>-trans v₁>v₂ v₂>v₃) 
 >-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
 >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
->-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃ 
+>-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃
+
+
+
+
+
 ```
 
 

@@ -886,39 +886,48 @@ pdinstance-fst-pair-l*-is-cons {l} {r} {ε∉l} {loc₁} {loc₂} {c} pdi (ListU
 #### Main Proof for Lemma 38
 
 ```agda
-
-postulate
-  pdinstance-snd-[]≡[] : ∀ { l r : RE } { loc : ℕ } { c : Char }
+-- these lemma should be moved to partial derivatives 
+pdinstance-snd-[]≡[] : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( x : ∃[ e ] (Flat-[] l e ) )
     ---------------------------------
     → pdinstance-snd {l} {r} {loc} {c} x [] ≡ []
-
-  -- this requires extensionality 
-  λ-pdinstance-snd-[]≡λ-[] : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → (λ x → pdinstance-snd {l} {r} {loc} {c} x []) ≡ ( λ x → [] )
-
-
-
-concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
-    →  concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ [] 
-concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} =
+pdinstance-snd-[]≡[] {l} {r} {loc} {c} x =
   begin
-    concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} []
+    pdinstance-snd {l} {r} {loc} {c} x []
   ≡⟨⟩
-    concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x []) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es)
-  -- ≡⟨ cong (λ z → concatMap z (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) ) {!!}  ⟩
-  ≡⟨ cong (λ z → concatMap z (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) ) λ-pdinstance-snd-[]≡λ-[] ⟩  
-    concatMap (λ x → []) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es)
-  ≡⟨⟩ 
-    List.foldr _++_ [] (List.map (λ x → []) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
-  ≡⟨ foldr++ys-map-λ_→[]-xs≡ys (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) []  ⟩ 
-    [] 
+    List.map (mk-snd-pdi x) []
+  ≡⟨⟩
+    []
   ∎ 
+  
+concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+    →  concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ []
+
+concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = prf 
   where
     es : List (U l)
     es = mkAllEmptyU {l} ε∈l
     flat-[]-es : All (Flat-[] l) es
     flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    zs : List ( ∃[ e ] (Flat-[] l e) ) 
+    zs = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+    -- induction over the list of empty parse trees and the flat-[] properties 
+    ind : ( ys : List ( ∃[ e ] (Flat-[] l e) ) )
+      → List.foldr _++_ [] (List.map (λ x → pdinstance-snd {l} {r} {loc} {c} x []) ys) ≡ []
+    ind []          = refl
+    ind ( y ∷ ys ) = ind ys
+
+    prf :  concatmap-pdinstance-snd [] ≡ [] 
+    prf =
+      begin
+        concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} []
+      ≡⟨⟩
+        concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x []) zs
+      ≡⟨⟩ 
+        List.foldr _++_ [] (List.map (λ x → pdinstance-snd {l} {r} {loc} {c} x []) zs)
+      ≡⟨ ind zs ⟩
+        []
+      ∎
 
 
 -- main lemma: 
@@ -984,7 +993,8 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd :
          (pdis : List (PDInstance l c ))
       →  (pdis' : List (PDInstance r c))
-      →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd  {l} {r} {ε∈l} {loc} {c} pdis'))) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis )
+      →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd  {l} {r} {ε∈l} {loc} {c} pdis')))
+             (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis )
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd [] _ = []
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) [] rewrite ( concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} )
       = prf (pdi ∷ pdis)

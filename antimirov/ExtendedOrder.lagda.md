@@ -888,8 +888,37 @@ pdinstance-fst-pair-l*-is-cons {l} {r} {ε∉l} {loc₁} {loc₂} {c} pdi (ListU
 ```agda
 
 postulate
-  concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  pdinstance-snd-[]≡[] : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( x : ∃[ e ] (Flat-[] l e ) )
+    ---------------------------------
+    → pdinstance-snd {l} {r} {loc} {c} x [] ≡ []
+
+  -- this requires extensionality 
+  λ-pdinstance-snd-[]≡λ-[] : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → (λ x → pdinstance-snd {l} {r} {loc} {c} x []) ≡ ( λ x → [] )
+
+
+
+concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     →  concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ [] 
+concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} =
+  begin
+    concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} []
+  ≡⟨⟩
+    concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x []) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es)
+  -- ≡⟨ cong (λ z → concatMap z (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) ) {!!}  ⟩
+  ≡⟨ cong (λ z → concatMap z (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) ) λ-pdinstance-snd-[]≡λ-[] ⟩  
+    concatMap (λ x → []) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es)
+  ≡⟨⟩ 
+    List.foldr _++_ [] (List.map (λ x → []) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
+  ≡⟨ foldr++ys-map-λ_→[]-xs≡ys (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) []  ⟩ 
+    [] 
+  ∎ 
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
 
 
 -- main lemma: 
@@ -958,18 +987,34 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
       →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd  {l} {r} {ε∈l} {loc} {c} pdis'))) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis )
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd [] _ = []
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) [] rewrite ( concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} )
-      = ex>-nothing ∷ {!!} -- ( all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] ) -- {!!} -- it is not clear to agda, because l is not a l*
-    {-
-nothing !=
-head
-concatMap (λ x → pdinstance-snd x [])
-  (zip-es-flat-[]-es (mkAllEmptyU ε∈l)
-   (cgp.antimirov.PartialDerivative.flat-[]-es []))))
-
-    -}
-                                                               -- ( ex>-nothing ∷ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] )
+      = prf (pdi ∷ pdis)
+        where
+          prf : (pdis' : List (PDInstance l c))
+              → All (λ pdi₁ → Ex>-maybe pdi₁ nothing)  (List.map ( pdinstance-fst  {l} {r} {loc} {c} ) pdis' )
+          prf [] = []
+          prf (pdi' ∷ pdis') = ex>-nothing ∷ prf pdis' 
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
-       = {!!} 
+       = {!!}  ∷ (all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis (pdi' ∷ pdis'))
+
+{-
+Goal: Ex>-maybe (pdinstance-fst pdi)
+      (head (concatmap-pdinstance-snd (pdi' ∷ pdis')))
+————————————————————————————————————————————————————————————
+pdis' : List (PDInstance r c)
+pdi'  : PDInstance r c
+pdis  : List (PDInstance l c)
+pdi   : PDInstance l c
+c     : Char
+loc   : ℕ
+r     : RE
+ε∈l   : ε∈ l
+l     : RE
+
+we need to make use of the fact that all parse trees PairU v u produced by concatmap-pdinstance-snd has an empty v.
+all the parse trees PairU v u produced by pdinstance-fst has a non empty v.
+
+-}
+       
 ```
 
 

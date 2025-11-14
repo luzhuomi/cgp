@@ -262,6 +262,8 @@ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis = concatMap (λ x → p
 
 
 
+
+
 ------------------------------------------------------------------------------------
 
 -- postulate
@@ -1291,7 +1293,30 @@ inv-recons-star {r} {ε∉r} {loc} {c} u us (pdinstance {p} {r} {c} inj s-ev)
         ∎ 
       inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r*⟧≡list-us : ( inj (unflat xs∈⟦p⟧) ≡ u ) × ( unListU (unflat ys∈⟦r*⟧) ≡ us )
       inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r*⟧≡list-us = inv-listU (inj (unflat xs∈⟦p⟧)) (unListU (unflat ys∈⟦r*⟧)) u us ((sym listu-u-us≡listu-inj-unflat-xs∈⟦p⟧-unListU-unflat-ys∈⟦r*⟧)) 
- 
+
+
+inv-recons*-compose-pdi-with : ∀ { r d : RE } {pref : List Char } { c : Char }
+  → ( u : U r )
+  → ( pdi : PDInstance d c )
+  → ( d→r : U d → U r )
+  → ( s-ev-dr : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+  → Recons* {r} {pref ∷ʳ c}  u (compose-pdi-with d→r s-ev-dr pdi) 
+  ----------------------------------------------------
+  → Recons* {r} {pref} u (pdinstance* d→r s-ev-dr) 
+inv-recons*-compose-pdi-with {r} {d} {pref} {c} u (pdinstance {p} {d} {c} p→d s-ev-pd) d→r s-ev-dr
+  (recons* {p} {r} {w} {pref++c} u ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧ ) ) =
+    recons* {- {d} {r} {c ∷ w} {pref} {d→r} {s-ev-dr} -}  u  ( proj₂ (flat (p→d (unflat w∈⟦p⟧))) , prf )
+    where
+      prf :  d→r (unflat (Product.proj₂ (flat (p→d (unflat w∈⟦p⟧))))) ≡ u
+      prf =
+        begin
+          d→r (unflat (proj₂ (flat (p→d (unflat w∈⟦p⟧)))))
+        ≡⟨ cong (λ x → (d→r x) ) unflat∘proj₂∘flat ⟩
+          d→r (p→d (unflat w∈⟦p⟧))
+        ≡⟨ inj-unflat-w∈⟦p⟧ ⟩ 
+          u
+        ∎
+
 
 ```
 
@@ -1540,4 +1565,30 @@ pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
 
 
 
+```
+
+#### Aux Lemma : A parse tree this reconstructible from a pdinstance should not be flattened to empty word.
+
+```agda
+recons-v→¬proj₁flat-v≡[] : ∀ { r : RE } { c : Char }
+  → ( v : U r )
+  → ( pdi : PDInstance r c )
+  → Recons v pdi
+  ---------------------------------------------
+  → ¬ proj₁ (flat v) ≡ []
+recons-v→¬proj₁flat-v≡[] {r} {c} v pdi  (recons {p} {l} {c} {w} {inj} {s-ev} _ ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡v ) )= prf 
+  where
+    proj₁-flat-v≡c∷w : proj₁ (flat v) ≡ c ∷ w
+    proj₁-flat-v≡c∷w =
+      begin
+        proj₁ (flat v)
+      ≡⟨ cong (λ x → proj₁ (flat x)) ( sym inj-unflat-w∈⟦p⟧≡v ) ⟩
+        proj₁ (flat (inj (unflat w∈⟦p⟧)))
+      ≡⟨ s-ev (unflat w∈⟦p⟧)  ⟩
+        c ∷ proj₁ (flat (unflat w∈⟦p⟧))
+      ≡⟨ cong (λ x → c ∷ (proj₁ x) ) (flat∘unflat w∈⟦p⟧) ⟩
+        c ∷ w 
+      ∎ 
+    prf : ¬  proj₁ (flat v) ≡ [] 
+    prf rewrite ( proj₁-flat-v≡c∷w ) = λ () 
 ```

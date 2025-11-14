@@ -39,16 +39,25 @@ open PartialDerivative using (
   Recons ; recons ;
   Recons* ; recons* ;
   parseAll[_,_] ; buildU ;
-  inv-recons-left ;   inv-recons-right ; inv-recons-fst ; inv-recons-snd ; inv-recons-star ; 
+  inv-recons-left ;   inv-recons-right ; inv-recons-fst ; inv-recons-snd ; inv-recons-star ;
+  inv-recons*-compose-pdi-with ; 
   ¬recons-right-from-pdinstance-left ; ¬recons-left-from-pdinstance-right ; ¬recons-[]-from-pdinstance-star ;
-  pdi*-∃  ) 
+  pdi*-∃  ;
+  recons-v→¬proj₁flat-v≡[] ) 
 
 
 import cgp.antimirov.Order as AntimirovOrder
-open AntimirovOrder using ( _⊢_>_ ; seq₁ ; seq₂ ; choice-ll ; choice-rr ; choice-lr-bothempty ; choice-lr-notempty ; choice-lr-rempty ; choice-lr-lempty ; star-head ; star-cons-nil ;
-  >-sorted ; >-nil ; >-cons ; 
+open AntimirovOrder using ( _⊢_>_ ; seq₁ ; seq₂ ;
+  choice-ll-bothempty ; choice-ll-notempty; choice-ll-empty ;
+  choice-rr-bothempty ; choice-rr-notempty; choice-rr-empty ;
+  choice-lr-bothempty ; choice-lr-notempty ; choice-lr-empty ;
+  choice-rl-empty ; star-head ; star-cons-nil ;
+  >-sorted ; >-nil ; >-cons ; concat-sorted ; 
   mkAllEmptyU-sorted ;
-  >-maybe ; >-nothing ; >-just  ) 
+  >-maybe ; >-nothing ; >-just ; 
+  >-trans ; *>-Inc ; *>-inc ;
+  concatmap-advance-pdi*-with-c-*>inc ;
+  pdUMany-*>-inc )   
 
 
 import Data.Char as Char
@@ -105,10 +114,6 @@ open Decidable using
 open import Function using (_∘_ ; flip)
 ```
 
-TODO:
-1. it seems that we the extended order for anti is defined (weakened) by same flattened word.
-  1.1. this is because without the premise |u|=|v| >-trans is not valid. (ref to antimirov Order)
-2. if this the same flattened word requirement is valid, do we still need pdi*-∃?  if it is still needed; should the same flatten word requirement applies? 
 
 ### Definition 36 : (Extended) greedy ordering among PDInstances 
 
@@ -206,6 +211,8 @@ Then pdU[r , c] is extended greedily sorted.
 -- Sub Lemma 38.1 - 38.25 BEGIN
 -------------------------------------------------------------
 
+
+
 left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
   → (pdi₁  : PDInstance l c )
   → (pdi₂ : PDInstance l c )
@@ -232,12 +239,21 @@ left-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = 
               we need to compute recons v pd₁ from recons (Left v) left-pdi₁
               2) then we have l ⊢ v > u , we can apply choice-ll rule to get l + r ` loc ⊢ LeftU v > LeftU u
              -} 
-       let recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v₁-pdi-left 
-           recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v₂-pdi-left
-       in choice-ll (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂) 
+             choice-ll-notempty  ¬proj₁flat-v₁≡[]  ¬proj₁flat-v₂≡[]  (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂)
+          where
+            recons-v₁-pdi₁ : Recons v₁ pdi₁
+            recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v₁-pdi-left
+            recons-v₂-pdi₂ : Recons v₂ pdi₂            
+            recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v₂-pdi-left
+            ¬proj₁flat-v₁≡[] : ¬ (proj₁ (flat v₁) ≡ [])
+            ¬proj₁flat-v₁≡[] = recons-v→¬proj₁flat-v≡[] v₁ pdi₁ recons-v₁-pdi₁
+            ¬proj₁flat-v₂≡[] : ¬ (proj₁ (flat v₂) ≡ [])
+            ¬proj₁flat-v₂≡[] = recons-v→¬proj₁flat-v≡[] v₂ pdi₂ recons-v₂-pdi₂
+
+
+       
     ev (RightU v₁)  _          recons-right-v₁-pdi-left _  =  Nullary.contradiction recons-right-v₁-pdi-left (¬recons-right-from-pdinstance-left v₁ pdi₁ ) -- impossible cases
     ev (LeftU _)   (RightU v₂) _  recons-right-v₂-pdi-left =   Nullary.contradiction recons-right-v₂-pdi-left (¬recons-right-from-pdinstance-left v₂ pdi₂  )
-
 
 
 
@@ -261,9 +277,18 @@ right-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) =
           -------------------------
           → ( (l + r ` loc) ⊢ u₁ > u₂ )
     ev (RightU v₁) (RightU v₂)  recons-right-v₁-pdi-right recons-right-v₂-pdi-right =
-       let recons-v₁-pdi₁ = inv-recons-right {l} {r} {loc} v₁  pdi₁  recons-right-v₁-pdi-right 
-           recons-v₂-pdi₂ = inv-recons-right {l} {r} {loc} v₂  pdi₂  recons-right-v₂-pdi-right
-       in choice-rr (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂) 
+       choice-rr-notempty ¬proj₁flat-v₁≡[] ¬proj₁flat-v₂≡[]  (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂)
+          where
+            recons-v₁-pdi₁ : Recons v₁ pdi₁
+            recons-v₁-pdi₁ = inv-recons-right {l} {r} {loc} v₁  pdi₁  recons-right-v₁-pdi-right  
+            recons-v₂-pdi₂ : Recons v₂ pdi₂            
+            recons-v₂-pdi₂ = inv-recons-right {l} {r} {loc} v₂  pdi₂  recons-right-v₂-pdi-right 
+            ¬proj₁flat-v₁≡[] : ¬ (proj₁ (flat v₁) ≡ [])
+            ¬proj₁flat-v₁≡[] = recons-v→¬proj₁flat-v≡[] v₁ pdi₁ recons-v₁-pdi₁
+            ¬proj₁flat-v₂≡[] : ¬ (proj₁ (flat v₂) ≡ [])
+            ¬proj₁flat-v₂≡[] = recons-v→¬proj₁flat-v≡[] v₂ pdi₂ recons-v₂-pdi₂
+
+       
     ev (LeftU v₁)  _             recons-left-v₁-pdi-right _  =  Nullary.contradiction recons-left-v₁-pdi-right (¬recons-left-from-pdinstance-right v₁ pdi₁ ) -- impossible cases
     ev (RightU _)  (LeftU v₂) _  recons-left-v₂-pdi-right =   Nullary.contradiction recons-left-v₂-pdi-right (¬recons-left-from-pdinstance-right v₂ pdi₂  )
 
@@ -308,7 +333,12 @@ map-left-right-ex-sorted {l} {r} {loc} pdis            []     ex>-sorted-l-pdis 
   = map-left-ex-sorted  pdis ex>-sorted-l-pdis 
 map-left-right-ex-sorted {l} {r} {loc} (pdi ∷ [])      (pdi' ∷ pdis')    ex>-sorted-l-pdis  ex>-sorted-r-pdis'
   = ex>-cons (map-right-ex-sorted (pdi' ∷ pdis') ex>-sorted-r-pdis') (ex>-just (>-pdi (pdinstance-left pdi) (pdinstance-right pdi')
-    (λ { (LeftU v₁) (RightU v₂) recons-left-u-from-pdinstance-left   recons-right-u-from-pdinstance-right → choice-lr-notempty ? ? 
+    (λ { (LeftU v₁) (RightU v₂) recons-left-u-from-pdinstance-left   recons-right-u-from-pdinstance-right →
+                let  recons-v₁-pdi = inv-recons-left {l} {r} {loc} v₁ pdi recons-left-u-from-pdinstance-left
+                     recons-v₂-pdi' = inv-recons-right {l} {r} {loc} v₂ pdi' recons-right-u-from-pdinstance-right
+                     ¬proj₁flat-v₁≡[] = recons-v→¬proj₁flat-v≡[] v₁ pdi recons-v₁-pdi
+                     ¬proj₁flat-v₂≡[] = recons-v→¬proj₁flat-v≡[] v₂ pdi' recons-v₂-pdi' 
+                in choice-lr-notempty ¬proj₁flat-v₁≡[] ¬proj₁flat-v₂≡[] 
         -- impossible cases
        ; (RightU v₁) _          recons-right-u-from-pdinstance-left  _              → Nullary.contradiction recons-right-u-from-pdinstance-left  (¬recons-right-from-pdinstance-left v₁ pdi )
        ; (LeftU v₁) (LeftU v₂)  _  recons-left-u-from-pdinstance-right              → Nullary.contradiction recons-left-u-from-pdinstance-right  (¬recons-left-from-pdinstance-right v₂ pdi' ) 
@@ -320,7 +350,9 @@ map-left-right-ex-sorted {l} {r} {loc} (pdi₁ ∷ pdi₂ ∷ pdis)   (pdi' ∷ 
     (λ { (LeftU v₁) (LeftU v₂)  recons-left-v1-from-pdinstance-left-pdi₁ recons-left-v2-from-pdinstance-left-pdi₂ →
          let recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v1-from-pdinstance-left-pdi₁
              recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v2-from-pdinstance-left-pdi₂
-         in choice-ll ( pdi₁>pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂ )
+             ¬proj₁flat-v₁≡[] = recons-v→¬proj₁flat-v≡[] v₁ pdi₁ recons-v₁-pdi₁
+             ¬proj₁flat-v₂≡[] = recons-v→¬proj₁flat-v≡[] v₂ pdi₂ recons-v₂-pdi₂  
+         in choice-ll-notempty ¬proj₁flat-v₁≡[] ¬proj₁flat-v₂≡[]  ( pdi₁>pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂ )
         -- impossible cases         
        ; (RightU v₁)  _         recons-right-u-from-pdinstance-left-pdi₁ _ → Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₁ ( ¬recons-right-from-pdinstance-left v₁ pdi₁ )
        ; (LeftU v₁) (RightU v₂) _ recons-right-u-from-pdinstance-left-pdi₂ → Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₂ ( ¬recons-right-from-pdinstance-left v₂ pdi₂ )       
@@ -855,6 +887,11 @@ pdinstance-fst-pair-l*-is-cons {l} {r} {ε∉l} {loc₁} {loc₂} {c} pdi (ListU
 
 ```agda
 
+postulate
+  concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+    →  concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ [] 
+
+
 -- main lemma: 
 pdU-sorted : ∀ { r : RE } { c : Char }
   → Ex>-sorted {r} {c} pdU[ r , c ]
@@ -894,9 +931,39 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
-...  | yes ε∈l = ? 
- 
+...  | yes ε∈l = {!!} 
+  where
+    ind-hyp-l : Ex>-sorted pdU[ l , c ]
+    ind-hyp-l = pdU-sorted {l} {c}
+    
+    ind-hyp-r : Ex>-sorted pdU[ r , c ]
+    ind-hyp-r = pdU-sorted {r} {c}
 
+    -- we need to concat the following two, but we need to know all fst in map-pdinstance-fst-ex>sorted  >  concatmap-pdinstance-snd-ex>-sorted
+    map-pdinstance-fst-ex>sorted : Ex>-sorted { l ● r ` loc } (List.map pdinstance-fst  pdU[ l , c ] )
+    map-pdinstance-fst-ex>sorted = map-fst-ex-sorted pdU[ l , c ] ind-hyp-l 
+
+    concatmap-pdinstance-snd-is-ex>-sorted : Ex>-sorted { l  ● r ` loc } (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])
+    concatmap-pdinstance-snd-is-ex>-sorted = concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c}  pdU[ r , c ] ind-hyp-r 
+
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd :
+         (pdis : List (PDInstance l c ))
+      →  (pdis' : List (PDInstance r c))
+      →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd  {l} {r} {ε∈l} {loc} {c} pdis'))) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis )
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd [] _ = []
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) [] rewrite ( concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} )
+      = ex>-nothing ∷ ( all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] ) -- {!!} -- it is not clear to agda, because l is not a l*
+    {-
+nothing !=
+head
+concatMap (λ x → pdinstance-snd x [])
+  (zip-es-flat-[]-es (mkAllEmptyU ε∈l)
+   (cgp.antimirov.PartialDerivative.flat-[]-es []))))
+
+    -}
+                                                               -- ( ex>-nothing ∷ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] )
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
+       = {!!} 
 ```
 
 

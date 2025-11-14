@@ -931,7 +931,13 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
-...  | yes ε∈l = {!!} 
+...  | yes ε∈l = 
+  concat-ex-sorted { l ● r ` loc } {c}
+    (List.map pdinstance-fst pdU[ l , c ])
+    (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])
+    map-pdinstance-fst-ex>sorted
+    concatmap-pdinstance-snd-is-ex>-sorted
+    (all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdU[ l , c ]  pdU[ r , c ])
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
@@ -952,7 +958,7 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
       →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd  {l} {r} {ε∈l} {loc} {c} pdis'))) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis )
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd [] _ = []
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) [] rewrite ( concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} )
-      = ex>-nothing ∷ ( all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] ) -- {!!} -- it is not clear to agda, because l is not a l*
+      = ex>-nothing ∷ {!!} -- ( all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] ) -- {!!} -- it is not clear to agda, because l is not a l*
     {-
 nothing !=
 head

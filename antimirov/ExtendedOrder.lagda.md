@@ -929,6 +929,109 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = prf
         []
       ∎
 
+postulate
+  ¬zip-es-flat-[]-es≡[] : ∀ { l  : RE } {ε∈l : ε∈ l }
+    → ¬ ( zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU ε∈l) (mkAllEmptyU-sound ε∈l) )≡ []
+
+-- parse tree can be flattened to [] implies RE is nullable. 
+proj₁flat-v≡[]→ε∈r : ∀ { r : RE } { v : U r }
+    → (proj₁ (flat v)) ≡ []
+    -------------------------
+    → ε∈ r
+proj₁flat-v≡[]→ε∈r {ε} {EmptyU} proj₁flat-v≡[] = ε∈ε 
+proj₁flat-v≡[]→ε∈r {$ c ` loc } {LetterU _} = λ()
+proj₁flat-v≡[]→ε∈r {r * ε∉r ` loc } {ListU _} proj₁flat-v≡[] = ε∈* 
+proj₁flat-v≡[]→ε∈r {l + r  ` loc } {LeftU v} proj₁flat-v≡[] with ε∈? r
+... | yes ε∈r = ε∈ ε∈l + ε∈r 
+  where
+    ε∈l : ε∈ l 
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
+... | no ¬ε∈r = ε∈ ε∈l <+ (¬ε∈r→ε∉r ¬ε∈r)
+  where
+    ε∈l : ε∈ l 
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
+proj₁flat-v≡[]→ε∈r {l + r  ` loc } {RightU v} proj₁flat-v≡[] with ε∈? l
+... | yes ε∈l = ε∈ ε∈l + ε∈r 
+  where
+    ε∈r : ε∈ r 
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
+... | no ¬ε∈l = ε∈ (¬ε∈r→ε∉r ¬ε∈l) +> ε∈r 
+  where
+    ε∈r : ε∈ r 
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
+proj₁flat-v≡[]→ε∈r {l ● r  ` loc } {PairU v u} proj₁flat-pair-v-u≡[] = ε∈ ε∈l ● ε∈r
+  where
+    ε∈l : ε∈ l
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} (++-conicalˡ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
+    ε∈r : ε∈ r
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {u} (++-conicalʳ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
+    
+
+|∷|>|[]| : ∀ { r : RE } { ε∈r : ε∈ r } { c : Char } { cs : List Char } 
+    → ( u v : U r )
+    → ( proj₁ (flat u) ≡ c ∷ cs )
+    → ( proj₁ (flat v) ≡ [] )
+    ------------------------------
+    → r ⊢ u > v 
+|∷|>|[]| {ε} {ε∈ε} {c} {cs} EmptyU EmptyU = λ()
+|∷|>|[]| {r * ε∉r ` loc } {ε∈*} {c} {cs} (ListU (u ∷ us)) (ListU []) proj₁flat-list-u∷us≡c∷cs proj₁flat-list-[]≡[] = star-cons-nil 
+|∷|>|[]| {r * ε∉r ` loc } {ε∈*} {c} {cs} (ListU (u ∷ us)) (ListU (v ∷ vs)) proj₁flat-list-u∷us≡c∷cs proj₁flat-list-v-vs≡[] = Nullary.contradiction proj₁flat-list-v-vs≡[] ¬proj₁-flat-list-v-vs≡[] 
+  where
+    bar : proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))) ≡ proj₁ (flat v) ++ proj₁ (flat (ListU {r} {ε∉r} {loc} vs))
+    bar =
+      begin
+        proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs)))
+      ≡⟨⟩
+        proj₁ (flat v) ++ proj₁ (flat (ListU {r} {ε∉r} {loc} vs))
+      ∎ 
+    ¬proj₁-flat-list-v-vs≡[] : ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))) ≡ [] )
+    ¬proj₁-flat-list-v-vs≡[] proj₁-flat-list-v-vs≡[] rewrite bar = (ε∉r→¬ε∈r ε∉r) ( proj₁flat-v≡[]→ε∈r proj₁-flat-v≡[]) 
+      where
+        proj₁-flat-v≡[] : proj₁ (flat v) ≡ []
+        proj₁-flat-v≡[] = ++-conicalˡ ( proj₁ (flat v)) ( proj₁ (flat (ListU {r} {ε∉r} {loc} vs)))  proj₁-flat-list-v-vs≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (LeftU u) (LeftU v) proj₁flat-left-u≡c∷cs   proj₁flat-left-v≡[] = choice-ll-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (LeftU u) (RightU v) proj₁flat-left-u≡c∷cs   proj₁flat-right-v≡[] = choice-lr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (RightU u) (RightU v) proj₁flat-right-u≡c∷cs   proj₁flat-right-v≡[] = choice-rr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (RightU u) (LeftU v) proj₁flat-right-u≡c∷cs   proj₁flat-left-v≡[] = choice-rl-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l <+ ε∉r } {c} {cs} (RightU u) (LeftU v) proj₁flat-right-u≡c∷cs   proj₁flat-left-v≡[] = choice-rl-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l <+ ε∉r } {c} {cs} (LeftU u) (LeftU v) proj₁flat-left-u≡c∷cs   proj₁flat-left-v≡[] = choice-ll-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l <+ ε∉r } {c} {cs} u (RightU v) proj₁flat-u≡c∷cs   proj₁flat-right-v≡[] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-right-v≡[]) (ε∉r→¬ε∈r ε∉r) 
+
+|∷|>|[]| {l + r ` loc } {ε∈ ε∉l +> ε∈r } {c} {cs} (LeftU u) (RightU v) proj₁flat-left-u≡c∷cs   proj₁flat-right-v≡[] = choice-lr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∉l +> ε∈r } {c} {cs} (RightU u) (RightU v) proj₁flat-right-u≡c∷cs   proj₁flat-right-v≡[] = choice-rr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∉l +> ε∈r } {c} {cs} u (LeftU v) proj₁flat-u≡c∷cs   proj₁flat-left-v≡[] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l) 
+|∷|>|[]| {l ● r ` loc } {ε∈ ε∈l ● ε∈r } {c} {cs} (PairU u₁ u₂) (PairU v₁ v₂) proj₁flat-pair-u₁u₂≡c∷cs proj₁flat-pair-v₁v₂≡[] = {!!}
+  -- how to guarantee either u₁ > v₁ or u₁ ≡ v₁ ? 
+  -- can't guarantee. here is the counter example 
+  -- u = PairU (RightU EmptyU) (ListU (LetterU a) ∷ [])
+  -- v = PairU (LeftU EmptyU)  (ListU [] )
+  -- u < v!!!
+  -- is it because we need assoc rule for ( r ● s ) ● t ---> r ● (s ● t) ?
+
 
 -- main lemma: 
 pdU-sorted : ∀ { r : RE } { c : Char }
@@ -1004,24 +1107,88 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
           prf [] = []
           prf (pdi' ∷ pdis') = ex>-nothing ∷ prf pdis' 
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
-       = {!!}  ∷ (all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis (pdi' ∷ pdis'))
+      with concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  (pdi' ∷ pdis') in concatmap-pd-snd-eq 
+    ... | ( pdi₂@(pdinstance p→l●r₂ s-ev₂) ∷ pdis₂ ) = ind (pdi ∷ pdis)
+        where
+          ind : ( pdis₀ : List (PDInstance l c) )
+              → All (λ pdi₁ → Ex>-maybe pdi₁ (just (pdinstance p→l●r₂ s-ev₂)))
+                (List.map pdinstance-fst pdis₀)
+          ind []              = []
+          ind (pdi₀@(pdinstance p→l₀ s-ev₀) ∷ pdis₀) with pdinstance-fst {l} {r} {loc} pdi₀ -- pdi₀ is pdi from the parent scope
+          ... | pdi₁@(pdinstance p→l●r₁ s-ev₁) = ex>-just (>-pdi pdi₁ (pdinstance p→l●r₂ s-ev₂) ev) ∷ (ind pdis₀)
+            where
+              ev : (u₁ u₂ : U (l ● r ` loc)) →
+                   Recons u₁ (pdinstance p→l●r₁ s-ev₁) →
+                   Recons u₂ (pdinstance p→l●r₂ s-ev₂) → (l ● r ` loc) ⊢ u₁ > u₂
+              ev (PairU v₁ s₁) (PairU v₂ s₂)
+                 recons₁@(recons _ ( w∈⟦p₁⟧ , inj-unflat-w∈⟦p₁⟧≡pair-v₁s₁ ))
+                 recons₂@(recons _ ( w∈⟦p₂⟧ , inj-unflat-w∈⟦p₂⟧≡pair-v₂s₂ )) =  {!!}
+              {-
+
+              ev-> : (v₁ : U l )
+                   → (v₁' : U r )
+                   → (v₂ : U l )
+                   → (v₂' : U r )
+                   → Recons {l ● r ` loc} {c} (PairU v₁ v₁')  ( pdinstance-fst {l} {r} {loc} {c}  pdi₀ )
+                   → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (ListU [] ,  flat-[] (ListU []) refl) pdi' )
+                   --------------------------------------------------
+                   → ((l * ε∉l ` loc₂) ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
+              ev-> v₁ v₁' v₂ v₂' recons1 recons2  = seq₁ v₁>v₂
+                where 
+                  v₂≡list-[] : v₂ ≡ (ListU [])
+                  v₂≡list-[] = mk-snd-pdi-fst-pair-≡ pdi' (ListU []) (flat-[] (ListU []) refl)  v₂ v₂' recons2
+                  v₁-is-cons : ∃[ x ] ∃[ xs ] (v₁ ≡ ListU (x ∷ xs))
+                  v₁-is-cons = pdinstance-fst-pair-l*-is-cons pdi v₁ v₁' recons1
+                  x  = proj₁ v₁-is-cons
+                  xs = proj₁ (proj₂ v₁-is-cons)
+                  v₁≡list-x-xs = proj₂ (proj₂ v₁-is-cons)
+                  list-x-xs>e : (l * ε∉l ` loc₂) ⊢ ListU (x ∷ xs) > (ListU []) 
+                  list-x-xs>e = star-cons-nil
+                  v₁>v₂ : (l * ε∉l ` loc₂) ⊢ v₁ > v₂
+                  v₁>v₂ rewrite  v₁≡list-x-xs | v₂≡list-[] = list-x-xs>e
+              -}
+
+
+    ... | [] with inv-concatMap-map-f-[] {xs = (zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU ε∈l) (mkAllEmptyU-sound ε∈l)) }
+                                         {ys =  (pdi' ∷ pdis')} 
+                                         concatmap-pd-snd-eq
+    ...       |  inj₁ zip-es-flat-[]-es≡[] = Nullary.contradiction zip-es-flat-[]-es≡[] ¬zip-es-flat-[]-es≡[]
+    ...       |  inj₂ pdi'∷pdis'≡[]        = Nullary.contradiction pdi'∷pdis'≡[] ¬∷≡[] 
+
 
 {-
-Goal: Ex>-maybe (pdinstance-fst pdi)
-      (head (concatmap-pdinstance-snd (pdi' ∷ pdis')))
+Goal: All (λ pdi₁ → Ex>-maybe pdi₁ (just (pdinstance inj s-ev)))
+      (pdinstance-fst pdi ∷ List.map pdinstance-fst pdis)
 ————————————————————————————————————————————————————————————
-pdis' : List (PDInstance r c)
-pdi'  : PDInstance r c
+pdi₂  : PDInstance (l ● r ` loc) c
+pdi₂  = pdinstance inj s-ev
 pdis  : List (PDInstance l c)
 pdi   : PDInstance l c
+concatmap-pd-snd-eq
+      : List.foldr _++_ []
+        (List.map (λ x → mk-snd-pdi x pdi' ∷ List.map (mk-snd-pdi x) pdis')
+         (zip-es-flat-[]-es (mkAllEmptyU ε∈l) (mkAllEmptyU-sound ε∈l)))
+        ≡ pdinstance inj s-ev ∷ pdis₂
+pdis₂ : List (PDInstance (l ● r ` loc) c)
+s-ev  : (u : U p) →
+        Product.proj₁ (flat (inj u)) ≡ c ∷ Product.proj₁ (flat u)
+inj   : U p → U (l ● r ` loc)
+p     : RE   (not in scope)
+pdis' : List (PDInstance r c)
+pdi'  : PDInstance r c
 c     : Char
 loc   : ℕ
 r     : RE
 ε∈l   : ε∈ l
 l     : RE
 
-we need to make use of the fact that all parse trees PairU v u produced by concatmap-pdinstance-snd has an empty v.
+we need to make use of the fact that all parse trees pdi₁ = PairU v' u' produced by concatmap-pdinstance-snd has an empty v.
 all the parse trees PairU v u produced by pdinstance-fst has a non empty v.
+
+do we need this?
+forall parse tree v and u. |v| != [] and |u| = [], r |- v > u 
+
+then we can show that PairU v u > PairU v' u' via seq₁ (v > v') 
 
 -}
        

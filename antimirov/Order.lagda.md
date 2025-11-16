@@ -135,11 +135,35 @@ if it is anti u5 > u6, but why? clearly in this not right non greedy;  if it is 
 infix 4 _⊢_>_
 
 
-data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where 
+data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
+  {-
   seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     →   l ⊢ v₁ >  v₁'   
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+  -}
+
+  seq₁-bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → proj₁ (flat v₁) ≡ []
+    → proj₁ (flat v₂) ≡ []
+    →   l ⊢ v₁ >  v₁'   
+    ------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
+  seq₁-notempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → ¬ proj₁ (flat v₁) ≡ []
+    → ¬ proj₁ (flat v₂) ≡ []
+    →   l ⊢ v₁ >  v₁'   
+    ------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
+  seq₁-empty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → ¬ proj₁ (flat v₁) ≡ []
+    → proj₁ (flat v₂) ≡ []
+    →   l ⊢ v₁ >  v₁'   
+    ------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
 
   seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → v₁ ≡ v₁'
@@ -255,9 +279,10 @@ module ExampleAntimirov where
   t2 : U a*●a*
   t2 = PairU (ListU []) (ListU (LetterU 'a' ∷ []))
 
-
+  -- ev₁ : proj₁ (flat (ListU (LetterU 'a' ∷ []))
+  
   t1>t2 : a*●a* ⊢  t1 > t2 
-  t1>t2 = seq₁ star-cons-nil 
+  t1>t2 = seq₁-empty ? ?  star-cons-nil 
 
 
   ε+a●a+ε : RE 
@@ -272,7 +297,7 @@ module ExampleAntimirov where
   t4 = PairU (LeftU EmptyU) (LeftU (LetterU 'a'))
 
   t3>t4 : ε+a●a+ε ⊢ t3 > t4 
-  t3>t4 = seq₁ (choice-rl-empty ( λ () ) refl  )
+  t3>t4 = seq₁-empty ? ? (choice-rl-empty ( λ () ) refl  )
 
 
   a*+a*●a* : RE

@@ -1062,7 +1062,7 @@ PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                (ListU []))   
 ∷
 PairU (PairU (LeftU (ListU []))                                 (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))   (ListU [])
 ∷
-PairU (PairU (LeftU (ListU []))                                 (ListU (LetterU 'a' ∷ [])))                 (ListU (LetterU 'a' ∷ [])) 
+(PairU (LeftU (ListU []))                                 (ListU (LetterU 'a' ∷ [])))                 (ListU (LetterU 'a' ∷ [])) 
 ∷
 PairU (PairU (RightU (ListU []))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))   (ListU [])
 ∷

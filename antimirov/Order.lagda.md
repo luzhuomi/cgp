@@ -3,11 +3,11 @@
 module cgp.antimirov.Order where
 
 import cgp.RE as RE
-open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
+open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? ; ¬ε∈r→ε∉r )
 
 
 import cgp.Utils as Utils
-open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ;  ¬∷≡[]   )
 
 
 import cgp.Word as Word
@@ -144,30 +144,46 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
   -}
 
   seq₁-bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
-    → proj₁ (flat v₁) ≡ []
-    → proj₁ (flat v₂) ≡ []
+    → proj₁ (flat v₁) ++  proj₁ (flat v₂) ≡ []
+    → proj₁ (flat v₁') ++  proj₁ (flat v₂') ≡ []
     →   l ⊢ v₁ >  v₁'   
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
   seq₁-notempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → ¬ proj₁ (flat v₁) ≡ []
-    → ¬ proj₁ (flat v₂) ≡ []
+    → ¬ proj₁ (flat v₁') ≡ []
     →   l ⊢ v₁ >  v₁'   
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
   seq₁-empty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → ¬ proj₁ (flat v₁) ≡ []
-    → proj₁ (flat v₂) ≡ []
-    →   l ⊢ v₁ >  v₁'   
+    → proj₁ (flat v₁')  ++  proj₁ (flat v₂') ≡ []
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
 
-  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+  seq₂-bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → proj₁ (flat v₂) ≡ []
+    → proj₁ (flat v₂') ≡ []
     → v₁ ≡ v₁'
     → r ⊢ v₂ > v₂'
+    -------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
+  seq₂-notempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → ¬ proj₁ (flat v₂) ≡ []
+    → ¬ proj₁ (flat v₂') ≡ []
+    → v₁ ≡ v₁'
+    → r ⊢ v₂ > v₂'
+    -------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
+  seq₂-empty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → ¬ proj₁ (flat v₂) ≡ []
+    → proj₁ (flat v₂') ≡ []
+    → v₁ ≡ v₁'
     -------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
@@ -282,7 +298,7 @@ module ExampleAntimirov where
   -- ev₁ : proj₁ (flat (ListU (LetterU 'a' ∷ []))
   
   t1>t2 : a*●a* ⊢  t1 > t2 
-  t1>t2 = seq₁-empty ? ?  star-cons-nil 
+  t1>t2 = seq₁-empty (λ ()) refl -- star-cons-nil 
 
 
   ε+a●a+ε : RE 
@@ -297,7 +313,7 @@ module ExampleAntimirov where
   t4 = PairU (LeftU EmptyU) (LeftU (LetterU 'a'))
 
   t3>t4 : ε+a●a+ε ⊢ t3 > t4 
-  t3>t4 = seq₁-empty ? ? (choice-rl-empty ( λ () ) refl  )
+  t3>t4 = seq₁-empty (λ ()) refl -- (choice-rl-empty ( λ () ) refl  )
 
 
   a*+a*●a* : RE
@@ -313,7 +329,7 @@ module ExampleAntimirov where
   t8 = PairU (RightU (ListU (LetterU 'a' ∷ [])))                (ListU (LetterU 'a' ∷ []))
   
   t6>t7 : a*+a*●a* ⊢ t6 > t7
-  t6>t7 = seq₁ (choice-lr-notempty  (λ ()) λ () )
+  t6>t7 = seq₁-notempty (λ ()) (λ ())  (choice-lr-notempty  (λ ()) λ () )
 
   t9 : U a*+a*●a*
   t9 = PairU (LeftU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
@@ -321,10 +337,10 @@ module ExampleAntimirov where
   t10 = PairU (RightU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
 
   t8>t9 : a*+a*●a* ⊢ t8 > t9
-  t8>t9 = seq₁ (choice-rl-empty (λ () ) refl )
+  t8>t9 = seq₁-empty (λ ()) refl  -- (choice-rl-empty (λ () ) refl )
 
   t9>t10 : a*+a*●a* ⊢ t9 > t10
-  t9>t10 = seq₁ (choice-lr-bothempty refl refl)
+  t9>t10 = seq₁-bothempty refl refl  (choice-lr-bothempty refl refl)
 ```
 
 
@@ -467,13 +483,112 @@ Note : The > order is transitive.
 >-trans {l + r ` loc }  (choice-rl-empty ¬proj₁flatv₁≡[] proj₁flatv₂≡[])            (choice-lr-empty ¬proj₁flatv₂≡[] proj₁flatv₃≡[])           = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[] 
 
 
->-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₁ v₂>v₃)      = seq₁ (>-trans v₁>v₂ v₂>v₃) 
->-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
->-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
->-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃
+>-trans {l ● r ` loc }  (seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[]  v₁>v₂)              (seq₁-bothempty _ proj₁flatv₃≡[]  v₂>v₃)      = seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₃≡[]  (>-trans v₁>v₂ v₂>v₃) 
+-- >-trans {l ● r ` loc }  (seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[]  v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃)                   = seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[]  v₁>v₂
+-- >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')                                               (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃)                   = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
+-- >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')                                               (seq₁-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[]  v₂>v₃)         rewrite v₁≡v₂ =  seq₁-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[]  v₂>v₃
 
 
 
+-- parse tree can be flattened to [] implies RE is nullable. 
+proj₁flat-v≡[]→ε∈r : ∀ { r : RE } { v : U r }
+    → (proj₁ (flat v)) ≡ []
+    -------------------------
+    → ε∈ r
+proj₁flat-v≡[]→ε∈r {ε} {EmptyU} proj₁flat-v≡[] = ε∈ε 
+proj₁flat-v≡[]→ε∈r {$ c ` loc } {LetterU _} = λ()
+proj₁flat-v≡[]→ε∈r {r * ε∉r ` loc } {ListU _} proj₁flat-v≡[] = ε∈* 
+proj₁flat-v≡[]→ε∈r {l + r  ` loc } {LeftU v} proj₁flat-v≡[] with ε∈? r
+... | yes ε∈r = ε∈ ε∈l + ε∈r 
+  where
+    ε∈l : ε∈ l 
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
+... | no ¬ε∈r = ε∈ ε∈l <+ (¬ε∈r→ε∉r ¬ε∈r)
+  where
+    ε∈l : ε∈ l 
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
+proj₁flat-v≡[]→ε∈r {l + r  ` loc } {RightU v} proj₁flat-v≡[] with ε∈? l
+... | yes ε∈l = ε∈ ε∈l + ε∈r 
+  where
+    ε∈r : ε∈ r 
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
+... | no ¬ε∈l = ε∈ (¬ε∈r→ε∉r ¬ε∈l) +> ε∈r 
+  where
+    ε∈r : ε∈ r 
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
+proj₁flat-v≡[]→ε∈r {l ● r  ` loc } {PairU v u} proj₁flat-pair-v-u≡[] = ε∈ ε∈l ● ε∈r
+  where
+    ε∈l : ε∈ l
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} (++-conicalˡ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
+    ε∈r : ε∈ r
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {u} (++-conicalʳ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
+    
+
+
+|∷|>|[]| : ∀ { r : RE } { ε∈r : ε∈ r } { c : Char } { cs : List Char } 
+    → ( u v : U r )
+    → ( proj₁ (flat u) ≡ c ∷ cs )
+    → ( proj₁ (flat v) ≡ [] )
+    ------------------------------
+    → r ⊢ u > v 
+|∷|>|[]| {ε} {ε∈ε} {c} {cs} EmptyU EmptyU = λ()
+|∷|>|[]| {r * ε∉r ` loc } {ε∈*} {c} {cs} (ListU (u ∷ us)) (ListU []) proj₁flat-list-u∷us≡c∷cs proj₁flat-list-[]≡[] = star-cons-nil 
+|∷|>|[]| {r * ε∉r ` loc } {ε∈*} {c} {cs} (ListU (u ∷ us)) (ListU (v ∷ vs)) proj₁flat-list-u∷us≡c∷cs proj₁flat-list-v-vs≡[] = Nullary.contradiction proj₁flat-list-v-vs≡[] ¬proj₁-flat-list-v-vs≡[] 
+  where
+    bar : proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))) ≡ proj₁ (flat v) ++ proj₁ (flat (ListU {r} {ε∉r} {loc} vs))
+    bar =
+      begin
+        proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs)))
+      ≡⟨⟩
+        proj₁ (flat v) ++ proj₁ (flat (ListU {r} {ε∉r} {loc} vs))
+      ∎ 
+    ¬proj₁-flat-list-v-vs≡[] : ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))) ≡ [] )
+    ¬proj₁-flat-list-v-vs≡[] proj₁-flat-list-v-vs≡[] rewrite bar = (ε∉r→¬ε∈r ε∉r) ( proj₁flat-v≡[]→ε∈r proj₁-flat-v≡[]) 
+      where
+        proj₁-flat-v≡[] : proj₁ (flat v) ≡ []
+        proj₁-flat-v≡[] = ++-conicalˡ ( proj₁ (flat v)) ( proj₁ (flat (ListU {r} {ε∉r} {loc} vs)))  proj₁-flat-list-v-vs≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (LeftU u) (LeftU v) proj₁flat-left-u≡c∷cs   proj₁flat-left-v≡[] = choice-ll-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (LeftU u) (RightU v) proj₁flat-left-u≡c∷cs   proj₁flat-right-v≡[] = choice-lr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (RightU u) (RightU v) proj₁flat-right-u≡c∷cs   proj₁flat-right-v≡[] = choice-rr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l + ε∈r } {c} {cs} (RightU u) (LeftU v) proj₁flat-right-u≡c∷cs   proj₁flat-left-v≡[] = choice-rl-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l <+ ε∉r } {c} {cs} (RightU u) (LeftU v) proj₁flat-right-u≡c∷cs   proj₁flat-left-v≡[] = choice-rl-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l <+ ε∉r } {c} {cs} (LeftU u) (LeftU v) proj₁flat-left-u≡c∷cs   proj₁flat-left-v≡[] = choice-ll-empty ¬proj₁flat-u≡[]  proj₁flat-left-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[]
+|∷|>|[]| {l + r ` loc } {ε∈ ε∈l <+ ε∉r } {c} {cs} u (RightU v) proj₁flat-u≡c∷cs   proj₁flat-right-v≡[] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-right-v≡[]) (ε∉r→¬ε∈r ε∉r) 
+
+|∷|>|[]| {l + r ` loc } {ε∈ ε∉l +> ε∈r } {c} {cs} (LeftU u) (RightU v) proj₁flat-left-u≡c∷cs   proj₁flat-right-v≡[] = choice-lr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-left-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∉l +> ε∈r } {c} {cs} (RightU u) (RightU v) proj₁flat-right-u≡c∷cs   proj₁flat-right-v≡[] = choice-rr-empty ¬proj₁flat-u≡[]  proj₁flat-right-v≡[] 
+  where
+    ¬proj₁flat-u≡[] : ¬ (proj₁ (flat u) ≡ [])
+    ¬proj₁flat-u≡[] rewrite proj₁flat-right-u≡c∷cs = λ proj₁flat-u≡[] → ¬∷≡[] proj₁flat-u≡[] 
+|∷|>|[]| {l + r ` loc } {ε∈ ε∉l +> ε∈r } {c} {cs} u (LeftU v) proj₁flat-u≡c∷cs   proj₁flat-left-v≡[] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l) 
+|∷|>|[]| {l ● r ` loc } {ε∈ ε∈l ● ε∈r } {c} {cs} (PairU u₁ u₂) (PairU v₁ v₂) proj₁flat-pair-u₁u₂≡c∷cs proj₁flat-pair-v₁v₂≡[] = {!!}
+  -- how to guarantee either u₁ > v₁ or u₁ ≡ v₁ ? 
+  -- can't guarantee. here is the counter example 
+  -- u = PairU (RightU EmptyU) (ListU (LetterU a) ∷ [])
+  -- v = PairU (LeftU EmptyU)  (ListU [] )
+  -- u < v!!!
+  -- is it because we need assoc rule for ( r ● s ) ● t ---> r ● (s ● t) ?
 
 
 ```
@@ -599,19 +714,24 @@ map-pairU-empty-sorted : ∀ { l r : RE } { loc : ℕ }
   → ( us : List (U l) )
   → ( vs : List (U r) )
   → All (Flat-[] l) us
+  → All (Flat-[] r) vs
   → >-sorted {l} us   
   → >-sorted {r} vs
   → >-sorted {l ● r ` loc } (List.foldr _++_ [] (List.map (λ u₁ → List.map (PairU u₁) vs) us))
-map-pairU-empty-sorted  {l} {r} {loc} []        vs []             >-sorted-[]                         >-sorted-vs  = >-nil
-map-pairU-empty-sorted  {l} {r} {loc} (u ∷ [])  vs all-flat-[]-u  (>-cons  >-nil >-nothing)   >-sorted-vs rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (PairU {l} {r} {loc} u) vs)))  = map-pair-u-vs-sorted u vs >-sorted-vs
+map-pairU-empty-sorted  {l} {r} {loc} []        vs []             all-flat-[]-vs  >-sorted-[]                         >-sorted-vs  = >-nil
+map-pairU-empty-sorted  {l} {r} {loc} (u ∷ [])  vs all-flat-[]-u  all-flat-[]-vs  (>-cons  >-nil >-nothing)   >-sorted-vs rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (PairU {l} {r} {loc} u) vs)))  = map-pair-u-vs-sorted u vs >-sorted-vs
   where
-    map-pair-u-vs-sorted : ( u : U l ) → ( vs : List (U r )) → >-sorted {r} vs → >-sorted { l ● r ` loc } (List.map (PairU u) vs)
+    map-pair-u-vs-sorted : ( u : U l ) → ( vs : List (U r )) → All (Flat-[] r) vs →  >-sorted {r} vs → >-sorted { l ● r ` loc } (List.map (PairU u) vs)
+    map-pair-u-vs-sorted u []          []                              >-nil = >-nil
+    map-pair-u-vs-sorted u ( v ∷ [] )  (flat-[] _ proj₁flatv≡[] ∷ [])  (>-cons >-nil >-nothing) = ? 
+    {-
     map-pair-u-vs-sorted u []          >-nil = >-nil
     map-pair-u-vs-sorted u ( v ∷ vs ) (>-cons >-sorted-vs v>head-vs) with >-sorted-vs
     ... | >-nil          = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) >-nothing
     ... | >-cons  >-sorted-vs' v'>head-vs' with v>head-vs
-    ...            | >-just v>v' = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (seq₂ refl v>v') )
-
+    ...            | >-just v>v' = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (seq₂-bothempty  refl v>v') )
+    -}
+{-    
 map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡[] ∷ flat-[] u' flat-u'≡[] ∷ all-flat-[]-us) (>-cons >-sorted-uus (>-just u>u'))  >-sorted-vs
   = combine {u} {u'} {vs} {us} {vs} u>u' (flat-[] u flat-u≡[]) (flat-[] u' flat-u'≡[]) (map-pair-u-vs-sorted u vs >-sorted-vs) ind-hyp
   where
@@ -640,7 +760,7 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
     combine {u} {u'} {[]}      {us} {[]}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {[]}      {us} {vs}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {t ∷ []} {us} {v ∷ vs} u>u'  (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons >-sorted-map-pair-u-ts u-t>head-map-pair-u-ts)  >-sorted-ys = 
-      >-cons  >-sorted-ys (>-just (seq₁ u>u') ) -- (seq₁sameword (trans flat-u≡[] (sym flat-u'≡[])) u>u'))
+      >-cons  >-sorted-ys (>-just (seq₁-bothempty flat-u≡[] flat-u'≡[] u>u') ) 
     combine {u} {u'} {t ∷ t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons >-sorted-map-pair-u-tts u-t>head-map-pair-u-tts) >-sorted-ys =
       >-cons  ind-hyp' u-t>head-map-pair-u-tts
       where
@@ -650,7 +770,7 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
     combine {u} {u'} {t∷[]}   {us}  {[]}    u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) >-sorted-xs  >-sorted-ys
       rewrite (cong (λ x → >-sorted (List.map (PairU {l} {r} {loc} u) t∷[] ++ x )) (foldr++ys-map-λ_→[]-xs≡ys us []) )
       | (cong (λ x → >-sorted x) ( ++-identityʳ (List.map (PairU {l} {r} {loc} u) t∷[]) ))                                   = >-sorted-xs
-
+-}
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 31.1 - 31.4  END
@@ -692,7 +812,7 @@ mkAllEmptyU-sorted {l + r  ` loc}  (ε∈ ε∈l + ε∈r) =  map-leftU-rightU-s
     l-es = mkAllEmptyU ε∈l
     l-ind-hyp : >-sorted  (mkAllEmptyU ε∈l)
     l-ind-hyp = mkAllEmptyU-sorted {l} ε∈l
-mkAllEmptyU-sorted {l ● r ` loc }  (ε∈ ε∈l ● ε∈r ) = map-pairU-empty-sorted l-es r-es (mkAllEmptyU-sound {l} ε∈l) l-ind-hyp r-ind-hyp
+mkAllEmptyU-sorted {l ● r ` loc }  (ε∈ ε∈l ● ε∈r ) = map-pairU-empty-sorted l-es r-es (mkAllEmptyU-sound {l} ε∈l) (mkAllEmptyU-sound {3} ε∈r) l-ind-hyp r-ind-hyp
   where
     r-es : List (U r)
     r-es = mkAllEmptyU ε∈r 
@@ -809,27 +929,56 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁  u₁>u₂) = 
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-bothempty proj₁flatu₁≡[] proj₁flatu₂≡[]  u₁>u₂) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-      in seq₁ inj-u₁>inj-u₂
-        
+      in seq₁-notempty  ¬proj₁flat-inj-u₁≡[]   ¬proj₁flat-inj-u₂≡[] inj-u₁>inj-u₂
+      where
+        ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
+        ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
+        ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
+        ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-notempty ¬proj₁flatu₁≡[] ¬proj₁flatu₂≡[]  u₁>u₂) = 
+      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+      in seq₁-notempty  ¬proj₁flat-inj-u₁≡[]   ¬proj₁flat-inj-u₂≡[] inj-u₁>inj-u₂
+      where
+        ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
+        ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
+        ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
+        ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
+
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-empty ¬proj₁flatu₁≡[] proj₁flatu₂≡[] ) = 
+      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ {!!} --  u₁>u₂ ?? |∷|>|[]|? 
+      in seq₁-notempty  ¬proj₁flat-inj-u₁≡[]   ¬proj₁flat-inj-u₂≡[] inj-u₁>inj-u₂
+      where
+        ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
+        ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
+        ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
+        ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
+
+    {-
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-
+    -}
 
 -----------------------------------------------------------------------------------------
 -- aux lemma to show that injSnd is >-strict increasing
->-inc-injSnd : ∀ {l r p : RE } { loc : ℕ }
+>-inc-injSnd : ∀ {l r p : RE } { loc : ℕ } { c : Char } 
          → ( v : U l )
-         → ( inj : U p → U r )         
+         → ( inj : U p → U r )
+         → ( sound-ev :  ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )
          → ( u₁ : U p )
          → ( u₂ : U p )
          → r ⊢ inj u₁ > inj u₂
          --------------------------------------------------------------------------
          → ( l ● r ` loc ) ⊢  (mkinjSnd inj v u₁) > (mkinjSnd inj v u₂) 
->-inc-injSnd {l} {r} {p} {loc} v inj u₁ u₂ inj-u₁>inj-u₂ = seq₂ refl inj-u₁>inj-u₂
+>-inc-injSnd {l} {r} {p} {loc} v inj sound-ev u₁ u₂ inj-u₁>inj-u₂ = seq₂-notempty ¬proj₁flat-inj-u₁≡[] ¬proj₁flat-inj-u₂≡[] refl inj-u₁>inj-u₂
+  where
+    ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
+    ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
+    ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
+    ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
 
 -- aux lemma to show that mk-snd-pdi is >-strict increasing
 >-inc-mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -839,7 +988,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
    -------------------------------------------------------------------
    → >-Inc (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi) 
 >-inc-mk-snd-pdi {l} {r} {loc} {c} (e , flat-[] e' proj₁∘flate≡[]) (pdinstance {p} {r} {c} inj s-ev) (>-inc >-inc-inj) =
-  >-inc (λ u₁ u₂ u₁>u₂ → ( >-inc-injSnd {l} {r} {p} {loc} e inj u₁ u₂  (>-inc-inj u₁ u₂ u₁>u₂))  )
+  >-inc (λ u₁ u₂ u₁>u₂ → ( >-inc-injSnd {l} {r} {p} {loc} e inj s-ev u₁ u₂  (>-inc-inj u₁ u₂ u₁>u₂))  )
   where
     -- duplicated from mk-snd-pdi from PartialDerivativeParseTree so that the PDInstance can be inferred
     -- this is needed because p is an existential type `hidden` inside PDInstance r c 
@@ -913,15 +1062,16 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (r * ε∉r ` loc) ⊢ (injList uv₁) > (injList uv₂)
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁  u₁>u₂) = 
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁-bothempty _ _  u₁>u₂) = 
       let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
-      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂    
+      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
+    {-
     >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₂  u₁≡u₂ list-vs₁>list-vs₂ ) =
       (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-
+    -}
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
 ----------------------------------------------------------------------------

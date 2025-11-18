@@ -141,6 +141,12 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     →   l ⊢ v₁ >  v₁'   
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+
+  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → v₁ ≡ v₁'
+    → r ⊢ v₂ > v₂'
+    -------------------------------------------------------------------
+    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
   -}
 
   seq₁-bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
@@ -163,6 +169,7 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
+  
 
   seq₂-bothempty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → proj₁ (flat v₂) ≡ []

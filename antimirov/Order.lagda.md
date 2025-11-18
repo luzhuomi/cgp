@@ -490,7 +490,59 @@ Note : The > order is transitive.
 >-trans {l + r ` loc }  (choice-rl-empty ¬proj₁flatv₁≡[] proj₁flatv₂≡[])            (choice-lr-empty ¬proj₁flatv₂≡[] proj₁flatv₃≡[])           = Nullary.contradiction  proj₁flatv₂≡[] ¬proj₁flatv₂≡[] 
 
 
->-trans {l ● r ` loc }  (seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[]  v₁>v₂)              (seq₁-bothempty _ proj₁flatv₃≡[]  v₂>v₃)      = seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₃≡[]  (>-trans v₁>v₂ v₂>v₃) 
+>-trans {l ● r ` loc }  (seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₂≡[] u₁>u₂)      (seq₁-bothempty _ proj₁flatuv₃≡[]  u₂>u₃)                  = seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₃≡[]  (>-trans u₁>u₂ u₂>u₃)
+>-trans {l ● r ` loc }  (seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₂≡[] u₁>u₂)      (seq₁-notempty ¬proj₁flatuv₂≡[] ¬proj₁flatuv₃≡[] u₂>u₃)    = Nullary.contradiction  proj₁flatuv₂≡[]  ¬proj₁flatuv₂≡[]
+>-trans {l ● r ` loc }  (seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₂≡[] u₁>u₂)      (seq₁-empty ¬proj₁flatuv₂≡[] proj₁flatuv₃≡[] )             = Nullary.contradiction  proj₁flatuv₂≡[]  ¬proj₁flatuv₂≡[]
+>-trans {l ● r ` loc }  {PairU u₁ v₁} {PairU u₂ v₂} {PairU u₃ v₃} 
+                        (seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₂≡[] u₁>u₂)      (seq₂-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[] u₂≡u₃ v₂>v₃) = seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₃≡[] u₁>u₃
+  where
+    proj₁flatuv₃≡[] : proj₁ (flat u₃) ++ proj₁ (flat v₃) ≡ []
+    proj₁flatuv₃≡[] rewrite sym u₂≡u₃ | ++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) proj₁flatuv₂≡[] = proj₁flatv₃≡[]
+    u₁>u₃ : l ⊢ u₁ > u₃
+    u₁>u₃ rewrite sym u₂≡u₃ = u₁>u₂
+>-trans {l ● r ` loc }  {PairU u₁ v₁} {PairU u₂ v₂} {PairU u₃ v₃} 
+                        (seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₂≡[] u₁>u₂)      (seq₂-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[] u₂≡u₃ v₂>v₃) = Nullary.contradiction (++-conicalʳ (proj₁ (flat u₂)) (proj₁ (flat v₂)) proj₁flatuv₂≡[] ) ¬proj₁flatv₂≡[]
+>-trans {l ● r ` loc }  {PairU u₁ v₁} {PairU u₂ v₂} {PairU u₃ v₃} 
+                        (seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₂≡[] u₁>u₂)      (seq₂-empty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[] u₂≡u₃ )         = Nullary.contradiction (++-conicalʳ (proj₁ (flat u₂)) (proj₁ (flat v₂)) proj₁flatuv₂≡[] ) ¬proj₁flatv₂≡[]
+                        
+>-trans {l ● r ` loc }  (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[] u₁>u₂)     (seq₁-bothempty proj₁flatuv₂≡[] proj₁flatuv₃≡[]  u₂>u₃)     = Nullary.contradiction  proj₁flatuv₂≡[]  ¬proj₁flatuv₂≡[] 
+>-trans {l ● r ` loc }  (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[] u₁>u₂)     (seq₁-notempty ¬proj₁flatuv₂≡[] ¬proj₁flatuv₃≡[] u₂>u₃)     = seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₃≡[] (>-trans u₁>u₂ u₂>u₃)
+>-trans {l ● r ` loc }  (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[] u₁>u₂)     (seq₁-empty ¬proj₁flatuv₂≡[] proj₁flatuv₃≡[])               = seq₁-empty ¬proj₁flatuv₁≡[]  proj₁flatuv₃≡[] 
+>-trans {l ● r ` loc }  {PairU u₁ v₁} {PairU u₂ v₂} {PairU u₃ v₃} 
+                        (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[] u₁>u₂)     (seq₂-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[] u₂≡u₃ v₂>v₃)  = seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₃≡[] u₁>u₃
+  where
+    ¬proj₁flatu₂≡[] : ¬ proj₁ (flat u₂) ≡ []
+    ¬proj₁flatu₂≡[] proj₁flatu₂≡[] rewrite proj₁flatv₂≡[] |  ++-identityʳ (proj₁ (flat u₂)) =  ¬proj₁flatuv₂≡[]  proj₁flatu₂≡[] 
+    ¬proj₁flatuv₃≡[] : ¬ proj₁ (flat u₃) ++ proj₁ (flat v₃) ≡ []
+    ¬proj₁flatuv₃≡[] rewrite sym u₂≡u₃ | proj₁flatv₃≡[] | ++-identityʳ (proj₁ (flat u₂))  = λ proj₁flatu₂≡[] →  ¬proj₁flatu₂≡[] proj₁flatu₂≡[] 
+    u₁>u₃ : l ⊢ u₁ > u₃
+    u₁>u₃ rewrite sym u₂≡u₃ = u₁>u₂
+>-trans {l ● r ` loc }  {PairU u₁ v₁} {PairU u₂ v₂} {PairU u₃ v₃} 
+                        (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[] u₁>u₂)     (seq₂-notempty ¬proj₁flatv₂≡[] ¬proj₁flatv₃≡[] u₂≡u₃ v₂>v₃)  = seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₃≡[] u₁>u₃
+  where
+    ¬proj₁flatuv₃≡[] : ¬ proj₁ (flat u₃) ++ proj₁ (flat v₃) ≡ []
+    ¬proj₁flatuv₃≡[] proj₁flatuv₃≡[] =  ¬proj₁flatv₃≡[] (++-conicalʳ (proj₁ (flat u₃)) (proj₁ (flat v₃)) proj₁flatuv₃≡[])
+    u₁>u₃ : l ⊢ u₁ > u₃
+    u₁>u₃ rewrite sym u₂≡u₃ = u₁>u₂
+>-trans {l ● r ` loc }  {PairU u₁ v₁} {PairU u₂ v₂} {PairU u₃ v₃} 
+                        (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[] u₁>u₂)     (seq₂-empty ¬proj₁flatv₂≡[] proj₁flatv₃≡[] u₂≡u₃) with proj₁ (flat u₂) in proj₁flatu₂-eq 
+... | []              rewrite (sym u₂≡u₃)  = seq₁-empty ¬proj₁flatuv₁≡[] prf  -- u₂ and u₃ are empty
+      where
+        prf : proj₁ (flat u₂) ++ proj₁ (flat v₃) ≡ []
+        prf rewrite  proj₁flatu₂-eq  | proj₁flatv₃≡[] = refl 
+... | c ∷ cs rewrite (sym u₂≡u₃)  = seq₁-notempty ¬proj₁flatuv₁≡[]  ¬proj₁flatu₂++proj₁flatv₃≡[]  u₁>u₂  -- u₂ and u₃ are not empty
+      where
+        ¬proj₁flatu₂≡[] :  ¬ proj₁ (flat u₂) ≡ []
+        ¬proj₁flatu₂≡[] rewrite  proj₁flatu₂-eq = λ  proj₁flatu₂≡[] → ¬∷≡[] proj₁flatu₂≡[] 
+        ¬proj₁flatu₂++proj₁flatv₃≡[] : ¬ proj₁ (flat u₂) ++ proj₁ (flat v₃) ≡ []
+        ¬proj₁flatu₂++proj₁flatv₃≡[] proj₁flatu₂++proj₁flatv₃≡[] =  ¬proj₁flatu₂≡[]  (++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₃)) proj₁flatu₂++proj₁flatv₃≡[])
+        
+>-trans {l ● r ` loc }  (seq₁-empty ¬proj₁flatuv₁≡[] proj₁flatuv₂≡[])               (seq₁-bothempty proj₁flatuv₂≡[] proj₁flatuv₃≡[]  u₂>u₃)     = seq₁-empty ¬proj₁flatuv₁≡[]  proj₁flatuv₃≡[] 
+>-trans {l ● r ` loc }  (seq₁-empty ¬proj₁flatuv₁≡[] proj₁flatuv₂≡[])               (seq₁-notempty ¬proj₁flatuv₂≡[] ¬proj₁flatuv₃≡[] u₂>u₃)     = Nullary.contradiction proj₁flatuv₂≡[]  ¬proj₁flatuv₂≡[]
+>-trans {l ● r ` loc }  (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[] u₁>u₂)     (seq₁-empty ¬proj₁flatuv₂≡[] proj₁flatuv₃≡[])               = seq₁-empty ¬proj₁flatuv₁≡[]  proj₁flatuv₃≡[] 
+
+
+
 -- >-trans {l ● r ` loc }  (seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[]  v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃)                   = seq₁-bothempty proj₁flatv₁≡[] proj₁flatv₂≡[]  v₁>v₂
 -- >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')                                               (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃)                   = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
 -- >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')                                               (seq₁-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[]  v₂>v₃)         rewrite v₁≡v₂ =  seq₁-bothempty proj₁flatv₂≡[] proj₁flatv₃≡[]  v₂>v₃
@@ -937,7 +989,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-bothempty proj₁flatu₁≡[] proj₁flatu₂≡[]  u₁>u₂) = 
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-bothempty proj₁flatuv₁≡[] proj₁flatuv₂≡[]  u₁>u₂) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
       in seq₁-notempty  ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[]   ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] inj-u₁>inj-u₂
       where
@@ -945,15 +997,18 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁++proj₁flat-v₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁++proj₁flat-v₁≡[]
         ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] : ¬ (proj₁ (flat (inj u₂)) ++ proj₁ (flat v₂)  ≡ [])
         ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂++proj₁flat-v₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂++proj₁flat-v₂≡[] 
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-notempty ¬proj₁flatu₁≡[] ¬proj₁flatu₂≡[]  u₁>u₂) = 
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-notempty ¬proj₁flatuv₁≡[] ¬proj₁flatuv₂≡[]  u₁>u₂) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
       in seq₁-notempty  ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[]   ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] inj-u₁>inj-u₂
       where
         ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[] : ¬ (proj₁ (flat (inj u₁)) ++ proj₁ (flat v₁) ≡ [])
         ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁++proj₁flat-v₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁++proj₁flat-v₁≡[]
         ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] : ¬ (proj₁ (flat (inj u₂)) ++ proj₁ (flat v₂)  ≡ [])
-        ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂++proj₁flat-v₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂++proj₁flat-v₂≡[] 
+        ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂++proj₁flat-v₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂++proj₁flat-v₂≡[]
 
+    {-
+    problematic case, how to get ¬proj₁flatu₁≡[] from ¬proj₁flatu₁v₁≡[]?
+    -- maybe we rule it out by enforce same word for >-inc? 
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-empty ¬proj₁flatu₁v₁≡[] proj₁flatu₂v₂≡[] ) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  (¬[]>[] u₁ u₂  ¬proj₁flatu₁≡[] proj₁flatu₂≡[] )
       in seq₁-notempty  ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[]   ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] inj-u₁>inj-u₂
@@ -962,8 +1017,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁++proj₁flat-v₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁++proj₁flat-v₁≡[]
         ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] : ¬ (proj₁ (flat (inj u₂)) ++ proj₁ (flat v₂)  ≡ [])
         ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂++proj₁flat-v₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂++proj₁flat-v₂≡[] 
-
-
+    -}
     {-
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where

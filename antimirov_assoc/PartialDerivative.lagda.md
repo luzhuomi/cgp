@@ -2,7 +2,7 @@ This module contains the implementation of regular expression parsing algorithm 
 
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.antimirov.PartialDerivative where
+module cgp.antimirov_assoc.PartialDerivative where
 
 import cgp.RE as RE
 open RE using (RE ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ;  ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? ; first ;  ε∉r→¬first-r≡[]  )
@@ -92,6 +92,7 @@ pd[ l ● r ` loc , c ] with ε∈? l
 ...                      | no ¬ε∈l = List.map (λ l' → l' ● r ` loc ) pd[ l , c ]
 pd[ l + r ` loc , c ]               = pd[ l , c ] ++ pd[ r , c ]
 pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
+
 ```
 
 

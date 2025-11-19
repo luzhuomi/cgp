@@ -1088,7 +1088,13 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
     {-
     problematic case, how to get ¬proj₁flatu₁≡[] from ¬proj₁flatu₁v₁≡[]?
-    -- maybe we rule it out by enforce same word for >-inc? 
+
+    1. maybe we rule it out by enforce same word for >-inc? it does not work! it will break the seq₁-notempty case, because we can't deduce |u₁|≡|u₂| from |u₁v₁| ≡ |u₂v₂|, which is needed for the >-inc IH.
+
+    2. can we actually prove it? Let's break it down by cases. 
+    case |u₁| is empty, and |v₁| is not. |u₂| and |v₂| are empty. can we argue u₁ > u₂ ?
+    case |u₁| is not empty, we have the IH
+
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-empty ¬proj₁flatu₁v₁≡[] proj₁flatu₂v₂≡[] ) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  (¬[]>[] u₁ u₂  ¬proj₁flatu₁≡[] proj₁flatu₂≡[] )
       in seq₁-notempty  ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[]   ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] inj-u₁>inj-u₂

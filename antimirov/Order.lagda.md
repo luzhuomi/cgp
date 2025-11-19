@@ -163,6 +163,7 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
+
   seq₁-empty : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → ¬ proj₁ (flat v₁) ++  proj₁ (flat v₂) ≡ []
     → proj₁ (flat v₁')  ++  proj₁ (flat v₂') ≡ []
@@ -348,6 +349,20 @@ module ExampleAntimirov where
 
   t9>t10 : a*+a*●a* ⊢ t9 > t10
   t9>t10 = seq₁-notempty (λ ()) (λ ()) (choice-lr-bothempty refl refl)
+
+
+  a*+a*●a*●a* : RE
+  a*+a*●a*●a* = a*+a*●a* ● ( ( $ 'a' ` 10 ) * ε∉$ ` 11 ) ` 12
+
+  t11 : U a*+a*●a*●a*
+  t11 = PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                (ListU []))                                 (ListU (LetterU 'a' ∷ []))
+
+  t12 : U a*+a*●a*●a*
+  t12 = PairU (PairU (LeftU (ListU []))                                 (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))   (ListU [])
+
+  t11>t12 : a*+a*●a*●a* ⊢ t11 > t12
+  t11>t12 = seq₁-notempty (λ ()) (λ ()) (seq₁-notempty (λ ()) (λ ()) (choice-rl-empty (λ ()) refl)  )
+
 ```
 
 
@@ -1092,9 +1107,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     1. maybe we rule it out by enforce same word for >-inc? it does not work! it will break the seq₁-notempty case, because we can't deduce |u₁|≡|u₂| from |u₁v₁| ≡ |u₂v₂|, which is needed for the >-inc IH.
 
     2. can we actually prove it? Let's break it down by cases. 
-    case |u₁| is empty, and |v₁| is not. |u₂| and |v₂| are empty. can we argue u₁ > u₂ ?
+    case |u₁| is empty, and |v₁| is not.    |u₂| and |v₂| are empty. can we argue u₁ > u₂ or u₁ ≡ u₂ ?  
     case |u₁| is not empty, we have the IH
-
+    
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁-empty ¬proj₁flatu₁v₁≡[] proj₁flatu₂v₂≡[] ) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  (¬[]>[] u₁ u₂  ¬proj₁flatu₁≡[] proj₁flatu₂≡[] )
       in seq₁-notempty  ¬proj₁flat-inj-u₁++proj₁flat-v₁≡[]   ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] inj-u₁>inj-u₂
@@ -1104,6 +1119,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] : ¬ (proj₁ (flat (inj u₂)) ++ proj₁ (flat v₂)  ≡ [])
         ¬proj₁flat-inj-u₂++proj₁flat-v₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂++proj₁flat-v₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂++proj₁flat-v₂≡[] 
     -}
+    
     {-
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where

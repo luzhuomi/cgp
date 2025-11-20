@@ -1107,6 +1107,10 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
           prf [] = []
           prf (pdi' ∷ pdis') = ex>-nothing ∷ prf pdis' 
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
+      with l
+    ... | s + t ` loc₂ = ? 
+    {-
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
       with concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  (pdi' ∷ pdis') in concatmap-pd-snd-eq 
     ... | ( pdi₂@(pdinstance p→l●r₂ s-ev₂) ∷ pdis₂ ) = ind (pdi ∷ pdis)
         where
@@ -1123,11 +1127,6 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
               ev (PairU v₁ s₁) (PairU v₂ s₂)
                  recons₁@(recons _ ( w∈⟦p₁⟧ , inj-unflat-w∈⟦p₁⟧≡pair-v₁s₁ ))
                  recons₂@(recons _ ( w∈⟦p₂⟧ , inj-unflat-w∈⟦p₂⟧≡pair-v₂s₂ )) =  {!!}
-
-              -- idea: rewrite this case by pattern maching over mkAllEmptyU ε∈l and flat-[]-es, by letting l ≡ ε , s* , s●t and s+t
-              -- unroll concatmap-pdinstance-snd  {l} {r} {ε∈l} {loc} {c}  (pdi' ∷ pdis')
-              -- hopefully we have something like the ev-> below 
-              --   we just need to show  v₁ > v₂  via  mk-snd-pdi-fst-pair and  pdinstance-fst-pair-l
 
 
               {-
@@ -1161,7 +1160,7 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
                                          concatmap-pd-snd-eq
     ...       |  inj₁ zip-es-flat-[]-es≡[] = Nullary.contradiction zip-es-flat-[]-es≡[] ¬zip-es-flat-[]-es≡[]
     ...       |  inj₂ pdi'∷pdis'≡[]        = Nullary.contradiction pdi'∷pdis'≡[] ¬∷≡[] 
-
+    -}
 
 {-
 Goal: All (λ pdi₁ → Ex>-maybe pdi₁ (just (pdinstance inj s-ev)))

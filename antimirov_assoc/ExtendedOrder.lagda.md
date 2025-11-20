@@ -24,7 +24,7 @@ open ParseTree using (
   u-of-r*-islist ; pair-≡ ; left-≡ ; right-≡ ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU)
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
-open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ; mkAllEmptyU≢[] )
+open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ; mkAllEmptyU≢[] ; all-flat-[]-left ; all-flat-[]-right )
 
 
 import cgp.antimirov_assoc.PartialDerivative as PartialDerivative
@@ -1033,6 +1033,91 @@ proj₁flat-v≡[]→ε∈r {l ● r  ` loc } {PairU v u} proj₁flat-pair-v-u�
   -- is it because we need assoc rule for ( r ● s ) ● t ---> r ● (s ● t) ?
 
 
+all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd : ∀ { l r : RE } {loc : ℕ } { ε∈l : ε∈ l } { c : Char }
+      →  (pdis : List (PDInstance l c ))
+      →  (pdis' : List (PDInstance r c))
+      →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd  {l} {r} {ε∈l} {loc} {c} pdis')))
+             (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis )
+all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd [] _ = []
+all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {l} {r} {loc} {ε∈l} {c}  (pdi ∷ pdis) [] rewrite ( concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} )  = prf (pdi ∷ pdis)
+  where
+    prf : (pdis' : List (PDInstance l c))
+          → All (λ pdi₁ → Ex>-maybe pdi₁ nothing)  (List.map ( pdinstance-fst  {l} {r} {loc} {c} ) pdis' )
+    prf [] = []
+    prf (pdi' ∷ pdis') = ex>-nothing ∷ prf pdis' 
+
+all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s * ε∉s ` loc' } {r} {loc} {ε∈*} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ)  =  ind (pdiˡ ∷ pdisˡ)
+  where
+    ind : ( pdis : List (PDInstance (s * ε∉s ` loc') c ) )
+      → All (λ pdi → Ex>-maybe pdi (just (mk-snd-pdi {s * ε∉s ` loc'} {r} {loc} {c}  (ListU [] , flat-[] (ListU []) refl) pdiʳ)))
+           (List.map pdinstance-fst pdis)
+    ind [] = []
+    ind (pdi ∷ pdis) = (ex>-just (>-pdi (pdinstance-fst pdi) (mk-snd-pdi (ListU [] , flat-[] (ListU []) refl) pdiʳ) λ { ( PairU v₁ v₁') (PairU v₂ v₂') r₁ r₂  → ev->  v₁ v₁' v₂ v₂' r₁ r₂  } )) ∷ ind pdis
+      where
+      ev-> : (v₁ : U (s * ε∉s ` loc') )
+           → (v₁' : U r )
+           → (v₂ : U (s * ε∉s ` loc') )
+           → (v₂' : U r )
+           → Recons {(s * ε∉s ` loc') ● r ` loc} {c} (PairU v₁ v₁')  ( pdinstance-fst {(s * ε∉s ` loc')} {r} {loc} {c} pdi )
+           → Recons {(s * ε∉s ` loc') ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {(s * ε∉s ` loc')} {r} {loc} {c}  (ListU [] ,  flat-[] (ListU []) refl) pdiʳ )
+           --------------------------------------------------
+           → ((s * ε∉s ` loc') ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
+      ev-> v₁ v₁' v₂ v₂' recons1 recons2  = seq₁ v₁>v₂
+        where 
+          v₂≡list-[] : v₂ ≡ (ListU [])
+          v₂≡list-[] = mk-snd-pdi-fst-pair-≡ pdiʳ (ListU []) (flat-[] (ListU []) refl)  v₂ v₂' recons2
+          v₁-is-cons : ∃[ x ] ∃[ xs ] (v₁ ≡ ListU (x ∷ xs))
+          v₁-is-cons = pdinstance-fst-pair-l*-is-cons pdi v₁ v₁' recons1
+          x  = proj₁ v₁-is-cons
+          xs = proj₁ (proj₂ v₁-is-cons)
+          v₁≡list-x-xs = proj₂ (proj₂ v₁-is-cons)
+          list-x-xs>e : (s * ε∉s ` loc') ⊢ ListU (x ∷ xs) > (ListU []) 
+          list-x-xs>e = star-cons-nil
+          v₁>v₂ : (s * ε∉s ` loc') ⊢ v₁ > v₂
+          v₁>v₂ rewrite  v₁≡list-x-xs | v₂≡list-[] = list-x-xs>e
+all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s + t ` loc' } {r} {loc} {ε∈ ε∈s + ε∈t } {c} (pdiˡ ∷ pdisˡ) (pdiʳ@(pdinstance injʳ s-evʳ) ∷ pdisʳ)
+  with zip-es-flat-[]-es {s + t ` loc'} {ε∈ ε∈s + ε∈t}  (mkAllEmptyU (ε∈ ε∈s + ε∈t)) (mkAllEmptyU-sound {s + t ` loc'} (ε∈ ε∈s + ε∈t)) in eq 
+... | []                                  =  Nullary.contradiction (PartialDerivative.zip-es-flat-[]-es≡[]→es≡[] {s + t ` loc'} {ε∈ ε∈s + ε∈t}  (mkAllEmptyU (ε∈ ε∈s + ε∈t)) (mkAllEmptyU-sound {s + t ` loc'} (ε∈ ε∈s + ε∈t)) eq) (mkAllEmptyU≢[] (ε∈ ε∈s + ε∈t)) 
+... | ( e , flat-[] _ proj₁flat-e≡[] )  ∷ es-flat-[]-es  =  ind (pdiˡ ∷ pdisˡ) 
+
+  where 
+    ind : ( pdis : List (PDInstance (s + t ` loc') c ) )
+      → All (λ pdi → Ex>-maybe pdi
+         (just (mk-snd-pdi {s + t ` loc' } {r} {loc} {c} (e , flat-[] e proj₁flat-e≡[]) pdiʳ)))
+            (List.map pdinstance-fst pdis)
+    ind [] = []
+    ind ( pdi ∷ pdis ) with (pdinstance-fst {s + t ` loc'} {r} {loc} {c} pdi)
+    ... | pdinstance inj s-ev = ex>-just (>-pdi (pdinstance inj s-ev) (mk-snd-pdi (e , flat-[] e proj₁flat-e≡[]) pdiʳ) λ { ( PairU v₁ v₁') (PairU v₂ v₂') r₁ r₂  → ev->  v₁ v₁' v₂ v₂' r₁ r₂  } ) ∷ ind pdis
+      where 
+        ev-> : (v₁ : U (s + t ` loc') )
+           → (v₁' : U r )
+           → (v₂ : U (s + t ` loc') )
+           → (v₂' : U r )
+           → Recons {(s + t ` loc') ● r ` loc} {c} (PairU v₁ v₁')  ( pdinstance inj s-ev )
+           → Recons {(s + t ` loc') ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi (e , flat-[] e proj₁flat-e≡[]) (pdinstance injʳ s-evʳ) )
+           --------------------------------------------------
+           → ((s + t ` loc') ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
+        ev-> (LeftU u₁) v₁' (LeftU u₂) v₂' (recons .(PairU (LeftU u₁) v₁') (w∈⟦p₁⟧ , inj-unflat-w∈⟦p₁⟧≡pair-left-u₁-v₁')) (recons .(PairU (LeftU u₂) v₂') (w∈⟦p₂⟧ , mkinjSnd-injʳ-e-unflat-w∈⟦p₂⟧≡pair-left-u₂-v₂')) = seq₁ (choice-ll-empty ¬proj₁leftflatu₁≡[] proj₁leftflatu₂≡[] )
+          where
+            pair-left-u₂-v₂'≡pair-e-inj-unflat-w∈⟦p₂⟧ : PairU (LeftU u₂) v₂' ≡ PairU e (injʳ  (unflat w∈⟦p₂⟧))
+            pair-left-u₂-v₂'≡pair-e-inj-unflat-w∈⟦p₂⟧ =
+              begin
+                PairU (LeftU u₂) v₂'
+              ≡⟨ sym mkinjSnd-injʳ-e-unflat-w∈⟦p₂⟧≡pair-left-u₂-v₂' ⟩
+                 mkinjSnd injʳ e (unflat w∈⟦p₂⟧)
+              ≡⟨⟩
+                PairU e (injʳ  (unflat w∈⟦p₂⟧))
+              ∎ 
+            left-u₂≡e : LeftU {s} {t} {loc'} u₂ ≡ e
+            left-u₂≡e = proj₁ ( inv-pairU {s + t ` loc'} {r} {loc} (LeftU u₂) v₂' e  (injʳ (unflat w∈⟦p₂⟧)) pair-left-u₂-v₂'≡pair-e-inj-unflat-w∈⟦p₂⟧)
+            proj₁leftflatu₂≡[] : proj₁ (flat (LeftU {s} {t} {loc'} u₂)) ≡ []
+            proj₁leftflatu₂≡[] rewrite cong (λ x → proj₁ (flat x )) left-u₂≡e  = proj₁flat-e≡[]
+            ¬proj₁leftflatu₁≡[] : ¬ proj₁ (flat (LeftU {s} {t} {loc'} u₁)) ≡ []
+            ¬proj₁leftflatu₁≡[] proj₁leftflatu₁≡[] = {!!} 
+
+
+
+
 -- main lemma: 
 pdU-sorted : ∀ { r : RE } { c : Char }
   → Ex>-sorted {r} {c} pdU[ r , c ]
@@ -1093,6 +1178,7 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
     concatmap-pdinstance-snd-is-ex>-sorted : Ex>-sorted { l  ● r ` loc } (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])
     concatmap-pdinstance-snd-is-ex>-sorted = concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c}  pdU[ r , c ] ind-hyp-r 
 
+{-
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd :
          (pdis : List (PDInstance l c ))
       →  (pdis' : List (PDInstance r c))
@@ -1106,10 +1192,7 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
               → All (λ pdi₁ → Ex>-maybe pdi₁ nothing)  (List.map ( pdinstance-fst  {l} {r} {loc} {c} ) pdis' )
           prf [] = []
           prf (pdi' ∷ pdis') = ex>-nothing ∷ prf pdis' 
-    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
-      with l
-    ... | s + t ` loc₂ = ? 
-    {-
+
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
       with concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  (pdi' ∷ pdis') in concatmap-pd-snd-eq 
     ... | ( pdi₂@(pdinstance p→l●r₂ s-ev₂) ∷ pdis₂ ) = ind (pdi ∷ pdis)

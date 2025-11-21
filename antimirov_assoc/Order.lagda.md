@@ -331,8 +331,19 @@ module ExampleAntimirov where
   t11>t12 : a*+a*●a*●a* ⊢ t11 > t12
   t11>t12 = seq₁ (seq₁ (choice-rl-empty (λ ()) refl ) )
 
+  a*+a*●a*+a* : RE
+  a*+a*●a*+a* = ( ( ( $ 'a' ` 1 ) * ε∉$ ` 2 ) + ( ( $ 'a' ` 3 ) * ε∉$ ` 4) ` 5 ) ● ( ( ( $ 'a' ` 6 ) * ε∉$ ` 7 ) + ( ( $ 'a' ` 8 ) * ε∉$ ` 9 ) ` 10 ) ` 11 
 
+  a*+a*●a*+a*●a* : RE
+  a*+a*●a*+a*●a* = a*+a*●a*+a* ● ( ( $ 'a' ` 12 ) * ε∉$ ` 13 ) ` 14
 
+  -- counter example for the lemma all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd  in ExtendedOrder.lagda.md 
+  t13 t14 : U a*+a*●a*+a*●a*
+  t13 = PairU (PairU (RightU (ListU []))                                       (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))  
+  t14 = PairU (PairU (LeftU (ListU []))                                        (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+
+  t13>t14 : a*+a*●a*+a*●a* ⊢ t13 > t14
+  t13>t14 = seq₁ (seq₁ (choice-rl-empty {!!} refl) )  -- we can't prove ¬ Product.proj₁ (flat (ListU [])) ≡ []
 
 ```
 

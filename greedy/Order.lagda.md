@@ -646,20 +646,7 @@ pdU->-inc {l ● r ` loc} {c} with ε∈? l
     ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
     ind-hyp-l = pdU->-inc {l} {c}
     
-pdU->-inc {l ● r ` loc} {c}  | yes ε∈l = pdUConcat->-inc  -- all-concat {PDInstance (l ● r ` loc) c} {>-Inc} {(List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ])} {(concatMap (pdinstance-snd {l} {r} {ε∈l} {loc} {c})  pdU[ r , c ])} all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd
-  where
-    ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
-    ind-hyp-l = pdU->-inc {l} {c}
-
-    all->-inc-pdis-inj-from-l-c : All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ])
-    all->-inc-pdis-inj-from-l-c =  >-inc-map-fst pdU[ l , c ] ind-hyp-l
-    
-    ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
-    ind-hyp-r = pdU->-inc {r} {c}
-
-    all->-inc-concatmap-pdinstance-snd : All (>-Inc {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])
-    all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd pdU[ r , c ] ind-hyp-r
-
+pdU->-inc {l ● r ` loc} {c}  | yes ε∈l = pdUConcat->-inc  
 
 {-# TERMINATING #-}
 pdUConcat->-inc {ε} {r} {ε∈ε} {loc} {c} = all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd 

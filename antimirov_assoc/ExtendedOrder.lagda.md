@@ -1052,13 +1052,6 @@ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {l} {r} {loc} {ε∈l
 
 all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {ε} {r} {loc} {ε∈ε} {c}  (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) pdiˡ∷pdisˡ≡[] _  =  Nullary.contradiction pdiˡ∷pdisˡ≡[] Utils.¬∷≡[] -- how to create a contradiction? 
 
-all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s ● t ` loc' } {r} {loc} {ε∈ ε∈s ● ε∈t} {c}  (pdiˡ@(pdinstance inj s-ev) ∷ pdisˡ) (pdiʳ ∷ pdisʳ) _  _  = {!!}  -- it seems that this case can't be proven. we need to get rid of it using assoc? we should find the counter example which satisfies the < order but not produceable by the current pdU
-  where
-    ind : ( pdis : List (PDInstance (s ● t ` loc') c ) )
-      → All (λ pdi →  Ex>-maybe pdi (head (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ))))
-           (pdinstance (mkinjFst inj) (cgp.antimirov_assoc.PartialDerivative.sound-ev2 inj s-ev))
-           (List.map pdinstance-fst pdis)
-    ind = ? 
 all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s * ε∉s ` loc' } {r} {loc} {ε∈*} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) _ _  =  ind (pdiˡ ∷ pdisˡ)
   where
     ind : ( pdis : List (PDInstance (s * ε∉s ` loc') c ) )
@@ -1088,6 +1081,7 @@ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s * ε∉s ` loc' } 
           list-x-xs>e = star-cons-nil
           v₁>v₂ : (s * ε∉s ` loc') ⊢ v₁ > v₂
           v₁>v₂ rewrite  v₁≡list-x-xs | v₂≡list-[] = list-x-xs>e
+
 all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s + t ` loc' } {r} {loc} {ε∈ ε∈s + ε∈t } {c} (pdiˡ ∷ pdisˡ) (pdiʳ@(pdinstance injʳ s-evʳ) ∷ pdisʳ) _ _ 
   with zip-es-flat-[]-es {s + t ` loc'} {ε∈ ε∈s + ε∈t}  (mkAllEmptyU (ε∈ ε∈s + ε∈t)) (mkAllEmptyU-sound {s + t ` loc'} (ε∈ ε∈s + ε∈t)) in eq 
 ... | []                                  =  Nullary.contradiction (PartialDerivative.zip-es-flat-[]-es≡[]→es≡[] {s + t ` loc'} {ε∈ ε∈s + ε∈t}  (mkAllEmptyU (ε∈ ε∈s + ε∈t)) (mkAllEmptyU-sound {s + t ` loc'} (ε∈ ε∈s + ε∈t)) eq) (mkAllEmptyU≢[] (ε∈ ε∈s + ε∈t)) 
@@ -1489,6 +1483,126 @@ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s + t ` loc' } {r} {
             proj₁flatrightu₂≡[] : proj₁ (flat (RightU {s} {t} {loc'} u₂)) ≡ []
             proj₁flatrightu₂≡[] rewrite cong (λ x → proj₁ (flat x )) right-u₂≡e  = proj₁flat-e≡[]
 
+all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s ● t ` loc' } {r} {loc} {ε∈ ε∈s ● ε∈t} {c}  (pdiˡ ∷ pdisˡ) (pdiʳ@(pdinstance {pʳ} {r} {c} injʳ s-evʳ) ∷ pdisʳ) _  _    -- it seems that this case can't be proven. we need to get rid of it using assoc? we should find the counter example which satisfies the < order but not produceable by the current pdU
+  with zip-es-flat-[]-es {s ● t ` loc'} {ε∈ ε∈s ● ε∈t}  (mkAllEmptyU (ε∈ ε∈s ● ε∈t)) (mkAllEmptyU-sound {s ● t ` loc'} (ε∈ ε∈s ● ε∈t)) in eq
+... | []                            =  Nullary.contradiction (PartialDerivative.zip-es-flat-[]-es≡[]→es≡[] {s ● t ` loc'} {ε∈ ε∈s ● ε∈t}  (mkAllEmptyU (ε∈ ε∈s ● ε∈t)) (mkAllEmptyU-sound {s ● t ` loc'} (ε∈ ε∈s ● ε∈t)) eq) (mkAllEmptyU≢[] (ε∈ ε∈s ● ε∈t))
+... | ( e , flat-[] _ proj₁flat-e≡[] )  ∷ es-flat-[]-es  = ind (pdiˡ ∷ pdisˡ)   -- ind (pdiˡ ∷ pdisˡ)  
+  
+  where
+    injSnd-s-ev = -- copied from PartialDerivative mk-snd-pdi
+      (λ u → 
+           begin
+             proj₁ (flat (PairU {s ● t ` loc'} {r} {loc} e (injʳ u)))
+           ≡⟨⟩
+             (proj₁ (flat e)) ++ (proj₁ (flat (injʳ u)))
+           ≡⟨ cong (λ x → ( x ++  (proj₁ (flat (injʳ u))))) proj₁flat-e≡[] ⟩  --  e must be an empty; we do have flat v ≡ [] from mkAllEmptyU-sound
+              [] ++ (proj₁ (flat (injʳ u)))
+           ≡⟨⟩
+             proj₁ (flat (injʳ u))
+           ≡⟨ s-evʳ u ⟩
+             c ∷ (proj₁ (flat u))
+           ∎)
+
+    ind : ( pdis : List (PDInstance (s ● t ` loc') c ) )
+      → All (λ pdi → Ex>-maybe pdi
+               (just (pdinstance (mkinjSnd {s ● t ` loc'} {r} {pʳ} {loc} injʳ e) injSnd-s-ev)))
+                      (List.map pdinstance-fst pdis)
+    ind [] = []
+    ind ( pdi@(pdinstance inj s-ev) ∷ pdis )  = ex>-just (>-pdi (pdinstance-fst {s ● t ` loc'} {r} {loc} {c} (pdinstance inj s-ev)) (pdinstance (mkinjSnd injʳ e) injSnd-s-ev) λ { ( PairU v₁ v₁') (PairU v₂ v₂') r₁ r₂  → ev->  v₁ v₁' v₂ v₂' r₁ r₂  } ) ∷ ind pdis
+      where 
+        ev-> : (v₁ : U (s ● t ` loc') )
+           → (v₁' : U r )
+           → (v₂ : U (s ● t ` loc') )
+           → (v₂' : U r )
+           → Recons {(s ● t ` loc') ● r ` loc} {c} (PairU v₁ v₁')  ( pdinstance-fst {s ● t ` loc'} {r} {loc} {c} ( pdinstance inj s-ev ) )
+           → Recons {(s ● t ` loc') ● r ` loc} {c} (PairU v₂ v₂')  ( pdinstance (mkinjSnd injʳ e) injSnd-s-ev )
+           --------------------------------------------------
+           → ((s ● t ` loc') ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
+        ev-> (PairU x₁ y₁) v₁' (PairU x₂ y₂) v₂'
+             (recons .(PairU (PairU x₁ y₁) v₁') ( w∈⟦p₁●r⟧ , mkinjFst-inj-unflat-w∈⟦p₁●r⟧≡pair-pair-x₁y₁-v₁'  ) )
+             (recons .(PairU (PairU x₂ y₂) v₂') ( w∈⟦p₂⟧ , mkinjSnd-injʳ-e-unflat-w∈⟦p₂⟧≡pair-pair-x₂y₂-v₂'  ) ) = seq₁ {!!}
+{-
+
+from mkinjSnd-injʳ-e-unflat-w∈⟦p₂⟧≡pair-pair-x₂y₂-v₂', we find
+PairU x₂ y₂ ≡ e , proj₁ (flat x₂) ≡ [] and proj₁ (flat y₂) ≡ []
+
+Let PairU v₃ v₃' ≡ unflat w∈⟦p₁ ● r ⟧ 
+
+from mkinjFst-inj-unflat-w∈⟦p₁●r⟧≡pair-pair-x₁y₁-v₁', we find
+PairU x₁ y₁ ≡ inj v₃   and v₁' ≡ v₃'
+
+To show PairU x₁ y₁ > PairU x₂ y₂, we have two possibilies
+
+1) to show x₁>x₂, 
+2) to show x₁≡x₂ and y₁ > y₂
+
+either way we need additional information of inj, the only thing we know is s-ev, which means inj v₃ ≡ c ∷ cs
+but that's not sufficient to determine 1) nor 2)
+
+Adjusting the > relation for the seq₁ case to seq₁ ¬[] > [] won't work.
+a) We lost strict incr property of the pd injection function. Refer to the antimirov.Order.lagda.md (the one without _assoc suffix).
+b) it blows up the > relation specification
+
+Goal: (s ● t ` loc') ⊢ PairU x₁ y₁ > PairU x₂ y₂
+————————————————————————————————————————————————————————————
+pdi      : PDInstance (s ● t ` loc') c
+pdi      = pdinstance inj s-ev
+pdiʳ     : PDInstance r c
+pdiʳ     = pdinstance injʳ s-evʳ
+mkinjSnd-injʳ-e-unflat-w∈⟦p₂⟧≡pair-pair-x₂y₂-v₂'
+         : mkinjSnd injʳ e (unflat w∈⟦p₂⟧) ≡ PairU (PairU x₂ y₂) v₂'
+w∈⟦p₂⟧   : w₁ ∈⟦ pʳ ⟧
+w₁       : List Char   (not in scope)
+mkinjFst-inj-unflat-w∈⟦p₁●r⟧≡pair-pair-x₁y₁-v₁'
+         : cgp.antimirov_assoc.PartialDerivative.injFst inj s-ev
+           (unflat w∈⟦p₁●r⟧)
+           ≡ PairU (PairU x₁ y₁) v₁'
+w∈⟦p₁●r⟧ : w ∈⟦ p ● r ` loc ⟧
+w        : List Char   (not in scope)
+v₂'      : U r
+y₂       : U t
+x₂       : U s
+v₁'      : U r
+y₁       : U t
+x₁       : U s
+pdis     : List (PDInstance (s ● t ` loc') c)
+s-ev     : (u : U p) →
+           Product.proj₁ (flat (inj u)) ≡ c ∷ Product.proj₁ (flat u)
+inj      : U p → U (s ● t ` loc')
+p        : RE   (not in scope)
+x₃       : pdinstance injʳ s-evʳ ∷ pdisʳ ≡
+           pdU[ r , c ]   (not in scope)
+x        : pdiˡ ∷ pdisˡ ≡
+           (pdU[ s ● t ` loc' , c ] | ε∈? s)   (not in scope)
+pdisʳ    : List (PDInstance r c)
+s-evʳ    : (u : U pʳ) →
+           Product.proj₁ (flat (injʳ u)) ≡ c ∷ Product.proj₁ (flat u)
+injʳ     : U pʳ → U r
+pʳ       : RE
+pdisˡ    : List (PDInstance (s ● t ` loc') c)
+pdiˡ     : PDInstance (s ● t ` loc') c
+c        : Char
+loc      : ℕ
+r        : RE
+eq       : zip-es-flat-[]-es
+           (List.foldr _++_ []
+            (List.map (λ u → List.map (PairU u) (mkAllEmptyU ε∈t))
+             (mkAllEmptyU ε∈s)))
+           (AllEmptyParseTree.all-flat-[]-cartesian-prod
+            (mkAllEmptyU-sound ε∈s) (mkAllEmptyU-sound ε∈t))
+           ≡ (e , flat-[] e proj₁flat-e≡[]) ∷ es-flat-[]-es
+es-flat-[]-es
+         : List (Σ (U (s ● t ` loc')) (Flat-[] (s ● t ` loc')))
+proj₁flat-e≡[]
+         : Product.proj₁ (flat e) ≡ []
+e        : U (s ● t ` loc')
+ε∈t      : ε∈ t
+ε∈s      : ε∈ s
+loc'     : ℕ
+t        : RE
+s        : RE
+
+-}
 
 -- main lemma: 
 pdU-sorted : ∀ { r : RE } { c : Char }

@@ -1053,7 +1053,12 @@ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {l} {r} {loc} {ε∈l
 all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {ε} {r} {loc} {ε∈ε} {c}  (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) pdiˡ∷pdisˡ≡[] _  =  Nullary.contradiction pdiˡ∷pdisˡ≡[] Utils.¬∷≡[] -- how to create a contradiction? 
 
 all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s ● t ` loc' } {r} {loc} {ε∈ ε∈s ● ε∈t} {c}  (pdiˡ@(pdinstance inj s-ev) ∷ pdisˡ) (pdiʳ ∷ pdisʳ) _  _  = {!!}  -- it seems that this case can't be proven. we need to get rid of it using assoc? we should find the counter example which satisfies the < order but not produceable by the current pdU
-
+  where
+    ind : ( pdis : List (PDInstance (s ● t ` loc') c ) )
+      → All (λ pdi →  Ex>-maybe pdi (head (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ))))
+           (pdinstance (mkinjFst inj) (cgp.antimirov_assoc.PartialDerivative.sound-ev2 inj s-ev))
+           (List.map pdinstance-fst pdis)
+    ind = ? 
 all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd {s * ε∉s ` loc' } {r} {loc} {ε∈*} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) _ _  =  ind (pdiˡ ∷ pdisˡ)
   where
     ind : ( pdis : List (PDInstance (s * ε∉s ` loc') c ) )

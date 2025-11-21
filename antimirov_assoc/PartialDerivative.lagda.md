@@ -1629,6 +1629,32 @@ inv-recons-star {r} {ε∉r} {loc} {c} u us (pdinstance {p} {r} {c} inj s-ev)
       inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r*⟧≡list-us : ( inj (unflat xs∈⟦p⟧) ≡ u ) × ( unListU (unflat ys∈⟦r*⟧) ≡ us )
       inj-unflat-xs∈⟦p⟧≡u×unflat-ys∈⟦r*⟧≡list-us = inv-listU (inj (unflat xs∈⟦p⟧)) (unListU (unflat ys∈⟦r*⟧)) u us ((sym listu-u-us≡listu-inj-unflat-xs∈⟦p⟧-unListU-unflat-ys∈⟦r*⟧)) 
 
+inv-recons-assoc : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char}
+  → ( v₁ : U l )
+  → ( v₂ : U s )
+  → ( v₃ : U r )
+  → ( pdi : PDInstance (l ● (s ● r ` loc₂) ` loc₁) c )
+  → Recons (PairU (PairU v₁ v₂) v₃) (pdinstance-assoc pdi )
+  ----------------------------------------------------------------
+  → Recons (PairU v₁ (PairU v₂ v₃)) pdi
+inv-recons-assoc {l} {s} {r} {loc₁} {loc₂} {c}  v₁ v₂ v₃ pdi@(pdinstance inj s-ev)
+  (recons {p} { ( l ● s  ` loc₁ ) ● r ` loc₂} {c} {w} (PairU (PairU v₁ v₂) v₃) ( w∈⟦p⟧ , mkinjAssoc-inj-unflat-w∈⟦p⟧≡pair-pair-v₁v₂v₃))
+    = recons (PairU v₁ (PairU v₂ v₃)) (w∈⟦p⟧ , sym pair-v₁-pair-v₂v₃≡inj-unflat-w∈⟦p⟧)
+    where
+      pair-v₁-pair-v₂v₃≡inj-unflat-w∈⟦p⟧ : PairU v₁ (PairU v₂ v₃) ≡ inj (unflat w∈⟦p⟧) 
+      pair-v₁-pair-v₂v₃≡inj-unflat-w∈⟦p⟧ =
+        begin
+          PairU v₁ (PairU v₂ v₃)
+        ≡⟨⟩
+          assoc (PairU (PairU v₁ v₂) v₃)
+        ≡⟨ cong ( λ x → assoc x ) (sym mkinjAssoc-inj-unflat-w∈⟦p⟧≡pair-pair-v₁v₂v₃ ) ⟩
+          assoc (mkinjAssoc inj (unflat w∈⟦p⟧))
+        ≡⟨⟩
+          assoc (inv-assoc (inj (unflat w∈⟦p⟧)))
+        ≡⟨ assoc-inv-assoc-u≡u ⟩
+          inj (unflat w∈⟦p⟧)  
+        ∎ 
+
 
 inv-recons*-compose-pdi-with : ∀ { r d : RE } {pref : List Char } { c : Char }
   → ( u : U r )

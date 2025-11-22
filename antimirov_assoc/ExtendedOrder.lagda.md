@@ -115,7 +115,7 @@ open import Function using (_∘_ ; flip)
 ```
 
 
-### Definition 36 : (Extended) greedy ordering among PDInstances 
+### Definition 36 : (Extended) left non-empty (LNE) ordering among PDInstances 
 
 Let r be a non problematic regular expression.
 
@@ -123,8 +123,8 @@ Let c be a letter.
 
 Let pdi₁ and pdi₂ be two partial derivative instances of r w.r.t c.
 
-We say pdi₁ is greedier than pdi₂, r , c  ⊢ pdi₁ > pdi₂ iff
-  for all parse trees u₁ u₂  of r, u₁ is constructable from pdi₁ and u₂ is constructabled from pdi₂ 
+We say pdi₁ is "left non-empty" greater than pdi₂, r , c  ⊢ pdi₁ > pdi₂ iff
+  for all parse trees u₁ u₂  of r, u₁ is constructible from pdi₁ and u₂ is constructibled from pdi₂ 
     then r ⊢ u₁ > u₂ 
 
 
@@ -164,7 +164,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
 ```
 
 
-### Definition 37 : (Extended) greedy order sortedness
+### Definition 37 : (Extended) left non-empty order (LNE) sortedness
 
 ```agda
 
@@ -193,22 +193,22 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) �
 
 
 
-### Lemma 38: the list of pdinstances from pdU[ r , c] is extended greedily sorted. 
+### Lemma 38: the list of pdinstances from pdU[ r , c] is extended LNE sorted. 
 
 
 Let r be a non problematic regular expression.
 
 Let c be a letter.
 
-Then pdU[r , c] is extended greedily sorted. 
+Then pdU[r , c] is LNE sorted. 
 
 
 
-#### Sub Lemma 38.1 - 38.25 : Ex>-sortedness is preserved inductively over pdinstance operations.
+#### Sub Lemma 38.1 - 38.22 : Ex>-sortedness is preserved inductively over pdinstance operations.
 
 ```agda
 -------------------------------------------------------------
--- Sub Lemma 38.1 - 38.25 BEGIN
+-- Sub Lemma 38.1 - 38.22 BEGIN
 -------------------------------------------------------------
 
 
@@ -764,7 +764,7 @@ pdinstance-fst-pair-l*-is-cons {l} {r} {ε∉l} {loc₁} {loc₂} {c} pdi (ListU
 -------------------------------------------------------------------------------------------
 
 -------------------------------------------------------------
--- Sub Lemma 38.1 - 38.25 END 
+-- Sub Lemma 38.1 - 38.22 END 
 -------------------------------------------------------------
 
 ```
@@ -1405,7 +1405,7 @@ pdUConcat-sorted {s + t ` loc₂} {r} {ε∈s+t} {loc} {c} =
 
 
 
-### Definition 39 : (Extended) greedy ordering among PDInstance*'s 
+### Definition 39 : (Extended) LNE ordering among PDInstance*'s 
 
 Let r be a non problematic regular expression.
 
@@ -1413,7 +1413,7 @@ Let w be a word.
 
 Let pdi₁ and pdi₂ be two partial derivative descendant instances of r w.r.t w.
 
-We say pdi₁ is greedier than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
+We say pdi₁ is LNE greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
   for all parse trees u₁ u₂  of r, u₁ is constructable from pdi₁ and u₂ is constructabled from pdi₂ 
     then r ⊢ u₁ > u₂ 
 
@@ -1451,7 +1451,7 @@ data _,_⊢*_>_ : ∀ ( r : RE ) → (w : List Char ) → PDInstance* r w → PD
 
 ```
 
-### Definition 40 : (Extended) greedy order sortedness among pdinstance*'s 
+### Definition 40 : (Extended) LNE sortedness among pdinstance*'s 
 
 ```agda
 
@@ -1479,17 +1479,17 @@ data Ex*>-sorted : ∀ { r : RE } { w : List Char } ( pdis : List (PDInstance* r
 ```
 
 
-### Lemma 41: the list of pdinstance*'s from pdUMany[ r , c] is extended greedily sorted. 
+### Lemma 41: the list of pdinstance*'s from pdUMany[ r , c] is extended LNE sorted. 
 
 
 Let r be a non problematic regular expression.
 
 Let w be a word.
 
-Then pdUMany[r , w] is extended greedily sorted.
+Then pdUMany[r , w] is extended LNE sorted.
 
 
-#### Sub Lemma 41.1 - 41.x : Ex*>-sortedness is inductively preserved over pdinstance*'s operations 
+#### Sub Lemma 41.1 - 41.6 : Ex*>-sortedness is inductively preserved over pdinstance*'s operations 
 
 ```agda
 -------------------------------------------------------------
@@ -1689,7 +1689,7 @@ pdUMany-sorted {r} {c ∷ cs} = pdUMany-aux-sorted {r}  {[]} c cs [  ( pdinstanc
 
 ```
 
-### Theorem 42 : ParseAll is greedily sorted
+### Theorem 42 : ParseAll is LNE sorted
 
 
 ### Aux lemmas 

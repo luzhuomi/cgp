@@ -1800,8 +1800,8 @@ concatMap-buildU-sorted {r} {w} (pdi₁@(pdinstance* {p₁} {r} p₁→r s-ev₁
 
 #### Main proof for Theorem 42 
 ```agda
-parseAll-is-greedy : ∀ { r : RE } { w : List Char }
+parseAll-is-lne-sorted : ∀ { r : RE } { w : List Char }
   →  >-sorted {r} (parseAll[ r , w ])
-parseAll-is-greedy {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUMany-sorted  pdUMany-*>-inc 
+parseAll-is-lne-sorted {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUMany-sorted  pdUMany-*>-inc 
 ```
 

@@ -1,7 +1,7 @@
-This module contains the implementation of the greedy regular expression parsing algorithm that by adapting Antimriov's  partial derivative operation. 
+This module contains the implementation of the greedy regular expression parsing algorithm that by adapting Antimriov's  partial derivative operation with distributivity and associativity laws. 
 
 TODO:
-1. modularize the definition of pdU[ _ , _ ] and pdUMany[ _, _ ].
+1. modularize the definition of pdU[ _ , _ ] and pdUMany[ _, _ ]. (hard to do in agda?)
 2. move their properties in the *.Properties.lagda.md modules?
 3. move parseAll to another module
 4. move parseAll properties to another module? 

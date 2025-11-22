@@ -463,7 +463,18 @@ Let u be a parse tree of r such that (flat u) = c ∷ w for some word w.
 Then there exists a partial derivative instance, pdi ∈ pdU[r,c] , such that
 pdi is u-reconstruable w.r.t c.
 
+
+
+To prove Lemma 19, we need to prove some sub lemmas. 
+
+
+#### Sub Lemmas 19.1 - 19.7 Reconstructability is preserved inductively over pdinstance operations. 
+
+
 ```agda
+-----------------------------------------------------------------------------------------
+-- Sub Lemmas 19.1 - 19.7 BEGIN
+----------------------------------------------------------------------------------------
 
 
 any-recons-left : ∀ { l r : RE } { loc : ℕ } {c : Char } { w : List Char} { u : U l }
@@ -584,6 +595,14 @@ any-recons-assoc {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {u₂} {v} (pdi@(p
               PairU (PairU u₁ u₂) v             
             ∎
 
+-----------------------------------------------------------------------------------------
+-- Sub Lemmas 19.1 - 19.7 END
+----------------------------------------------------------------------------------------
+```
+
+#### Main proof for Lemma 19 
+
+```agda
 
 
 
@@ -717,12 +736,10 @@ pdUConcat-complete {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} u v proj1-flat-
         bs : Any (Recons { (l + t ` loc₁) ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} pdU[ s , c ]) 
         bs = any-recons-concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as
 
--- pdUConcat-complete {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} u@(RightU u₂) v proj1-flat-pair-right-u2-v≡cw  = ?     
-
 
 ```
 
-### Definition 19: Many steps Partial deriviatves with coercion functions `pdUMany[ r , w ]`
+### Definition 20: Many steps Partial deriviatves with coercion functions `pdUMany[ r , w ]`
 
 
 For the ease of establishing the completeness proof of `pdUMany[ r , w ]`, we introduce
@@ -812,86 +829,16 @@ pdUMany-aux :  ∀ { r : RE }
 pdUMany-aux {r} {pref} [] pdis rewrite (++-identityʳ pref) =  pdis
 pdUMany-aux {r} {pref} (c ∷ cs) pdis {- rewrite (cong (λ x → List (PDInstance* r x )) (sym (∷ʳ-++ pref c cs))) -}  =  -- the rewrite is no longer needed thanks to the REWRITE ∷ʳ-++  pragma 
                 pdUMany-aux {r} {pref ∷ʳ c} cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
- --             pdis'' -- inline for the ease of proof.
- -- where
- --   pdis' : List (PDInstance* r (pref ∷ʳ  c))
- --   pdis' = concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis
-    {- inlined the lambda function ino advance-pdi*-with-c 
-    pdis' = concatMap ( λ { (pdinstance* {d} {r} {pref} d→r s-ev-d-r) →
-            List.map ( λ { (pdinstance {p} {d} {c} p→d s-ev-p-d) →
-                           pdinstance* {p} {r} {pref ∷ʳ c } ( d→r ∘ p→d ) 
-                                       (
-                                        λ u →
-                                          begin
-                                            proj₁ (flat (d→r (p→d u)))
-                                          ≡⟨ s-ev-d-r (p→d u) ⟩
-                                            pref ++ proj₁ (flat (p→d u))
-                                          ≡⟨ cong ( pref ++_ ) (s-ev-p-d u) ⟩
-                                            pref ++ ( c ∷ Product.proj₁ (flat u) )
-                                          ≡⟨ sym ( ∷ʳ-++ pref c (Product.proj₁ (flat u)) ) ⟩ 
-                                            pref List.∷ʳ c ++ proj₁ (flat u) 
-                                          ∎
-                                        ) 
-                                                                                  
-                         } ) pdU[ d , c ]  } ) pdis
-                         -} 
-    -- pdis'' : List (PDInstance* r (pref ++  ( c ∷ cs )))                         
-    -- pdis'' rewrite (cong (λ x → List (PDInstance* r x )) (sym (∷ʳ-++ pref c cs))) = pdUMany-aux {r} {pref ∷ʳ c} cs pdis'
 
 pdUMany[_,_] : ( r : RE ) → ( cs : List Char ) → List (PDInstance* r cs )
 pdUMany[ r , cs ]         =
    pdUMany-aux {r} {[]} cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ]
 
 
-{-
 
--- working but too complex, involving existential quantifier 
-
-pdUMany-aux :  ∀ { r : RE } { pref : List Char }
-               → (suff : List Char) 
-               → List (PDInstance* r pref)
-               → ∃[ word ] (List (PDInstance* r word )) × ( word ≡ pref ++ suff )
-pdUMany-aux {r} {pref} [] pdis = pref , pdis ,  sym (++-identityʳ pref) 
-pdUMany-aux {r} {pref} (c ∷ cs) pdis =
-  let
-    (word , pdis'' , word≡pref++ccs ) = pdUMany-aux {r} {pref List.∷ʳ c} cs pdis' 
-  in ( word , pdis'' , ( 
-    begin
-      word
-    ≡⟨ word≡pref++ccs ⟩
-      pref ∷ʳ c ++ cs
-    ≡⟨  ∷ʳ-++ pref c cs    ⟩
-      pref ++ ( c ∷ cs )
-    ∎ ) )
-  where
-    pdis' : List (PDInstance* r (pref List.∷ʳ  c))
-    pdis' = concatMap ( λ { (pdinstance* {d} {r} {pref} d→r s-ev-d-r) →
-            List.map ( λ { (pdinstance {p} {d} {c} p→d s-ev-p-d) →
-                           pdinstance* {p} {r} {pref List.∷ʳ c } ( d→r ∘ p→d ) 
-                                       (
-                                        λ u →
-                                          begin
-                                            proj₁ (flat (d→r (p→d u)))
-                                          ≡⟨ s-ev-d-r (p→d u) ⟩
-                                            pref ++ proj₁ (flat (p→d u))
-                                          ≡⟨ cong ( pref ++_ ) (s-ev-p-d u) ⟩
-                                            pref ++ ( c ∷ Product.proj₁ (flat u) )
-                                          ≡⟨ sym ( ∷ʳ-++ pref c (Product.proj₁ (flat u)) ) ⟩ 
-                                            pref List.∷ʳ c ++ proj₁ (flat u) 
-                                          ∎
-                                        ) 
-                                                                                  
-                         } ) pdU[ d , c ]  } ) pdis
-
-pdUMany[_,_] : ( r : RE ) → ( cs : List Char ) → ∃[ word ] (List (PDInstance* r word )) × ( word ≡ cs ) 
-pdUMany[ r , cs ]         =
-  let ( word , pdis'' , word≡cs ) = pdUMany-aux {r} {[]} cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ]
-  in ( word , pdis'' , word≡cs ) 
-
--}
 ```
 
-### Lemma 20 : pdUMany[ r , w ] is sound
+### Lemma 21 : pdUMany[ r , w ] is sound
 
 Let r  be a non problematic regular expresion.
 Let w be a word.
@@ -903,7 +850,7 @@ Let u be a parse tree of p, then |(f u)| = w ++ | u |, where (f u) is a parse tr
 The proof is given as part of the PDInstance* being computed. 
 
 
-### Definition 21 (Prefix Reconstructability):
+### Definition 22 (Prefix Reconstructability):
 Let r be a non problematic regular expression.
 Let pref be a word,
 LEt u be a parse tree of r.
@@ -927,21 +874,8 @@ data Recons* : { r : RE } { pref : List Char } → ( u : U r ) → ( PDInstance*
 ```
 
 
-### Lemma 22 : pdUMany[ r , pref ] is complete (ERROR)
 
-Let r be a non problematic regular expression.
-Let pref be a word.
-Let u be a parse tree of r such that (flat u) = (pref ++ suff) for some word suff.
-Then there exist a partial derivative descendant instance, pdi ∈ pdUMany[r,pref], such that
-pdi is u-reconstructable w.r.t pref. 
-
-
-** note : prefix is the partial input which has been consumed by pdU so far when we just started with pdUMany[ r , suff ], the prefix `pref` is []
-** for each step, we take the leading letter c from suffix `suffand snoc it into `pref`.
-
-
-
-### Lemma 22 (Fixed) : pdUMany[ r , w ] is complete ** this should by pdUMany-aux-complete?
+### Lemma 23 (Fixed) : pdUMany[ r , w ] is complete ** this should by pdUMany-aux-complete?
 
 Let r be a non problematic regular expression.
 Let w be a word.
@@ -954,11 +888,15 @@ pdi is u-reconstructable w.r.t w.
 ** for each step, we take the leading letter c from suffix `suffand snoc it into `pref`.
 
 
+#### Sub Lemma 23.1 - 23.3  : Reconstructibility is preserved inductively over the pdinstance*'s (and pdinstance's) operations
+
 ```agda
 
+-------------------------------------------------------------------------------------------------------------
+-- Sub Lemma 23.1 - 23.3 BEGIN 
+-------------------------------------------------------------------------------------------------------------
 
 
--- aux lemmas
 
 -- TODO the following lemma can be simplified. 
 compose-pdi-with-can-recons* : ∀ { r d : RE } { pref : List Char } { c : Char } 
@@ -1027,6 +965,15 @@ any-recons*-concatmap-advance-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++c
 ... | here px@(recons* u' ( w∈⟦d⟧ , d→r-unflat-w∈⟦d⟧≡u' )) = any-left-concat (any-advance-pdi*-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++ccs pdi px)
 ... | there pxs = any-right-concat (any-recons*-concatmap-advance-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++ccs pdis pxs )
 
+-------------------------------------------------------------------------------------------------------------
+-- Sub Lemma 23.1 - 23.3 END 
+-------------------------------------------------------------------------------------------------------------
+
+```
+
+#### Sub Lemma 23.4 : Reconstructibility is preserved over pdUMany-aux. 
+
+```agda
 
 
 -- completeness for pdUMany-aux function 
@@ -1061,6 +1008,11 @@ pdUMany-aux-complete {r} {pref} {c ∷ cs} u proj1-flat-u≡pref++ccs (pdi ∷ p
     ind-hyp : Any (Recons* {r} {pref ∷ʳ c ++  cs} u) (pdUMany-aux {r} {pref ∷ʳ c} cs ( concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis) ))
     ind-hyp = pdUMany-aux-complete {r} {pref ∷ʳ c} {cs} u proj1-flat-u≡prefc++cs  (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis))  any-recons*u-pdis'
 
+```
+
+#### Main proof for Lemma 23 
+
+```agda
 
 
 
@@ -1077,7 +1029,7 @@ pdUMany-complete {r} u =
 
 ```
 
-### Definition 22: ParseAll function
+### Definition 24: ParseAll function
 
 ```agda
 
@@ -1160,113 +1112,6 @@ module ExampleParseAll where
 
 
 ```
-
-ExampleParseAll.ex_zs
-
-should yield
-
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))       (LeftU (ListU [])))                   (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))       (RightU (ListU [])))                  (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (LeftU (ListU (LetterU 'a' ∷ []))))   (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (RightU (ListU (LetterU 'a' ∷ []))))  (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (LeftU (ListU [])))                   (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (RightU (ListU [])))                  (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))      (LeftU (ListU [])))                   (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))      (RightU (ListU [])))                  (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (LeftU (ListU (LetterU 'a' ∷ []))))   (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (RightU (ListU (LetterU 'a' ∷ []))))  (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (LeftU (ListU [])))                   (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (RightU (ListU [])))                  (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU []))                                     (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))    (ListU [])
-∷
-PairU (PairU (LeftU (ListU []))                                     (LeftU (ListU (LetterU 'a' ∷ []))))                  (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU []))                                     (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))   (ListU [])
-∷
-PairU (PairU (LeftU (ListU []))                                     (RightU (ListU (LetterU 'a' ∷ []))))                 (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU []))                                     (LeftU (ListU [])))                                  (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU []))                                     (RightU (ListU [])))                                 (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU []))                                    (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))    (ListU [])
-∷
-PairU (PairU (RightU (ListU []))                                    (LeftU (ListU (LetterU 'a' ∷ []))))                  (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU []))                                    (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))   (ListU [])
-∷
-PairU (PairU (RightU (ListU []))                                    (RightU (ListU (LetterU 'a' ∷ []))))                 (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU []))                                    (LeftU (ListU [])))                                  (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU []))                                    (RightU (ListU [])))                                 (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-∷ []
-
-
----- without assoc
-
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))          (LeftU (ListU [])))                                (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))          (RightU (ListU [])))                               (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                        (LeftU (ListU (LetterU 'a' ∷ []))))                (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                        (RightU (ListU (LetterU 'a' ∷ []))))               (ListU [])
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                        (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ []))          
-∷
-PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                        (RightU (ListU [])))                               (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))         (LeftU (ListU [])))                                (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))         (RightU (ListU [])))                               (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                       (LeftU (ListU (LetterU 'a' ∷ []))))                (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                       (RightU (ListU (LetterU 'a' ∷ []))))               (ListU [])
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                       (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                       (RightU (ListU [])))                               (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU []))                                        (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))  (ListU [])
-∷
-PairU (PairU (LeftU (ListU []))                                        (LeftU (ListU (LetterU 'a' ∷ []))))                (ListU (LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU []))                                        (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))) (ListU [])
-∷
-PairU (PairU (LeftU (ListU []))                                        (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))                         
-∷
-PairU (PairU (RightU (ListU []))                                       (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))  (ListU [])
-∷
-PairU (PairU (RightU (ListU []))                                       (LeftU (ListU (LetterU 'a' ∷ []))))                (ListU (LetterU 'a' ∷ []))                         
-∷
-PairU (PairU (RightU (ListU []))                                       (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))) (ListU [])
-∷
-PairU (PairU (RightU (ListU []))                                       (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))  
-∷
-PairU (PairU (LeftU (ListU []))                                        (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-∷
-PairU (PairU (LeftU (ListU []))                                        (RightU (ListU [])))                               (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-∷
-PairU (PairU (RightU (ListU []))                                       (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])) 
-∷
-PairU (PairU (RightU (ListU []))                                       (RightU (ListU [])))                               (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-∷ []
-
-
 
 ExampleParseAll.ex_ts
 
@@ -1367,7 +1212,63 @@ PairU (PairU (RightU (ListU []))                                (ListU []))     
 ~~~~~~~
 
 
-### Lemma 24 : buildU is sound
+ExampleParseAll.ex_zs
+
+should yield
+
+PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))       (LeftU (ListU [])))                   (ListU [])
+∷
+PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))       (RightU (ListU [])))                  (ListU [])
+∷
+PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (LeftU (ListU (LetterU 'a' ∷ []))))   (ListU [])
+∷
+PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (RightU (ListU (LetterU 'a' ∷ []))))  (ListU [])
+∷
+PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (LeftU (ListU [])))                   (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (LeftU (ListU (LetterU 'a' ∷ [])))                     (RightU (ListU [])))                  (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))      (LeftU (ListU [])))                   (ListU [])
+∷
+PairU (PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))      (RightU (ListU [])))                  (ListU [])
+∷
+PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (LeftU (ListU (LetterU 'a' ∷ []))))   (ListU [])
+∷
+PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (RightU (ListU (LetterU 'a' ∷ []))))  (ListU [])
+∷
+PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (LeftU (ListU [])))                   (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (RightU (ListU (LetterU 'a' ∷ [])))                    (RightU (ListU [])))                  (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (LeftU (ListU []))                                     (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))    (ListU [])
+∷
+PairU (PairU (LeftU (ListU []))                                     (LeftU (ListU (LetterU 'a' ∷ []))))                  (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (LeftU (ListU []))                                     (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))   (ListU [])
+∷
+PairU (PairU (LeftU (ListU []))                                     (RightU (ListU (LetterU 'a' ∷ []))))                 (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (LeftU (ListU []))                                     (LeftU (ListU [])))                                  (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+∷
+PairU (PairU (LeftU (ListU []))                                     (RightU (ListU [])))                                 (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+∷
+PairU (PairU (RightU (ListU []))                                    (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))    (ListU [])
+∷
+PairU (PairU (RightU (ListU []))                                    (LeftU (ListU (LetterU 'a' ∷ []))))                  (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (RightU (ListU []))                                    (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))))   (ListU [])
+∷
+PairU (PairU (RightU (ListU []))                                    (RightU (ListU (LetterU 'a' ∷ []))))                 (ListU (LetterU 'a' ∷ []))
+∷
+PairU (PairU (RightU (ListU []))                                    (LeftU (ListU [])))                                  (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+∷
+PairU (PairU (RightU (ListU []))                                    (RightU (ListU [])))                                 (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+∷ []
+
+
+
+
+### Lemma 25 : buildU is sound
 Let r be a non problemantic regular expression.
 Let w be a word.
 Let pdi be a partial instance* of r w.r.t w.
@@ -1397,7 +1298,7 @@ buildU-sound {r} {w} (pdinstance* {p} {r} {pref} p→r s-ev) with ε∈? p
 
 ```
 
-### Theorem 25 : ParseAll is sound 
+### Theorem 26 : ParseAll is sound 
 
 Let r be a non problematic regular expression.
 Let w be a word.
@@ -1418,7 +1319,7 @@ parseAll-sound {r} {w} = prove-all pdUMany[ r , w ]
 ```
 
 
-### Lemma 25 : buildU is complete
+### Lemma 27 : buildU is complete
 
 Let r be a non problematic regular expression.
 Let u be a parse tree of r.
@@ -1515,7 +1416,7 @@ buildU-complete {r} u pdi@(pdinstance* {p} {r} {proj1-flat-u} inj s-ev-p-r) (rec
 
 
 
-### Theorem 26 : ParseAll is complete
+### Theorem 28 : ParseAll is complete
 
 Let r be a non problematic regular expression.
 Let u be a parse tree of r.
@@ -1678,13 +1579,10 @@ inv-recons*-compose-pdi-with {r} {d} {pref} {c} u (pdinstance {p} {d} {c} p→d 
           u
         ∎
 
-
-```
-
-
 -------------------------------------------------
 -- Inversed reconstructibility Aux Lemmas END
 -------------------------------------------------
+```
 
 
 #### Aux Lemma: Impossibilities of parse tree reconstructions through pdinstance operations.

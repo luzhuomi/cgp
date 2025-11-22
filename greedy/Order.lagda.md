@@ -1,3 +1,6 @@
+This module contains the defintions of the "greedy" (left first) order among parse trees (ref Frisch's ICALP 2004).
+
+
 ```agda
 {-# OPTIONS --rewriting #-}
 module cgp.greedy.Order where

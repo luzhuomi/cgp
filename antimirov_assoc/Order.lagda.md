@@ -1,3 +1,5 @@
+This module contains the defintions of the left non-empty  order among parse trees.
+
 ```agda
 {-# OPTIONS --rewriting #-}
 module cgp.antimirov_assoc.Order where

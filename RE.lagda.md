@@ -7,14 +7,14 @@
 3. ParseTree.lagda.md : definitions of parse trees, flattening and unflattening operations, and the properties
 4. empty/AllEmptyParseTree.lagda.md : definitions of generating all empty parse trees (mkAllEmptyU) and its soundness and completeness, sub properties such as Flat-[] and flat-[]
 5. Different partial derivative implementation for different matching policies. 
-  1. Antimirov 
-    1. antimirov/PartialDerivative.lagda.md : definitions of partial derivative based on the original Antimriov's; partial derivative with injection functions ; its soundess and compleness properties 
+  1. Left Non Empty Matching Policy 
+    1. lne/PartialDerivative.lagda.md : definitions of partial derivative based on the original Antimriov's; partial derivative with injection functions ; its soundess and compleness properties
+    1. lne/Order.lagda.md : definitions of left non empty order.
+    1. lne/ExtendedOrder.lagmda.md :  extending the lne order over list of partial derivative (instances) and proving the algorithm `parseAll` is producing parse trees sorted in LNE order.
   1. Greedy Matching policy 
-    1. greedy/GreedyPartialDerivative.lagda.md definitions of partial derivative implementing the greedy matching by adapting original Antimriov's partial derivative with injection functions ; its soundess and compleness properties
-    1. greedy/Greedy.lagda.md : definitions of greedy order.
-    1. greedy/ExtendedGreedy.lagmda.md : 
-
-## Why antimirov's orginal partial derivative does not give us greedy matching policy nor POSIX 
+    1. greedy/PartialDerivative.lagda.md definitions of partial derivative implementing the greedy matching by adapting original Antimriov's partial derivative with distributivity law ; its soundess and compleness properties
+    1. greedy/Order.lagda.md : definitions of greedy order.
+    1. greedy/ExtendedOrder.lagmda.md : extending the lne order over list of partial derivative (instances) and proving the algorithm `parseAll` is producing parse trees sorted in greedy order.
 
 
 

@@ -76,12 +76,14 @@ r₁ + r₂ ⊢ LeftU v₁ > RightU v₂
 
 ------------------------------(StarNilCons)
 r* ⊢ ConsU v vs > NilU
+```
 
 Assuming that the regular expression is no problematic.
 
 
 ### Partial derivative operation
 
+```
 pd[ϕ, ℓ] = {}   pd[ε, ℓ] = {}    pd[ℓ, ℓ] = {ε}    pd[ℓ', ℓ] = {}
 
 pd[r₁ ● r₂ , ℓ ] =

@@ -112,9 +112,11 @@ pd[ (ε + a) ● (a + ε) , a ] =
   { p ● ( a + ε ) | p ∈ pd [ ε + a , a ] } ∪ pd[ (a + ε) , a ] =
   { ε ● ( a + ε ) } ∪ { ε }                                          -- (2)
 
+```
 
 As we inject the letter a from (2) back to (1) we have
 
+```
  [ (PairU (RightU a) (RightU EmptyU)) , 
    (PairU (LeftU EmptyU) (LeftU a)) ]                                -- (3) 
 ```

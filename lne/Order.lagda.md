@@ -2,7 +2,7 @@ This module contains the defintions of the left non-empty  order among parse tre
 
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.antimirov_assoc.Order where
+module cgp.antimirov.Order where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )

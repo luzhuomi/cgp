@@ -1,6 +1,6 @@
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.antimirov_assoc.ExtendedOrder where
+module cgp.antimirov.ExtendedOrder where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ;

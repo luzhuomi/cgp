@@ -4,7 +4,7 @@
 ### POSIX matching policy  Sulzmann and Lu (FLOPS 2014) 
 
 
-
+```
 r₁ ⊢ v₁ > v₁'
 -------------------------------------------- (Seq₁)
 r₁ ● r₂ ⊢ PairU v₁ v₂ > PairU v₁' v₂'
@@ -57,6 +57,7 @@ r* ⊢ NilU > ConsU v vs
 length |v| + length |vs| > 0
 ------------------------------------------------(StarNilCons)
 r* ⊢ ConsU v vs > NilU
+```
 
 where | u | denotes the word obtained by flattening u. i.e. proj₁ ∘ flat u
 
@@ -67,6 +68,7 @@ where | u | denotes the word obtained by flattening u. i.e. proj₁ ∘ flat u
 
 Rules (Seq₁), (Seq₂), (ChoiceLL), (ChoiceRR), (StarHd) and (StarTl) are identical to the POSIX policy.
 
+```
 
 -------------------------------(ChoiceLR)
 r₁ + r₂ ⊢ LeftU v₁ > RightU v₂
@@ -90,7 +92,7 @@ pd[r₁ ● r₂ , ℓ ] =
 pd[r₁ + r₂ , ℓ ] = pd[ r₁ , ℓ ] ∪ pd[ r₂ , ℓ  ]
 
 pd[r* , ℓ ] = pd[ r' ● r* ∣ r' ∈ pd( r , ℓ ) ]
-
+```
 
 For simplicity, we assume concat ● is right associative, i.e. r ● s ● t is parsed as
 r ● ( s ● t ).
@@ -102,6 +104,7 @@ list concatenation ++, which fixes an order among partial derivatives.
 ### Example that shows that pd[ r , c ] do not produce greedy
 
 consider 
+```
 r = (ε + a) ● (a + ε)                                                -- (1)
 w = a
 
@@ -114,6 +117,7 @@ As we inject the letter a from (2) back to (1) we have
 
  [ (PairU (RightU a) (RightU EmptyU)) , 
    (PairU (LeftU EmptyU) (LeftU a)) ]                                -- (3) 
+```
 
 which is the list of all the parse trees produced.
 
@@ -129,6 +133,7 @@ which means that the list (3) produced by pd is not sorted according to the gree
 (pointed out Martin and Kenny's FLOPS paper)
 
 Consider 
+```
 r = (a + b + a ● b)*                                        -- (4)
 w = ab
 
@@ -143,22 +148,28 @@ pd[ { ε ● r } ∪ { ε ● b ● r } , b ] = { ε ● r } ∪ { ε ● r } --
                    = { } ∪ { ε ● r } 
   
      pd[ ε ● b ● r , b ] = { ε ● r } 
-  
+```  
 
 1. injecting b into (5) to produce parse trees of (5)
+      ```
       [ ConsU (RightU (LeftU b)) NilU
        , PairU b NilU ]
+      ```
 
 2. injecting a into the above to get the list of  parse trees 
 
+      ```
       [ ConsU (LeftU a) (ConsU (RightU (LeftU b)) NilU)    -- (7)
        , ConsU (RightU (RightU (PairU a b))) NilU ]
+      ```
 
 
 
 According to POSIX matching policy
 
+```
 (a + b + a ● b)* ⊢ ConsU (RightU (RightU (PairU a b))) NilU > ConsU (LeftU a) (ConsU (RightU (LeftU b)) NilU
+```
 
 which means the list (7) is not sorted according to the POSIX order.
 
@@ -170,9 +181,17 @@ which means the list (7) is not sorted according to the POSIX order.
 
 
 pd is not greedy because in the case of pd[r₁ ● r₂ , ℓ ], where ε ∈ r₁ , we "prioritize" the partial derivatives generated from
+
+```
 { r₁' ● r₂ ∣ r₁' ∈ pd[ r₁ , ℓ ] }
+```
+
 over those generated from
+
+```
 {  r₂' ∣ r₂' ∈ pd[ r₂ , ℓ ] }
+```
+
 by "putting" them closer to the left of the list (ordered set),
 ignoring the fact that the r₁ is possessing ε in its left choice,
 (see the counter example above.)
@@ -183,29 +202,34 @@ ignoring the fact that the r₁ is possessing ε in its left choice,
 
 We adapt antimirov's pd[_,_] above by specializing the r₁●r₂ case ,
 
+```
 pd[r₁ ● r₂ , ℓ ] =
   if ε ∈ r₁
   then if r₁ ≡ s₁ + s₂
        then pd[ s₁ ● r₂ , ℓ ]  ∪ pd [ s₂ ● r₂ , ℓ ]
        else { r₁' ● r₂ ∣ r₁' ∈ pd[ r₁ , ℓ ] } ∪ {  r₂' ∣ r₂' ∈ pd[ r₂ , ℓ ] }
   else { r₁' ● r₂ ∣ r₁' ∈ pd[ r₁ , ℓ ] }
-
+```
 
 As a result,
 
 consider the same example 
+
+```
 r = (ε + a) ● (a + ε)                                                -- (1)
 w = a
 
 pd[ (ε + a) ● (a + ε) , a ] =
   pd[ ε ● (a + ε) , a ] ∪ pd[ a ● ( a + ε ) , a ] =
   { ε }                 ∪ [ ε ● ( a + ε ) ]                          -- (8)
-
+```
 
 As we inject the letter a from (8) back to (1) we have
 
+```
  [ (PairU (LeftU EmptyU) (LeftU a))
  , (PairU (RightU a) (RightU EmptyU)) ]                             -- (9) 
+```
 
 which is sorted in greedy order. 
 
@@ -225,7 +249,7 @@ We define a new matching policy, let's call it left non-empty (LNE) matching pol
 
 Where we replace rules (ChoiceLL), (ChoiceRR) from the greedy matching policy with the following rules
 
-
+```
 |v₁| = |v₂| = []            l ⊢ v₁ > v₂
 -------------------------------------------------------------- (ChoiceLL-bothempty)
 l + r  ⊢ LeftU v₁ > LeftU v₂
@@ -274,7 +298,7 @@ l + r  ⊢ LeftU v₁ > RightU v₂
 |v₁| !=[]    |v₂| = [] 
 -------------------------------------------------------------- (ChoiceRL-empty)
 l + r  ⊢ RightU v₁ > LeftU v₂
-
+```
 
 
 Intuitively speaking, when comparing the parse trees of a choice regular expression,

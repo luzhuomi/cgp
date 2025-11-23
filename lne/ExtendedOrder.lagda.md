@@ -1,6 +1,6 @@
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.antimirov.ExtendedOrder where
+module cgp.lne.ExtendedOrder where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ;
@@ -27,7 +27,7 @@ import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ; mkAllEmptyU≢[] ; all-flat-[]-left ; all-flat-[]-right )
 
 
-import cgp.antimirov_assoc.PartialDerivative as PartialDerivative
+import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; pdUConcat ; PDInstance ; pdinstance ;
   pdinstance-left ; pdinstance-right; pdinstance-fst ;
@@ -46,8 +46,8 @@ open PartialDerivative using (
   recons-v→¬proj₁flat-v≡[] ) 
 
 
-import cgp.antimirov_assoc.Order as AntimirovOrder
-open AntimirovOrder using ( _⊢_>_ ; seq₁ ; seq₂ ;
+import cgp.lne.Order as LNEOrder
+open LNEOrder using ( _⊢_>_ ; seq₁ ; seq₂ ;
   choice-ll-bothempty ; choice-ll-notempty; choice-ll-empty ;
   choice-rr-bothempty ; choice-rr-notempty; choice-rr-empty ;
   choice-lr-bothempty ; choice-lr-notempty ; choice-lr-empty ;

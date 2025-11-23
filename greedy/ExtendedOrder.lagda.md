@@ -1075,7 +1075,7 @@ Let w be a word.
 Then pdUMany[r , w] is extended greedily sorted.
 
 
-#### Sub Lemma 41.1 - 41.x : Ex*>-sortedness is inductively preserved over pdinstance*'s operations 
+#### Sub Lemma 41.1 - 41.6 : Ex*>-sortedness is inductively preserved over pdinstance*'s operations 
 
 ```agda
 -------------------------------------------------------------

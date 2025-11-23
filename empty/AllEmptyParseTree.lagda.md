@@ -12,7 +12,7 @@ import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LeftU ; RightU ; PairU ; ListU ; flat ; unflat  )
 
 import cgp.Utils as Utils
-open Utils using (any-left-concat; any-right-concat ; inv-map-[] ; inv-concatMap-map-f-[] )
+open Utils using (any-left-concat; any-right-concat ; inv-map-[] ; inv-concatMap-map-f-[] ; all-concat )
 
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap )
@@ -113,6 +113,7 @@ To prove Lemma 14, we need a few auxilliary lemma
 #### Sub Lemma 14.1 (concatenation for two `All` evidence)
 
 ```agda
+{-
 all-concat : ∀ { r : Set } { P : r → Set } { xs ys  : List r }
   → All P xs
   → All P ys
@@ -120,6 +121,7 @@ all-concat : ∀ { r : Set } { P : r → Set } { xs ys  : List r }
   → All P (xs ++ ys)
 all-concat [] ys = ys
 all-concat ( x ∷ xs ) ys = x ∷ (all-concat xs ys)
+-}
 ```
 
 

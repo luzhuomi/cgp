@@ -1,7 +1,7 @@
-This module contains the implementation of the greedy regular expression parsing algorithm that by adapting Antimriov's  partial derivative operation. 
+This module contains the implementation of the greedy regular expression parsing algorithm that by adapting Antimriov's  partial derivative operation with distributivity and associativity laws. 
 
 TODO:
-1. modularize the definition of pdU[ _ , _ ] and pdUMany[ _, _ ].
+1. modularize the definition of pdU[ _ , _ ] and pdUMany[ _, _ ]. (hard to do in agda?)
 2. move their properties in the *.Properties.lagda.md modules?
 3. move parseAll to another module
 4. move parseAll properties to another module? 
@@ -1281,8 +1281,26 @@ module ExampleParseAll where
   ε+a●a+ε = let a₁ = $ 'a' ` 1
                 a₃ = $ 'a' ` 3 
             in (ε + a₁ ` 2) ● ( a₃ + ε ` 4) ` 5
-  ex_us :  List ( U ε+a●a+ε )
-  ex_us = parseAll[ ε+a●a+ε , [ 'a' ] ]
+  ex_vs :  List ( U ε+a●a+ε )
+  ex_vs = parseAll[ ε+a●a+ε , [ 'a' ] ]
+
+  a*+a*●a* : RE
+  a*+a*●a* = ( ( ( $ 'a' ` 1 ) * ε∉$ ` 2 ) + ( ( $ 'a' ` 3 ) * ε∉$ ` 4) ` 5 ) ● ( ( $ 'a' ` 6 ) * ε∉$ ` 7 ) ` 8
+
+  ex_us :  List ( U a*+a*●a* )
+  ex_us = parseAll[ a*+a*●a* ,  'a' ∷ 'a' ∷ []  ]
+  
+
+
+  pdMany-aux : List RE → List Char → List RE
+  pdMany-aux rs [] = rs
+  pdMany-aux rs ( c ∷ cs ) =  pdMany-aux (concatMap (λ r → pd[ r , c ] ) rs) cs 
+
+  pdMany[_,_] : RE → List Char → List RE
+  pdMany[ r , w ] = pdMany-aux [ r ] w
+  
+  pds = pdMany[ a*+a*●a* ,  'a' ∷ 'a' ∷ []  ]
+
 ```
 should yield
 
@@ -1291,9 +1309,22 @@ ex_ts
 PairU (ListU (LetterU 'a' ∷ [])) (ListU []) ∷
 PairU (ListU []) (ListU (LetterU 'a' ∷ [])) ∷ []
 
-ex_us
+ex_vs
 PairU (LeftU EmptyU) (LeftU (LetterU 'a')) ∷
 PairU (RightU (LetterU 'a')) (RightU EmptyU) ∷ []
+
+ex_us 
+PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (ListU []) ∷
+PairU (LeftU (ListU (LetterU 'a' ∷ []))) (ListU (LetterU 'a' ∷ []))
+∷
+PairU (LeftU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])) ∷
+PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (ListU [])
+∷
+PairU (RightU (ListU (LetterU 'a' ∷ [])))
+(ListU (LetterU 'a' ∷ []))
+∷
+PairU (RightU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+∷ []
 ~~~~~~~
 
 ### Lemma 25 : buildU is sound

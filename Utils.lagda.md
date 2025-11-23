@@ -10,6 +10,9 @@ open Data.List.Properties using (∷-injective ; ++-identityʳ ; unfold-reverse 
 import Data.Char as Char
 open Char using (Char)
 
+import Data.Nat as Nat
+open Nat using (ℕ ; _>_ ; zero ; suc ) 
+
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
@@ -32,17 +35,17 @@ open import Data.List.Relation.Unary.Any using (Any; here; there ; map)
 import Data.List.Membership.Propositional
 open Data.List.Membership.Propositional using (_∈_)
 
-open import Function using (_∘_ ; flip)
+open import Function using (_∘_ ; flip )
 
 import Relation.Nullary as Nullary 
-open Nullary using (¬_)
+open Nullary using (¬_ ; contraposition)
 
 ```
 
 
 #### Sub Lemma 0.1 ( Any concatenation )
 
-Let P be a unary predicate with domain r.
+Let P be a unary predicate with dom2ain r.
 Let xs and ys be lists of r.
 Then
 1) Any P ys implies Any P (xs ++ ys) and 
@@ -114,6 +117,42 @@ foldr++ys-map-λ_→[]-xs≡ys (x ∷ xs) ys = foldr++ys-map-λ_→[]-xs≡ys xs
   → ¬ ( x ∷ xs ≡ [] )
 ¬∷≡[] = λ()  
 
+
+¬0>0 : ¬ 0 > 0
+¬0>0 = λ () 
+
+length≡0→[] : ∀ { A : Set } { xs : List A }
+  → List.length xs ≡ 0
+  ----------------------
+  → xs ≡ []
+length≡0→[] {A} {[]} refl = refl
+
+[]→length≡0 : ∀ { A : Set } { xs : List A }
+  → xs ≡ []
+  ----------------------
+  → List.length xs ≡ 0
+[]→length≡0 {A} {[]} refl = refl   
+
+
+¬≡[]→¬length≡0 : ∀ { A : Set } { xs : List A }
+  → ¬ xs ≡ []
+  -----------------------
+  → ¬ List.length xs ≡ 0
+¬≡[]→¬length≡0 {A} {xs} = contraposition length≡0→[] 
+  
+
+¬≡0→>0 :  ∀ { n : ℕ }
+  → ¬ n ≡ 0
+  ----------------------------
+  → n > 0
+¬≡0→>0 {0} ¬0≡0 = Nullary.contradiction refl ¬0≡0
+¬≡0→>0 {suc n} ¬suc-n≡0 = Nat.s≤s Nat.z≤n 
+
+
+
+∷→length>0 : ∀ { A : Set } { x : A } { xs : List A }
+  → List.length ( x ∷ xs ) > 0
+∷→length>0 = Nat.s≤s Nat.z≤n   
 
 
 map-[] : ∀ { A B : Set } { xs : List A } { f : A → B }

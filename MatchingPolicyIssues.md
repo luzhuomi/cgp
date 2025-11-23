@@ -78,7 +78,7 @@ r₁ + r₂ ⊢ LeftU v₁ > RightU v₂
 r* ⊢ ConsU v vs > NilU
 ```
 
-Assuming that the regular expression is no problematic.
+Assuming that the regular expression is not problematic.
 
 
 ### Partial derivative operation

@@ -134,7 +134,7 @@ which means that the list (3) produced by pd is not sorted according to the gree
 
 ### Exmple that shows that pd[ r , c ] do not produce POSIX
 
-(pointed out Martin and Kenny's FLOPS paper)
+(as reported in Martin and Kenny's FLOPS paper)
 
 Consider 
 ```

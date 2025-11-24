@@ -251,7 +251,7 @@ For detail proof, see
 We define a new matching policy, let's call it left non-empty (LNE) matching policy
 
 
-Where we replace rules (ChoiceLL), (ChoiceRR) from the greedy matching policy with the following rules
+Where we replace rules (ChoiceLL), (ChoiceRR) and (ChoiceLR) from the greedy matching policy with the following rules
 
 ```
 |v₁| = |v₂| = []            l ⊢ v₁ > v₂

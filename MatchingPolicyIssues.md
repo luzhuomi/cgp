@@ -333,3 +333,134 @@ LNE matching is neither POSIX nor greedy, it is in-between.
 
 It should be cheaper to compute compared to POSIX, in average case, we want non-empty parse tree on the left sub parse tree, which can be tested by traversing down the list of constructors without flattening the entire parse tree.
 When we implement it using pd operation, it should be cheaper than greedy as distributivity is not required, (no bit shuffling in bitcoding representation)
+
+
+
+
+## Identifying "lne-greedy-problematic" expression ( also "lne-greedy-robust" expressions as contrapositition )
+
+
+Definition
+
+A regular expressionr is lne-greedy robust iff
+
+  ∀ v₁ v₂ : U r,  r ⊢ v₁ >greedy v₂ ⇔ v₁ >lne v₂ 
+
+Note that we write v : U r to denote a parse tree v of regular expression r.
+
+
+Since our `parseAll` functions implemented using partial derivatives are sound and complete, in other words,
+
+
+A regular expressionr is lne-greedy robust iff
+
+  ∀ w ∈ L( r ),  parseAll_lne(r , w )  ≡ parseAll_greedy(r , w )
+
+
+We can now observe when the two parseAll functions differ.
+
+The problematic situation arise when we encounter a partial derivative descendant with the shape of  `r₁ ● r₂` and `ε∈ r₁`.
+
+The pd operation without distributivity law produces
+
+```
+ { r₁' ● r₂ ∣ r₁' ∈ pd[ r₁ , ℓ ] }    -- (Set₁)
+ ∪
+ {  r₂' ∣ r₂' ∈ pd[ r₂ , ℓ ] }        -- (Set₂)
+```
+
+
+#### Parse trees generated from (Set₁)
+
+Let
+
+```
+inj₁ : U r₁' → U r₁ 
+
+```
+be the injection function attached as proof term of `pd[ r₁ , ℓ ]`
+
+Parse trees generated from (Set₁) can be constructed by applying 
+
+```
+injFst : (U r₁' → U r₁) → U (r₁' ● r₂) → U (r₁ ● r₂)
+injFst inj (Pair v₁ v₂) = Pair (inj v₁) v₂ 
+```
+
+to `inj₁`. Note that for any parse tree `v₁` of type `U r₁'`,  `inj₁ v₁` will be flattened to non-empty word.
+
+
+#### Parse trees generated from (Set₂)
+
+
+Let
+
+```
+mkAllEmptyU : r₁ → ε ∈ r₁ → List [U r₁]
+```
+
+be the function that construct all the empty parse trees given an nullable regular expression `r₁`.
+
+The parse trees generated from (Set₂) can be constructed by applying 
+
+```
+injSnd : (U r₂' → U r₂) → U r₁ → U r₂' →  U (r₁ ● r₂)
+injSnd inj emp₁ v₂ = Pair emp₁ (inj v₂)
+
+```
+
+to `mkAllEmptyU` and `inj₂ : U r₂' → U r₂` where `inj₂` is derived from `pd[ r₂ , ℓ ]`.
+
+Note that `emp₁` is flattened to the empty word.
+
+
+### The root cause 
+
+In the LNE matching policy,
+
+```
+r₁ ● r₂ ⊢ Pair (inj₁ v₁) v₂ > Pair emp₁ (inj₂ v₃)
+```
+
+for any parse tree v₃ of type `U r₂'`, assuming ● is right associative. 
+
+
+Under the greedy matching policy, the above is not necessarily true. because
+only the seq₁ rule, is applicable, which requires
+
+`r₁ ⊢ inj₁ v₁ > emp₁`     -- (2)
+
+
+Let's break down r₁ by cases. Since ε ∈ r₁, r₁ can only be ε , l* , l ● s , or l + s.
+
+case ε : not possible, because pd[ ε , ℓ ] = []
+
+case l*: (2) always true, since (inj₁ v₁) is not flattened the empty word, it must be `ConsU u us` for some u and us.
+and `emp₁` must be NilU since we consider non problematic regular expression only.
+
+
+case l ● s: ε ∈ l ● s implies ε ∈ l and ε ∈ s, emp₁ must be some Pair emp₂ emp₃ where both emp₂ and emp₃ are flattened to the empty word.
+We apply "induction" to look at `l ● s` only.
+
+case l + s:
+  sub case ε ∉ l and ε ∈ s :  emp₁ must be RightU emp₂ for some emp₂
+    (inj₁ v₁) can be LeftU v₁' or RightU v₁'
+      sub sub case inj₁ v₁ ≡ LeftU v₁' we apply (choiceLR) rule to verify (2) 
+      sub sub case inj₁ v₁ ≡ RightU v₁', we can "inductively" check s ● r.
+
+  sub case ε ∈ l : this is the "problematic" case, since emp₁ must be LeftU emp₂ for some emp₂
+    but (there exists) RightU v₁' ≡ inj₁ v₁ that causes (2) to be violated.
+
+
+In short, we can only allow ε ∈ s to appear at the right most alternative.
+
+
+### Our conjecture (to be proven)
+
+A regular expression r is lne-greedy robust iff, forall partial derivative descendant of r, let's say
+p where p is of shape r₁ ● r₂, we have either
+  1) ε ∉ r₁ ;
+  2) ε ∈ s appearing only at the right most alternative of r₁. 
+    
+
+

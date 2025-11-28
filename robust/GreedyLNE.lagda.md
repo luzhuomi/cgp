@@ -181,5 +181,27 @@ data RightMostNull : RE → Set where
 data LNE : RE → Set where
   lne-ε  : LNE ε
   lne-$  : ∀ { c : Char } { loc : ℕ } → LNE ($ c ` loc)
+  lne-●  : ∀ { l r : RE } { loc : ℕ }
+    → LNE l
+    → LNE r
+    ----------------------------------
+    → LNE ( l ● r ` loc )
+  lne-+  : ∀ { l r : RE } { loc : ℕ }
+    → ε∉ l
+    → LNE r
+    ---------------------------------
+    → LNE ( l + r ` loc )
+  lne-*  : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+    → LNE r
+    --------------------------------
+    → LNE ( r * ε∉r ` loc )
+    
+
+
+lne→robust : ∀ { r : RE }
+  → LNE r
+  → Robust r 
+lne→robust {ε} lne-ε = robust {ε} {EmptyU} {EmptyU} (λ ()) λ ()
+
 
 ```

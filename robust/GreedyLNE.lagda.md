@@ -17,11 +17,23 @@ open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; f
 import cgp.empty.AllEmptyParseTree as AllEmpty
 open AllEmpty using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU-complete ; Flat-[] ; flat-[] ;  mkAllEmptyU≢[])
 
-import cgp.greedy.Order as Greedy
-open Greedy renaming ( _⊢_>_  to  _⊢_>ᵍ_ )
 
-import cgp.lne.Order as LNE
-open LNE renaming ( _⊢_>_  to  _⊢_>ˡ_ )
+import cgp.PDInstance as PDI
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+
+
+
+import cgp.greedy.Order as GreedyOrder
+open GreedyOrder renaming ( _⊢_>_  to  _⊢_>ᵍ_ )
+
+import cgp.greedy.PartialDerivative as GreedyPD
+open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ) 
+
+import cgp.lne.Order as LNEOrder
+open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_ )
+
+import cgp.lne.PartialDerivative as LNEPD
+open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_] ) 
 
 
 import cgp.Utils as Utils
@@ -96,13 +108,6 @@ step 1. We need to show that the sets of partial derivatives produced by Greedy.
 
 ```agda
 
-{-
--- TODO fix the following if possible
-
-git/cgp/robust/GreedyLNE.lagda.md:108,6-11
-The sort of SetEq cannot depend on its indices in the type
-{a : Level} {A : Set a} → List A → List A → Set a
-when checking the definition of SetEq
 
 private
   variable
@@ -112,15 +117,17 @@ private
     C : Set c
 
 
-data SetEq : { A : Set a } ( xs ys : List A ) → Set a where
+data SetEq { A : Set a } : ( xs ys : List A ) → Set a where
   setEq : { xs ys : List A }
     → All ( λ x → x ∈ ys ) xs 
     → All ( λ y → y ∈ xs ) ys 
     -------------------
     → SetEq xs ys
 
--}  
 
+postulate
+  greedy-lne-parseall : ∀ { r : RE } { w : List Char }
+    → SetEq parseAllᵍ[ r , w ] parseAllˡ[ r , w ] 
 
 
 ```
@@ -168,8 +175,11 @@ data RightMostNull : RE → Set where
 ### To show that the set of partial derivative descendants for 
 
 
+
 ```agda
 
-
+data LNE : RE → Set where
+  lne-ε  : LNE ε
+  lne-$  : ∀ { c : Char } { loc : ℕ } → LNE ($ c ` loc)
 
 ```

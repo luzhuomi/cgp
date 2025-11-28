@@ -15,6 +15,10 @@ import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU  )
 
 
+import cgp.PDInstance as PDI
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+
+
 import cgp.empty.AllEmptyParseTree as AllEmpty
 open AllEmpty using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU-complete ; Flat-[] ; flat-[] ;  mkAllEmptyU≢[] )
 
@@ -114,6 +118,8 @@ flat-Uε≡[] EmptyU = refl
 
 -- partial derivative (descendant?) relation and coercion function
 -- the result type of pdU
+-- moved to PDInstance.lagda.md
+{-
 data PDInstance : ∀ ( r : RE ) ( c : Char ) → Set where
   pdinstance : ∀ { p r : RE }     -- ^ partial derivative p and input re r 
                   { c : Char }     -- ^ the letter 
@@ -127,7 +133,7 @@ data PDInstance : ∀ ( r : RE ) ( c : Char ) → Set where
            -}               
           --------------------------------------------------------------------------------
                → PDInstance r c -- do we need to record the char c and the loc history?
-
+-} 
 
 -- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
 pdinstance-right : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance r c → PDInstance (l + r ` loc) c 
@@ -775,14 +781,17 @@ import cgp.Rewriting  -- import ∷ʳ-++ rewriting rule
 
 
 -- the result type for pdUMany, a variant of PDInstance
+-- moved to PDInstance.lagda.md
 
+{-
 data PDInstance* : ∀ ( r : RE ) ( pref : List Char ) → Set where
   pdinstance* : ∀ { p r : RE }            -- ^ partial derivative descendant p and input re r
                    { pref : List Char }   -- ^ the  prefix (has been consumed)
                 → ( inj : U p → U r )     -- ^ the injection function
                 → ( ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ pref ++ ( proj₁ (flat {p} u) )) ) -- ^ soundness evidence of the inject function
                 ------------------------------------------------
-                → PDInstance* r pref 
+                → PDInstance* r pref
+-}                
 ```
 
 

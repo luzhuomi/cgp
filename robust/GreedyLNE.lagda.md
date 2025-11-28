@@ -1,6 +1,6 @@
 ```agda
 
-{-# OPTIONS --rewriting #-}
+{-# OPTIONS --rewriting  #-}
 module cgp.robust.GreedyLNE where
 
 import cgp.RE as RE
@@ -73,6 +73,8 @@ open Decidable using
 
 open import Function using (_∘_ ; flip)
 
+open import Level using (Level)
+
 ```
 
 ### Robustness definition 
@@ -90,9 +92,35 @@ data Robust : RE → Set where
 
 ### ParseAll r w  means Robust?
 
-step 1. We need to show that the sets of partial derivatives produced by Greedy.parseAll and LNE.parseAll are the same
+step 1. We need to show that the sets of partial derivatives produced by Greedy.parseAll and LNE.parseAll are the equal
 
 ```agda
+
+{-
+-- TODO fix the following if possible
+
+git/cgp/robust/GreedyLNE.lagda.md:108,6-11
+The sort of SetEq cannot depend on its indices in the type
+{a : Level} {A : Set a} → List A → List A → Set a
+when checking the definition of SetEq
+
+private
+  variable
+    a b c p ℓ : Level
+    A : Set a
+    B : Set b
+    C : Set c
+
+
+data SetEq : { A : Set a } ( xs ys : List A ) → Set a where
+  setEq : { xs ys : List A }
+    → All ( λ x → x ∈ ys ) xs 
+    → All ( λ y → y ∈ xs ) ys 
+    -------------------
+    → SetEq xs ys
+
+-}  
+
 
 
 ```

@@ -946,11 +946,7 @@ Hence using a global automatic rewriting language extension help to address this
 
 ```agda 
 
-open import Agda.Builtin.Equality
-open import Agda.Builtin.Equality.Rewrite
-
-
-{-# REWRITE ∷ʳ-++  #-}
+import cgp.Rewriting  -- import ∷ʳ-++ rewriting rule
 
 -- the result type for pdUMany, a variant of PDInstance
 

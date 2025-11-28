@@ -767,13 +767,12 @@ the right hand side `List (PDInstance* r ( pref ∷ʳ c ++ cs ) )`.
 Hence using a global automatic rewriting language extension help to address this issue.
 
 
+
+
 ```agda 
 
-open import Agda.Builtin.Equality
-open import Agda.Builtin.Equality.Rewrite
+import cgp.Rewriting  -- import ∷ʳ-++ rewriting rule
 
-
-{-# REWRITE ∷ʳ-++  #-}
 
 -- the result type for pdUMany, a variant of PDInstance
 

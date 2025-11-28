@@ -352,7 +352,7 @@ Note that we write v : U r to denote a parse tree v of regular expression r.
 Since our `parseAll` functions implemented using partial derivatives are sound and complete, in other words,
 
 
-A regular expressionr is lne-greedy robust iff
+A regular expression dr is lne-greedy robust iff
 
   ∀ w ∈ L( r ),  parseAll_lne(r , w )  ≡ parseAll_greedy(r , w )
 

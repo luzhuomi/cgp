@@ -94,11 +94,12 @@ open import Level using (Level)
 ```agda
 
 data Robust : RE → Set where
-  robust : ∀ { r : RE } { v₁ v₂ : U r }
-    → ( to   : r ⊢ v₁ >ᵍ v₂ → r ⊢ v₁ >ˡ v₂ )
-    → ( from : r ⊢ v₁ >ˡ v₂ → r ⊢ v₁ >ᵍ v₂ )
-    -----------------------------------------
-    → Robust r  
+  robust : ∀ { r : RE } 
+             → ( ∀ ( v₁ : U r ) → ( v₂ : U r ) 
+               → ( r ⊢ v₁ >ᵍ v₂ → r ⊢ v₁ >ˡ v₂ ) × ( r ⊢ v₁ >ˡ v₂ → r ⊢ v₁ >ᵍ v₂ )
+               )
+           -----------------------------------------
+           → Robust r  
 ```
 
 
@@ -201,7 +202,26 @@ data LNE : RE → Set where
 lne→robust : ∀ { r : RE }
   → LNE r
   → Robust r 
-lne→robust {ε} lne-ε = robust {ε} {EmptyU} {EmptyU} (λ ()) λ ()
+lne→robust {ε}           lne-ε = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) )
+lne→robust {$ c ` loc}   lne-$ = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) ) 
+lne→robust {l ● r ` loc} (lne-● lne-l lne-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
+  where
+    robust-r : Robust r
+    robust-r = lne→robust {r} lne-r
+    
+    robust-l : Robust l
+    robust-l = lne→robust {l} lne-l
+    
+    to-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂
+    to-ev u₁ u₂ v₁ v₂ (seq₁ u₁>ᵍu₂) with robust-l
+    ... | robust rob-l-ev = seq₁ (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂)
+    to-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ᵍv₂) with robust-r
+    ... | robust rob-r-ev = seq₂ u₁≡u₂ (proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂ )
 
-
+    from-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ 
+    from-ev u₁ u₂ v₁ v₂ (seq₁ u₁>ˡu₂) with robust-l
+    ... | robust rob-l-ev = seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) 
+    from-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ˡv₂) with robust-r
+    ... | robust rob-r-ev = seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ )
+lne→robust {l + r ` loc} (lne-+ ε∉l lne-r) =  robust {l + r ` loc} ? 
 ```

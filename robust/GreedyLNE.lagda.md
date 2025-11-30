@@ -15,7 +15,7 @@ open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; f
 
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
-open AllEmpty using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU-complete ; Flat-[] ; flat-[] ;  mkAllEmptyU≢[])
+open AllEmpty using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU-complete ; Flat-[] ; flat-[] ;  mkAllEmptyU≢[] ; proj₁flat-v≡[]→ε∈r )
 
 
 import cgp.PDInstance as PDI
@@ -188,7 +188,8 @@ data LNE : RE → Set where
     ----------------------------------
     → LNE ( l ● r ` loc )
   lne-+  : ∀ { l r : RE } { loc : ℕ }
-    → ε∉ l
+    → ε∉ l -- this is not strong enough
+    → LNE l  
     → LNE r
     ---------------------------------
     → LNE ( l + r ` loc )
@@ -196,8 +197,18 @@ data LNE : RE → Set where
     → LNE r
     --------------------------------
     → LNE ( r * ε∉r ` loc )
-    
 
+
+postulate 
+  lne→¬[]>ᵍ∷ : ∀ { r : RE } 
+    → LNE r
+    → ( u₁ : U r )
+    → ( u₂ : U r )
+    → proj₁ (flat u₁) ≡ []
+    → ¬ proj₁ (flat u₂) ≡ []
+    -------------------------
+    → ¬ r ⊢ u₁ >ᵍ u₂
+  
 
 lne→robust : ∀ { r : RE }
   → LNE r
@@ -223,5 +234,82 @@ lne→robust {l ● r ` loc} (lne-● lne-l lne-r) = robust {l ● r ` loc} λ {
     ... | robust rob-l-ev = seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) 
     from-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ˡv₂) with robust-r
     ... | robust rob-r-ev = seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ )
-lne→robust {l + r ` loc} (lne-+ ε∉l lne-r) =  robust {l + r ` loc} ? 
+lne→robust {l + r ` loc} (lne-+ ε∉l lne-l lne-r) =  robust {l + r ` loc} prf
+  where
+    robust-l : Robust l
+    robust-l = lne→robust {l} lne-l
+
+    robust-r : Robust r
+    robust-r = lne→robust {r} lne-r
+
+    prf : (v₁ v₂ : U (l + r ` loc)) →
+      ((l + r ` loc) ⊢ v₁ >ᵍ v₂ → (l + r ` loc) ⊢ v₁ >ˡ v₂) ×
+      ((l + r ` loc) ⊢ v₁ >ˡ v₂ → (l + r ` loc) ⊢ v₁ >ᵍ v₂)
+    prf (LeftU u₁) (LeftU u₂) = to-ev , from-ev
+      where
+        ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
+        ¬proj₁flat-u₁≡[] proj₁flat-u₁≡[] = (ε∉r→¬ε∈r ε∉l) (proj₁flat-v≡[]→ε∈r proj₁flat-u₁≡[])
+        to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
+        to-ev (choice-ll u₁>ᵍu₂) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
+        ... | robust rob-l-ev  | [] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₂-eq) (ε∉r→¬ε∈r ε∉l) 
+        ... | robust rob-l-ev  | c ∷ cs = choice-ll-notempty ¬proj₁flat-u₁≡[]  ¬proj₁flat-u₂≡[]  (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )
+          where 
+            ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
+            ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[] 
+        from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
+        from-ev (choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₂≡[]) (ε∉r→¬ε∈r ε∉l)
+        from-ev (choice-ll-bothempty proj₁flat-u₁≡[] proj₁flat-u₂≡[] _ ) = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₁≡[]) (ε∉r→¬ε∈r ε∉l)
+        from-ev (choice-ll-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
+        ... | robust rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
+    prf (LeftU u₁) (RightU u₂) = to-ev , from-ev
+      where
+        to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ RightU u₂
+        to-ev choice-lr with proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
+        ... | []     | _   = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq) (ε∉r→¬ε∈r ε∉l)  
+        ... | c ∷ cs | []  = choice-lr-empty  ¬proj₁flat-u₁≡[] proj₁flat-u₂-eq
+          where 
+            ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
+            ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
+        ... | c ∷ cs | c' ∷ cs'  = choice-lr-notempty  ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[]
+          where 
+            ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
+            ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
+            ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
+            ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[] 
+        from-ev : (l + r ` loc) ⊢ LeftU u₁ >ˡ RightU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ RightU u₂
+        from-ev = λ z → choice-lr  
+    prf (RightU u₁) (LeftU u₂) = to-ev , from-ev
+      where
+        to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂
+        to-ev = λ () 
+        from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂
+        from-ev (choice-rl-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =  Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₂≡[]) (ε∉r→¬ε∈r ε∉l)    
+    prf (RightU u₁) (RightU u₂) = to-ev , from-ev
+      where 
+        to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂
+        to-ev (choice-rr u₁>ᵍu₂) with robust-r | proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
+        ... | robust rob-r-ev | []     |     []    = choice-rr-bothempty proj₁flat-u₁-eq proj₁flat-u₂-eq (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
+        ... | robust rob-r-ev | c ∷ cs | c' ∷ cs'  = choice-rr-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
+          where
+            ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
+            ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
+            ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
+            ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
+        ... | robust rob-r-ev | c ∷ cs |     []    = choice-rr-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂-eq  
+          where
+            ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
+            ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
+        ... | robust rob-r-ev | []     | c' ∷ cs'  = Nullary.contradiction u₁>ᵍu₂ (lne→¬[]>ᵍ∷ lne-r u₁ u₂  proj₁flat-u₁-eq  ¬proj₁flat-u₂≡[]) 
+          where 
+            ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
+            ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
+
+        from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂
+        from-ev (choice-rr-bothempty  proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂)  with robust-r
+        ... | robust rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
+        from-ev (choice-rr-notempty  ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂)  with robust-r
+        ... | robust rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
+        from-ev (choice-rr-empty  ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  with robust-r
+        ... | robust rob-r-ev = choice-rr {!!}  -- how ? 
+
 ```

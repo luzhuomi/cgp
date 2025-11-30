@@ -20,7 +20,7 @@ import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
-open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] )
+open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ; proj₁flat-v≡[]→ε∈r )
 
 
 import cgp.PDInstance as PDI
@@ -403,40 +403,6 @@ Note : The > order is transitive.
 
 
 
-
--- parse tree can be flattened to [] implies RE is nullable. 
-proj₁flat-v≡[]→ε∈r : ∀ { r : RE } { v : U r }
-    → (proj₁ (flat v)) ≡ []
-    -------------------------
-    → ε∈ r
-proj₁flat-v≡[]→ε∈r {ε} {EmptyU} proj₁flat-v≡[] = ε∈ε 
-proj₁flat-v≡[]→ε∈r {$ c ` loc } {LetterU _} = λ()
-proj₁flat-v≡[]→ε∈r {r * ε∉r ` loc } {ListU _} proj₁flat-v≡[] = ε∈* 
-proj₁flat-v≡[]→ε∈r {l + r  ` loc } {LeftU v} proj₁flat-v≡[] with ε∈? r
-... | yes ε∈r = ε∈ ε∈l + ε∈r 
-  where
-    ε∈l : ε∈ l 
-    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
-... | no ¬ε∈r = ε∈ ε∈l <+ (¬ε∈r→ε∉r ¬ε∈r)
-  where
-    ε∈l : ε∈ l 
-    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
-proj₁flat-v≡[]→ε∈r {l + r  ` loc } {RightU v} proj₁flat-v≡[] with ε∈? l
-... | yes ε∈l = ε∈ ε∈l + ε∈r 
-  where
-    ε∈r : ε∈ r 
-    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
-... | no ¬ε∈l = ε∈ (¬ε∈r→ε∉r ¬ε∈l) +> ε∈r 
-  where
-    ε∈r : ε∈ r 
-    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
-proj₁flat-v≡[]→ε∈r {l ● r  ` loc } {PairU v u} proj₁flat-pair-v-u≡[] = ε∈ ε∈l ● ε∈r
-  where
-    ε∈l : ε∈ l
-    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} (++-conicalˡ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
-    ε∈r : ε∈ r
-    ε∈r = proj₁flat-v≡[]→ε∈r {r} {u} (++-conicalʳ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
-    
 
 
 

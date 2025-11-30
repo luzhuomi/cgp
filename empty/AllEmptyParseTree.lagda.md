@@ -2,14 +2,14 @@
 module cgp.empty.AllEmptyParseTree where
 
 import cgp.RE as RE
-open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_)
+open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈ ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∈? ; ¬ε∈r→ε∉r)
 
 import cgp.Word as Word
 open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈⟦r⟧→¬ε∉r)
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LeftU ; RightU ; PairU ; ListU ; flat ; unflat  )
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat  )
 
 import cgp.Utils as Utils
 open Utils using (any-left-concat; any-right-concat ; inv-map-[] ; inv-concatMap-map-f-[] ; all-concat )
@@ -51,6 +51,12 @@ open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 import Relation.Nullary as Nullary 
 import Relation.Nullary.Negation using (contradiction; contraposition)
 open Nullary using (¬_)
+
+
+import Relation.Nullary.Decidable as Decidable
+open Decidable using
+  ( Dec; yes; no )
+
 
 open import Function using (_∘_)
 ```
@@ -482,5 +488,40 @@ mkAllEmptyU≢[] {l ● r ` _ } (ε∈ ε∈l ● ε∈r ) map-left-mkAllEmptyU-
   where 
     ind-hyp-r :  ¬ (mkAllEmptyU {r} ε∈r ≡ [] )
     ind-hyp-r = mkAllEmptyU≢[] {r} ε∈r
+
+
+-- parse tree can be flattened to [] implies RE is nullable. 
+proj₁flat-v≡[]→ε∈r : ∀ { r : RE } { v : U r }
+    → (proj₁ (flat v)) ≡ []
+    -------------------------
+    → ε∈ r
+proj₁flat-v≡[]→ε∈r {ε} {EmptyU} proj₁flat-v≡[] = ε∈ε 
+proj₁flat-v≡[]→ε∈r {RE.$_`_ c loc} {LetterU x} = λ()
+proj₁flat-v≡[]→ε∈r {r * ε∉r ` loc } {ListU _} proj₁flat-v≡[] = ε∈* 
+proj₁flat-v≡[]→ε∈r {l + r  ` loc } {LeftU v} proj₁flat-v≡[] with ε∈? r
+... | yes ε∈r = ε∈ ε∈l + ε∈r 
+  where
+    ε∈l : ε∈ l 
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
+... | no ¬ε∈r = ε∈ ε∈l <+ (¬ε∈r→ε∉r ¬ε∈r)
+  where
+    ε∈l : ε∈ l 
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} proj₁flat-v≡[]
+proj₁flat-v≡[]→ε∈r {l + r  ` loc } {RightU v} proj₁flat-v≡[] with ε∈? l
+... | yes ε∈l = ε∈ ε∈l + ε∈r 
+  where
+    ε∈r : ε∈ r 
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
+... | no ¬ε∈l = ε∈ (¬ε∈r→ε∉r ¬ε∈l) +> ε∈r 
+  where
+    ε∈r : ε∈ r 
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {v} proj₁flat-v≡[]
+proj₁flat-v≡[]→ε∈r {l ● r  ` loc } {PairU v u} proj₁flat-pair-v-u≡[] = ε∈ ε∈l ● ε∈r
+  where
+    ε∈l : ε∈ l
+    ε∈l = proj₁flat-v≡[]→ε∈r {l} {v} (++-conicalˡ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
+    ε∈r : ε∈ r
+    ε∈r = proj₁flat-v≡[]→ε∈r {r} {u} (++-conicalʳ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
+
 
 ```

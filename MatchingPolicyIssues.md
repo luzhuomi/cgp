@@ -340,11 +340,11 @@ When we implement it using pd operation, it should be cheaper than greedy as dis
 ## Identifying "lne-greedy-problematic" expression ( also "lne-greedy-robust" expressions as contrapositition )
 
 
-Definition
+Definition (robustness)
 
 A regular expressionr is lne-greedy robust iff
 
-  ∀ v₁ v₂ : U r,  r ⊢ v₁ >greedy v₂ ⇔ v₁ >lne v₂ 
+  ∀ v₁ v₂ : U r,  r ⊢ v₁ >ᵍ v₂ ⇔ v₁ >ˡ v₂ 
 
 Note that we write v : U r to denote a parse tree v of regular expression r.
 
@@ -419,7 +419,7 @@ Note that `emp₁` is flattened to the empty word.
 In the LNE matching policy,
 
 ```
-r₁ ● r₂ ⊢ Pair (inj₁ v₁) v₂ > Pair emp₁ (inj₂ v₃)
+r₁ ● r₂ ⊢ Pair (inj₁ v₁) v₂ >ˡ Pair emp₁ (inj₂ v₃)
 ```
 
 for any parse tree v₃ of type `U r₂'`, assuming ● is right associative. 
@@ -428,7 +428,7 @@ for any parse tree v₃ of type `U r₂'`, assuming ● is right associative.
 Under the greedy matching policy, the above is not necessarily true. because
 only the seq₁ rule, is applicable, which requires
 
-`r₁ ⊢ inj₁ v₁ > emp₁`     -- (2)
+`r₁ ⊢ inj₁ v₁ >ᵍ emp₁`     -- (2)
 
 
 Let's break down r₁ by cases. Since ε ∈ r₁, r₁ can only be ε , l* , l ● s , or l + s.
@@ -455,12 +455,29 @@ case l + s:
 In short, we can only allow ε ∈ s to appear at the right most alternative.
 
 
-### Our conjecture (to be proven)
+### A sufficient condition 
 
-A regular expression r is lne-greedy robust iff, forall partial derivative descendant of r, let's say
-p where p is of shape r₁ ● r₂, we have either
-  1) ε ∉ r₁ ;
-  2) ε ∈ s appearing only at the right most alternative of r₁. 
+
+Definition: Left Non Nullable 
+A regular expression r is in left non nullable form, iff, forall sub expression (s + t) in r, s is not nullable.
+
+Formally, we say r is LNN iff any of the following holds, 
+1) r is ε; 
+2) r is l
+3) r is l ● s and l is LNN and s is LNN.
+4) r is l + s and l is LNN, ε∉ l and s is LNN.
+5) r is l * and l is LNN.
+
     
 
 
+### Lemma : LNN is a sufficient condition of robustness
+
+Let r is a regular expression in LNN. Then r is lne-greedy robost
+
+For detail proof, refer to
+
+`robust/GreedyLNE.lagda.md`
+
+
+### Conjecture : is LNN necessary? 

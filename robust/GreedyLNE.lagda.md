@@ -103,110 +103,54 @@ data Robust : RE → Set where
 ```
 
 
-### ParseAll r w  means Robust?
 
-step 1. We need to show that the sets of partial derivatives produced by Greedy.parseAll and LNE.parseAll are the equal
-
-```agda
-
-
-private
-  variable
-    a b c p ℓ : Level
-    A : Set a
-    B : Set b
-    C : Set c
-
-
-data SetEq { A : Set a } : ( xs ys : List A ) → Set a where
-  setEq : { xs ys : List A }
-    → All ( λ x → x ∈ ys ) xs 
-    → All ( λ y → y ∈ xs ) ys 
-    -------------------
-    → SetEq xs ys
-
-
-postulate
-  greedy-lne-parseall : ∀ { r : RE } { w : List Char }
-    → SetEq parseAllᵍ[ r , w ] parseAllˡ[ r , w ] 
-
-
-```
-
-step 2. if the multisets (lists) are in the same order, it implies robust?
-
-
-```agda
-
-
-```
+### A sufficient condition, Left-not-nullable form
 
 
 
-### "Stable" Partial Derivative Descendant
-
-
-step 3. if all pdi* of a r (regardless of greedy or lne ; since from step 1 we've proven they are the same set), are stable,
-then r is having the same parseAll results for all w, i.e. it is lne-greedy robust.
-
-```agda
-
-data RightMostNull : RE → Set where
-  rmn-+ε : ∀ { l : RE } { loc : ℕ } { ε∉l : ε∉ l }
-    → RightMostNull ( l + ε ` loc )
-
-  rmn-+* : ∀ { l r : RE } { ε∉r : ε∉ r } { loc₁ loc₂ : ℕ } { ε∉l : ε∉ l }
-    → RightMostNull ( l + (r * ε∉r ` loc₁) ` loc₂)
-
-  rmn-+● : ∀ { l s r : RE } { loc₁ loc₂ : ℕ } { ε∉l : ε∉ l } { ε∈s : ε∈ s } { ε∈r : ε∈ r }
-    → RightMostNull ( l + ( s ● r ` loc₁ ) ` loc₂ )
-
-  rmn-++ : ∀ { l s r : RE } { loc₁ loc₂ : ℕ } { ε∉l : ε∉ l } 
-    → RightMostNull (s + r ` loc₁)
-    ------------------------------------------------
-    → RightMostNull ( l + ( s + r ` loc₁ ) ` loc₂ )
-
-
--- data StablePDI : RE → Set where
---   stable-pdd
-
-```
-
-
-### To show that the set of partial derivative descendants for 
 
 
 
 ```agda
 
-data LNE : RE → Set where
-  lne-ε  : LNE ε
-  lne-$  : ∀ { c : Char } { loc : ℕ } → LNE ($ c ` loc)
-  lne-●  : ∀ { l r : RE } { loc : ℕ }
-    → LNE l
-    → LNE r
+data LNN : RE → Set where
+  lnn-ε  : LNN ε
+  lnn-$  : ∀ { c : Char } { loc : ℕ } → LNN ($ c ` loc)
+  lnn-●  : ∀ { l r : RE } { loc : ℕ }
+    → LNN l
+    → LNN r
     ----------------------------------
-    → LNE ( l ● r ` loc )
-  lne-+  : ∀ { l r : RE } { loc : ℕ }
+    → LNN ( l ● r ` loc )
+  lnn-+  : ∀ { l r : RE } { loc : ℕ }
     → ε∉ l -- this is not strong enough
-    → LNE l  
-    → LNE r
+    → LNN l  
+    → LNN r
     ---------------------------------
-    → LNE ( l + r ` loc )
-  lne-*  : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
-    → LNE r
+    → LNN ( l + r ` loc )
+  lnn-*  : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+    → LNN r
     --------------------------------
-    → LNE ( r * ε∉r ` loc )
+    → LNN ( r * ε∉r ` loc )
 
 
 
-postulate 
-  ¬proj₁flat-cons≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
+-- the follwoing two sub lemmas should be moved to ParseTree.lagda.md 
+¬proj₁flat-cons≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
     → ¬ ( proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us))) ≡ [] )
-  proj₁flat-nil≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
-    → proj₁ (flat (ListU {r} {ε∉r} {loc} [] )) ≡ [] 
+¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us} proj₁flat-list-u∷us≡[] = (ε∉r→¬ε∈r ε∉r) (proj₁flat-v≡[]→ε∈r proj₁flat-u≡[])
+  where
+    proj₁flat-u++proj₁flat-list-us≡[] : proj₁ (flat u) ++ proj₁ (flat (ListU {r} {ε∉r} {loc} us)) ≡ []
+    proj₁flat-u++proj₁flat-list-us≡[] rewrite  proj₁flat-list-u∷us≡[]  = refl
+    proj₁flat-u≡[] :  proj₁ (flat u) ≡ []
+    proj₁flat-u≡[] = ++-conicalˡ ( proj₁ (flat u) ) (proj₁ (flat (ListU {r} {ε∉r} {loc} us))) proj₁flat-u++proj₁flat-list-us≡[]
+
+proj₁flat-nil≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+    → proj₁ (flat (ListU {r} {ε∉r} {loc} [] )) ≡ []
+proj₁flat-nil≡[] {r} {ε∉r} {loc} = refl 
+    
 
 {-
+can't be proven 
 u>ᵍv→¬v>ᵍu : ∀ { r : RE } {u : U r} {v : U r}
   → r ⊢ u >ᵍ v
   --------------
@@ -224,19 +168,18 @@ u>ᵍv→¬v>ᵍu {r * ε∉r ` loc} {ListU (u ∷ us)}  {ListU []} star-cons-ni
 
 
 
--- u≡v→¬u>ᵍv ?
 
-lne-proj₁flat≡[]→refl : ∀ { r : RE } { ε∈r : ε∈ r } { u v : U r }
-    → LNE r 
+lnn-proj₁flat≡[]→refl : ∀ { r : RE } { ε∈r : ε∈ r } { u v : U r }
+    → LNN r 
     → proj₁ (flat u) ≡ []
     → proj₁ (flat v) ≡ []
     ------------------------
     → u ≡ v
-lne-proj₁flat≡[]→refl {ε}              {ε∈ε} {EmptyU} {EmptyU} lne-ε refl refl = refl
-lne-proj₁flat≡[]→refl {r * ε∉r ` loc}  {ε∈*} {ListU []}       {ListU []} (lne-* lne-r) refl refl = refl 
-lne-proj₁flat≡[]→refl {r * ε∉r ` loc}  {ε∈*} {ListU (u ∷ us)} {_}        (lne-* lne-r) proj₁flat-list-uus≡[] _ = Nullary.contradiction   proj₁flat-list-uus≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
-lne-proj₁flat≡[]→refl {r * ε∉r ` loc}  {ε∈*} {_} {ListU (u ∷ us)}        (lne-* lne-r) _ proj₁flat-list-uus≡[] = Nullary.contradiction   proj₁flat-list-uus≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
-lne-proj₁flat≡[]→refl {l ● r ` loc}  {ε∈ ε∈l ● ε∈r } {PairU u₁ u₂}  {PairU v₁ v₂} (lne-● lne-l lne-r) proj₁flat-pair-u₁u₂≡[] proj₁flat-pair-v₁v₂≡[] = prf  
+lnn-proj₁flat≡[]→refl {ε}              {ε∈ε} {EmptyU} {EmptyU} lnn-ε refl refl = refl
+lnn-proj₁flat≡[]→refl {r * ε∉r ` loc}  {ε∈*} {ListU []}       {ListU []} (lnn-* lnn-r) refl refl = refl 
+lnn-proj₁flat≡[]→refl {r * ε∉r ` loc}  {ε∈*} {ListU (u ∷ us)} {_}        (lnn-* lnn-r) proj₁flat-list-uus≡[] _ = Nullary.contradiction   proj₁flat-list-uus≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
+lnn-proj₁flat≡[]→refl {r * ε∉r ` loc}  {ε∈*} {_} {ListU (u ∷ us)}        (lnn-* lnn-r) _ proj₁flat-list-uus≡[] = Nullary.contradiction   proj₁flat-list-uus≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
+lnn-proj₁flat≡[]→refl {l ● r ` loc}  {ε∈ ε∈l ● ε∈r } {PairU u₁ u₂}  {PairU v₁ v₂} (lnn-● lnn-l lnn-r) proj₁flat-pair-u₁u₂≡[] proj₁flat-pair-v₁v₂≡[] = prf  
   where 
     proj₁flat-v₁≡[] : proj₁ (flat v₁) ≡ []
     proj₁flat-v₁≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) proj₁flat-pair-v₁v₂≡[]
@@ -247,41 +190,43 @@ lne-proj₁flat≡[]→refl {l ● r ` loc}  {ε∈ ε∈l ● ε∈r } {PairU u
     proj₁flat-u₂≡[] : proj₁ (flat u₂) ≡ []
     proj₁flat-u₂≡[] = ++-conicalʳ (proj₁ (flat u₁)) (proj₁ (flat u₂)) proj₁flat-pair-u₁u₂≡[]
     u₁≡v₁ : u₁ ≡ v₁
-    u₁≡v₁ = lne-proj₁flat≡[]→refl {l} {ε∈l} {u₁} {v₁} lne-l proj₁flat-u₁≡[] proj₁flat-v₁≡[]
+    u₁≡v₁ = lnn-proj₁flat≡[]→refl {l} {ε∈l} {u₁} {v₁} lnn-l proj₁flat-u₁≡[] proj₁flat-v₁≡[]
     u₂≡v₂ : u₂ ≡ v₂
-    u₂≡v₂ = lne-proj₁flat≡[]→refl {r} {ε∈r} {u₂} {v₂} lne-r proj₁flat-u₂≡[] proj₁flat-v₂≡[]
+    u₂≡v₂ = lnn-proj₁flat≡[]→refl {r} {ε∈r} {u₂} {v₂} lnn-r proj₁flat-u₂≡[] proj₁flat-v₂≡[]
 
     prf : PairU {l} {r} {loc} u₁ u₂ ≡ PairU {l} {r} {loc}  v₁ v₂
     prf rewrite u₁≡v₁ | u₂≡v₂ = refl 
-lne-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∈l + ε∈r } {_}  {_}  (lne-+ ε∉l lne-l lne-r) _ _ = Nullary.contradiction  ε∈l (ε∉r→¬ε∈r ε∉l)
-lne-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∈l <+ ε∉r } {_}  {_}  (lne-+ ε∉l lne-l lne-r) _ _ = Nullary.contradiction  ε∈l (ε∉r→¬ε∈r ε∉l)
-lne-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∉l +> ε∈r } {LeftU v}  {_}  (lne-+ ε∉l' lne-l lne-r) proj₁flat-left-v≡[] _ =  Nullary.contradiction (proj₁flat-v≡[]→ε∈r  proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l)
-lne-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∉l +> ε∈r } {_} {LeftU v}  (lne-+ ε∉l' lne-l lne-r) _  proj₁flat-left-v≡[] =   Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l)
-lne-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∉l +> ε∈r } {RightU u} {RightU v}  (lne-+ ε∉l' lne-l lne-r) proj₁flat-right-u≡[]  proj₁flat-right-v≡[] = right-u≡right-v
+lnn-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∈l + ε∈r } {_}  {_}  (lnn-+ ε∉l lnn-l lnn-r) _ _ = Nullary.contradiction  ε∈l (ε∉r→¬ε∈r ε∉l)
+lnn-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∈l <+ ε∉r } {_}  {_}  (lnn-+ ε∉l lnn-l lnn-r) _ _ = Nullary.contradiction  ε∈l (ε∉r→¬ε∈r ε∉l)
+lnn-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∉l +> ε∈r } {LeftU v}  {_}  (lnn-+ ε∉l' lnn-l lnn-r) proj₁flat-left-v≡[] _ =  Nullary.contradiction (proj₁flat-v≡[]→ε∈r  proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l)
+lnn-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∉l +> ε∈r } {_} {LeftU v}  (lnn-+ ε∉l' lnn-l lnn-r) _  proj₁flat-left-v≡[] =   Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l)
+lnn-proj₁flat≡[]→refl {l + r ` loc}  {ε∈ ε∉l +> ε∈r } {RightU u} {RightU v}  (lnn-+ ε∉l' lnn-l lnn-r) proj₁flat-right-u≡[]  proj₁flat-right-v≡[] = right-u≡right-v
   where
     u≡v : u ≡ v
-    u≡v =  lne-proj₁flat≡[]→refl {r} {ε∈r} {u} {v} lne-r proj₁flat-right-u≡[]  proj₁flat-right-v≡[]
+    u≡v =  lnn-proj₁flat≡[]→refl {r} {ε∈r} {u} {v} lnn-r proj₁flat-right-u≡[]  proj₁flat-right-v≡[]
     right-u≡right-v : RightU {l} {r} {loc} u ≡ RightU {l} {r} {loc} v
     right-u≡right-v rewrite u≡v = refl 
 
 
-lne→¬[]>ᵍ∷ : ∀ { r : RE } 
-    → LNE r
+{-
+-- can't be proven
+lnn→¬[]>ᵍ∷ : ∀ { r : RE } 
+    → LNN r
     → ( u₁ : U r )
     → ( u₂ : U r )
     → proj₁ (flat u₁) ≡ []
     → ¬ proj₁ (flat u₂) ≡ []
     -------------------------
     → ¬ r ⊢ u₁ >ᵍ u₂
-lne→¬[]>ᵍ∷ {ε} lne-ε          EmptyU      EmptyU      proj₁flat-empty≡[] ¬proj₁flat-empty≡[]               = Nullary.contradiction proj₁flat-empty≡[] ¬proj₁flat-empty≡[]
-lne→¬[]>ᵍ∷ {$ c ` loc} lne-$  (LetterU _) (LetterU _) proj₁flat-letter≡[] ¬proj₁flat-letter≡[]             = Nullary.contradiction proj₁flat-letter≡[] ¬proj₁flat-letter≡[]
-lne→¬[]>ᵍ∷ {r * ε∉r ` loc} (lne-* lne-r) (ListU []) (ListU []) proj₁flat-nil≡[] ¬proj₁flat-nil≡[]          = Nullary.contradiction proj₁flat-nil≡[] ¬proj₁flat-nil≡[]
-lne→¬[]>ᵍ∷ {r * ε∉r ` loc} (lne-* lne-r) (ListU []) (ListU ( u ∷ us )) proj₁flat-nil≡[] ¬proj₁flat-cons≡[] = λ ()
-lne→¬[]>ᵍ∷ {r * ε∉r ` loc} (lne-* lne-r) (ListU ( v ∷ vs )) _  proj₁flat-cons-v-vs≡[] _  = Nullary.contradiction proj₁flat-cons-v-vs≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
-lne→¬[]>ᵍ∷ {l + r   ` loc} (lne-+ ε∉l lne-l lne-r) (LeftU u) _ proj₁flat-left-u≡[] _     =  Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-u≡[]) (ε∉r→¬ε∈r ε∉l)
-lne→¬[]>ᵍ∷ {l + r   ` loc} (lne-+ ε∉l lne-l lne-r) (RightU u) (LeftU v) proj₁flat-left-u≡[] ¬proj₁flat-right-v≡[] =  λ()
-lne→¬[]>ᵍ∷ {l + r   ` loc} (lne-+ ε∉l lne-l lne-r) (RightU u) (RightU v) proj₁flat-right-u≡[] ¬proj₁flat-right-v≡[] (choice-rr u>ᵍv) = Nullary.contradiction u>ᵍv (lne→¬[]>ᵍ∷  {r} lne-r u v proj₁flat-right-u≡[] ¬proj₁flat-right-v≡[] )
-lne→¬[]>ᵍ∷ {l ● r   ` loc} (lne-● lne-l lne-r) (PairU u₁ u₂) (PairU v₁ v₂)  proj₁flat-pair-u₁u₂≡[] ¬proj₁flat-pair-v₁v₂≡[] = prf  -- how ? can't be proven?
+lnn→¬[]>ᵍ∷ {ε} lnn-ε          EmptyU      EmptyU      proj₁flat-empty≡[] ¬proj₁flat-empty≡[]               = Nullary.contradiction proj₁flat-empty≡[] ¬proj₁flat-empty≡[]
+lnn→¬[]>ᵍ∷ {$ c ` loc} lnn-$  (LetterU _) (LetterU _) proj₁flat-letter≡[] ¬proj₁flat-letter≡[]             = Nullary.contradiction proj₁flat-letter≡[] ¬proj₁flat-letter≡[]
+lnn→¬[]>ᵍ∷ {r * ε∉r ` loc} (lnn-* lnn-r) (ListU []) (ListU []) proj₁flat-nil≡[] ¬proj₁flat-nil≡[]          = Nullary.contradiction proj₁flat-nil≡[] ¬proj₁flat-nil≡[]
+lnn→¬[]>ᵍ∷ {r * ε∉r ` loc} (lnn-* lnn-r) (ListU []) (ListU ( u ∷ us )) proj₁flat-nil≡[] ¬proj₁flat-cons≡[] = λ ()
+lnn→¬[]>ᵍ∷ {r * ε∉r ` loc} (lnn-* lnn-r) (ListU ( v ∷ vs )) _  proj₁flat-cons-v-vs≡[] _  = Nullary.contradiction proj₁flat-cons-v-vs≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
+lnn→¬[]>ᵍ∷ {l + r   ` loc} (lnn-+ ε∉l lnn-l lnn-r) (LeftU u) _ proj₁flat-left-u≡[] _     =  Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-u≡[]) (ε∉r→¬ε∈r ε∉l)
+lnn→¬[]>ᵍ∷ {l + r   ` loc} (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (LeftU v) proj₁flat-left-u≡[] ¬proj₁flat-right-v≡[] =  λ()
+lnn→¬[]>ᵍ∷ {l + r   ` loc} (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (RightU v) proj₁flat-right-u≡[] ¬proj₁flat-right-v≡[] (choice-rr u>ᵍv) = Nullary.contradiction u>ᵍv (lnn→¬[]>ᵍ∷  {r} lnn-r u v proj₁flat-right-u≡[] ¬proj₁flat-right-v≡[] )
+lnn→¬[]>ᵍ∷ {l ● r   ` loc} (lnn-● lnn-l lnn-r) (PairU u₁ u₂) (PairU v₁ v₂)  proj₁flat-pair-u₁u₂≡[] ¬proj₁flat-pair-v₁v₂≡[] = prf  -- how ? can't be proven?
   where
     proj₁flat-u₁≡[] : proj₁ (flat u₁) ≡ []
     proj₁flat-u₁≡[] = ++-conicalˡ (proj₁ (flat u₁)) (proj₁ (flat u₂)) proj₁flat-pair-u₁u₂≡[]
@@ -293,15 +238,51 @@ lne→¬[]>ᵍ∷ {l ● r   ` loc} (lne-● lne-l lne-r) (PairU u₁ u₂) (Pai
     ... |  []       | c ∷ cs = {!!} -- λ pair-u₁u₂>pair-v₁v₂ → seq₂ u₁≡v₁ {!!}
       where
         u₁≡v₁ : u₁ ≡ v₁
-        u₁≡v₁ = lne-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-v₁-eq} {u₁} {v₁} lne-l proj₁flat-u₁≡[]  proj₁flat-v₁-eq 
+        u₁≡v₁ = lnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-v₁-eq} {u₁} {v₁} lnn-l proj₁flat-u₁≡[]  proj₁flat-v₁-eq 
         ev : ¬ (l ● r ` loc) ⊢ PairU u₁ u₂ >ᵍ PairU v₁ v₂
         ev rewrite u₁≡v₁ = λ pair-u₁u₂>pair-v₁v₂ → {!!} 
-  -- we can use lne-proj₁flat≡[]→refl 
-  -- we replace this lemma by u>ᵍv→¬v>ᵍu and lne→∷>ᵍ[]
+  -- we can use lnn-proj₁flat≡[]→refl 
+  -- we replace this lemma by u>ᵍv→¬v>ᵍu and lnn→∷>ᵍ[]
 
+-}
 
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[]  : ∀ { r : RE }
-    → LNE r
+u>ᵍv→¬u≡v : ∀ { r : RE } { u v : U r }
+    →  r ⊢ u >ᵍ v
+    ---------------
+    → ¬ ( u ≡ v ) 
+u>ᵍv→¬u≡v {ε}         {EmptyU} {EmptyU} = λ()
+u>ᵍv→¬u≡v {$ c ` loc} {LetterU _} {LetterU _} = λ()
+u>ᵍv→¬u≡v {r * ε∉r ` loc } {ListU []} {ListU []} = λ()
+u>ᵍv→¬u≡v {r * ε∉r ` loc } {ListU []} {ListU (v ∷ vs)} = λ()
+u>ᵍv→¬u≡v {r * ε∉r ` loc } {ListU (u ∷ us)} {ListU []} star-cons-nil = λ () 
+u>ᵍv→¬u≡v {r * ε∉r ` loc } {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>ᵍv) list-u∷us≡list-v∷vs = ¬u≡v (proj₁ (inv-listU u us v vs list-u∷us≡list-v∷vs))
+  where
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = u>ᵍv→¬u≡v {r} {u} {v} u>ᵍv 
+u>ᵍv→¬u≡v {r * ε∉r ` loc } {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>ᵍlist-vs) list-u∷us≡list-v∷vs = ¬us≡vs  (proj₂ (inv-listU u us v vs list-u∷us≡list-v∷vs))
+  where
+    ¬list-us≡list-vs : ¬ ListU us ≡ ListU vs
+    ¬list-us≡list-vs = u>ᵍv→¬u≡v {r * ε∉r ` loc} {ListU us} {ListU vs} list-us>ᵍlist-vs
+    ¬us≡vs : ¬ us ≡ vs
+    ¬us≡vs us≡vs =  ¬list-us≡list-vs list-us≡list-vs
+      where
+        list-us≡list-vs : ListU {r} {ε∉r} {loc} us ≡ ListU {r} {ε∉r} {loc}  vs
+        list-us≡list-vs rewrite  us≡vs = refl 
+    
+u>ᵍv→¬u≡v {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>ᵍv₁) pair-u₁u₂≡pair-v₁v₂ = ¬u₁≡v₁ (proj₁ (inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂) )
+  where
+    ¬u₁≡v₁ : ¬ u₁ ≡ v₁
+    ¬u₁≡v₁ = u>ᵍv→¬u≡v {l} {u₁} {v₁} u₁>ᵍv₁
+u>ᵍv→¬u≡v {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>ᵍv₂)  pair-u₁u₂≡pair-v₁v₂ =  ¬u₂≡v₂ (proj₂ (inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂) )
+  where 
+    ¬u₂≡v₂ : ¬ u₂ ≡ v₂
+    ¬u₂≡v₂ = u>ᵍv→¬u≡v {r} {u₂} {v₂} u₂>ᵍv₂
+u>ᵍv→¬u≡v {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>ᵍv) left-u≡left-v = (u>ᵍv→¬u≡v {l} {u} {v} u>ᵍv) (inv-leftU u v  left-u≡left-v)
+u>ᵍv→¬u≡v {l + r ` loc} {LeftU u} {RightU v} choice-lr = λ()
+u>ᵍv→¬u≡v {l + r ` loc} {RightU u} {RightU v} (choice-rr u>ᵍv) right-u≡right-v = (u>ᵍv→¬u≡v {r} {u} {v} u>ᵍv) (inv-rightU u v right-u≡right-v)
+
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[]  : ∀ { r : RE }
+    → LNN r
     → ( u : U r )
     → ( v : U r )
     → r ⊢ u >ᵍ v
@@ -309,57 +290,123 @@ lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[]  : ∀ { r : RE }
     → ( proj₁ (flat u) ≡ [] × proj₁ (flat v) ≡ [] ) ⊎
       ( ( ¬ proj₁ (flat u) ≡ [] × ¬ proj₁ (flat v) ≡ [] ) ⊎
         ( ¬ proj₁ (flat u) ≡ [] × proj₁ (flat v) ≡ [] ) )
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {ε}             lne-ε EmptyU EmptyU = λ()
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {$ c ` loc}     lne-$ (LetterU _) (LetterU _) = λ()
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lne-* lne-r) (ListU []) (ListU []) = λ()
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lne-* lne-r) (ListU []) (ListU ( v ∷ vs) ) = λ()
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lne-* lne-r) (ListU (u ∷ us )) (ListU []) star-cons-nil = inj₂ (inj₂ (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us} , proj₁flat-nil≡[] {r} {ε∉r} {loc} ) )
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lne-* lne-r) (ListU (u ∷ us )) (ListU (v ∷ vs)) _       = inj₂ (inj₁ (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us} , ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs} ) )
-lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l ● r ` loc}   (lne-● lne-l lne-r) (PairU u₁ u₂) (PairU v₁ v₂)
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {ε}             lnn-ε EmptyU EmptyU = λ()
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {$ c ` loc}     lnn-$ (LetterU _) (LetterU _) = λ()
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU []) (ListU []) = λ()
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU []) (ListU ( v ∷ vs) ) = λ()
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU (u ∷ us )) (ListU []) star-cons-nil = inj₂ (inj₂ (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us} , proj₁flat-nil≡[] {r} {ε∉r} {loc} ) )
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU (u ∷ us )) (ListU (v ∷ vs)) _       = inj₂ (inj₁ (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us} , ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs} ) )
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l ● r ` loc}   (lnn-● lnn-l lnn-r) (PairU u₁ u₂) (PairU v₁ v₂)
   with proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat v₁) in proj₁flat-v₁-eq
 ... | []        |  []  = prf 
   where
     u₁≡v₁ : u₁ ≡ v₁ 
-    u₁≡v₁ = lne-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} lne-l proj₁flat-u₁-eq proj₁flat-v₁-eq
+    u₁≡v₁ = lnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} lnn-l proj₁flat-u₁-eq proj₁flat-v₁-eq
     prf : (l ● r ` loc) ⊢ PairU u₁ u₂ >ᵍ PairU v₁ v₂ →
       ( proj₁ (flat u₂) ≡ [] × proj₁ (flat v₂) ≡ [] ) ⊎
       ( ( ¬ proj₁ (flat u₂) ≡ [] × ¬ proj₁ (flat v₂) ≡ [] ) ⊎
         ( ¬ proj₁ (flat u₂) ≡ [] × proj₁ (flat v₂) ≡ [] ) )
-    prf rewrite u₁≡v₁ = λ { (seq₂ refl u₂>ᵍv₂ ) → {!!}  } 
+    prf (seq₂ refl u₂>ᵍv₂ ) with lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r} lnn-r u₂ v₂ u₂>ᵍv₂
+    ... | inj₁ ( proj₁flat-u₂≡[] , proj₁flat-v₂≡[] ) = inj₁ (proj₁flat-u₂≡[] , proj₁flat-v₂≡[])
+    ... | inj₂ ( inj₁ ( ¬proj₁flat-u₂≡[] , ¬proj₁flat-v₂≡[] ) ) = inj₂ (inj₁ (¬proj₁flat-u₂≡[] , ¬proj₁flat-v₂≡[]))
+    ... | inj₂ ( inj₂ ( ¬proj₁flat-u₂≡[] , proj₁flat-v₂≡[] ) ) = inj₂ (inj₂ (¬proj₁flat-u₂≡[] , proj₁flat-v₂≡[])) 
+    prf (seq₁ u₁>ᵍv₁) =  Nullary.contradiction u₁≡v₁ (u>ᵍv→¬u≡v {l} {u₁} {v₁} u₁>ᵍv₁) 
+... | []        |  (c ∷ cs)  = prf 
+  where
+    prf : (l ● r ` loc) ⊢ PairU u₁ u₂ >ᵍ PairU v₁ v₂ →
+      ( proj₁ (flat u₂) ≡ [] × ( (c ∷ cs) ++ proj₁ (flat v₂) ≡ [] ) ) ⊎
+      ( ( ¬ proj₁ (flat u₂) ≡ [] × ¬ ( (c ∷ cs) ++ proj₁ (flat v₂)) ≡ [] ) ⊎
+        ( ¬ proj₁ (flat u₂) ≡ [] × ( (c ∷ cs) ++ proj₁ (flat v₂)) ≡ [] ) )
+    prf (seq₂ u₁≡v₁ u₂>ᵍv₂)  = Nullary.contradiction proj₁flatu₁≡proj₁flatv₁ ¬proj₁flatu₁≡proj₁flatv₁
+      where
+        proj₁flatu₁≡proj₁flatv₁ : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+        proj₁flatu₁≡proj₁flatv₁ rewrite u₁≡v₁ = refl
+        ¬proj₁flatu₁≡proj₁flatv₁ : ¬ proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+        ¬proj₁flatu₁≡proj₁flatv₁ rewrite  proj₁flat-u₁-eq |  proj₁flat-v₁-eq = λ ()
+    prf (seq₁ u₁>ᵍv₁) with lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l} lnn-l u₁ v₁ u₁>ᵍv₁
+    ... | inj₁ ( proj₁flat-u₁≡[] , proj₁flat-v₁≡[] ) = Nullary.contradiction proj₁flat-v₁≡[] ¬proj₁flat-v₁≡[]
+      where
+        ¬proj₁flat-v₁≡[] : ¬ proj₁ (flat v₁) ≡ [] 
+        ¬proj₁flat-v₁≡[] rewrite  proj₁flat-v₁-eq = λ x → ¬∷≡[] x
+    ... | inj₂ ( inj₁ ( ¬proj₁flat-u₁≡[] , ¬proj₁flat-v₁≡[] ) ) =  Nullary.contradiction  proj₁flat-u₁-eq  ¬proj₁flat-u₁≡[]
+    ... | inj₂ ( inj₂ ( ¬proj₁flat-u₁≡[] , proj₁flat-v₁≡[] ) )  =  Nullary.contradiction  proj₁flat-u₁-eq  ¬proj₁flat-u₁≡[]
+... | (c ∷ cs)  | [] = prf
+  where 
+    prf : (l ● r ` loc) ⊢ PairU u₁ u₂ >ᵍ PairU v₁ v₂ →
+      ( ((c ∷ cs) ++ proj₁  (flat u₂) ) ≡ [] × ( proj₁ (flat v₂) ≡ [] ) ) ⊎
+      ( ( ¬ ((c ∷ cs) ++ proj₁ (flat u₂) ≡ [] ) × ¬ proj₁ (flat v₂) ≡ [] ) ⊎
+        ( ¬ ((c ∷ cs) ++ proj₁ (flat u₂) ≡ [] ) × proj₁ (flat v₂) ≡ [] ) )
+    prf (seq₂ u₁≡v₁ u₂>ᵍv₂)  = Nullary.contradiction proj₁flatu₁≡proj₁flatv₁ ¬proj₁flatu₁≡proj₁flatv₁ 
+      where
+        proj₁flatu₁≡proj₁flatv₁ : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+        proj₁flatu₁≡proj₁flatv₁ rewrite u₁≡v₁ = refl
+        ¬proj₁flatu₁≡proj₁flatv₁ : ¬ proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+        ¬proj₁flatu₁≡proj₁flatv₁ rewrite  proj₁flat-u₁-eq |  proj₁flat-v₁-eq = λ ()
+    prf  (seq₁ u₁>ᵍv₁) with lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l} lnn-l u₁ v₁ u₁>ᵍv₁
+    ... | inj₁ ( proj₁flat-u₁≡[] , proj₁flat-v₁≡[] ) =  Nullary.contradiction proj₁flat-u₁≡[]  ¬proj₁flat-u₁≡[]  
+      where
+        ¬proj₁flat-u₁≡[] : ¬ proj₁ (flat u₁) ≡ [] 
+        ¬proj₁flat-u₁≡[] rewrite  proj₁flat-u₁-eq = λ x → ¬∷≡[] x
+    ... | inj₂ ( inj₁ (  ¬proj₁flat-u₁≡[] , ¬proj₁flat-v₁≡[] ) ) =  Nullary.contradiction  proj₁flat-v₁-eq  ¬proj₁flat-v₁≡[]
+    ... | inj₂ ( inj₂ (  ¬proj₁flat-u₁≡[] , proj₁flat-v₁≡[] ) ) with proj₁ (flat v₂) in proj₁flat-v₂-eq 
+    ...                                                         |  [] =  inj₂ (inj₂ ( ¬c∷cs++proj₁flatu₂≡[] , refl ))
+                                                                where
+                                                                  ¬c∷cs++proj₁flatu₂≡[] : ¬ (c ∷ cs) ++ proj₁ (flat u₂) ≡ []
+                                                                  ¬c∷cs++proj₁flatu₂≡[] = λ x → ¬∷≡[] x
+    ...                                                         | c' ∷ cs' = inj₂ (inj₁  ( ¬c∷cs++proj₁flatu₂≡[] , λ () ) )                                                                
+                                                                where
+                                                                  ¬c∷cs++proj₁flatu₂≡[] : ¬ (c ∷ cs) ++ proj₁ (flat u₂) ≡ []
+                                                                  ¬c∷cs++proj₁flatu₂≡[] = λ x → ¬∷≡[] x
+... | (c ∷ cs)  | (c' ∷ cs') = prf                                                                  
+  where 
+    prf : (l ● r ` loc) ⊢ PairU u₁ u₂ >ᵍ PairU v₁ v₂ →
+      ( ((c ∷ cs) ++ proj₁  (flat u₂) ) ≡ [] × ((c' ∷ cs') ++  proj₁ (flat v₂) ≡ [] ) )  ⊎
+      ( ( ¬ ((c ∷ cs) ++ proj₁ (flat u₂) ≡ [] ) × ¬ ((c' ∷ cs') ++ proj₁ (flat v₂) ≡ [] ) ) ⊎
+        ( ¬ ((c ∷ cs) ++ proj₁ (flat u₂) ≡ [] ) × ((c' ∷ cs') ++ proj₁ (flat v₂) ≡ [] ) ) )
+    prf _ = inj₂ (inj₁ ( (λ ())  ,  λ () ) )
+
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (LeftU u) (LeftU v) (choice-ll u>ᵍv) =  lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] lnn-l u v u>ᵍv
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (RightU v) (choice-rr u>ᵍv) = lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] lnn-r u v u>ᵍv
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (LeftU v) = λ () 
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (LeftU u) (RightU v) choice-lr
+  with proj₁ (flat u) in proj₁flat-u-eq | proj₁ (flat v) in proj₁flat-v-eq
+... | []       | _          = Nullary.contradiction (proj₁flat-v≡[]→ε∈r  proj₁flat-u-eq)  (ε∉r→¬ε∈r ε∉l)
+... | (c ∷ cs) | []         = inj₂ (inj₂ ( (λ ()) , refl ) )
+... | (c ∷ cs) | (c' ∷ cs') = inj₂ (inj₁ ( (λ ()) , λ () ) ) 
 
 
-lne-u>ᵍv→¬u≡[]×u≢[] : ∀ { r : RE }
-    → LNE r
+lnn-u>ᵍv→¬u≡[]×u≢[] : ∀ { r : RE }
+    → LNN r
     → ( u : U r )
     → ( v : U r )
     → r ⊢ u >ᵍ v
     ----------------------------------------------------
     → ¬ ( proj₁ (flat u) ≡ [] × ¬ proj₁ (flat v) ≡ [] )
-lne-u>ᵍv→¬u≡[]×u≢[] {r} lne-r u v u>ᵍv  (proj₁flat-u≡[] , ¬proj₁flat-v≡[])  with lne-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r} lne-r u v u>ᵍv
+lnn-u>ᵍv→¬u≡[]×u≢[] {r} lnn-r u v u>ᵍv  (proj₁flat-u≡[] , ¬proj₁flat-v≡[])  with lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r} lnn-r u v u>ᵍv
 ... | inj₁ (proj₁flat-u≡[] ,  proj₁-flat-v≡[] ) =  ¬proj₁flat-v≡[] proj₁-flat-v≡[]
 ... | inj₂ (inj₁ (¬proj₁flat-u≡[] ,  ¬proj₁-flat-v≡[] ) ) = ¬proj₁flat-u≡[] proj₁flat-u≡[]
 ... | inj₂ (inj₂ (¬proj₁flat-u≡[] ,  proj₁-flat-v≡[] ) )  = ¬proj₁flat-v≡[] proj₁-flat-v≡[] 
 
 
 
-lne→∷>ᵍ[] : ∀ { r : RE }
-    → LNE r
+lnn→∷>ᵍ[] : ∀ { r : RE }
+    → LNN r
     → ( u₁ : U r )
     → ( u₂ : U r )
     → ¬ proj₁ (flat u₁) ≡ []
     → proj₁ (flat u₂) ≡ []
     ------------------------
     → r ⊢ u₁ >ᵍ u₂
-lne→∷>ᵍ[] {ε} lne-ε          EmptyU      EmptyU      ¬proj₁flat-empty≡[]  proj₁flat-empty≡[]              = Nullary.contradiction proj₁flat-empty≡[] ¬proj₁flat-empty≡[]
-lne→∷>ᵍ[] {$ c ` loc} lne-$  (LetterU _) (LetterU _) ¬proj₁flat-letter≡[] proj₁flat-letter≡[]             = Nullary.contradiction proj₁flat-letter≡[] ¬proj₁flat-letter≡[]
-lne→∷>ᵍ[] {r * ε∉r ` loc} (lne-* lne-r) (ListU [])  _                       ¬proj₁flat-nil≡[] _           = Nullary.contradiction (proj₁flat-nil≡[]  {r} {ε∉r} {loc})  ¬proj₁flat-nil≡[]
-lne→∷>ᵍ[] {r * ε∉r ` loc} (lne-* lne-r) (ListU ( u ∷ us )) (ListU ( v ∷ vs))  ¬proj₁flat-cons-uus≡[] proj₁flat-cons-vvs≡[] =  Nullary.contradiction proj₁flat-cons-vvs≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
-lne→∷>ᵍ[] {r * ε∉r ` loc} (lne-* lne-r) (ListU ( u ∷ us )) (ListU [])  ¬proj₁flat-cons-uus≡[] proj₁flat-nil≡[]     = star-cons-nil
-lne→∷>ᵍ[] {l + r   ` loc} (lne-+ ε∉l lne-l lne-r) (LeftU u) (LeftU v) ¬proj₁flat-left-u≡[] proj₁flat-left-v≡[]     = choice-ll (lne→∷>ᵍ[] {l} lne-l u v ¬proj₁flat-left-u≡[] proj₁flat-left-v≡[])
-lne→∷>ᵍ[] {l + r   ` loc} (lne-+ ε∉l lne-l lne-r) (RightU u) (RightU v) ¬proj₁flat-right-u≡[] proj₁flat-right-v≡[] = choice-rr (lne→∷>ᵍ[] {r} lne-r u v ¬proj₁flat-right-u≡[] proj₁flat-right-v≡[])
-lne→∷>ᵍ[] {l + r   ` loc} (lne-+ ε∉l lne-l lne-r) (LeftU u) (RightU v) ¬proj₁flat-left-u≡[] proj₁flat-right-v≡[] = choice-lr 
-lne→∷>ᵍ[] {l + r   ` loc} (lne-+ ε∉l lne-l lne-r) (RightU u) (LeftU v) ¬proj₁flat-right-u≡[] proj₁flat-left-v≡[] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l)
-lne→∷>ᵍ[] {l ● r   ` loc} (lne-● lne-l lne-r) (PairU u₁ u₂) (PairU v₁ v₂)  ¬proj₁flat-pair-u₁u₂≡[] proj₁flat-v₁v₂≡[] = prf 
+lnn→∷>ᵍ[] {ε} lnn-ε          EmptyU      EmptyU      ¬proj₁flat-empty≡[]  proj₁flat-empty≡[]              = Nullary.contradiction proj₁flat-empty≡[] ¬proj₁flat-empty≡[]
+lnn→∷>ᵍ[] {$ c ` loc} lnn-$  (LetterU _) (LetterU _) ¬proj₁flat-letter≡[] proj₁flat-letter≡[]             = Nullary.contradiction proj₁flat-letter≡[] ¬proj₁flat-letter≡[]
+lnn→∷>ᵍ[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU [])  _                       ¬proj₁flat-nil≡[] _           = Nullary.contradiction (proj₁flat-nil≡[]  {r} {ε∉r} {loc})  ¬proj₁flat-nil≡[]
+lnn→∷>ᵍ[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU ( u ∷ us )) (ListU ( v ∷ vs))  ¬proj₁flat-cons-uus≡[] proj₁flat-cons-vvs≡[] =  Nullary.contradiction proj₁flat-cons-vvs≡[] (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
+lnn→∷>ᵍ[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU ( u ∷ us )) (ListU [])  ¬proj₁flat-cons-uus≡[] proj₁flat-nil≡[]     = star-cons-nil
+lnn→∷>ᵍ[] {l + r   ` loc} (lnn-+ ε∉l lnn-l lnn-r) (LeftU u) (LeftU v) ¬proj₁flat-left-u≡[] proj₁flat-left-v≡[]     = choice-ll (lnn→∷>ᵍ[] {l} lnn-l u v ¬proj₁flat-left-u≡[] proj₁flat-left-v≡[])
+lnn→∷>ᵍ[] {l + r   ` loc} (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (RightU v) ¬proj₁flat-right-u≡[] proj₁flat-right-v≡[] = choice-rr (lnn→∷>ᵍ[] {r} lnn-r u v ¬proj₁flat-right-u≡[] proj₁flat-right-v≡[])
+lnn→∷>ᵍ[] {l + r   ` loc} (lnn-+ ε∉l lnn-l lnn-r) (LeftU u) (RightU v) ¬proj₁flat-left-u≡[] proj₁flat-right-v≡[] = choice-lr 
+lnn→∷>ᵍ[] {l + r   ` loc} (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (LeftU v) ¬proj₁flat-right-u≡[] proj₁flat-left-v≡[] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-left-v≡[]) (ε∉r→¬ε∈r ε∉l)
+lnn→∷>ᵍ[] {l ● r   ` loc} (lnn-● lnn-l lnn-r) (PairU u₁ u₂) (PairU v₁ v₂)  ¬proj₁flat-pair-u₁u₂≡[] proj₁flat-v₁v₂≡[] = prf 
   where
     proj₁flat-v₁≡[] : proj₁ (flat v₁) ≡ []
     proj₁flat-v₁≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) proj₁flat-v₁v₂≡[]
@@ -369,35 +416,35 @@ lne→∷>ᵍ[] {l ● r   ` loc} (lne-● lne-l lne-r) (PairU u₁ u₂) (PairU
     prf : (l ● r ` loc) ⊢ PairU u₁ u₂ >ᵍ PairU v₁ v₂
     prf with proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq 
     ... | []     |  []       = Nullary.contradiction refl ¬proj₁flat-pair-u₁u₂≡[] 
-    ... | []     |  c' ∷ cs' = seq₂ u₁≡v₁ u₂>ᵍv₂ -- how? we need to show u₁≡v₁ lne-proj₁flat≡[]→refl?
+    ... | []     |  c' ∷ cs' = seq₂ u₁≡v₁ u₂>ᵍv₂ -- how? we need to show u₁≡v₁ lnn-proj₁flat≡[]→refl?
       where
         u₁≡v₁ : u₁ ≡ v₁
-        u₁≡v₁ = lne-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} lne-l  proj₁flat-u₁-eq proj₁flat-v₁≡[]
+        u₁≡v₁ = lnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} lnn-l  proj₁flat-u₁-eq proj₁flat-v₁≡[]
         ¬proj₁flat-u₂≡[] : ¬ proj₁ (flat u₂) ≡ []
         ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq = λ proj₁flat-u₂≡[] →  ¬∷≡[] proj₁flat-u₂≡[] 
         u₂>ᵍv₂ : r  ⊢ u₂ >ᵍ v₂
-        u₂>ᵍv₂ = lne→∷>ᵍ[] {r} lne-r u₂ v₂  ¬proj₁flat-u₂≡[] proj₁flat-v₂≡[] 
+        u₂>ᵍv₂ = lnn→∷>ᵍ[] {r} lnn-r u₂ v₂  ¬proj₁flat-u₂≡[] proj₁flat-v₂≡[] 
     ... | c ∷ cs |  cs' = seq₁ u₁>ᵍv₁
       where 
         ¬proj₁flat-u₁≡[] : ¬ proj₁ (flat u₁) ≡ []
         ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq = λ proj₁flat-u₁≡[] →  ¬∷≡[] proj₁flat-u₁≡[] 
         u₁>ᵍv₁ : l  ⊢ u₁ >ᵍ v₁
-        u₁>ᵍv₁ = lne→∷>ᵍ[] {l} lne-l u₁ v₁ ¬proj₁flat-u₁≡[] proj₁flat-v₁≡[] 
+        u₁>ᵍv₁ = lnn→∷>ᵍ[] {l} lnn-l u₁ v₁ ¬proj₁flat-u₁≡[] proj₁flat-v₁≡[] 
 
 
 {-# TERMINATING #-}
-lne→robust : ∀ { r : RE }
-  → LNE r
+lnn→robust : ∀ { r : RE }
+  → LNN r
   → Robust r 
-lne→robust {ε}           lne-ε = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) )
-lne→robust {$ c ` loc}   lne-$ = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) ) 
-lne→robust {l ● r ` loc} (lne-● lne-l lne-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
+lnn→robust {ε}           lnn-ε = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) )
+lnn→robust {$ c ` loc}   lnn-$ = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) ) 
+lnn→robust {l ● r ` loc} (lnn-● lnn-l lnn-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
   where
     robust-r : Robust r
-    robust-r = lne→robust {r} lne-r
+    robust-r = lnn→robust {r} lnn-r
     
     robust-l : Robust l
-    robust-l = lne→robust {l} lne-l
+    robust-l = lnn→robust {l} lnn-l
     
     to-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂
     to-ev u₁ u₂ v₁ v₂ (seq₁ u₁>ᵍu₂) with robust-l
@@ -410,13 +457,13 @@ lne→robust {l ● r ` loc} (lne-● lne-l lne-r) = robust {l ● r ` loc} λ {
     ... | robust rob-l-ev = seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) 
     from-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ˡv₂) with robust-r
     ... | robust rob-r-ev = seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ )
-lne→robust {l + r ` loc} (lne-+ ε∉l lne-l lne-r) =  robust {l + r ` loc} prf
+lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} prf
   where
     robust-l : Robust l
-    robust-l = lne→robust {l} lne-l
+    robust-l = lnn→robust {l} lnn-l
 
     robust-r : Robust r
-    robust-r = lne→robust {r} lne-r
+    robust-r = lnn→robust {r} lnn-r
 
     prf : (v₁ v₂ : U (l + r ` loc)) →
       ((l + r ` loc) ⊢ v₁ >ᵍ v₂ → (l + r ` loc) ⊢ v₁ >ˡ v₂) ×
@@ -475,7 +522,7 @@ lne→robust {l + r ` loc} (lne-+ ε∉l lne-l lne-r) =  robust {l + r ` loc} pr
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
-        ... | robust rob-r-ev | []     | c' ∷ cs'  = Nullary.contradiction u₁>ᵍu₂ (lne→¬[]>ᵍ∷ lne-r u₁ u₂  proj₁flat-u₁-eq  ¬proj₁flat-u₂≡[]) -- can't be proven, we replace this lemma by u>ᵍv→¬v>ᵍu and lne→∷>ᵍ[]
+        ... | robust rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction ( proj₁flat-u₁-eq ,  ¬proj₁flat-u₂≡[] ) (lnn-u>ᵍv→¬u≡[]×u≢[] {r} lnn-r u₁ u₂  u₁>ᵍu₂)
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
@@ -486,11 +533,11 @@ lne→robust {l + r ` loc} (lne-+ ε∉l lne-l lne-r) =  robust {l + r ` loc} pr
         from-ev (choice-rr-notempty  ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂)  with robust-r
         ... | robust rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
         from-ev (choice-rr-empty  ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  with robust-r
-        ... | robust rob-r-ev = choice-rr (lne→∷>ᵍ[] lne-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  -- how ? 
-lne→robust {r * ε∉r ` loc} (lne-* lne-r) =  robust {r * ε∉r ` loc} prf
+        ... | robust rob-r-ev = choice-rr (lnn→∷>ᵍ[] lnn-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  -- how ? 
+lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
   where
     robust-r : Robust r
-    robust-r = lne→robust {r} lne-r
+    robust-r = lnn→robust {r} lnn-r
 
 
     prf : (v₁ v₂ : U (r * ε∉r ` loc)) →
@@ -514,3 +561,65 @@ lne→robust {r * ε∉r ` loc} (lne-* lne-r) =  robust {r * ε∉r ` loc} prf
         from-ev (star-tail v≡u list-vs>ˡlist-us)  = star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us) 
         
 ```
+
+
+
+
+
+### Is LNN necessary?
+
+#### Robust implies ParseAll r w? 
+
+step 1. We need to show that the sets of partial derivatives produced by Greedy.parseAll and LNE.parseAll are the equal
+
+```agda
+
+
+private
+  variable
+    a b c p ℓ : Level
+    A : Set a
+    B : Set b
+    C : Set c
+
+
+data SetEq { A : Set a } : ( xs ys : List A ) → Set a where
+  setEq : { xs ys : List A }
+    → All ( λ x → x ∈ ys ) xs 
+    → All ( λ y → y ∈ xs ) ys 
+    -------------------
+    → SetEq xs ys
+
+
+postulate
+  greedy-lne-parseall : ∀ { r : RE } { w : List Char }
+    → SetEq parseAllᵍ[ r , w ] parseAllˡ[ r , w ] 
+
+
+```
+
+step 2. if r is robust, it follows the multisets (lists) are in the same order? 
+
+
+```agda
+postulate
+  robust→greedy-lne-parseall-eq : ∀ { r : RE } { w : List Char }
+    → Robust r
+    → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ] 
+
+```
+
+
+step 3.
+
+```agda 
+postulate
+  greedy-lne-parseall-eq→lnn :  ∀ { r : RE } { w : List Char }
+    → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ]
+    → LNN r
+    
+
+```
+
+
+

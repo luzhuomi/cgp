@@ -481,3 +481,19 @@ For detail proof, refer to
 
 
 ### Conjecture : is LNN necessary? 
+
+
+### How to get POSIX policy? 
+
+
+### How to establish robustness between POSIX and LNE and Greedy?
+
+We can reverse the approach from CIAA 16 Journal paper?
+
+How did Frisch prove that their NFA construction is greedy?
+
+### Connection to Glushkov
+Is Glushkov Greedy or LNE, some paper said PD NFA is a quotient of Glushkov? what does that mean?
+
+
+### Rust runtime comparison

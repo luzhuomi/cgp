@@ -122,7 +122,7 @@ data LNN : RE → Set where
     ----------------------------------
     → LNN ( l ● r ` loc )
   lnn-+  : ∀ { l r : RE } { loc : ℕ }
-    → ε∉ l -- this is not strong enough
+    → ε∉ l 
     → LNN l  
     → LNN r
     ---------------------------------
@@ -416,7 +416,7 @@ lnn→∷>ᵍ[] {l ● r   ` loc} (lnn-● lnn-l lnn-r) (PairU u₁ u₂) (PairU
     prf : (l ● r ` loc) ⊢ PairU u₁ u₂ >ᵍ PairU v₁ v₂
     prf with proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq 
     ... | []     |  []       = Nullary.contradiction refl ¬proj₁flat-pair-u₁u₂≡[] 
-    ... | []     |  c' ∷ cs' = seq₂ u₁≡v₁ u₂>ᵍv₂ -- how? we need to show u₁≡v₁ lnn-proj₁flat≡[]→refl?
+    ... | []     |  c' ∷ cs' = seq₂ u₁≡v₁ u₂>ᵍv₂ 
       where
         u₁≡v₁ : u₁ ≡ v₁
         u₁≡v₁ = lnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} lnn-l  proj₁flat-u₁-eq proj₁flat-v₁≡[]
@@ -475,7 +475,7 @@ lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} pr
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
         to-ev (choice-ll u₁>ᵍu₂) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
         ... | robust rob-l-ev  | [] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₂-eq) (ε∉r→¬ε∈r ε∉l) 
-        ... | robust rob-l-ev  | c ∷ cs = choice-ll-notempty ¬proj₁flat-u₁≡[]  ¬proj₁flat-u₂≡[]  (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )
+        ... | robust rob-l-ev  | c ∷ cs = choice-bll-notempty ¬proj₁flat-u₁≡[]  ¬proj₁flat-u₂≡[]  (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[] 
@@ -533,7 +533,7 @@ lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} pr
         from-ev (choice-rr-notempty  ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂)  with robust-r
         ... | robust rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
         from-ev (choice-rr-empty  ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  with robust-r
-        ... | robust rob-r-ev = choice-rr (lnn→∷>ᵍ[] lnn-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  -- how ? 
+        ... | robust rob-r-ev = choice-rr (lnn→∷>ᵍ[] lnn-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  
 lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
   where
     robust-r : Robust r

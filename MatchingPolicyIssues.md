@@ -473,7 +473,7 @@ Formally, we say r is LNN iff any of the following holds,
 
 ### Lemma : LNN is a sufficient condition of robustness
 
-Let r is a regular expression in LNN. Then r is lne-greedy robost
+Let r be a regular expression in LNN. Then r is lne-greedy robust.
 
 For detail proof, refer to
 

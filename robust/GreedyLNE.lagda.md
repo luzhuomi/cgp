@@ -27,13 +27,13 @@ import cgp.greedy.Order as GreedyOrder
 open GreedyOrder renaming ( _⊢_>_  to  _⊢_>ᵍ_ )
 
 import cgp.greedy.PartialDerivative as GreedyPD
-open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ) 
+open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ; parseAll-sound to parseAllᵍ-sound ) 
 
 import cgp.lne.Order as LNEOrder
 open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_ )
 
 import cgp.lne.PartialDerivative as LNEPD
-open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_] ) 
+open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]  ; parseAll-sound to parseAllˡ-sound  ) 
 
 
 import cgp.Utils as Utils
@@ -626,10 +626,15 @@ greedy-lne-parseall-eq→lnn {r * ε∉r ` loc} w→parseallᵍr*w≡parseallˡr
     ind-hyp = greedy-lne-parseall-eq→lnn {r} w→parseallᵍrw≡parseallˡrw
       where
         w→parseallᵍrw≡parseallˡrw : ∀ ( w : List Char ) → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ]
-        w→parseallᵍrw≡parseallˡrw [] with parseAllᵍ[ r , [] ] in parseAllᵍr-[]-eq | parseAllˡ[ r , [] ] in parseAllˡr-[]-eq
-        ... | [] | [] = refl
-        ... | ( u ∷ us ) | _ = {!!} 
-
+        w→parseallᵍrw≡parseallˡrw [] with parseAllᵍ[ r , [] ] in parseAllᵍr-[]-eq | parseAllˡ[ r , [] ] in parseAllˡr-[]-eq | parseAllᵍ-sound {r} {[]} | parseAllˡ-sound {r} {[]} 
+        ... | []          | []        | _                    | _                   = refl
+        ... | ( u ∷ us ) | _          | proj₁flat-u≡[] ∷ _  | _                   = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u≡[]) (ε∉r→¬ε∈r ε∉r)
+        ... | _          | ( v ∷ vs ) | _                   | proj₁flat-v≡[] ∷ _  = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-v≡[]) (ε∉r→¬ε∈r ε∉r)
+        w→parseallᵍrw≡parseallˡrw (c ∷ w) with parseAllᵍ[ r , c ∷ w ] in parseAllᵍr-cw-eq | parseAllˡ[ r , c ∷ w ] in parseAllˡ-cw-eq
+        ... | []         | [] = refl
+        ... | ( u ∷ us) | [] = {!!}  -- contradiction can be constructed using soundness of parseAllᵍ and completeness of parseAllˡ
+        ... | ( u ∷ us) | ( v ∷ vs) =  {!!} 
+  
 
 ```
 

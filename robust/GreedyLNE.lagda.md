@@ -475,7 +475,7 @@ lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} pr
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
         to-ev (choice-ll u₁>ᵍu₂) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
         ... | robust rob-l-ev  | [] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₂-eq) (ε∉r→¬ε∈r ε∉l) 
-        ... | robust rob-l-ev  | c ∷ cs = choice-bll-notempty ¬proj₁flat-u₁≡[]  ¬proj₁flat-u₂≡[]  (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )
+        ... | robust rob-l-ev  | c ∷ cs = choice-ll-notempty ¬proj₁flat-u₁≡[]  ¬proj₁flat-u₂≡[]  (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[] 
@@ -603,8 +603,9 @@ step 2. if r is robust, it follows the multisets (lists) are in the same order?
 
 ```agda
 postulate
-  robust→greedy-lne-parseall-eq : ∀ { r : RE } { w : List Char }
+  robust→greedy-lne-parseall-eq : ∀ { r : RE } 
     → Robust r
+    → ( w : List Char )
     → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ] 
 
 ```
@@ -613,11 +614,22 @@ postulate
 step 3.
 
 ```agda 
-postulate
-  greedy-lne-parseall-eq→lnn :  ∀ { r : RE } { w : List Char }
-    → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ]
+
+greedy-lne-parseall-eq→lnn :  ∀ { r : RE }
+    → ( (w : List Char) → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ])
     → LNN r
-    
+greedy-lne-parseall-eq→lnn {ε} _ = lnn-ε
+greedy-lne-parseall-eq→lnn {$ c ` loc} _ = lnn-$ 
+greedy-lne-parseall-eq→lnn {r * ε∉r ` loc} w→parseallᵍr*w≡parseallˡr*w = lnn-* ind-hyp
+  where
+    ind-hyp : LNN r
+    ind-hyp = greedy-lne-parseall-eq→lnn {r} w→parseallᵍrw≡parseallˡrw
+      where
+        w→parseallᵍrw≡parseallˡrw : ∀ ( w : List Char ) → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ]
+        w→parseallᵍrw≡parseallˡrw [] with parseAllᵍ[ r , [] ] in parseAllᵍr-[]-eq | parseAllˡ[ r , [] ] in parseAllˡr-[]-eq
+        ... | [] | [] = refl
+        ... | ( u ∷ us ) | _ = {!!} 
+
 
 ```
 

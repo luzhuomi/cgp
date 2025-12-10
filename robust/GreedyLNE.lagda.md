@@ -27,13 +27,13 @@ import cgp.greedy.Order as GreedyOrder
 open GreedyOrder renaming ( _⊢_>_  to  _⊢_>ᵍ_ )
 
 import cgp.greedy.PartialDerivative as GreedyPD
-open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ; parseAll-sound to parseAllᵍ-sound ) 
+open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ; parseAll-sound to parseAllᵍ-sound ; parseAll-complete to parseAllᵍ-complete ) 
 
 import cgp.lne.Order as LNEOrder
 open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_ )
 
 import cgp.lne.PartialDerivative as LNEPD
-open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]  ; parseAll-sound to parseAllˡ-sound  ) 
+open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]  ; parseAll-sound to parseAllˡ-sound ; parseAll-complete to parseAllˡ-complete ) 
 
 
 import cgp.Utils as Utils
@@ -613,7 +613,31 @@ postulate
 
 step 3.
 
-```agda 
+```agda
+
+
+
+w∈⟦r⟧→parseAllˡ-r-w≡∷ : ∀ { r : RE } { w : List Char }
+  → w ∈⟦ r ⟧
+  → ∃[ u ] ∃[ us ] parseAllˡ[ r , w ] ≡ ( u ∷ us )
+w∈⟦r⟧→parseAllˡ-r-w≡∷ {ε} {[]} ε = ( EmptyU , ( [] , refl ) )
+w∈⟦r⟧→parseAllˡ-r-w≡∷ {$ c ` loc} {c₁ ∷ []} ($ _ ) = ( LetterU c , ( [] , {!!} ) )
+
+
+
+parseAllˡ-r-w≡[]→¬w∈⟦r⟧ : ∀ { r : RE } { w : List Char } 
+  → parseAllˡ[ r , w ] ≡ []
+  → ¬ ( w ∈⟦ r ⟧ )
+parseAllˡ-r-w≡[]→¬w∈⟦r⟧ {r} {w} parseAll-r-w≡[] = {!!}
+  where
+    prf : ¬ (w ∈⟦ r ⟧ )
+    prf w∈⟦r⟧ rewrite parseAll-r-w≡[] with w∈⟦r⟧→parseAllˡ-r-w≡∷ w∈⟦r⟧
+    ... | ( u , ( us , parseAll-r-w≡u∷ys ) ) = {!!} 
+-- w∈⟦r⟧ with w∈⟦r⟧→parseAllˡ-r-w≡∷ w∈⟦r⟧
+-- ... | ( u , ( us , parseAll-r-w≡u∷ys ) ) = {!!}
+--   where 
+
+
 
 greedy-lne-parseall-eq→lnn :  ∀ { r : RE }
     → ( (w : List Char) → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ])
@@ -627,13 +651,16 @@ greedy-lne-parseall-eq→lnn {r * ε∉r ` loc} w→parseallᵍr*w≡parseallˡr
       where
         w→parseallᵍrw≡parseallˡrw : ∀ ( w : List Char ) → parseAllᵍ[ r , w ] ≡ parseAllˡ[ r , w ]
         w→parseallᵍrw≡parseallˡrw [] with parseAllᵍ[ r , [] ] in parseAllᵍr-[]-eq | parseAllˡ[ r , [] ] in parseAllˡr-[]-eq | parseAllᵍ-sound {r} {[]} | parseAllˡ-sound {r} {[]} 
-        ... | []          | []        | _                    | _                   = refl
+        ... | []         | []         | _                   | _                   = refl
         ... | ( u ∷ us ) | _          | proj₁flat-u≡[] ∷ _  | _                   = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u≡[]) (ε∉r→¬ε∈r ε∉r)
         ... | _          | ( v ∷ vs ) | _                   | proj₁flat-v≡[] ∷ _  = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-v≡[]) (ε∉r→¬ε∈r ε∉r)
-        w→parseallᵍrw≡parseallˡrw (c ∷ w) with parseAllᵍ[ r , c ∷ w ] in parseAllᵍr-cw-eq | parseAllˡ[ r , c ∷ w ] in parseAllˡ-cw-eq
-        ... | []         | [] = refl
-        ... | ( u ∷ us) | [] = {!!}  -- contradiction can be constructed using soundness of parseAllᵍ and completeness of parseAllˡ
-        ... | ( u ∷ us) | ( v ∷ vs) =  {!!} 
+        w→parseallᵍrw≡parseallˡrw (c ∷ w) with parseAllᵍ[ r , c ∷ w ] in parseAllᵍr-cw-eq | parseAllˡ[ r , c ∷ w ] in parseAllˡ-cw-eq  | parseAllᵍ-sound {r} { c ∷ w } | parseAllˡ-sound {r} { c ∷ w } 
+        ... | []         | []         | _                   | _  = refl
+        ... | ( u ∷ us)  | []         | proj₁flat-u≡cw ∷ _  | _  = Nullary.contradiction ( proj₂ (flat u) )  ¬proj₁flat-u∈⟦r⟧ 
+          where
+            ¬proj₁flat-u∈⟦r⟧ : ¬ ( proj₁ (flat u) ∈⟦ r ⟧ )
+            ¬proj₁flat-u∈⟦r⟧ rewrite proj₁flat-u≡cw = parseAllˡ-r-w≡[]→¬w∈⟦r⟧ parseAllˡ-cw-eq
+        -- ... | ( u ∷ us)  | ( v ∷ vs ) | _ | _  =  {!!} 
   
 
 ```

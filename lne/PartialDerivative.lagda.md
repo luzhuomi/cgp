@@ -1938,6 +1938,17 @@ recons-v→¬proj₁flat-v≡[] {r} {c} v pdi  (recons {p} {l} {c} {w} {inj} {s-
 ### Additional Corollary of the completeness result; trying to show the LNN is necessary
 
 
+hm... dont we need this instead? 
+
+```agda
+w∈⟦r⟧→¬parseAll-r-w≡[] : ∀ { r : RE } { w : List Char }
+  → w ∈⟦ r ⟧
+  → ¬ (parseAll[ r , w ] ≡ [])
+w∈⟦r⟧→¬parseAll-r-w≡[] {ε} {[]} ε parseAll-ε-[]≡[] = {!!} 
+
+```
+
+
 ```agda
 
 

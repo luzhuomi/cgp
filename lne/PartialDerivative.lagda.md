@@ -1932,3 +1932,68 @@ recons-v→¬proj₁flat-v≡[] {r} {c} v pdi  (recons {p} {l} {c} {w} {inj} {s-
     prf : ¬  proj₁ (flat v) ≡ [] 
     prf rewrite ( proj₁-flat-v≡c∷w ) = λ () 
 ```
+
+
+
+### Additional Corollary of the completeness result; trying to show the LNN is necessary
+
+
+```agda
+
+
+
+w∈⟦r⟧→parseAll-r-w≡∷ : ∀ { r : RE } { w : List Char }
+  → w ∈⟦ r ⟧
+  → ∃[ u ] ∃[ us ] parseAll[ r , w ] ≡ ( u ∷ us )
+w∈⟦r⟧→parseAll-r-w≡∷ {ε} {[]} ε = ( EmptyU , ( [] , refl ) )
+w∈⟦r⟧→parseAll-r-w≡∷ {$ c ` loc} {c₁ ∷ []} ($ _ ) = ( LetterU c , ( [] , prf ) )
+  where
+    prf : parseAll[ $ c ` loc , c ∷ [] ] ≡ LetterU c ∷ []
+    prf = begin
+      parseAll[ $ c ` loc , c ∷ [] ]                                        ≡⟨⟩
+      List.concatMap buildU (pdUMany[ $ c ` loc , c ∷ []  ])                ≡⟨⟩
+      List.foldr _++_ [] (List.map buildU (pdUMany[ $ c ` loc , c ∷ []  ])) ≡⟨ {!!} ⟩ 
+      LetterU c ∷ []                  ∎
+
+{- error
+/Users/luzm/git/cgp/lne/PartialDerivative.lagda.md:1956,7-40
+List.foldr _++_ []
+(List.map buildU
+ (List.map (compose-pdi-with (λ u → u) (λ u → refl))
+  (pdU[ $ c ` loc , c ]
+   | Decidable.map′ Data.Char.Properties.≈⇒≡
+     Data.Char.Properties.≈-reflexive
+     (Decidable.map′
+      (Data.Nat.Properties.≡ᵇ⇒≡ (Char.toℕ c) (Char.toℕ c))
+      (Data.Nat.Properties.≡⇒≡ᵇ (Char.toℕ c) (Char.toℕ c))
+      (Char.toℕ c Nat.≡ᵇ Char.toℕ c Decidable.because
+       Nullary.T-reflects (Char.toℕ c Nat.≡ᵇ Char.toℕ c))))
+  ++ List.foldr _++_ [] (List.map advance-pdi*-with-c [])))
+!= LetterU c ∷ [] of type List (U ($ c ` loc))
+when checking that the expression LetterU c ∷ [] ∎ has type
+List.foldr _++_ [] (List.map buildU pdUMany[ $ c ` loc , c ∷ [] ])
+≡ LetterU c ∷ []
+
+-}
+      
+w∈⟦r⟧→parseAll-r-w≡∷ {$ c ` loc} {c₁ ∷ c₂ ∷ cs} = λ()
+  
+
+
+
+parseAll-r-w≡[]→¬w∈⟦r⟧ : ∀ { r : RE } { w : List Char } 
+  → parseAll[ r , w ] ≡ []
+  → ¬ ( w ∈⟦ r ⟧ )
+parseAll-r-w≡[]→¬w∈⟦r⟧ {r} {w} parseAll-r-w≡[] = prf
+  where
+    prf : ¬ (w ∈⟦ r ⟧ )
+    prf w∈⟦r⟧ rewrite parseAll-r-w≡[] with w∈⟦r⟧→parseAll-r-w≡∷ w∈⟦r⟧
+    ... | ( u , ( us , parseAll-r-w≡u∷us ) ) = ¬∷≡[] uus≡[] 
+        where
+          uus≡[] : u ∷ us ≡ []
+          uus≡[] = begin
+            u ∷ us             ≡⟨ sym parseAll-r-w≡u∷us ⟩
+            parseAll[ r , w ] ≡⟨ parseAll-r-w≡[] ⟩
+            []                 ∎ 
+
+```

@@ -33,7 +33,11 @@ import cgp.lne.Order as LNEOrder
 open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_ )
 
 import cgp.lne.PartialDerivative as LNEPD
-open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]  ; parseAll-sound to parseAllˡ-sound ; parseAll-complete to parseAllˡ-complete ) 
+open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]  ;
+     parseAll-sound to parseAllˡ-sound ;
+     parseAll-complete to parseAllˡ-complete ;
+     parseAll-r-w≡[]→¬w∈⟦r⟧ to parseAllˡ-r-w≡[]→¬w∈⟦r⟧ 
+     ) 
 
 
 import cgp.Utils as Utils
@@ -615,27 +619,9 @@ step 3.
 
 ```agda
 
-
-
-w∈⟦r⟧→parseAllˡ-r-w≡∷ : ∀ { r : RE } { w : List Char }
-  → w ∈⟦ r ⟧
-  → ∃[ u ] ∃[ us ] parseAllˡ[ r , w ] ≡ ( u ∷ us )
-w∈⟦r⟧→parseAllˡ-r-w≡∷ {ε} {[]} ε = ( EmptyU , ( [] , refl ) )
-w∈⟦r⟧→parseAllˡ-r-w≡∷ {$ c ` loc} {c₁ ∷ []} ($ _ ) = ( LetterU c , ( [] , {!!} ) )
-
-
-
-parseAllˡ-r-w≡[]→¬w∈⟦r⟧ : ∀ { r : RE } { w : List Char } 
-  → parseAllˡ[ r , w ] ≡ []
-  → ¬ ( w ∈⟦ r ⟧ )
-parseAllˡ-r-w≡[]→¬w∈⟦r⟧ {r} {w} parseAll-r-w≡[] = {!!}
-  where
-    prf : ¬ (w ∈⟦ r ⟧ )
-    prf w∈⟦r⟧ rewrite parseAll-r-w≡[] with w∈⟦r⟧→parseAllˡ-r-w≡∷ w∈⟦r⟧
-    ... | ( u , ( us , parseAll-r-w≡u∷ys ) ) = {!!} 
--- w∈⟦r⟧ with w∈⟦r⟧→parseAllˡ-r-w≡∷ w∈⟦r⟧
--- ... | ( u , ( us , parseAll-r-w≡u∷ys ) ) = {!!}
---   where 
+            
+         
+        
 
 
 

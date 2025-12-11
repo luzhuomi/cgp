@@ -11,7 +11,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU )
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU ; r-∃u)
 
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
@@ -24,7 +24,9 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* )
 
 
 import cgp.greedy.Order as GreedyOrder
-open GreedyOrder renaming ( _⊢_>_  to  _⊢_>ᵍ_ )
+open GreedyOrder renaming ( _⊢_>_  to  _⊢_>ᵍ_
+  ; >→¬≡ to >ᵍ→¬≡
+  )
 
 import cgp.greedy.PartialDerivative as GreedyPD
 open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ; parseAll-sound to parseAllᵍ-sound ; parseAll-complete to parseAllᵍ-complete ) 
@@ -33,10 +35,10 @@ import cgp.lne.Order as LNEOrder
 open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_ )
 
 import cgp.lne.PartialDerivative as LNEPD
-open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]  ;
-     parseAll-sound to parseAllˡ-sound ;
-     parseAll-complete to parseAllˡ-complete ;
-     parseAll-r-w≡[]→¬w∈⟦r⟧ to parseAllˡ-r-w≡[]→¬w∈⟦r⟧ 
+open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]
+  ; parseAll-sound to parseAllˡ-sound
+  ; parseAll-complete to parseAllˡ-complete
+--   ; parseAll-r-w≡[]→¬w∈⟦r⟧ to parseAllˡ-r-w≡[]→¬w∈⟦r⟧ 
      ) 
 
 
@@ -619,10 +621,12 @@ step 3.
 
 ```agda
 
+
+-- does not seem to make sense
             
          
         
-
+{-
 
 
 greedy-lne-parseall-eq→lnn :  ∀ { r : RE }
@@ -647,8 +651,34 @@ greedy-lne-parseall-eq→lnn {r * ε∉r ` loc} w→parseallᵍr*w≡parseallˡr
             ¬proj₁flat-u∈⟦r⟧ : ¬ ( proj₁ (flat u) ∈⟦ r ⟧ )
             ¬proj₁flat-u∈⟦r⟧ rewrite proj₁flat-u≡cw = parseAllˡ-r-w≡[]→¬w∈⟦r⟧ parseAllˡ-cw-eq
         -- ... | ( u ∷ us)  | ( v ∷ vs ) | _ | _  =  {!!} 
-  
 
+-}
+
+
+robust→lnn : ∀ { r : RE }
+  → Robust r 
+  → LNN r
+robust→lnn {ε}           (robust {ε} robust-ev)             = lnn-ε
+robust→lnn {$ c ` loc}   (robust {$ _ ` _ } robust-ev)      = lnn-$ {c} {loc}
+robust→lnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = lnn-● lnn-l lnn-r
+  where
+    u : U r
+    u = proj₁ (r-∃u r) 
+    robust-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
+      → ( l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂ ) × ( l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂ )
+    robust-l-ev v₁ v₂ with robust-l●r-ev (PairU v₁ u) (PairU v₂ u)
+    ... | v₁u>ᵍv₂u→v₁u>>ˡv₂u , y = v₁>ᵍv₂→v₁>ˡv₂ , {!!}   -- how to make use of robust-l●r-ev?
+      where
+        v₁>ᵍv₂→v₁>ˡv₂ : l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂
+        v₁>ᵍv₂→v₁>ˡv₂ v₁>ᵍv₂ with v₁u>ᵍv₂u→v₁u>>ˡv₂u (GreedyOrder.seq₁ v₁>ᵍv₂)
+        ... | LNEOrder.seq₁ v₁>ˡv₂ = v₁>ˡv₂
+        ... | LNEOrder.seq₂ v₁≡v₂ u>ˡu = Nullary.contradiction v₁≡v₂ (>ᵍ→¬≡  v₁>ᵍv₂) 
+    robust-l : Robust l
+    robust-l = robust {l} robust-l-ev 
+    lnn-l : LNN l
+    lnn-l = robust→lnn {l} robust-l
+    lnn-r : LNN r
+    lnn-r = {!!} 
 ```
 
 

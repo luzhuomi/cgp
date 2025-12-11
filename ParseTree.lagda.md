@@ -544,3 +544,28 @@ inv-listU _ _ _ _ refl = refl , refl
 
 
 ```
+
+Auxillary property and lemma needed for greedy lne robustness
+
+```agda
+
+data ParseTreeOf : ( r : RE ) → ( u : U r ) → Set where 
+  parseTreeOf : ∀ { r : RE } {u : U r } → ParseTreeOf r u 
+
+
+r-∃u : ∀ ( r : RE )
+  → ∃[ u ] ( ParseTreeOf r u ) 
+r-∃u ε = ( EmptyU , parseTreeOf )
+r-∃u ($ c ` loc) = (LetterU c , parseTreeOf ) 
+r-∃u (l ● r ` loc) = (PairU v u , parseTreeOf )
+  where
+    v : U l 
+    v = proj₁ (r-∃u l) 
+    u : U r 
+    u = proj₁ (r-∃u r)
+r-∃u (l + r ` loc) = ( LeftU v , parseTreeOf )
+  where
+    v : U l 
+    v = proj₁ (r-∃u l) 
+r-∃u (r * ε∉r ` loc) = ( ListU [] , parseTreeOf ) 
+```

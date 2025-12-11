@@ -186,6 +186,52 @@ Note : The > order is transitive.
 >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃ 
 ```
 
+Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
+
+
+```agda
+>→¬≡ : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ > u₂ 
+  -----------------
+  → ¬ u₁ ≡ u₂ 
+>→¬≡ {ε} {EmptyU}    {EmptyU} = λ() 
+>→¬≡ {$ c ` loc}     {LetterU _} {LetterU _} = λ()
+-- >→¬≡ {r * ε∉r ` loc} {ListU []} {_} = λ()
+>→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
+>→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs)) 
+  where
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {r} {u} {v} u>v
+>→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs))
+  where
+    ¬list-us≡list-vs : ¬ (ListU us) ≡ (ListU vs)
+    ¬list-us≡list-vs = >→¬≡ {r * ε∉r ` loc} {ListU us} {ListU vs} list-us>list-vs
+
+    ¬us≡vs : ¬ us ≡ vs
+    ¬us≡vs us≡vs = ¬list-us≡list-vs list-us≡list-vs
+      where
+        list-us≡list-vs : (ListU {r} {ε∉r} {loc} us) ≡ (ListU {r} {ε∉r} {loc} vs)
+        list-us≡list-vs rewrite (cong (λ x → ListU {r} {ε∉r} {loc} x) us≡vs ) = refl 
+>→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+  where
+    ¬u₁≡v₁ : ¬ u₁ ≡ v₁
+    ¬u₁≡v₁ = >→¬≡ {l} {u₁} {v₁} u₁>v₁
+>→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+  where
+    ¬u₂≡v₂ : ¬ u₂ ≡ v₂
+    ¬u₂≡v₂ = >→¬≡ {r} {u₂} {v₂} u₂>v₂
+>→¬≡ {l + r ` loc} {LeftU u} {RightU v} choice-lr = λ () 
+>→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v) = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
+  where 
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {l} {u} {v} u>v
+>→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v) = λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
+  where 
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {r} {u} {v} u>v
+```
+
+
 
 ### Example Greedy Order
 

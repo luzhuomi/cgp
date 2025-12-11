@@ -402,12 +402,83 @@ Note : The > order is transitive.
 
 
 
-
-
-
-
 ```
+Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
 
+
+```agda
+>→¬≡ : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ > u₂ 
+  -----------------
+  → ¬ u₁ ≡ u₂ 
+>→¬≡ {ε} {EmptyU}    {EmptyU} = λ() 
+>→¬≡ {$ c ` loc}     {LetterU _} {LetterU _} = λ()
+-- >→¬≡ {r * ε∉r ` loc} {ListU []} {_} = λ()
+>→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
+>→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs)) 
+  where
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {r} {u} {v} u>v
+>→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs))
+  where
+    ¬list-us≡list-vs : ¬ (ListU us) ≡ (ListU vs)
+    ¬list-us≡list-vs = >→¬≡ {r * ε∉r ` loc} {ListU us} {ListU vs} list-us>list-vs
+
+    ¬us≡vs : ¬ us ≡ vs
+    ¬us≡vs us≡vs = ¬list-us≡list-vs list-us≡list-vs
+      where
+        list-us≡list-vs : (ListU {r} {ε∉r} {loc} us) ≡ (ListU {r} {ε∉r} {loc} vs)
+        list-us≡list-vs rewrite (cong (λ x → ListU {r} {ε∉r} {loc} x) us≡vs ) = refl 
+>→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+  where
+    ¬u₁≡v₁ : ¬ u₁ ≡ v₁
+    ¬u₁≡v₁ = >→¬≡ {l} {u₁} {v₁} u₁>v₁
+>→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+  where
+    ¬u₂≡v₂ : ¬ u₂ ≡ v₂
+    ¬u₂≡v₂ = >→¬≡ {r} {u₂} {v₂} u₂>v₂
+>→¬≡ {l + r ` loc} {LeftU u} {RightU v} _  = λ ()
+>→¬≡ {l + r ` loc} {RightU u} {LeftU v} _  = λ ()
+>→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll-bothempty _ _ u>v)  = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
+  where 
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {l} {u} {v} u>v
+>→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll-notempty _ _ u>v)  = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
+  where 
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {l} {u} {v} u>v
+>→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll-empty ¬proj₁flatu≡[] proj₁flatv≡[])  left-u≡left-v = ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v 
+  where 
+    u≡v :  u ≡ v
+    u≡v = (ParseTree.inv-leftU u v left-u≡left-v)
+    proj₁flat-u≡proj₁flat-v : proj₁ (flat u) ≡ proj₁ (flat v)
+    proj₁flat-u≡proj₁flat-v rewrite (cong (λ x → proj₁ (flat x)) u≡v) = refl
+    ¬proj₁flat-u≡proj₁flat-v : ¬ proj₁ (flat u) ≡ proj₁ (flat v)
+    ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v = ¬proj₁flatu≡[] proj₁flatu≡[]
+      where
+        proj₁flatu≡[] : proj₁ (flat u) ≡ []
+        proj₁flatu≡[] rewrite proj₁flat-u≡proj₁flat-v = proj₁flatv≡[]
+
+>→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr-bothempty _ _ u>v)  = λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
+  where 
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {r} {u} {v} u>v
+>→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr-notempty _ _ u>v)  =  λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
+  where 
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {r} {u} {v} u>v
+>→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr-empty ¬proj₁flatu≡[] proj₁flatv≡[]) right-u≡right-v = ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v 
+  where 
+    u≡v :  u ≡ v
+    u≡v = (ParseTree.inv-rightU u v right-u≡right-v)
+    proj₁flat-u≡proj₁flat-v : proj₁ (flat u) ≡ proj₁ (flat v)
+    proj₁flat-u≡proj₁flat-v rewrite (cong (λ x → proj₁ (flat x)) u≡v) = refl
+    ¬proj₁flat-u≡proj₁flat-v : ¬ proj₁ (flat u) ≡ proj₁ (flat v)
+    ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v = ¬proj₁flatu≡[] proj₁flatu≡[]
+      where
+        proj₁flatu≡[] : proj₁ (flat u) ≡ []
+        proj₁flatu≡[] rewrite proj₁flat-u≡proj₁flat-v = proj₁flatv≡[]
+```
 
 ### Definition 30: >-sortedness 
 

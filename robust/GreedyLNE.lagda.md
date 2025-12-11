@@ -32,7 +32,9 @@ import cgp.greedy.PartialDerivative as GreedyPD
 open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ; parseAll-sound to parseAllᵍ-sound ; parseAll-complete to parseAllᵍ-complete ) 
 
 import cgp.lne.Order as LNEOrder
-open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_ )
+open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_
+  ; >→¬≡ to >ˡ→¬≡
+  )
 
 import cgp.lne.PartialDerivative as LNEPD
 open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]
@@ -667,12 +669,16 @@ robust→lnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = lnn-● ln
     robust-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
       → ( l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂ ) × ( l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂ )
     robust-l-ev v₁ v₂ with robust-l●r-ev (PairU v₁ u) (PairU v₂ u)
-    ... | v₁u>ᵍv₂u→v₁u>>ˡv₂u , y = v₁>ᵍv₂→v₁>ˡv₂ , {!!}   -- how to make use of robust-l●r-ev?
+    ... | v₁u>ᵍv₂u→v₁u>ˡv₂u , v₁u>ˡv₂u→v₁u>ᵍv₂u = v₁>ᵍv₂→v₁>ˡv₂ , v₁>ˡv₂→v₁>ᵍv₂   
       where
         v₁>ᵍv₂→v₁>ˡv₂ : l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂
-        v₁>ᵍv₂→v₁>ˡv₂ v₁>ᵍv₂ with v₁u>ᵍv₂u→v₁u>>ˡv₂u (GreedyOrder.seq₁ v₁>ᵍv₂)
+        v₁>ᵍv₂→v₁>ˡv₂ v₁>ᵍv₂ with v₁u>ᵍv₂u→v₁u>ˡv₂u (GreedyOrder.seq₁ v₁>ᵍv₂)
         ... | LNEOrder.seq₁ v₁>ˡv₂ = v₁>ˡv₂
-        ... | LNEOrder.seq₂ v₁≡v₂ u>ˡu = Nullary.contradiction v₁≡v₂ (>ᵍ→¬≡  v₁>ᵍv₂) 
+        ... | LNEOrder.seq₂ v₁≡v₂ u>ˡu = Nullary.contradiction v₁≡v₂ (>ᵍ→¬≡  v₁>ᵍv₂)
+        v₁>ˡv₂→v₁>ᵍv₂ : l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂
+        v₁>ˡv₂→v₁>ᵍv₂ v₁>ˡv₂ with v₁u>ˡv₂u→v₁u>ᵍv₂u (LNEOrder.seq₁ v₁>ˡv₂)
+        ... | GreedyOrder.seq₁ v₁>ᵍv₂ = v₁>ᵍv₂
+        ... | GreedyOrder.seq₂ v₁≡v₂ u>ᵍu = Nullary.contradiction v₁≡v₂ (>ˡ→¬≡ v₁>ˡv₂)         
     robust-l : Robust l
     robust-l = robust {l} robust-l-ev 
     lnn-l : LNN l

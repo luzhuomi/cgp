@@ -683,6 +683,35 @@ robust→lnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = lnn-● ln
     robust-l = robust {l} robust-l-ev 
     lnn-l : LNN l
     lnn-l = robust→lnn {l} robust-l
+    v : U l
+    v = proj₁ (r-∃u l)
+    robust-r-ev : ∀ ( u₁ : U r ) → ( u₂ : U r )
+      → ( r ⊢ u₁ >ᵍ u₂ → r ⊢ u₁ >ˡ u₂ ) × ( r ⊢ u₁ >ˡ u₂ → r ⊢ u₁ >ᵍ u₂ )
+    robust-r-ev u₁ u₂ with robust-l●r-ev (PairU v u₁) (PairU v u₂)
+    ... | vu₁>ᵍvu₂→vu₁>ˡvu₂ , vu₁>ˡvu₂→vu₁>ᵍvu₂ = u₁>ᵍu₂→u₁>ˡu₂ , u₁>ˡu₂→u₁>ᵍu₂
+      where
+        u₁>ᵍu₂→u₁>ˡu₂ : r ⊢ u₁ >ᵍ u₂ → r ⊢ u₁ >ˡ u₂
+        u₁>ᵍu₂→u₁>ˡu₂ u₁>ᵍu₂ with vu₁>ᵍvu₂→vu₁>ˡvu₂ (GreedyOrder.seq₂ refl u₁>ᵍu₂)
+        ... | LNEOrder.seq₁ v>ˡv = Nullary.contradiction refl (>ˡ→¬≡ v>ˡv)
+        ... | LNEOrder.seq₂ refl u₁>ˡu₂ = u₁>ˡu₂
+        u₁>ˡu₂→u₁>ᵍu₂ : r ⊢ u₁ >ˡ u₂ → r ⊢ u₁ >ᵍ u₂ 
+        u₁>ˡu₂→u₁>ᵍu₂ u₁>ˡu₂ with vu₁>ˡvu₂→vu₁>ᵍvu₂ (LNEOrder.seq₂ refl u₁>ˡu₂)
+        ... | GreedyOrder.seq₁ v>ᵍv = Nullary.contradiction refl (>ᵍ→¬≡ v>ᵍv)
+        ... | GreedyOrder.seq₂ refl u₁>ᵍu₂ = u₁>ᵍu₂
+    robust-r : Robust r
+    robust-r = robust {r} robust-r-ev 
+    lnn-r : LNN r
+    lnn-r = robust→lnn {r} robust-r
+
+robust→lnn {l + r ` loc} (robust {_ + _ ` _} robust-l+r-ev) = lnn-+ ε∉l lnn-l lnn-r
+  where
+    ¬ε∈l : ¬ ε∈ l
+    ¬ε∈l = {!!}  -- how? we need u>ᵍv→¬v>ᵍu ?
+    -- hm it seems ¬ε∈l is not necessary, counter example, ε + ε is robust but not in LNN. we need 
+    ε∉l : ε∉ l
+    ε∉l = ¬ε∈r→ε∉r ¬ε∈l
+    lnn-l : LNN l
+    lnn-l = {!!} -- can be proven similarly to the ● case above 
     lnn-r : LNN r
     lnn-r = {!!} 
 ```

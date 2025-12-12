@@ -524,4 +524,15 @@ proj₁flat-v≡[]→ε∈r {l ● r  ` loc } {PairU v u} proj₁flat-pair-v-u�
     ε∈r = proj₁flat-v≡[]→ε∈r {r} {u} (++-conicalʳ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
 
 
+ε∈r→∃u : ∀ ( r : RE ) → ( ε∈r : ε∈ r )
+  → ∃[ u ] Flat-[] r u
+ε∈r→∃u ε ε∈ε = ( EmptyU , flat-[] EmptyU refl )
+ε∈r→∃u ( l ● r ` loc ) (ε∈ ε∈l ●  ε∈r) = PairU (proj₁ ind-l) (proj₁ ind-r) , flat-[] (PairU (Product.proj₁ ind-l) (Product.proj₁ ind-r)) {!!} 
+  where
+    ind-l : ∃[ u ] Flat-[] l u
+    ind-l = ε∈r→∃u l ε∈l
+    ind-r : ∃[ v ] Flat-[] r v
+    ind-r = ε∈r→∃u r ε∈r
+    
+
 ```

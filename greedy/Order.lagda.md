@@ -231,6 +231,32 @@ Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
 ```
 
+Lemma u₁ > u₂ implies ¬ u₂ > u₁
+
+```agda
+u>v→¬v>u : { r : RE } { u v : U r }
+  → r ⊢ u > v 
+  -----------------
+  → ¬ r ⊢ v > u
+u>v→¬v>u {ε}             {EmptyU} {EmptyU} = λ()
+u>v→¬v>u {$ c ` loc}     {LetterU _} {LetterU _} = λ()
+u>v→¬v>u {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
+u>v→¬v>u {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) list-v∷vs>list-u∷us with list-v∷vs>list-u∷us
+... | star-head v>u = (u>v→¬v>u u>v) v>u
+... | star-tail v≡u _ = (>→¬≡ u>v) (sym v≡u)
+u>v→¬v>u {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) list-v∷vs>list-u∷us with list-v∷vs>list-u∷us
+... | star-head v>u = (>→¬≡ v>u) (sym u≡v)
+... | star-tail v≡u list-vs>list-us = (u>v→¬v>u list-us>list-vs) list-vs>list-us
+u>v→¬v>u {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁)  pair-v₁v₂>pair-u₁u₂ with pair-v₁v₂>pair-u₁u₂ 
+... | seq₁ v₁>u₁   = (u>v→¬v>u u₁>v₁) v₁>u₁
+... | seq₂ v₁≡u₁ _ = (>→¬≡ u₁>v₁) (sym v₁≡u₁)
+u>v→¬v>u {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂)  pair-v₁v₂>pair-u₁u₂ with pair-v₁v₂>pair-u₁u₂
+... | seq₁ v₁>u₁   = (>→¬≡ v₁>u₁) (sym u₁≡v₁) 
+... | seq₂ v₁≡u₁ v₂>u₂ = (u>v→¬v>u u₂>v₂) v₂>u₂
+u>v→¬v>u {l + r ` loc} {LeftU u} {RightU v} choice-lr = λ ()
+u>v→¬v>u {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v) (choice-ll v>u) = (u>v→¬v>u u>v) v>u
+u>v→¬v>u {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v) (choice-rr v>u) = (u>v→¬v>u u>v) v>u 
+```
 
 
 ### Example Greedy Order

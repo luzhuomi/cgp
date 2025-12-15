@@ -524,15 +524,40 @@ proj₁flat-v≡[]→ε∈r {l ● r  ` loc } {PairU v u} proj₁flat-pair-v-u�
     ε∈r = proj₁flat-v≡[]→ε∈r {r} {u} (++-conicalʳ (proj₁ (flat v)) (proj₁ (flat u)) proj₁flat-pair-v-u≡[])
 
 
+-- lemma: r is nullable implies there exists a parse tree can be flattend to []
+
 ε∈r→∃u : ∀ ( r : RE ) → ( ε∈r : ε∈ r )
   → ∃[ u ] Flat-[] r u
 ε∈r→∃u ε ε∈ε = ( EmptyU , flat-[] EmptyU refl )
-ε∈r→∃u ( l ● r ` loc ) (ε∈ ε∈l ●  ε∈r) = PairU (proj₁ ind-l) (proj₁ ind-r) , flat-[] (PairU (Product.proj₁ ind-l) (Product.proj₁ ind-r)) {!!} 
+ε∈r→∃u ( l ● r ` loc ) (ε∈ ε∈l ●  ε∈r) = PairU (proj₁ ind-l) (proj₁ ind-r) , flat-[] (PairU (Product.proj₁ ind-l) (Product.proj₁ ind-r)) proj₁flat-pair-proj₁ind-lproj₁ind-r≡[] 
   where
     ind-l : ∃[ u ] Flat-[] l u
     ind-l = ε∈r→∃u l ε∈l
     ind-r : ∃[ v ] Flat-[] r v
     ind-r = ε∈r→∃u r ε∈r
-    
-
+    proj₁flat-pair-proj₁ind-lproj₁ind-r≡[] : proj₁ (flat (PairU {l} {r} {loc} (proj₁ ind-l) (proj₁ ind-r))) ≡ []
+    proj₁flat-pair-proj₁ind-lproj₁ind-r≡[] with proj₂ ind-l | proj₂ ind-r 
+    ... | flat-[] _ proj₁flat-proj₁ind-l≡[] | flat-[] _ proj₁flat-proj₁ind-r≡[] rewrite  proj₁flat-proj₁ind-l≡[] | proj₁flat-proj₁ind-r≡[] =  refl
+ε∈r→∃u ( l + r ` loc ) (ε∈ ε∈l + ε∈r) = ( LeftU (proj₁ ind-l) , flat-[] (LeftU (proj₁ ind-l)) proj₁flat-left-proj₁ind-l )
+  where
+    ind-l : ∃[ u ] Flat-[] l u
+    ind-l = ε∈r→∃u l ε∈l
+    proj₁flat-left-proj₁ind-l : proj₁ (flat (LeftU {l} {r} {loc} (proj₁ ind-l))) ≡ [] 
+    proj₁flat-left-proj₁ind-l with proj₂ ind-l
+    ... | flat-[] _ proj₁flat-proj₁ind-l≡[] = proj₁flat-proj₁ind-l≡[] 
+ε∈r→∃u ( l + r ` loc ) (ε∈ ε∈l <+ ε∉r) = ( LeftU (proj₁ ind-l) , flat-[] (LeftU (proj₁ ind-l)) proj₁flat-left-proj₁ind-l )
+  where
+    ind-l : ∃[ u ] Flat-[] l u
+    ind-l = ε∈r→∃u l ε∈l
+    proj₁flat-left-proj₁ind-l : proj₁ (flat (LeftU {l} {r} {loc} (proj₁ ind-l))) ≡ [] 
+    proj₁flat-left-proj₁ind-l with proj₂ ind-l
+    ... | flat-[] _ proj₁flat-proj₁ind-l≡[] = proj₁flat-proj₁ind-l≡[] 
+ε∈r→∃u ( l + r ` loc ) (ε∈ ε∉l +> ε∈r) = ( RightU (proj₁ ind-r) , flat-[] (RightU (proj₁ ind-r)) proj₁flat-right-proj₁ind-r )
+  where
+    ind-r : ∃[ u ] Flat-[] r u
+    ind-r = ε∈r→∃u r ε∈r
+    proj₁flat-right-proj₁ind-r : proj₁ (flat (RightU {l} {r} {loc} (proj₁ ind-r))) ≡ [] 
+    proj₁flat-right-proj₁ind-r with proj₂ ind-r
+    ... | flat-[] _ proj₁flat-proj₁ind-r≡[] = proj₁flat-proj₁ind-r≡[]
+ε∈r→∃u ( r * ε∉r ` loc ) ε∈*     = ( ListU [] , flat-[] (ListU []) refl )
 ```

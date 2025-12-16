@@ -1067,8 +1067,8 @@ is rlnn sufficiently guaranteeing robustness?
 ### sub lemma 
 
 ```agda
-
-postulate 
+-- not true, counter example ε + ε 
+postulate
   rlnn-proj₁flat≡[]→refl : ∀ { r : RE } { ε∈r : ε∈ r } { u v : U r }
     → RLNN r 
     → proj₁ (flat u) ≡ []
@@ -1077,8 +1077,11 @@ postulate
     → u ≡ v
 
 
-
-
+-- not true? counter example
+-- (ε + ε ) ● a* ⊢ PairU ( LeftU EmptyU ) NilU >ᵍ PairU ( RightU EmptyU ) (ConsU a [])
+-- proof: seq₁ choice-lr
+-- which implies 
+-- ¬ (ε + ε ) ● a* ⊢ PairU ( RightU EmptyU ) (ConsU a []) >ᵍ PairU ( LeftU EmptyU ) NilU 
 rlnn→∷>ᵍ[] : ∀ { r : RE }
     → RLNN r
     → ( u₁ : U r )
@@ -1117,7 +1120,7 @@ rlnn→∷>ᵍ[] {l ● r   ` loc} (rlnn-● rlnn-l rlnn-r) (PairU u₁ u₂) (P
     ... | []     |  c' ∷ cs' = seq₂ u₁≡v₁ u₂>ᵍv₂ 
       where
         u₁≡v₁ : u₁ ≡ v₁
-        u₁≡v₁ = rlnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} rlnn-l  proj₁flat-u₁-eq proj₁flat-v₁≡[]
+        u₁≡v₁ = rlnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} rlnn-l  proj₁flat-u₁-eq proj₁flat-v₁≡[] -- not true 
         ¬proj₁flat-u₂≡[] : ¬ proj₁ (flat u₂) ≡ []
         ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq = λ proj₁flat-u₂≡[] →  ¬∷≡[] proj₁flat-u₂≡[] 
         u₂>ᵍv₂ : r  ⊢ u₂ >ᵍ v₂

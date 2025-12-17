@@ -1120,7 +1120,7 @@ rlnn→∷>ᵍ[] {l ● r   ` loc} (rlnn-● rlnn-l rlnn-r) (PairU u₁ u₂) (P
     ... | []     |  c' ∷ cs' = seq₂ u₁≡v₁ u₂>ᵍv₂ 
       where
         u₁≡v₁ : u₁ ≡ v₁
-        u₁≡v₁ = rlnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} rlnn-l  proj₁flat-u₁-eq proj₁flat-v₁≡[] -- not true 
+        u₁≡v₁ = rlnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq} {u₁} {v₁} rlnn-l  proj₁flat-u₁-eq proj₁flat-v₁≡[] -- not true because rlnn-proj₁flat≡[]→refl does not hold
         ¬proj₁flat-u₂≡[] : ¬ proj₁ (flat u₂) ≡ []
         ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq = λ proj₁flat-u₂≡[] →  ¬∷≡[] proj₁flat-u₂≡[] 
         u₂>ᵍv₂ : r  ⊢ u₂ >ᵍ v₂
@@ -1134,8 +1134,9 @@ rlnn→∷>ᵍ[] {l ● r   ` loc} (rlnn-● rlnn-l rlnn-r) (PairU u₁ u₂) (P
 
 
 
-
-
+-- not true? counter example
+-- (ε + ε ) ● a* ⊢ PairU ( LeftU EmptyU ) NilU >ᵍ PairU ( RightU EmptyU ) (ConsU a [])
+-- does not hold as result of rlnn→∷>ᵍ[] not holding
 rlnn-u>ᵍv→u≡[]→v≡[] : ∀ { r : RE}
     → RLNN r
     → ( u : U r )
@@ -1294,7 +1295,7 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
-        ... | robust rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction (rlnn-u>ᵍv→u≡[]→v≡[] {r} rlnn-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[] 
+        ... | robust rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction (rlnn-u>ᵍv→u≡[]→v≡[] {r} rlnn-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[] -- does not hold -- does it implies, r must be lnn-r too? 
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
@@ -1419,9 +1420,11 @@ robust→rlnn {l + r ` loc} (robust {_ + _ ` _} robust-l+r-ev) = rlnn-+ ε∈l�
         v₁>ᵍv₂→v₁>ˡv₂ v₁>ᵍv₂ with left-v₁>ᵍleft-v₂→left-v₁>ˡleft-v₂ (choice-ll v₁>ᵍv₂)
         ... | choice-ll-bothempty proj₁flat-v₁≡[] proj₁flat-v₂≡[] v₁>ˡv₂ = v₁>ˡv₂
         ... | choice-ll-notempty ¬proj₁flat-v₁≡[] ¬proj₁flat-v₂≡[] v₁>ˡv₂ = v₁>ˡv₂
-        ... | choice-ll-empty ¬proj₁flat-v₁≡[] ¬proj₁flat-v₂≡[] = {!!}  --  ∷>ˡ[]  ¬proj₁flat-v₁≡[] ¬proj₁flat-v₂≡[]  -- this is not true!
+        ... | choice-ll-empty ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[] = {!!}  --  ∷>ˡ[]  ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[]  -- this is not true! -- this means (l + r) is robust does not implies l is robust!!!? 
         v₁>ˡv₂→v₁>ᵍv₂ : l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂
-        v₁>ˡv₂→v₁>ᵍv₂ = {!!} 
+        v₁>ˡv₂→v₁>ᵍv₂ = {!!}
+    robust-l : Robust l
+    robust-l = robust {l} robust-l-ev         
     lnn-l : LNN l
     lnn-l = {!!} -- can be proven similarly to the ● case above 
     rlnn-r : RLNN r

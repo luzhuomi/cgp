@@ -136,3 +136,96 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
 
 
 ```
+
+F. Ausaf, R. Dyckhoff, and C. Urban. “POSIX Lexing with Derivatives of Regular Expressions (Proof Pearl)”. In: Proc. of the 7th International Conference on
+Interactive Theorem Proving (ITP). Vol. 9807. LNCS. 2016, pp. 69–86.
+
+has the following definition of POSIX relation
+
+P1
+
+-------------------
+([], ε) --> EmptyU
+
+
+PC
+
+-------------------
+([c], $ c) --> LetterU c
+
+
+
+P + L
+
+(s, r₁) --> v₁
+------------------------
+(s, r₁ + r₂) --> LeftU v₁
+
+
+P + R
+
+(s, r₂) --> v₂   s∉ ⟦r₁⟧  
+------------------------
+(s, r₁ + r₂) --> RightU v₂
+
+
+
+PS
+
+(s₁, r₁) --> v₁     (s₂, r₂) --> v₂
+¬∃ ( s₃ , s₄ ) . s₃ ≢ [] ∧ (s₃ ++ s₄) ≡ s₂ ∧ (s₁ ++ s₃) ∈⟦ r₁ ⟧ ∧ s₄ ∈⟦ r₂ ⟧ )
+------------------------------------------------------------------------------
+(s₁ ++ s₂, r₁ ● r₂) --> PairU v₁ v₂
+
+
+
+P[]
+
+---------------------------------------
+([], r*) --> ListU []
+
+
+P*
+
+(s1, r) --> v       (s2, r*) --> ListU vs       |v| ≢ []
+¬∃ ( s3 , s4 ) . s3 ≢ [] ∧ (s3 ++ s4) ≡ s2 ∧ (s1 ++ s3) ∈⟦ r ⟧ ∧ s4 ∈⟦ r* ⟧ 
+-----------------------------------------------------------------------------
+(s1 ++ s2, r* ) --> ListU (v ∷ vs)
+
+
+It seems that the relationship is weaker. It fixes the same word. 
+
+```agda
+infix 4 _,_⇒_
+
+data _,_⇒_ : ∀ ( w : List Char ) → ( r : RE ) → U r → Set where
+  p₁  : [] , ε ⇒ EmptyU 
+  pc  : ∀ {c : Char} {loc : ℕ}  → [ c ] , $ c ` loc ⇒ LetterU c
+  p+l : ∀ { w : List Char } { l r : RE } { loc : ℕ } { v : U l }
+    →  w , l ⇒ v   
+    ------------------------------------------------------------
+    → w , l + r ` loc ⇒ LeftU v
+  p+r : ∀ { w : List Char } { l r : RE } { loc : ℕ } { v : U r } 
+    →  w , r ⇒ v
+    → ¬ ( w ∈⟦ l ⟧ )
+    ------------------------------------------------------------
+    → w , l + r ` loc ⇒ RightU v
+  ps : ∀ { w₁ w₂ : List Char } { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+    →  w₁ , l ⇒ v₁
+    →  w₂ , r ⇒ v₂
+    → ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) × (w₃ ++ w₄ ≡ w₂) × ( (w₁ ++ w₃) ∈⟦ l ⟧ ) × w₄ ∈⟦ r ⟧ )
+    ------------------------------------------------------------
+    → (w₁ ++ w₂) , l ● r ` loc ⇒ PairU v₁ v₂
+    
+  p[] : ∀ { r : RE } {ε∉r : ε∉ r } { loc : ℕ }
+    → [] , r * ε∉r ` loc ⇒ ListU []
+    
+  p* : ∀ { w₁ w₂ : List Char } { r : RE } {ε∉r : ε∉ r } { loc : ℕ } {v : U r } { vs : List (U r) }
+    →  w₁ , r ⇒ v
+    →  w₂ , r * ε∉r ` loc ⇒ ListU vs
+    →  ¬ w₁ ≡ []
+    → ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) × (w₃ ++ w₄ ≡ w₂) × ( (w₁ ++ w₃) ∈⟦ r ⟧ ) × w₄ ∈⟦ r * ε∉r ` loc ⟧ )
+    -----------------------------------------------------------
+    → (w₁ ++ w₂) , r * ε∉r ` loc ⇒ ListU (v ∷ vs)
+    
+```

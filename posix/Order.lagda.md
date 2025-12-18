@@ -37,7 +37,7 @@ import Data.Char as Char
 open Char using (Char )
 
 import Data.Nat as Nat
-open Nat using ( ℕ ; suc ; zero ; _>_ )
+open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -57,6 +57,11 @@ open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _�
 import Data.Product as Product
 open Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_ )
 open Σ using (proj₁ ; proj₂)
+
+
+import Data.Sum as Sum
+open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
+
 
 import Data.List.Relation.Unary.All as All
 open All using (All ; _∷_ ; [] ; map)
@@ -97,7 +102,7 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    → length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))
+    → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (RightU v₂)
 
@@ -193,7 +198,7 @@ P*
 (s1 ++ s2, r* ) --> ListU (v ∷ vs)
 
 
-It seems that the relationship is weaker. It fixes the same word. 
+It seems that the relationship is weaker. It fixes a particular word. 
 
 ```agda
 infix 4 _,_⇒_
@@ -228,4 +233,19 @@ data _,_⇒_ : ∀ ( w : List Char ) → ( r : RE ) → U r → Set where
     -----------------------------------------------------------
     → (w₁ ++ w₂) , r * ε∉r ` loc ⇒ ListU (v ∷ vs)
     
+```
+
+
+Lemma : a posix value is the largest value in posix ordering
+
+
+```agda
+postulate
+  ⇒>-max : ∀ { r : RE } { v : U r } { w : List Char} 
+    → w , r ⇒ v
+    → ( u : U r )
+    ------------------------
+    → ( v ≡ u ) ⊎ ( r ⊢ v > u )
+
+
 ```

@@ -643,7 +643,9 @@ postulate
 ```
 
 
-Definition: A relaxed form of LNN, restricted left-nullability form (not sufficient) 
+Definition: A relaxed form of LNN, restricted left-nullability form (not sufficient)
+
+But it is not sufficient to ensure robustness 
 
 ```agda
     
@@ -1036,7 +1038,9 @@ rln→robust {r * ε∉r ` loc} (rln-* rln-r) =  robust {r * ε∉r ` loc} prf
         from-ev (star-tail v≡u list-vs>ˡlist-us)  = star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us)             
 
 
+### Definition RLNN 
 
+RLN is not sufficient, let's a "in-between" of RLN and LNN 
 -- relaxed LNN ? 
 
 ```agda
@@ -1158,6 +1162,9 @@ rlnn-u>ᵍv→u≡[]→v≡[] {r} rlnn-r u v u>ᵍv proj₁flat-u≡[] = prf
 
 
 
+this sufficient proof is incomplete, it depends on some on the invalid sub lemmas above.
+
+the necessary proof is still a myth, the main issue is that robust definition is not inductive 
 
 
 ```agda

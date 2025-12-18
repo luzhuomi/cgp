@@ -96,7 +96,7 @@ is longer than the one captured in
 
 
 
-### Definition 29 : Antimirov ordering among parse trees
+### Definition 29 : LNE ordering among parse trees
 
 Let r be a non problematic regular expression
 
@@ -104,7 +104,7 @@ Let v₁ v₂ be parse trees of r.
 We define the ordering among v1 and v2 as follows
 
 
-Note: r ⊢ v₁ > v₂ means v₁ is greater than v₂ in Antimirov's ordering. 
+Note: r ⊢ v₁ > v₂ means v₁ is greater than v₂ in LNE ordering. 
 
 
 ```agda

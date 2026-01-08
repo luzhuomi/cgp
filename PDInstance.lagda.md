@@ -105,4 +105,90 @@ pdinstance-star {r} {nε} {loc} {c} (pdinstance {r'} {r} {c} f s-ev) =
 -- pdinstance-star and its sub function end
 ------------------------------------------------------------------------------------
 
+
+------------------------------------------------------------------------------------
+-- pdinstance-fst and its sub function
+-- injection builder for pair with the first being injected ; (lifted up from pdinstance-fst's where clause to expose to the ≤-mono-map-fst proof
+
+mkinjFst : ∀ {l' l r : RE } { loc : ℕ } 
+  → (f : U l' → U l )
+  → U (l' ● r ` loc )
+  → U (l ● r  ` loc )
+mkinjFst {l'} {l} {r} {loc}  f (PairU {l'} {r} {loc} u v) = PairU {l} {r} {loc} (f u) v 
+
+pdinstance-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance l c → PDInstance (l ● r ` loc) c
+pdinstance-fst {l} {r} {loc} {c} (pdinstance {l'} {l} {c} f s-ev) = 
+                   pdinstance { l' ● r ` loc }
+                          { l ● r ` loc }
+                          {c}
+                          injFst 
+                          sound-ev2
+           where                                           
+             injFst : U (l' ● r ` loc)   → U (l ● r ` loc )
+             -- injFst (PairU {l'} {r} {loc} u v) = PairU {l} {r} {loc} (f u) v -- lifted out as mkinjFst for provability
+             injFst = mkinjFst f
+             sound-ev2 : ∀ ( u : U ( l' ● r ` loc) ) → (proj₁ (flat { l ● r ` loc } (injFst u )) ≡ c ∷ (proj₁ (flat { l' ● r ` loc } u)))
+             sound-ev2 (PairU {l'} {r} {loc} u v) =
+               begin
+                 proj₁ (flat (PairU {l} {r} {loc} (f u) v))
+               ≡⟨⟩
+                 (proj₁ (flat (f u))) ++ (proj₁ (flat v))
+               ≡⟨ cong (λ x → ( x ++ (proj₁ (flat v)))) (s-ev u) ⟩
+                 (c ∷ (proj₁ (flat u))) ++ (proj₁ (flat v))
+               ≡⟨⟩
+                 c ∷ (proj₁ (flat (PairU {l'} {r} {loc} u v)))
+               ∎
+-- pdinstance-fst and its sub function end
+------------------------------------------------------------------------------------
+
+------------------------------------------------------------------------------------
+-- pdinstance-snd and its sub functions
+
+
+mkinjSnd  : ∀ {l r r' : RE } { loc : ℕ }
+          →  (f : U r' → U r)
+          →  U l 
+          →  U r'
+          →  U (l ● r ` loc )
+mkinjSnd {l} {r} {r'} {loc} f v u = PairU {l} {r} {loc} v (f u)
+
+
+mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
+           → ∃[ e ] Flat-[] l e
+           → PDInstance r c 
+           → PDInstance ( l ● r ` loc ) c
+mk-snd-pdi {l} {r} {loc} {c} (e , (flat-[] e' proj₁∘flate≡[] )) (pdinstance {p} {r} {c}  inj s-ev) = pdinstance {p} { l ● r ` loc } {c} -- e' is e
+                        -- (λ u → PairU {l} {r} {loc} e (inj u) )
+                        -- injSnd
+                        (mkinjSnd {l} {r} {p} {loc} inj e)
+                        injSnd-s-ev
+                   where
+                     injSnd :  U p → U (l ● r ` loc)
+                     injSnd =                     
+                        (mkinjSnd {l} {r} {p} {loc} inj e)
+                     injSnd-s-ev =
+                       (λ u → 
+                           begin
+                             proj₁ (flat (PairU {l} {r} {loc} e (inj u)))
+                           ≡⟨⟩
+                             (proj₁ (flat e')) ++ (proj₁ (flat (inj u)))
+                           ≡⟨ cong (λ x → ( x ++  (proj₁ (flat (inj u))))) proj₁∘flate≡[] ⟩  --  e must be an empty; we do have flat v ≡ [] from mkAllEmptyU-sound
+                             [] ++ (proj₁ (flat (inj u)))
+                           ≡⟨⟩
+                             proj₁ (flat (inj u))
+                           ≡⟨ s-ev u ⟩
+                             c ∷ (proj₁ (flat u))
+                           ∎
+                        )
+
+
+
+pdinstance-snd : ∀ { l r : RE } { loc : ℕ } { c : Char } → ∃[ e ] (Flat-[] l e ) → List (PDInstance r c )  →  List (PDInstance (l ● r ` loc) c)
+pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis = List.map (mk-snd-pdi (e , flat-[]-e)) pdis 
+
+
+-- pdinstance-snd and its sub functions end
+------------------------------------------------------------------------------------
+
+
 ```

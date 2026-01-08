@@ -23,7 +23,8 @@ open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; f
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left; pdinstance-right;
-  pdinstance-star; mkinjList 
+  pdinstance-star; mkinjList ;
+  pdinstance-fst ; mkinjFst 
   ) 
 
 
@@ -40,10 +41,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 
 import cgp.greedy.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
-  -- PDInstance ; pdinstance ;
-  -- pdinstance-left ; pdinstance-right;
-  pdinstance-fst ; mkinjFst ;  pdinstance-snd ; mk-snd-pdi ; mkinjSnd ;  concatmap-pdinstance-snd ; zip-es-flat-[]-es  ; pdinstance-dist ; mkinjDist ; inv-dist-sound ; pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ; pdUMany[_,_]; pdUMany-aux ; advance-pdi*-with-c  ; compose-pdi-with
-  -- ;  PDInstance* ; pdinstance*
+  pdinstance-snd ; mk-snd-pdi ; mkinjSnd ;  concatmap-pdinstance-snd ; zip-es-flat-[]-es  ; pdinstance-dist ; mkinjDist ; inv-dist-sound ; pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ; pdUMany[_,_]; pdUMany-aux ; advance-pdi*-with-c  ; compose-pdi-with
   ) 
 
 

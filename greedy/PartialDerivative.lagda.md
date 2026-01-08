@@ -18,7 +18,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU )
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; flat-Uε≡[] ;   inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU )
 
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
@@ -95,7 +95,7 @@ pd(r* , ℓ ) = pd( r' ● r* ∣ r' ∈ pd( r , ℓ ) }
 In parsing algorithm implementation, we replace { } by list [], ∪ by ++.
 Since sets are unordered but lists are ordered, fixing an order means implementing a particular matching policy.
 
-To implement the greedy order, we need to adapt the pd(r₁ ● r₂ , ℓ ) case as follows,
+To enforce the greedy order, we need to adapt the pd(r₁ ● r₂ , ℓ ) case as follows,
 
 pd( r₁ ● r₂ , ℓ ) ｜ ¬ ε ∈ r₁ = { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } 
 pd( r₁ ● r₂ , ℓ ) ｜ ε ∈ r₁   =
@@ -142,11 +142,6 @@ ps should be
 ### Definition 16: Partial derivatives with coercion functions 
 
 ```agda
--- TODO move the common definitions between greedy/GreedyPartialDerivative and antimirov/PartialDerivative to a common import? 
-flat-Uε≡[] : ∀ ( u : U ε )
-  → proj₁ (flat u) ≡ []
-flat-Uε≡[] EmptyU = refl
-
 -- PDInstance is moved to ./PDInstance.lagmda.md 
 
 -- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
@@ -479,7 +474,7 @@ pdU[ ε , c ] = []
 pdU[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                       | yes refl = [  pdinstance {ε} {$ c ` loc} {c}
                                                  (λ u → LetterU {loc} c)
-                                                 (λ EmptyU →                 -- ^ soudness ev
+                                                 (λ EmptyU →                 -- ^ soundness ev
                                                    begin
                                                      [ c ]
                                                     ≡⟨⟩

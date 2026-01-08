@@ -336,6 +336,17 @@ flat∘unflat {r * nε ` loc }   {x++xs}    ((ε +R (x∈r ● xs∈r* ⧺ eq)) 
 ```
 
 
+### Aux lemma : parse tree of ε must be flatten to empty word
+
+```agda
+flat-Uε≡[] : ∀ ( u : U ε )
+  → proj₁ (flat u) ≡ []
+flat-Uε≡[] EmptyU = refl
+
+
+
+```
+
 
 ### Aux Lemmas (inverse reasoning of the PairU parse trees and ListU parse trees)  needed by pdU completeness proof
 

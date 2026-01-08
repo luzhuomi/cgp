@@ -12,7 +12,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU  )
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; flat-Uε≡[] ;   inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU  )
 
 
 import cgp.PDInstance as PDI
@@ -32,6 +32,8 @@ open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap ; _∷ʳ_  )
 import Data.List.Properties
 open Data.List.Properties using ( ++-assoc  ; ++-identityʳ ; ++-identityˡ ; {-  unfold-reverse ; -} ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ )
 
+import Data.Maybe as Maybe
+open Maybe using (Maybe ; just ; nothing ; map ; _>>=_  ) 
 
 import Data.List.Relation.Unary.Any.Properties
 open Data.List.Relation.Unary.Any.Properties using ( ¬Any[] )
@@ -85,24 +87,119 @@ pd(r₁ + r₂ , ℓ ) = pd( r₁ , ℓ ) ∪ pd( r₂ , ℓ  )
 
 pd(r* , ℓ ) = pd( r' ● r* ∣ r' ∈ pd( r , ℓ ) }
 
+
+In parsing algorithm implementation, we replace { } by list [], ∪ by ++.
+Since sets are unordered but lists are ordered, fixing an order means implementing a particular matching policy.
+
+To enforce the posix ordering, we encode { } by singleton list, i.e Maybe. ∪ by ⊕
+
+[] ⊕ rs = rs
+rs ⊕ [] = rs
+[ s ] ⊕ [ t ] = [ s + t ] 
+
+
 ```agda
 
-pd[_,_] : RE →  Char → List RE
-pdConcat : ( l :  RE )  → ( r :  RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char)  → List RE
 
-pd[ ε , c ]    = []
+_⊕_`_ : Maybe RE → Maybe RE → ℕ →  Maybe RE
+_⊕_`_ nothing mr loc = mr
+_⊕_`_ mr nothing loc = mr
+_⊕_`_ (just s) (just t) loc = just (s + t ` loc) 
+
+
+pd[_,_] : RE →  Char → Maybe RE
+pdConcat : ( l : RE ) → ( r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char)  → Maybe RE
+
+pd[ ε , c ]    = nothing
 pd[ $ c ` loc  , c' ] with c Char.≟ c'
-...                      | yes refl = [ ε ]
-...                      | no  _    = []
+...                      | yes refl = just ε 
+...                      | no  _    = nothing
 pd[ l ● r ` loc , c ] with ε∈? l
 ...                      | yes ε∈l =  pdConcat  l r ε∈l loc c
-...                      | no ¬ε∈l =  List.map (λ l' → l' ● r ` loc ) pd[ l , c ]
-pd[ l + r ` loc , c ]               = pd[ l , c ] ++ pd[ r , c ]
-pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
+...                      | no ¬ε∈l =  Maybe.map (λ l' → l' ● r ` loc ) pd[ l , c ]
+pd[ l + r ` loc , c ]               = pd[ l , c ] ⊕  pd[ r , c ] ` loc 
+pd[ r * nε ` loc , c ]              = Maybe.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
 {-# TERMINATING #-}
 pdConcat ε  r  ε∈ε loc c  = pd[ r  , c ]
-pdConcat (l * ε∉l ` loc₂ ) r ε∈*             loc c = (List.map (λ l' → l' ● r ` loc ) pd[ l * ε∉l ` loc₂ , c ]) ++ pd[ r , c ]
+pdConcat (l * ε∉l ` loc₂ ) r ε∈*             loc c = (Maybe.map (λ l' → l' ● r ` loc ) pd[ l * ε∉l ` loc₂ , c ]) ⊕ pd[ r , c ] ` loc  -- or loc₂? 
 pdConcat (l ● s ` loc₂ )   r (ε∈ ε∈l ● ε∈s)  loc c = pd[ l ● ( s ● r  ` loc ) ` loc₂ , c ]
-pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p ● r ` loc ) pd[ l + s ` loc₂ , c ]) ++ pd[ r , c ]
+pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (Maybe.map (λ p → p ● r ` loc ) pd[ l + s ` loc₂ , c ]) ⊕ pd[ r , c ] ` loc  -- or loc₂? 
 
+
+```
+
+
+r = (a + b + a ● b)*                                        -- (4)
+w = ab
+
+```agda
+ps  = let a₁ = $ 'a' ` 1
+          b₂ = $ 'b' ` 2
+          a+b = a₁ + b₂ ` 3 
+          a₄ = $ 'a' ` 4
+          b₅ = $ 'b' ` 5
+          a●b = a₄ ● b₅ ` 6
+          r = ( a+b + a●b ` 7 ) * (ε∉ (ε∉ ε∉$ + ε∉$ ) + (ε∉fst ε∉$) ) ` 8 
+      in pd[ r , 'a'] >>= (λ p → pd[ p , 'b'] )
+
+
+```
+
+ps should be
+
+just
+((ε ●
+  ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7) *
+  ε∉ ε∉ ε∉$ + ε∉$ + ε∉fst ε∉$ ` 8
+  ` 8)
+ +
+ ε ●
+ ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7) *
+ ε∉ ε∉ ε∉$ + ε∉$ + ε∉fst ε∉$ ` 8
+ ` 8
+ ` 8)
+
+
+```agda
+-- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
+pdinstance-right : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance r c → PDInstance (l + r ` loc) c 
+pdinstance-right {l} {r} {loc} {c} (pdinstance {p} {r} {c} f s-ev) = (pdinstance {p} { l + r ` loc } {c} (λ v → RightU (f v)) s-ev )
+
+pdinstance-left  : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance l c → PDInstance (l + r ` loc) c 
+pdinstance-left  {l} {r} {loc} {c} (pdinstance {p} {l} {c} f s-ev) = (pdinstance {p} { l + r ` loc } {c} ( λ u → LeftU (f u)) s-ev ) 
+
+
+pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → Maybe (PDInstance (l + r ` loc) c)
+  → Maybe (PDInstance (l + r ` loc) c)
+  → Maybe (PDInstance (l + r ` loc) c)
+pdinstance-oplus {l} {r} {loc} {c} nothing mpdi = mpdi
+pdinstance-oplus {l} {r} {loc} {c} mpdi nothing = mpdi
+pdinstance-oplus {l} {r} {loc} {c} (just (pdinstance {pₗ} {l+r} {.c} inj-l s-ev-l)) (just (pdinstance {pᵣ} {l+r} {.c} inj-r s-ev-r)) =
+  just (pdinstance {pₗ + pᵣ ` loc} {l+r} {c} (λ { (LeftU v₁) → inj-l v₁ ; (RightU v₂) → inj-r v₂ }) {!!} )
+
+---------------------------------------------------------------------------------------------------
+-- pdU[_,_] and pdUConcat
+
+pdU[_,_] : ( r : RE ) → ( c : Char ) → Maybe (PDInstance r c)
+pdUConcat : ( l r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char ) → Maybe (PDInstance (l ● r ` loc ) c)
+
+
+pdU[ ε , c ] = nothing
+pdU[ $ c ` loc , c' ] with c Char.≟ c'
+...                     | yes refl = just ( pdinstance {ε} {$ c ` loc} {c}
+                                                 (λ u → LetterU {loc} c)
+                                                 (λ EmptyU →                 -- ^ soundness ev
+                                                   begin
+                                                     [ c ]
+                                                    ≡⟨⟩
+                                                     c ∷ []
+                                                    ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                                                     c ∷ (proj₁ (flat EmptyU))
+                                                    ∎) ) 
+...                     | no _    =  nothing
+pdU[ l + r ` loc , c ] =
+  pdinstance-oplus 
+  ( Maybe.map pdinstance-left pdU[ l , c ] )
+  ( Maybe.map pdinstance-right pdU[ r , c ])
 ```

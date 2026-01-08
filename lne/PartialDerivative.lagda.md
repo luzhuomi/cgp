@@ -12,7 +12,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU  )
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; flat-Uε≡[] ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU  )
 
 
 import cgp.PDInstance as PDI
@@ -111,11 +111,6 @@ pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p 
 ### Definition 16: Partial derivatives with coercion functions 
 
 ```agda
-
-flat-Uε≡[] : ∀ ( u : U ε )
-  → proj₁ (flat u) ≡ []
-flat-Uε≡[] EmptyU = refl
-
 -- partial derivative (descendant?) relation and coercion function
 -- the result type of pdU
 -- moved to PDInstance.lagda.md
@@ -368,7 +363,7 @@ pdU[ ε , c ] = []
 pdU[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                       | yes refl = [  pdinstance {ε} {$ c ` loc} {c}
                                                  (λ u → LetterU {loc} c)
-                                                 (λ EmptyU →                 -- ^ soudness ev
+                                                 (λ EmptyU →                 -- ^ soundness ev
                                                    begin
                                                      [ c ]
                                                     ≡⟨⟩

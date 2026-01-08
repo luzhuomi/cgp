@@ -154,7 +154,7 @@ pd[ { ε ● r } ∪ { ε ● b ● r } , b ] = { ε ● r } ∪ { ε ● r } --
      pd[ ε ● b ● r , b ] = { ε ● r } 
 ```  
 
-1. injecting b into (5) to produce parse trees of (5)
+1. injecting b into (6) to produce parse trees of (5)
       ```
       [ ConsU (RightU (LeftU b)) NilU
        , PairU b NilU ]

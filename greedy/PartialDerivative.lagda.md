@@ -25,7 +25,10 @@ import cgp.empty.AllEmptyParseTree as AllEmpty
 open AllEmpty using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU-complete ; Flat-[] ; flat-[] ;  mkAllEmptyU≢[])
 
 import cgp.PDInstance as PDI
-open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
+  pdinstance-left ; pdinstance-right ;
+  pdinstance-star ; mkinjList 
+  ) 
 
 
 import cgp.Utils as Utils
@@ -144,17 +147,11 @@ ps should be
 ```agda
 -- PDInstance is moved to ./PDInstance.lagmda.md 
 
--- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
-pdinstance-right : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance r c → PDInstance (l + r ` loc) c 
-pdinstance-right {l} {r} {loc} {c} (pdinstance {p} {r} {c} f s-ev) = (pdinstance {p} { l + r ` loc } {c} (λ v → RightU (f v)) s-ev )
-
-pdinstance-left  : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance l c → PDInstance (l + r ` loc) c 
-pdinstance-left  {l} {r} {loc} {c} (pdinstance {p} {l} {c} f s-ev) = (pdinstance {p} { l + r ` loc } {c} ( λ u → LeftU (f u)) s-ev ) 
-
-
+{-
 ------------------------------------------------------------------------------------
 -- pdinstance-star and its sub function
 -- injection builder for list ; (lifted up from pdinstance-star's where clause to expose to the any-recons-star proof
+
 mkinjList : ∀ {r' r : RE} { nε : ε∉ r } { loc : ℕ }
    → ( f : U r' → U r )
    → U (r' ● (r * nε ` loc ) ` loc )
@@ -184,7 +181,7 @@ pdinstance-star {r} {nε} {loc} {c} (pdinstance {r'} {r} {c} f s-ev) =
                   
 -- pdinstance-star and its sub function end
 ------------------------------------------------------------------------------------
-
+-}
 ------------------------------------------------------------------------------------
 -- pdinstance-fst and its sub function
 -- injection builder for pair with the first being injected ; (lifted up from pdinstance-fst's where clause to expose to the ≤-mono-map-fst proof

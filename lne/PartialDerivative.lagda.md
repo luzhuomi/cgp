@@ -16,7 +16,10 @@ open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; f
 
 
 import cgp.PDInstance as PDI
-open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
+  pdinstance-left; pdinstance-right ;
+  pdinstance-star ; mkinjList
+  ) 
 
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
@@ -128,9 +131,8 @@ data PDInstance : ∀ ( r : RE ) ( c : Char ) → Set where
            -}               
           --------------------------------------------------------------------------------
                → PDInstance r c -- do we need to record the char c and the loc history?
--} 
 
--- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
+-- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence)
 pdinstance-right : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance r c → PDInstance (l + r ` loc) c 
 pdinstance-right {l} {r} {loc} {c} (pdinstance {p} {r} {c} f s-ev) = (pdinstance {p} { l + r ` loc } {c} (λ v → RightU (f v)) s-ev )
 
@@ -170,7 +172,7 @@ pdinstance-star {r} {nε} {loc} {c} (pdinstance {r'} {r} {c} f s-ev) =
                   
 -- pdinstance-star and its sub function end
 ------------------------------------------------------------------------------------
-
+-}
 ------------------------------------------------------------------------------------
 -- pdinstance-fst and its sub function
 -- injection builder for pair with the first being injected ; (lifted up from pdinstance-fst's where clause to expose to the ≤-mono-map-fst proof

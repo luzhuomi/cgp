@@ -16,7 +16,10 @@ open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; f
 
 
 import cgp.PDInstance as PDI
-open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
+  pdinstance-left ; pdinstance-right ;
+  pdinstance-star  
+  ) 
 
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
@@ -162,13 +165,6 @@ just
 
 ```agda
 -- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
-pdinstance-right : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance r c → PDInstance (l + r ` loc) c 
-pdinstance-right {l} {r} {loc} {c} (pdinstance {p} {r} {c} f s-ev) = (pdinstance {p} { l + r ` loc } {c} (λ v → RightU (f v)) s-ev )
-
-pdinstance-left  : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance l c → PDInstance (l + r ` loc) c 
-pdinstance-left  {l} {r} {loc} {c} (pdinstance {p} {l} {c} f s-ev) = (pdinstance {p} { l + r ` loc } {c} ( λ u → LeftU (f u)) s-ev ) 
-
-
 pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → Maybe (PDInstance (l + r ` loc) c)
   → Maybe (PDInstance (l + r ` loc) c)
@@ -176,7 +172,17 @@ pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
 pdinstance-oplus {l} {r} {loc} {c} nothing mpdi = mpdi
 pdinstance-oplus {l} {r} {loc} {c} mpdi nothing = mpdi
 pdinstance-oplus {l} {r} {loc} {c} (just (pdinstance {pₗ} {l+r} {.c} inj-l s-ev-l)) (just (pdinstance {pᵣ} {l+r} {.c} inj-r s-ev-r)) =
-  just (pdinstance {pₗ + pᵣ ` loc} {l+r} {c} (λ { (LeftU v₁) → inj-l v₁ ; (RightU v₂) → inj-r v₂ }) {!!} )
+  just (pdinstance {pₗ + pᵣ ` loc} {l+r} {c} inj sound-ev )
+    where
+      inj : U (pₗ + pᵣ ` loc) → U ( l + r ` loc )
+      inj (LeftU v₁) = inj-l v₁
+      inj (RightU v₂) = inj-r v₂ 
+      sound-ev : (u : U (pₗ + pᵣ ` loc)) 
+               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+      sound-ev (LeftU v₁) = s-ev-l v₁
+      sound-ev (RightU v₂) = s-ev-r v₂ 
+      
+
 
 ---------------------------------------------------------------------------------------------------
 -- pdU[_,_] and pdUConcat
@@ -202,4 +208,7 @@ pdU[ l + r ` loc , c ] =
   pdinstance-oplus 
   ( Maybe.map pdinstance-left pdU[ l , c ] )
   ( Maybe.map pdinstance-right pdU[ r , c ])
+pdU[ r * nε ` loc , c ] =
+  Maybe.map pdinstance-star  pdU[ r , c ]
+  
 ```

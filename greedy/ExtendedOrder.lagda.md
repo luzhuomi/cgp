@@ -19,7 +19,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 import cgp.ParseTree as ParseTree
 open ParseTree using (
   U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ;
-  flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ;
+  flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; flat-Uε≡[];
   inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; unListU ; listU∘unListU ;
   u-of-r*-islist ; pair-≡ ; left-≡ ; right-≡ ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU)
 
@@ -27,7 +27,10 @@ import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ; mkAllEmptyU≢[] )
 
 import cgp.PDInstance as PDI
-open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
+  pdinstance-left ; pdinstance-right ;
+  pdinstance-star ; mkinjList 
+  ) 
 
 
 
@@ -35,10 +38,11 @@ import cgp.greedy.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; pdUConcat ;
   -- PDInstance ; pdinstance ;
-  pdinstance-left ; pdinstance-right; pdinstance-fst ;
+  -- pdinstance-left ; pdinstance-right;
+  pdinstance-fst ;
   mkinjFst ;  pdinstance-snd ; concatmap-pdinstance-snd ;
   zip-es-flat-[]-es ; mk-snd-pdi ; mkinjSnd ;
-  pdinstance-star ; mkinjList ; flat-Uε≡[];
+  -- pdinstance-star ; mkinjList ; 
   pdinstance-assoc; inv-assoc; assoc; assoc-inv-assoc-u≡u ; inv-assoc-assoc-u≡u ; mkinjAssoc ;
   pdinstance-dist ; inv-dist ; dist ; dist-inv-dist-u≡u ; inv-dist-dist-u≡u ; mkinjDist ;
   pdUMany[_,_]; pdUMany-aux;

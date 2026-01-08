@@ -24,13 +24,18 @@ open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-
 
 
 import cgp.PDInstance as PDI
-open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ; 
+  pdinstance-left ; pdinstance-right ;
+  pdinstance-star ; mkinjList 
+  ) 
 
 
 import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
   -- PDInstance ; pdinstance ;
-  pdinstance-left ; pdinstance-right;  pdinstance-fst ; mkinjFst ;  pdinstance-snd ; zip-es-flat-[]-es;   mk-snd-pdi ; mkinjSnd ; compose-pdi-with;  advance-pdi*-with-c ; concatmap-pdinstance-snd; pdinstance-star ; mkinjList ; pdinstance-assoc ; mkinjAssoc ; pdUMany[_,_]; pdUMany-aux ) 
+  -- pdinstance-left ; pdinstance-right;
+  pdinstance-fst ; mkinjFst ;  pdinstance-snd ; zip-es-flat-[]-es;   mk-snd-pdi ; mkinjSnd ; compose-pdi-with;  advance-pdi*-with-c ; concatmap-pdinstance-snd;
+  pdinstance-assoc ; mkinjAssoc ; pdUMany[_,_]; pdUMany-aux ) 
 -- ;   PDInstance* ; pdinstance*  ) 
 
 

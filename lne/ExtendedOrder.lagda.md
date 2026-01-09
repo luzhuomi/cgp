@@ -32,7 +32,9 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left ; pdinstance-right ;
   pdinstance-star ; mkinjList ;
   pdinstance-fst ; mkinjFst   ;
-  pdinstance-snd ; mk-snd-pdi ; mkinjSnd 
+  pdinstance-snd ; mk-snd-pdi ; mkinjSnd ; 
+  concatmap-pdinstance-snd ; zip-es-flat-[]-es  ;
+  pdinstance-assoc; inv-assoc 
   ) 
 
 
@@ -40,9 +42,6 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; pdUConcat ;
-  concatmap-pdinstance-snd ;
-  zip-es-flat-[]-es ;
-  inv-assoc ; pdinstance-assoc ; 
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; compose-pdi-with ; 
   Recons ; recons ;

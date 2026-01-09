@@ -25,7 +25,9 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left; pdinstance-right;
   pdinstance-star; mkinjList ;
   pdinstance-fst ; mkinjFst ;
-  pdinstance-snd ; mkinjSnd ; mk-snd-pdi
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
+  concatmap-pdinstance-snd  ; zip-es-flat-[]-es  ;
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound 
   ) 
 
 
@@ -42,7 +44,8 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 
 import cgp.greedy.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
-  concatmap-pdinstance-snd ; zip-es-flat-[]-es  ; pdinstance-dist ; mkinjDist ; inv-dist-sound ; pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ; pdUMany[_,_]; pdUMany-aux ; advance-pdi*-with-c  ; compose-pdi-with
+  pdinstance-dist ; mkinjDist ; inv-dist-sound ;
+  pdUMany[_,_]; pdUMany-aux ; advance-pdi*-with-c  ; compose-pdi-with
   ) 
 
 

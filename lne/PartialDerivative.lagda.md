@@ -20,7 +20,9 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left; pdinstance-right ;
   pdinstance-star ; mkinjList ;
   pdinstance-fst ; mkinjFst ;
-  pdinstance-snd ; mkinjSnd ; mk-snd-pdi 
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
+  concatmap-pdinstance-snd  ; zip-es-flat-[]-es ;
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc ; assoc ; assoc-inv-assoc-u≡u   
   ) 
 
 
@@ -116,101 +118,6 @@ pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p 
 ### Definition 16: Partial derivatives with coercion functions 
 
 ```agda
-------------------------------------------------------------------------------------
--- concatmap-pdinstance-snd
-zip-es-flat-[]-es : ∀ {l : RE} {ε∈l : ε∈ l }
-                    → (es : List (U l)) →  All (Flat-[] l) es →  List ( ∃[ e ] (Flat-[] l e) )
-zip-es-flat-[]-es {l} {ε∈l} [] [] = []
-zip-es-flat-[]-es {l} {ε∈l} (e ∷ es) (flat-[]-e ∷ flat-[]-es) = ( e , flat-[]-e ) ∷ zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es 
-
-
-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } → List (PDInstance r c) → List (PDInstance (l ● r ` loc) c)
-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis = concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es)
-  where
-    es : List (U l)
-    es = mkAllEmptyU {l} ε∈l
-    flat-[]-es : All (Flat-[] l) es
-    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
-
-
-
--- pdinstance-dist and its sub functions end
-------------------------------------------------------------------------------------
-
-inv-assoc : ∀ { l s r : RE } { loc₁ loc₂ : ℕ }
-         →  U ( l ● ( s ● r ` loc₂ ) ` loc₁)
-         ---------------------------------------------         
-         →  U ( ( l ● s ` loc₁ ) ● r ` loc₂)
-inv-assoc {l} {s} {r} {loc₁} {loc₂} (PairU  v₁ (PairU v₂ v₃ ) ) = PairU (PairU  v₁ v₂) v₃ 
-
-
-inv-assoc-sound : ∀ { l s r : RE } { loc₁ loc₂ : ℕ }
-         →  ( u : U ( l ● ( s ● r ` loc₂ ) ` loc₁) )
-         →  proj₁ (flat (inv-assoc u)) ≡ proj₁ (flat u)
-inv-assoc-sound {l} {s} {r} {loc₁} {loc₂} (PairU {l} {s ● r ` loc₂}  {loc₁} v₁ (PairU {s} {r} {loc₂} v₂ v₃ ) )
-  with flat v₁      | flat v₂     | flat v₃  
-... |  w₁ ,  w₁∈⟦l⟧ | w₂ , w₂∈⟦s⟧ | w₃ , w₃∈⟦r⟧ =  ++-assoc w₁ w₂ w₃
-
-
-mkinjAssoc : ∀ { p l s r : RE } { loc₁ loc₂ : ℕ } 
-    → ( f : U p → U (l ● ( s ● r ` loc₂ ) ` loc₁ ) )
-    → U p
-    → U (( l ● s ` loc₁) ● r ` loc₂ )
-mkinjAssoc {p} {l} {s} {r} {loc₁} {loc₂} f u = inv-assoc (f u)
-
-
-pdinstance-assoc : ∀ { l s r : RE } { loc₁ loc₂ : ℕ }  { c : Char } → PDInstance (l ● ( s ● r ` loc₂ ) ` loc₁ ) c → PDInstance (( l ● s ` loc₁) ● r ` loc₂ ) c
-pdinstance-assoc {l} {s} {r} {loc₁} {loc₂} {c}
-  (pdinstance {p}
-               {l ● ( s ● r ` loc₂ ) ` loc₁ }
-               inj
-               inj-sound ) = 
-  pdinstance {p} {( l ● s ` loc₁) ● r ` loc₂}
-    injAssoc
-    injAssoc-sound
-                
-  where
-    injAssoc : U p → U (( l ● s ` loc₁) ● r ` loc₂)
-    injAssoc = mkinjAssoc {p} {l} {s} {r} {loc₁} {loc₂} inj
-    injAssoc-sound : (u : U p)                           
-                   → proj₁ (flat (injAssoc u)) ≡ c ∷ (proj₁ (flat u))
-    injAssoc-sound u rewrite sym (inj-sound u) = inv-assoc-sound (inj u)
-
-
--- inverse of inv-assoc 
-assoc : ∀ { l s r : RE } { loc₁ loc₂ : ℕ }
-        →  U ( ( l ● s ` loc₁ ) ● r ` loc₂)
-        ---------------------------------------------        
-        →  U ( l ● ( s ● r ` loc₂ ) ` loc₁) 
-assoc {l} {s} {r} {loc₁} {loc₂} (PairU (PairU  v₁ v₂) v₃ )  = PairU  v₁ (PairU v₂ v₃ ) 
-
--- needed for the ExtendedGreedy ordering proof. 
-assoc-inv-assoc-u≡u :  ∀ { l s r : RE } { loc₁ loc₂ : ℕ }
-                    →  { u :  U ( l ● ( s ● r ` loc₂ ) ` loc₁)  }
-                    ---------------------------------------------
-                    → assoc ( inv-assoc u ) ≡ u
-assoc-inv-assoc-u≡u {l} {s} {r} {loc₁} {loc₂} {PairU  v₁ (PairU v₂ v₃ )} =
-  begin
-    assoc (inv-assoc (PairU v₁ (PairU v₂ v₃ )))
-  ≡⟨⟩
-    assoc (PairU (PairU  v₁ v₂) v₃)
-  ≡⟨⟩
-    PairU v₁ (PairU v₂ v₃ )
-  ∎ 
-
-
-inv-assoc-assoc-u≡u :  ∀ { l s r : RE } { loc₁ loc₂ : ℕ }
-                    →  { u : U ( ( l ● s ` loc₁ ) ● r ` loc₂)}  
-                     ---------------------------------------------
-                    → inv-assoc ( assoc u ) ≡ u
-inv-assoc-assoc-u≡u {l} {s} {r} {loc₁} {loc₂} {PairU (PairU  v₁ v₂) v₃ } =
-  begin
-    inv-assoc (assoc (PairU (PairU  v₁ v₂) v₃))
-  ≡⟨⟩
-    inv-assoc (PairU v₁ (PairU v₂ v₃))
-  ≡⟨⟩
-    PairU (PairU  v₁ v₂) v₃
-  ∎ 
 
 
 ------------------------------------------------------------------------------------

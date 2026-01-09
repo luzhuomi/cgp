@@ -28,19 +28,17 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left ; pdinstance-right ;
   pdinstance-star ; mkinjList ;
   pdinstance-fst ; mkinjFst ;
-  pdinstance-snd ; mkinjSnd ; mk-snd-pdi
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
+  concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound   
   ) 
 
 
 import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
-  -- PDInstance ; pdinstance ;
-  -- pdinstance-left ; pdinstance-right;
-  -- pdinstance-fst ; mkinjFst ;
-  zip-es-flat-[]-es;
-  compose-pdi-with;  advance-pdi*-with-c ; concatmap-pdinstance-snd;
-  pdinstance-assoc ; mkinjAssoc ; pdUMany[_,_]; pdUMany-aux ) 
--- ;   PDInstance* ; pdinstance*  ) 
+  compose-pdi-with;  advance-pdi*-with-c ; 
+  pdUMany[_,_]; pdUMany-aux 
+  ) 
 
 
 import Data.Char as Char

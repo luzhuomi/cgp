@@ -19,7 +19,8 @@ import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left; pdinstance-right ;
   pdinstance-star ; mkinjList ;
-  pdinstance-fst ; mkinjFst 
+  pdinstance-fst ; mkinjFst ;
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi 
   ) 
 
 
@@ -115,53 +116,6 @@ pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p 
 ### Definition 16: Partial derivatives with coercion functions 
 
 ```agda
-------------------------------------------------------------------------------------
--- pdinstance-snd and its sub functions
-
-mkinjSnd  : ∀ {l r r' : RE } { loc : ℕ }
-          →  (f : U r' → U r)
-          →  U l 
-          →  U r'
-          →  U (l ● r ` loc )
-mkinjSnd {l} {r} {r'} {loc} f v u = PairU {l} {r} {loc} v (f u)
-
-
-mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
-           → ∃[ e ] Flat-[] l e
-           → PDInstance r c 
-           → PDInstance ( l ● r ` loc ) c
-mk-snd-pdi {l} {r} {loc} {c} (e , (flat-[] e' proj₁∘flate≡[] )) (pdinstance {p} {r} {c}  inj s-ev) = pdinstance {p} { l ● r ` loc } {c} -- e' is e
-                        -- (λ u → PairU {l} {r} {loc} e (inj u) )
-                        -- injSnd
-                        (mkinjSnd {l} {r} {p} {loc} inj e)
-                        injSnd-s-ev
-                   where
-                     injSnd :  U p → U (l ● r ` loc)
-                     injSnd =                     
-                        (mkinjSnd {l} {r} {p} {loc} inj e)
-                     injSnd-s-ev =
-                       (λ u → 
-                           begin
-                             proj₁ (flat (PairU {l} {r} {loc} e (inj u)))
-                           ≡⟨⟩
-                             (proj₁ (flat e')) ++ (proj₁ (flat (inj u)))
-                           ≡⟨ cong (λ x → ( x ++  (proj₁ (flat (inj u))))) proj₁∘flate≡[] ⟩  --  e must be an empty; we do have flat v ≡ [] from mkAllEmptyU-sound
-                             [] ++ (proj₁ (flat (inj u)))
-                           ≡⟨⟩
-                             proj₁ (flat (inj u))
-                           ≡⟨ s-ev u ⟩
-                             c ∷ (proj₁ (flat u))
-                           ∎
-                        )
-
-
-pdinstance-snd : ∀ { l r : RE } { loc : ℕ } { c : Char } → ∃[ e ] (Flat-[] l e ) → List (PDInstance r c )  →  List (PDInstance (l ● r ` loc) c)
-pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis = List.map (mk-snd-pdi (e , flat-[]-e)) pdis 
-
-
--- pdinstance-snd and its sub functions end
-------------------------------------------------------------------------------------
-
 ------------------------------------------------------------------------------------
 -- concatmap-pdinstance-snd
 zip-es-flat-[]-es : ∀ {l : RE} {ε∈l : ε∈ l }

@@ -28,7 +28,8 @@ import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left ; pdinstance-right ;
   pdinstance-star ; mkinjList ; 
-  pdinstance-fst ; mkinjFst 
+  pdinstance-fst ; mkinjFst ;
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi 
   ) 
 
 
@@ -148,7 +149,7 @@ ps should be
 ```agda
 
 
-
+{-
 ------------------------------------------------------------------------------------
 -- pdinstance-snd and its sub functions
 
@@ -193,7 +194,7 @@ mk-snd-pdi {l} {r} {loc} {c} (e , (flat-[] e' proj₁∘flate≡[] )) (pdinstanc
 
 pdinstance-snd : ∀ { l r : RE } { loc : ℕ } { c : Char } → ∃[ e ] (Flat-[] l e ) → List (PDInstance r c )  →  List (PDInstance (l ● r ` loc) c)
 pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis = List.map (mk-snd-pdi (e , flat-[]-e)) pdis 
-
+-}
 
 -- pdinstance-snd and its sub functions end
 ------------------------------------------------------------------------------------

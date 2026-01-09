@@ -27,7 +27,8 @@ import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ; 
   pdinstance-left ; pdinstance-right ;
   pdinstance-star ; mkinjList ;
-  pdinstance-fst ; mkinjFst 
+  pdinstance-fst ; mkinjFst ;
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi
   ) 
 
 
@@ -36,7 +37,8 @@ open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
   -- PDInstance ; pdinstance ;
   -- pdinstance-left ; pdinstance-right;
   -- pdinstance-fst ; mkinjFst ;
-  pdinstance-snd ; zip-es-flat-[]-es;   mk-snd-pdi ; mkinjSnd ; compose-pdi-with;  advance-pdi*-with-c ; concatmap-pdinstance-snd;
+  zip-es-flat-[]-es;
+  compose-pdi-with;  advance-pdi*-with-c ; concatmap-pdinstance-snd;
   pdinstance-assoc ; mkinjAssoc ; pdUMany[_,_]; pdUMany-aux ) 
 -- ;   PDInstance* ; pdinstance*  ) 
 

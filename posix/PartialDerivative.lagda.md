@@ -91,7 +91,7 @@ pd(r₁ ● r₂ , ℓ ) = { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } ∪
 
 pd(r₁ + r₂ , ℓ ) = pd( r₁ , ℓ ) ∪ pd( r₂ , ℓ  )
 
-pd(r* , ℓ ) = pd( r' ● r* ∣ r' ∈ pd( r , ℓ ) }
+pd(r* , ℓ ) = pd( r' ● r* ∣ r' ∈ pd( r , ℓ ) )
 
 
 In parsing algorithm implementation, we replace { } by list [], ∪ by ++.
@@ -170,11 +170,27 @@ concatMap pd[ _ , b ] [ ( ε + ε ● b ) ● r ] = pd[ ( ε + ε ● b ) ● r 
                                             = ( map ( λ p → p ● r ) pd[ ε + ε ● b , b ] ) ⊕ pd[ r , b ] -- is this ⊕ necessary? 
                                             = ( map ( λ p → p ● r ) pd[ ε , b ] ⊕  pd[ ε ● b , b ]) ⊕ pd[ r , b ]
                                             = ( map ( λ p → p ● r ) [ ε ] ) ⊕  pd[ r , b ]
-                                            = [ ε ● r ] ⊕  pd[ r , b ] -- the left r is not touched, i.e. still in the 2nd iteration.
-                                            = [ ε ● r ] ⊕  [ ε ● r ] -- the right in the 3nd iteration. thanks to the lne policy by default 
+                                            = [ ε ● r ] ⊕ pd[ r , b ] -- the left r is not touched, i.e. still in the 2nd iteration.
+                                            = [ ε ● r ] ⊕ [ ε ● r ]   -- the right r is in the 3nd iteration. thanks to the lne policy by default 
                                             
    
+#### Using ⊕ only at + case
 
+pd[ r , a ] = [ r' ● r | r' ∈ pd[ ( a + b) + a ● b, a ] ]
+            = [ ( ε + ε ● b ) ● r ]
+            ∵ pd[ (a + b) + a ● b, a ] =  -- this is + case, ⊕ is used to implement ∪ 
+              pd[ a , a ] ⊕ pd[ b , a ] ⊕ pd[ a ● b , a ] =
+              [ ε ] ⊕ []  ⊕ [ ε ● b ] = 
+              [ ε + ε ● b ]
+
+concatMap pd[ _ , b ] [ ( ε + ε ● b ) ● r ] = pd[ ( ε + ε ● b ) ● r , b ]
+                                            = pdConcat ( ε + ε ● b ) r b
+                                            = ( map ( λ p → p ● r ) pd[ ε + ε ● b , b ] ) ++ pd[ r , b ] -- not using ⊕ here
+                                            = ( map ( λ p → p ● r ) pd[ ε , b ] ⊕  pd[ ε ● b , b ]) ++ pd[ r , b ]
+                                            = ( map ( λ p → p ● r ) [ ε ] ) ++ pd[ r , b ]
+                                            = [ ε ● r ] ++ pd[ r , b ] -- the left r is not touched, i.e. still in the 2nd iteration.
+                                            = [ ε ● r , ε ● r ]        -- the right r is in the 3rd iteration. thanks to the lne policy by default 
+                                            
 ```agda
 ps  = let a₁ = $ 'a' ` 1
           b₂ = $ 'b' ` 2
@@ -184,8 +200,6 @@ ps  = let a₁ = $ 'a' ` 1
           a●b = a₄ ● b₅ ` 6
           r = ( a+b + a●b ` 7 ) * (ε∉ (ε∉ ε∉$ + ε∉$ ) + (ε∉fst ε∉$) ) ` 8 
       in pd[ r , 'a'] >>= (λ p → pd[ p , 'b'] )
-
-
 ```
 
 ps should be
@@ -208,8 +222,15 @@ just
 
 
 Note that the pdU function (at its sub functions) operates over the List functor instead of Maybe.
-The reason is that one partial derivative might have more than one coercion function, thanks to there are more than
-one empty parse trees given the partial derivative is nullable. 
+The reason is that one partial derivative instance might be associated with more than one coercion functions.
+This is because there might be more than one empty parse trees given the partial derivative is nullable. 
+
+### Example
+
+r = a ● ( ε + ε )
+pd[ r , a ] = [ ( ε + ε ) ]
+
+hm... not a good example 
 
 ```agda
 -- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 

@@ -34,6 +34,14 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-assoc ; mkinjAssoc ; inv-assoc ; assoc ; assoc-inv-assoc-u≡u 
   ) 
 
+import cgp.Recons as Recons
+open Recons using ( Recons ; recons ; 
+  any-recons-left ; any-recons-right ;
+  any-recons-fst ; any-recons-star ;
+  any-recons-pdinstance-snd ;
+  any-recons-concatmap-pdinstance-snd ;
+  any-recons-assoc 
+  )
 
 import cgp.Utils as Utils
 open Utils using (any-right-concat; any-left-concat ; all-concat ;  ∷-inj  ; ¬∷≡[]  ; inv-map-[]  )
@@ -339,16 +347,8 @@ such that pdi = { p , inj , sound-ev }
     3. sound-ev is the soundness evidence pdi
 Then we say pdi is u-reconstructable w.r.t c iff there exists a word w ∈ ⟦p⟧ such that inj (unflat w∈p) ≡ u.
 
+Definition of Recons is moved to Recons.lagda.md.
 
-```agda
-data Recons : { r : RE } { c : Char } → ( u : U r ) → ( PDInstance r c )  → Set where
-  recons : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p → U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → (u : U r)
-    → ∃[ w∈⟦p⟧ ] ( (inj (unflat {p} {w}  w∈⟦p⟧)) ≡ u )    -- the completeness property.
-    → Recons {r} {c} u (pdinstance {p} {r} {c} inj sound-ev) -- <- the input PDI obj
-
-```
 ### Lemma 19: pdU[_,_] is complete. 
 
 Let r be a non problematic regular expression.
@@ -361,107 +361,14 @@ pdi is u-reconstruable w.r.t c.
 To prove Lemma 19, we need to prove some sub lemmas. 
 
 
-#### Sub Lemmas 19.1 - 19.10 Reconstructability is preserved inductively over pdinstance operations. 
+#### Sub Lemmas 19.1 - 19.10 Reconstructability is preserved inductively over pdinstance operations.
+
+19.1 - 19.7 is moved to Recons.lagda.md 
 
 ```agda
 -----------------------------------------------------------------------------------------
--- Sub Lemmas 19.1 - 19.10 BEGIN
+-- Sub Lemmas 19.8 - 19.10 BEGIN
 ----------------------------------------------------------------------------------------
-
-any-recons-left : ∀ { l r : RE } { loc : ℕ } {c : Char } { w : List Char} { u : U l }
-    → ( pdis : List (PDInstance l c) )
-    → Any (Recons {l} {c} u) pdis 
-    ---------------------------------------------------------
-    → Any (Recons {l + r ` loc } {c} (LeftU u)) (List.map pdinstance-left pdis)
-any-recons-left ( pdi ∷ pdis' ) (here {pd} {pds} (recons {p} {l} {c} {w} {inj} {sound-ev} u ( w∈⟦p⟧ ,  inj∘unflat≡u ))) = here (recons (LeftU u) ( w∈⟦p⟧ ,  cong LeftU  inj∘unflat≡u )) 
-any-recons-left {l} {r} {loc} {c} {w} {u} ( pdi ∷ pdis' ) (there {pd} {pds} pxs) = there (any-recons-left {l} {r} {loc} {c} {w} {u} pdis' pxs) 
-
-
-
-any-recons-right : ∀ { l r : RE } { loc : ℕ } {c : Char } { w : List Char} { u : U r }
-    → ( pdis : List (PDInstance r c) )
-    → Any (Recons {r} {c} u) pdis 
-    ---------------------------------------------------------
-    → Any (Recons {l + r ` loc } {c} (RightU u)) (List.map pdinstance-right pdis)
-any-recons-right ( pdi ∷ pdis' ) (here {pd} {pds} (recons {p} {r} {c} {w} {inj} {sound-ev} u ( w∈⟦p⟧ ,  inj∘unflat≡u ))) = here (recons (RightU u) ( w∈⟦p⟧ , cong RightU  inj∘unflat≡u)) 
-any-recons-right {l} {r} {loc} {c} {w} {u} ( pdi ∷ pdis' ) (there {pd} {pds} pxs) = there (any-recons-right {l} {r} {loc} {c} {w} {u} pdis' pxs) 
-
-
-any-recons-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } { u : U l } { v : U r }
-    → ( pdis : List (PDInstance l c) )
-    → Any (Recons {l} {c} u) pdis
-    -----------------------------------------------------------
-    → Any (Recons {l ● r ` loc } {c} (PairU u v)) (List.map pdinstance-fst pdis)
-any-recons-fst {l} {r} {loc} {c} {w} {u} {v} ( pdi ∷ pdis' ) (here {pd} {pds} (recons {p} {l} {c} {w₁} {inj} {sound-ev} u' ( w₁∈⟦p⟧ ,  inj∘unflat≡u ))) = 
-  here (recons (PairU u' v) ((w₁∈⟦p⟧ ● proj₂ (flat v) ⧺ refl) , Eq.cong₂ (λ x y → PairU x y) inj∘unflat≡u (unflat∘proj₂∘flat {r} {v}) ))
-any-recons-fst {l} {r} {loc} {c} {w} {u} {v} ( pdi ∷ pdis' ) (there {pd} {pds} pxs)  = there (any-recons-fst {l} {r} {loc} {c} {w} {u} {v} pdis' pxs) 
-
-
-any-recons-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { w : List Char } { u : U r } { us : List (U r) }
-    → ( pdis : List (PDInstance r c ) )
-    → Any (Recons {r} {c} u) pdis
-    ------------------------------------------------------------
-    → Any (Recons { r * ε∉r ` loc } {c} (ListU (u ∷ us))) (List.map pdinstance-star pdis)
-any-recons-star {r} {ε∉r} {loc} {c} {w} {u} {us} ( pdi ∷ pdis' ) (here {pd} {pds} (recons {p} {r} {c} {w₁} {inj} {sound-ev} _ ( w₁∈⟦p⟧ , inj∘unflatw₁∈p≡u ))) =
-  let
-    injList = mkinjList {p} {r} {ε∉r} {loc} inj
-  in here (recons {- { p ● (r * ε∉r ` loc) ` loc } {r * ε∉r ` loc} {c} {w} {injList} {_} -} -- ignoring the implict para help to simplify to use refl, just like any-recons-fst
-                  (ListU (u ∷ us)) ((w₁∈⟦p⟧ ● proj₂ (flat (ListU {r} {ε∉r} {loc} us)) ⧺ refl) , (
-    begin
-      mkinjList inj (PairU (unflat w₁∈⟦p⟧) (unflat (Product.proj₂ (flat (ListU us)))))
-    ≡⟨ cong (λ x → mkinjList inj (PairU (unflat w₁∈⟦p⟧) x )) (unflat∘proj₂∘flat {r * ε∉r ` loc} {ListU us}) ⟩
-      mkinjList inj (PairU (unflat w₁∈⟦p⟧) (ListU us))
-    ≡⟨⟩
-      ListU (inj (unflat w₁∈⟦p⟧) ∷ us)
-    ≡⟨ cong ( λ x → ListU (x ∷ us) )  inj∘unflatw₁∈p≡u ⟩ 
-      ListU (u ∷ us)
-    ∎) )) 
-any-recons-star {r} {ε∉r} {loc} {c} {w} {u} {us} ( pdi ∷ pdis' ) (there {pd} {pds} pxs) = there (any-recons-star {r} {ε∉r} {loc} {c} {w} {u} {us} pdis' pxs) 
-
-
-
-
-any-recons-pdinstance-snd : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } { e : U l } { v : U r }
-  → ( flat-[]-e : Flat-[] l e )
-  → ( pdis : List (PDInstance r c) )
-  → Any (Recons {r} {c} v) pdis  
-  -------------------------------------------------------------------------------------------------------------------
-  → Any (Recons {l ● r ` loc } {c} (PairU e v)) (pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis )
-any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} (flat-[] _ proj₁-flat-e≡[]) [] any-recons-v = Nullary.contradiction any-recons-v ¬Any[]
-any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} (flat-[] _ proj₁-flat-e≡[]) (pdi ∷ pdis) (here (recons v ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡v ))) = here (recons (PairU e v) ( w∈⟦p⟧ ,  cong (λ x → PairU e x ) inj-unflat-w∈⟦p⟧≡v ))
-any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} flat-[]-e@(flat-[] _ proj₁-flat-e≡[]) (pdi ∷ pdis) (there pxs) = there next
-  where
-    next : Any (Recons {l ● r ` loc } {c} (PairU e v)) (pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e )  pdis )
-    next = any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v} (flat-[] e proj₁-flat-e≡[]) pdis pxs
-
-
-any-recons-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l} { loc : ℕ } { c : Char } { w : List Char } { u : U l } { v : U r }
-    → ( proj1-flat-u≡[] : proj₁ (flat u) ≡ [] )
-    → ( pdis : List (PDInstance r c) ) 
-    → Any (Recons {r} {c} v) pdis
-    ----------------------------------------------------------- 
-    -- → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatMap (pdinstance-snd {l} {r} {ε∈l} {loc} {c})  pdis) -- inlined to make it easier to prove
-    → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis) 
-any-recons-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdis any-recons-v-pdis = any-Snd (mkAllEmptyU ε∈l) (mkAllEmptyU-sound ε∈l)  u∈mkAllEmptU-ε∈l pdis any-recons-v-pdis  
-  where
-
-    u∈mkAllEmptU-ε∈l : Any ( u ≡_ ) (mkAllEmptyU {l} ε∈l)
-    u∈mkAllEmptU-ε∈l = mkAllEmptyU-complete ε∈l u (flat-[] u proj1-flat-u≡[])
-    any-Snd :  (es : List (U l))
-      → (flat-[]-es : All (Flat-[] l) es )
-      → Any ( u ≡_ ) es
-      → ( pdis : List (PDInstance r c) )
-      → Any (Recons {r} {c} v) pdis
-      --------------------------------------------------------------------------------------------------------
-      -- → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
-      → Any (Recons {l ● r ` loc } {c} (PairU u v)) (concatMap (λ x →  pdinstance-snd {l} {r} {loc} {c} x pdis) (zip-es-flat-[]-es  {l} {ε∈l} es flat-[]-es))
-    any-Snd []        _                         u∈[]        _    _                 = Nullary.contradiction u∈[] ¬Any[]
-    any-Snd (e ∷ es) (flat-[]-e ∷ flat-[]-es) (there u∈es) pdis any-recons-v-pdis = any-right-concat (any-Snd es flat-[]-es u∈es pdis any-recons-v-pdis)
-    -- the first parse tree is found, we need to search for the 2nd parse tree 
-    any-Snd (e ∷ es) (flat-[]-e ∷ flat-[]-es) (here refl)  pdis any-recons-v-pdis  = any-left-concat any-recons-pair-e-v-pdinstance-snd
-      where
-        any-recons-pair-e-v-pdinstance-snd :  Any (Recons {l ● r ` loc } {c} (PairU e v)) (pdinstance-snd {l} {r} {loc} {c} ( e , flat-[]-e ) pdis )
-        any-recons-pair-e-v-pdinstance-snd = any-recons-pdinstance-snd {l} {r} {loc} {c} {w} {e} {v}  flat-[]-e pdis  any-recons-v-pdis
 
         
 
@@ -526,31 +433,8 @@ any-recons-dist-right {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₂} {v} []       
 any-recons-dist-right {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₂} {v} []           (pdi' ∷ pdis') (there pxs)    = there (any-recons-dist-right {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₂} {v} [] pdis' pxs) 
 any-recons-dist-right {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₂} {v} (pdi ∷ pdis) pdis' any-recons-right-pdis'  = there (any-recons-dist-right {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₂} {v} pdis pdis'  any-recons-right-pdis') 
 
-
--- TODO: do we need {w} in all these any-recons lemmas? 
-any-recons-assoc : ∀ { l t s : RE } { loc₁ loc₂ : ℕ } { c : Char } { w : List Char } {u₁ : U l } {u₂ : U t } { v : U s }
-    → ( pdis :  List (PDInstance  ( l ● ( t ● s ` loc₂) ` loc₁ )  c ) )
-    → Any (Recons { l ● ( t ● s ` loc₂) ` loc₁ } {c} ( PairU u₁ (PairU u₂ v)) ) pdis
-    → Any (Recons { ( l ● t ` loc₁) ● s ` loc₂ } {c} ( PairU (PairU u₁ u₂) v) ) (List.map pdinstance-assoc pdis)
-any-recons-assoc {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {u₂} {v} [] any-recons-pdis = Nullary.contradiction any-recons-pdis ¬Any[]
-any-recons-assoc {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {u₂} {v} (pdi ∷ pdis) (there pxs) = there (any-recons-assoc {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {u₂} {v} pdis pxs)
-any-recons-assoc {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {u₂} {v} (pdi@(pdinstance inj sound-ev) ∷ pdis)
-  (here (recons pair-u₁-pair-u₂v ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡PairU-u₁-PairU-u₂-v ) ))
-        = here (recons (PairU (PairU u₁ u₂) v) ( w∈⟦p⟧ , complete-evidence))
-        where
-          complete-evidence : mkinjAssoc inj (unflat w∈⟦p⟧) ≡ PairU (PairU u₁ u₂) v
-          complete-evidence =
-            begin
-              mkinjAssoc inj (unflat w∈⟦p⟧)
-            ≡⟨⟩
-              inv-assoc (inj (unflat w∈⟦p⟧))
-            ≡⟨ cong (λ x → inv-assoc x ) inj-unflat-w∈⟦p⟧≡PairU-u₁-PairU-u₂-v ⟩
-              PairU (PairU u₁ u₂) v             
-            ∎
-
-
 -----------------------------------------------------------------------------------------
--- Sub Lemmas 19.1 - 19.10 END
+-- Sub Lemmas 19.8 - 19.10 END
 ----------------------------------------------------------------------------------------
 ```
 

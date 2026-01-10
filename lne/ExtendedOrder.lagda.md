@@ -38,13 +38,16 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   ) 
 
 
+import cgp.Recons as Recons
+open Recons using ( Recons ; recons
+  )
+
 
 import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; pdUConcat ;
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; compose-pdi-with ; 
-  Recons ; recons ;
   Recons* ; recons* ;
   parseAll[_,_] ; buildU ;
   inv-recons-left ;   inv-recons-right ; inv-recons-fst ; inv-recons-snd ; inv-recons-star ; inv-recons-assoc ; 

@@ -37,6 +37,9 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   ) 
 
 
+import cgp.Recons as Recons
+open Recons using ( Recons ; recons
+  )
 
 import cgp.greedy.PartialDerivative as PartialDerivative
 open PartialDerivative using (
@@ -44,7 +47,7 @@ open PartialDerivative using (
   pdinstance-dist ; inv-dist ; dist ; dist-inv-dist-u≡u ; inv-dist-dist-u≡u ; mkinjDist ;
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; compose-pdi-with ; 
-  Recons ; recons ;
+--   Recons ; recons ;
   Recons* ; recons* ;
   injId ;
   pdUMany-aux-cs-[]≡[];

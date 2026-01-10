@@ -227,8 +227,25 @@ This is because there might be more than one empty parse trees given the partial
 
 ### Example
 
-r = a ● ( ε + ε )
-pd[ r , a ] = [ ( ε + ε ) ]
+r = ( ε + ε ) ● a 
+pd[ r , a ] = [ ε ]
+
+mkAllEmpty ( ε + ε ) = [ LeftU EmptyU , RightU EmptyU ]
+
+for simplicity, we omit the soundness evidence
+
+pdi[ r , a ] = concatMap (λ e → pdinstance-snd e  pd[ a , a ] )  [ LeftU EmptyU , RightU EmptyU ] 
+             = concatMap (λ e → pdinstance-snd e  [ pdinstance {ε} {a} (λ _ → a ) ] )  [ LeftU EmptyU , RightU EmptyU ]
+             = concatMap (λ e → map (mk-snd-pdi e)  [ pdinstance {ε} {a} (λ _ → a ) ] )  [ LeftU EmptyU , RightU EmptyU ]
+             = [ pdinstance {ε} {r} (λ u → PairU (LeftU EmptyU) ((λ _ →  a) u) ) ,
+                 pdinstance {ε} {r} (λ u → PairU (RightU EmptyU) ((λ _ →  a) u) ) ]
+
+
+overall we still need to operate over a list of pdinstances instead of maybe pdinstance. 
+
+
+
+
 
 hm... not a good example 
 

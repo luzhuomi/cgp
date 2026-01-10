@@ -252,34 +252,38 @@ hm... not a good example
 ```agda
 -- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
 pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  → Maybe (PDInstance (l + r ` loc) c)
-  → Maybe (PDInstance (l + r ` loc) c)
-  → Maybe (PDInstance (l + r ` loc) c)
-pdinstance-oplus {l} {r} {loc} {c} nothing mpdi = mpdi
-pdinstance-oplus {l} {r} {loc} {c} mpdi nothing = mpdi
-pdinstance-oplus {l} {r} {loc} {c} (just (pdinstance {pₗ} {l+r} {.c} inj-l s-ev-l)) (just (pdinstance {pᵣ} {l+r} {.c} inj-r s-ev-r)) =
-  just (pdinstance {pₗ + pᵣ ` loc} {l+r} {c} inj sound-ev )
+  → List (PDInstance (l + r ` loc) c)
+  → List (PDInstance (l + r ` loc) c)
+  → List (PDInstance (l + r ` loc) c)
+pdinstance-oplus {l} {r} {loc} {c} [] pdis = pdis
+pdinstance-oplus {l} {r} {loc} {c} pdis [] = pdis
+pdinstance-oplus {l} {r} {loc} {c} pdisₗ  pdisᵣ =  concatMap (λ pdiₗ → List.map (fuse pdiₗ) pdisᵣ) pdisₗ 
     where
-      inj : U (pₗ + pᵣ ` loc) → U ( l + r ` loc )
-      inj (LeftU v₁) = inj-l v₁
-      inj (RightU v₂) = inj-r v₂ 
-      sound-ev : (u : U (pₗ + pᵣ ` loc)) 
-               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-      sound-ev (LeftU v₁) = s-ev-l v₁
-      sound-ev (RightU v₂) = s-ev-r v₂ 
+      fuse : PDInstance (l + r ` loc) c → PDInstance (l + r ` loc) c → PDInstance (l + r ` loc) c
+      fuse (pdinstance {pₗ} {l+r} {c} inj-l s-ev-l) (pdinstance {pᵣ} {l+r} {_} inj-r s-ev-r) = 
+        (pdinstance {pₗ + pᵣ ` loc} {l+r} {c} inj sound-ev )
+        where
+          inj : U (pₗ + pᵣ ` loc) → U ( l + r ` loc )
+          inj (LeftU v₁) = inj-l v₁
+          inj (RightU v₂) = inj-r v₂ 
+          sound-ev : (u : U (pₗ + pᵣ ` loc)) 
+                   → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+          sound-ev (LeftU v₁) = s-ev-l v₁
+          sound-ev (RightU v₂) = s-ev-r v₂
+
       
 
 
 ---------------------------------------------------------------------------------------------------
 -- pdU[_,_] and pdUConcat
 
-pdU[_,_] : ( r : RE ) → ( c : Char ) → Maybe (PDInstance r c)
-pdUConcat : ( l r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char ) → Maybe (PDInstance (l ● r ` loc ) c)
+pdU[_,_] : ( r : RE ) → ( c : Char ) → List (PDInstance r c)
+pdUConcat : ( l r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char ) → List (PDInstance (l ● r ` loc ) c)
 
 
-pdU[ ε , c ] = nothing
+pdU[ ε , c ] = []
 pdU[ $ c ` loc , c' ] with c Char.≟ c'
-...                     | yes refl = just ( pdinstance {ε} {$ c ` loc} {c}
+...                     | yes refl = [ ( pdinstance {ε} {$ c ` loc} {c}
                                                  (λ u → LetterU {loc} c)
                                                  (λ EmptyU →                 -- ^ soundness ev
                                                    begin
@@ -288,33 +292,31 @@ pdU[ $ c ` loc , c' ] with c Char.≟ c'
                                                      c ∷ []
                                                     ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
                                                      c ∷ (proj₁ (flat EmptyU))
-                                                    ∎) ) 
-...                     | no _    =  nothing
+                                                    ∎) ) ]
+...                     | no _    =  []
 pdU[ l + r ` loc , c ]  =
   pdinstance-oplus
-    ( Maybe.map pdinstance-left pdU[ l , c ] )
-    ( Maybe.map pdinstance-right pdU[ r , c ])
+    ( List.map pdinstance-left pdU[ l , c ] )
+    ( List.map pdinstance-right pdU[ r , c ])
 pdU[ r * nε ` loc , c ] =
-  Maybe.map pdinstance-star pdU[ r , c ]
+  List.map pdinstance-star pdU[ r , c ]
 pdU[ l ● r ` loc , c ] with ε∈? l
-...                       | no ¬ε∈l = Maybe.map pdinstance-fst  pdU[ l , c ]
+...                       | no ¬ε∈l = List.map pdinstance-fst  pdU[ l , c ]
 ...                       | yes ε∈l = pdUConcat l r ε∈l loc c 
 
 {-# TERMINATING #-}
 pdUConcat ε r ε∈ε loc c                    = concatmap-pdinstance-snd {ε}              {r} {ε∈ε}   {loc} {c} pdU[ r , c ]
-pdUConcat (l ● s ` loc₁)    r ε∈l●s loc₂ c = Maybe.map pdinstance-assoc pdU[ ( l ● ( s ● r ` loc₂ ) ` loc₁ ) , c ]
+pdUConcat (l * ε∉l ` loc₁)  r ε∈*   loc₂ c =
+  ( List.map pdinstance-fst pdU[ (l * ε∉l ` loc₁) , c ] )
+  ++ -- no need oplus? 
+  concatmap-pdinstance-snd {l * ε∉l ` loc₁} {r} {ε∈*}   {loc₂} {c} pdU[ r , c ]
+pdUConcat (l ● s ` loc₁)    r ε∈l●s loc₂ c = List.map pdinstance-assoc pdU[ ( l ● ( s ● r ` loc₂ ) ` loc₁ ) , c ]
 
+pdUConcat (l + s ` loc₁)    r ε∈l+s loc₂ c =
+  ( List.map pdinstance-fst pdU[ (l + s ` loc₁) , c ] )
+  ++ -- no need oplus ? 
+   concatmap-pdinstance-snd {l + s ` loc₁}   {r} {ε∈l+s} {loc₂} {c} pdU[ r , c ]
 
 ```
 
 
-concatmap-pdinstance-snd has type
-∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } → List (PDInstance r c) → List (PDInstance (l ● r ` loc) c)
-
-it is a variant of >>=
-
-we can't turn List into Maybe,
-
-because it call concatmap on (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es)
-
-where es is all the empty parse trees, it is a list of them. 

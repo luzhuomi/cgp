@@ -387,7 +387,7 @@ any-recons-dist-left {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {v}
                                                {inj}
                                                {sound-ev}
                                                left-pair-u₁-v
-                                               ( w∈⟦p⟧ , inj-unflat=w∈⟦p⟧≡left-pair-u₁-v ) )) = here (recons (PairU (LeftU u₁) v) (w∈⟦p⟧ , comp-evidence))
+                                               ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡left-pair-u₁-v ) )) = here (recons (PairU (LeftU u₁) v) (w∈⟦p⟧ , comp-evidence))
         where
           comp-evidence : mkinjDist inj (unflat w∈⟦p⟧) ≡ PairU (LeftU u₁) v
           comp-evidence = 
@@ -395,7 +395,7 @@ any-recons-dist-left {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {v}
               mkinjDist inj (unflat w∈⟦p⟧)
             ≡⟨⟩
               inv-dist (inj (unflat w∈⟦p⟧))
-            ≡⟨ cong (λ x → inv-dist x ) inj-unflat=w∈⟦p⟧≡left-pair-u₁-v ⟩
+            ≡⟨ cong (λ x → inv-dist x ) inj-unflat-w∈⟦p⟧≡left-pair-u₁-v ⟩
               inv-dist (LeftU (PairU u₁ v))
             ≡⟨⟩
               PairU (LeftU u₁) v
@@ -416,7 +416,7 @@ any-recons-dist-right {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₂} {v} []       
                                                {inj}
                                                {sound-ev}
                                                right-pair-u₂-v
-                                               ( w∈⟦p⟧ , inj-unflat=w∈⟦p⟧≡right-pair-u₂-v )))  = here (recons (PairU (RightU u₂) v) (w∈⟦p⟧ , comp-evidence))
+                                               ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡right-pair-u₂-v )))  = here (recons (PairU (RightU u₂) v) (w∈⟦p⟧ , comp-evidence))
 
         where
           comp-evidence : mkinjDist inj (unflat w∈⟦p⟧) ≡ PairU (RightU u₂) v
@@ -425,7 +425,7 @@ any-recons-dist-right {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₂} {v} []       
               mkinjDist inj (unflat w∈⟦p⟧)
             ≡⟨⟩
               inv-dist (inj (unflat w∈⟦p⟧))
-            ≡⟨ cong (λ x → inv-dist x ) inj-unflat=w∈⟦p⟧≡right-pair-u₂-v ⟩
+            ≡⟨ cong (λ x → inv-dist x ) inj-unflat-w∈⟦p⟧≡right-pair-u₂-v ⟩
               inv-dist (RightU (PairU u₂ v))
             ≡⟨⟩
               PairU (RightU u₂) v

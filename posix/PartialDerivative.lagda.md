@@ -373,14 +373,18 @@ To prove Lemma 19, we need to prove some sub lemmas.
 The sub lemmas (properties of pdinstance-reconstructabilities) are found in Recons.lagda.md. 
 
 ```agda
-postulate 
-  any-recons-oplus-left : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List Char }
-    → ( u : U l ) 
-    → Any (Recons { l + s ` loc} {c} (LeftU u)) (List.map pdinstance-left pdU[ l , c ])
-    → Any (Recons { l + s ` loc} {c} (LeftU u))
-                (pdinstance-oplus (List.map pdinstance-left pdU[ l , c ])
-                                  (List.map pdinstance-right pdU[ s , c ]))
 
+any-recons-oplus-left : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List Char } { u : U l }
+    → ( pdis : List (PDInstance (l + s ` loc) c))
+    → ( pdis' : List (PDInstance (l + s ` loc) c)) 
+    → Any (Recons { l + s ` loc} {c} (LeftU u)) pdis
+    → Any (Recons { l + s ` loc} {c} (LeftU u))
+                (pdinstance-oplus pdis pdis')
+any-recons-oplus-left {l} {s} {loc} {c} {w} {u} []           pdis' any-recons-left-pdis = Nullary.contradiction any-recons-left-pdis ¬Any[]
+any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdi ∷ pdis) pdis' (here (recons {p}
+                                                                         {l + s ` loc}
+                                                                         {c'} {w'} {inj} {sound-ev} left-u ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡left-u ) ))
+                                                                         = {!!} 
   
 ```
 
@@ -404,7 +408,7 @@ pdU-complete {$ c ` loc}   {c'} {w} (LetterU _) with c Char.≟ c'
 ...                                              | yes refl with w    
 ...                                                           |  []  = λ proj1-flat-u≡[] →  here (recons (LetterU c) (ε , refl))
 pdU-complete {$ c ` loc}   {c'} {w} (LetterU c₂) | no  ¬c≡c'  = λ c∷[]≡c'w →  Nullary.contradiction (proj₁ (∷-inj c∷[]≡c'w)) ¬c≡c' 
-pdU-complete {l + s ` loc} {c}  {w} (LeftU u)  proj1-flat-leftu≡cw = any-recons-oplus-left {l} {s} {loc} {c} {w} u ys 
+pdU-complete {l + s ` loc} {c}  {w} (LeftU u)  proj1-flat-leftu≡cw = any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ s , c ]) ys 
   where
     xs : Any (Recons {l} {c} u) pdU[ l , c ]
     xs =  pdU-complete {l} {c} u proj1-flat-leftu≡cw

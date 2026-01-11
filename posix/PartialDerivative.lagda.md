@@ -24,6 +24,15 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-assoc 
   ) 
 
+import cgp.Recons as Recons
+open Recons using ( Recons ; recons ; 
+  any-recons-left ; any-recons-right ;
+  any-recons-fst ; any-recons-star ;
+  any-recons-pdinstance-snd ;
+  any-recons-concatmap-pdinstance-snd ;
+  any-recons-assoc 
+  )
+
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
 open AllEmpty using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU-complete ; Flat-[] ; flat-[] ;  mkAllEmptyU≢[] )
@@ -320,3 +329,84 @@ pdUConcat (l + s ` loc₁)    r ε∈l+s loc₂ c =
 ```
 
 
+### Lemma 17: pdU[_,_] is sound.
+
+Let r be a non problematic regular expression.
+Let c be a letter.
+Let p be a partial derivative of r w.r.t c, i.e. p ∈ pd[r , c]
+Let f be the injection function from parse tree of p to parse tree of r.
+Let u be a parse tree of p, then |(f u)| = c ∷ | u |, where (f u) is a parse tree of r.
+( in agda terms,  proj₁ (flat {r} (f u)) ≡ c ∷ (proj₁ (flat {p} u)) ). 
+
+
+The proof is given as part of the PDInstance being computed. 
+
+
+### Definition 18 (Reconstructability):
+Let r be a non problematic regular expression.
+Let c be a character.
+Let u be a parse tree of r.
+Let pdi be a partial derivative (instance) of r w.r.t c,
+such that pdi = { p , inj , sound-ev }
+  where
+    1. p is the partial derivative instance of p/c;
+    2. inj is the injection function from parse tree of p back to parse tree of r;
+    3. sound-ev is the soundness evidence pdi
+Then we say pdi is u-reconstructable w.r.t c iff there exists a word w ∈ ⟦p⟧ such that inj (unflat w∈p) ≡ u.
+
+
+definition of Recons is moved to Recons.lagda.md
+
+
+
+### Lemma 19: pdU[_,_] is complete. 
+
+Let r be a non problematic regular expression.
+Let c be a letter.
+Let u be a parse tree of r such that (flat u) = c ∷ w for some word w.      
+Then there exists a partial derivative instance, pdi ∈ pdU[r,c] , such that
+pdi is u-reconstruable w.r.t c.
+
+
+
+To prove Lemma 19, we need to prove some sub lemmas. 
+The sub lemmas (properties of pdinstance-reconstructabilities) are found in Recons.lagda.md. 
+
+```agda
+postulate 
+  any-recons-oplus-left : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List Char }
+    → ( u : U l ) 
+    → Any (Recons { l + s ` loc} {c} (LeftU u)) (List.map pdinstance-left pdU[ l , c ])
+    → Any (Recons { l + s ` loc} {c} (LeftU u))
+                (pdinstance-oplus (List.map pdinstance-left pdU[ l , c ])
+                                  (List.map pdinstance-right pdU[ s , c ]))
+
+  
+```
+
+#### Main proof for Lemma 19 
+
+
+```agda
+pdU-complete : ∀ { r : RE  } { c : Char } { w : List Char }
+  → ( u : U r )  
+  → ( proj₁ (flat {r} u) ≡ c ∷ w )
+  → Any (Recons {r} {c} u) pdU[ r , c ]
+
+pdUConcat-complete : ∀ { l s : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { w : List Char }
+    → ( u : U l )
+    → ( v : U s ) 
+    → ( proj₁ (flat { l ● s ` loc } (PairU u v)) ≡ c ∷ w )
+    → Any (Recons { l ● s ` loc } (PairU u v)) (pdUConcat l s ε∈l loc c)
+
+pdU-complete {ε}           {c}  {w} EmptyU = λ()
+pdU-complete {$ c ` loc}   {c'} {w} (LetterU _) with c Char.≟ c'
+...                                              | yes refl with w    
+...                                                           |  []  = λ proj1-flat-u≡[] →  here (recons (LetterU c) (ε , refl))
+pdU-complete {$ c ` loc}   {c'} {w} (LetterU c₂) | no  ¬c≡c'  = λ c∷[]≡c'w →  Nullary.contradiction (proj₁ (∷-inj c∷[]≡c'w)) ¬c≡c' 
+pdU-complete {l + s ` loc} {c}  {w} (LeftU u)  proj1-flat-leftu≡cw = any-recons-oplus-left {l} {s} {loc} {c} {w} u ys 
+  where
+    xs : Any (Recons {l} {c} u) pdU[ l , c ]
+    xs =  pdU-complete {l} {c} u proj1-flat-leftu≡cw
+    ys : Any (Recons { l + s ` loc} {c} (LeftU u)) (List.map pdinstance-left pdU[ l , c ])
+    ys =  any-recons-left {l} {s} {loc} {c}  {w} {u} pdU[ l , c ]  xs      

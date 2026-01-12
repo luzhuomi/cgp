@@ -375,16 +375,21 @@ The sub lemmas (properties of pdinstance-reconstructabilities) are found in Reco
 ```agda
 
 any-recons-oplus-left : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List Char } { u : U l }
-    → ( pdis : List (PDInstance (l + s ` loc) c))
-    → ( pdis' : List (PDInstance (l + s ` loc) c)) 
-    → Any (Recons { l + s ` loc} {c} (LeftU u)) pdis
+    → ( pdisˡ : List (PDInstance (l + s ` loc) c))
+    → ( pdisʳ : List (PDInstance (l + s ` loc) c)) 
+    → Any (Recons { l + s ` loc} {c} (LeftU u)) pdisˡ
     → Any (Recons { l + s ` loc} {c} (LeftU u))
-                (pdinstance-oplus pdis pdis')
-any-recons-oplus-left {l} {s} {loc} {c} {w} {u} []           pdis' any-recons-left-pdis = Nullary.contradiction any-recons-left-pdis ¬Any[]
-any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdi ∷ pdis) pdis' (here (recons {p}
+                (pdinstance-oplus pdisˡ pdisʳ)
+any-recons-oplus-left {l} {s} {loc} {c} {w} {u} []              pdisʳ any-recons-left-pdis = Nullary.contradiction any-recons-left-pdis ¬Any[]
+any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdiˡ ∷ pdisˡ) []    any-recons-left-pdis = any-recons-left-pdis
+any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (there pxs) = any-right-concat ind-hyp 
+  where
+    ind-hyp :  Any (Recons { l + s ` loc} {c} (LeftU u)) (pdinstance-oplus pdisˡ (pdiʳ ∷ pdisʳ))
+    ind-hyp = any-recons-oplus-left {l} {s} {loc} {c} {w} {u} pdisˡ (pdiʳ ∷ pdisʳ) pxs
+any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (here (recons {p}
                                                                          {l + s ` loc}
                                                                          {c'} {w'} {inj} {sound-ev} left-u ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡left-u ) ))
-                                                                         = {!!} 
+                                                                         = here {!!}  
   
 ```
 

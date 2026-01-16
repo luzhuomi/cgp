@@ -259,26 +259,34 @@ overall we still need to operate over a list of pdinstances instead of maybe pdi
 hm... not a good example 
 
 ```agda
--- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence) 
+-- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence)
+
+
+fuse : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → PDInstance (l + r ` loc) c
+  → PDInstance (l + r ` loc) c
+  → PDInstance (l + r ` loc) c
+fuse {l} {r} {loc} {c} (pdinstance {pˡ} {l+r} {_} inj-l s-ev-l) (pdinstance {pᵣ} {l+r} {_} inj-r s-ev-r) = 
+        (pdinstance {pˡ + pᵣ ` loc} {l+r} {c} inj sound-ev )
+     where
+       inj : U (pˡ + pᵣ ` loc ) → U ( l + r ` loc )
+       inj (LeftU v₁) = inj-l v₁
+       inj (RightU v₂) = inj-r v₂ 
+       sound-ev : (u : U (pˡ + pᵣ ` loc)) 
+                   → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+       sound-ev (LeftU v₁) = s-ev-l v₁
+       sound-ev (RightU v₂) = s-ev-r v₂
+
+
 pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → List (PDInstance (l + r ` loc) c)
   → List (PDInstance (l + r ` loc) c)
   → List (PDInstance (l + r ` loc) c)
-pdinstance-oplus {l} {r} {loc} {c} [] pdis = pdis
-pdinstance-oplus {l} {r} {loc} {c} pdis [] = pdis
-pdinstance-oplus {l} {r} {loc} {c} pdisₗ  pdisᵣ =  concatMap (λ pdiₗ → List.map (fuse pdiₗ) pdisᵣ) pdisₗ 
-    where
-      fuse : PDInstance (l + r ` loc) c → PDInstance (l + r ` loc) c → PDInstance (l + r ` loc) c
-      fuse (pdinstance {pₗ} {l+r} {c} inj-l s-ev-l) (pdinstance {pᵣ} {l+r} {_} inj-r s-ev-r) = 
-        (pdinstance {pₗ + pᵣ ` loc} {l+r} {c} inj sound-ev )
-        where
-          inj : U (pₗ + pᵣ ` loc) → U ( l + r ` loc )
-          inj (LeftU v₁) = inj-l v₁
-          inj (RightU v₂) = inj-r v₂ 
-          sound-ev : (u : U (pₗ + pᵣ ` loc)) 
-                   → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-          sound-ev (LeftU v₁) = s-ev-l v₁
-          sound-ev (RightU v₂) = s-ev-r v₂
+pdinstance-oplus {l} {r} {loc} {c} []     pdis  = pdis
+pdinstance-oplus {l} {r} {loc} {c} pdis   []    = pdis
+pdinstance-oplus {l} {r} {loc} {c} pdisˡ  pdisᵣ =  concatMap (λ pdiˡ → List.map (fuse pdiˡ) pdisᵣ) pdisˡ 
+
+
 
       
 
@@ -372,8 +380,20 @@ pdi is u-reconstruable w.r.t c.
 To prove Lemma 19, we need to prove some sub lemmas. 
 The sub lemmas (properties of pdinstance-reconstructabilities) are found in Recons.lagda.md. 
 
-```agda
 
+
+foo :  Any (Recons (LeftU u))
+      (concatMap
+       (λ pdi →
+          cgp.posix.PartialDerivative.fuse (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) pdi  pdiʳ
+          ∷
+          List.map
+          (cgp.posix.PartialDerivative.fuse (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ)
+           pdiˡ)
+          pdisʳ)
+       (pdiˡ ∷ pdisˡ))
+
+```agda
 any-recons-oplus-left : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List Char } { u : U l }
     → ( pdisˡ : List (PDInstance (l + s ` loc) c))
     → ( pdisʳ : List (PDInstance (l + s ` loc) c)) 
@@ -382,15 +402,46 @@ any-recons-oplus-left : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List C
                 (pdinstance-oplus pdisˡ pdisʳ)
 any-recons-oplus-left {l} {s} {loc} {c} {w} {u} []              pdisʳ any-recons-left-pdis = Nullary.contradiction any-recons-left-pdis ¬Any[]
 any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdiˡ ∷ pdisˡ) []    any-recons-left-pdis = any-recons-left-pdis
-any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (there pxs) = any-right-concat ind-hyp 
+any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ)  any-recons-left-pdis = prf  (pdiˡ ∷ pdisˡ) any-recons-left-pdis 
   where
-    ind-hyp :  Any (Recons { l + s ` loc} {c} (LeftU u)) (pdinstance-oplus pdisˡ (pdiʳ ∷ pdisʳ))
-    ind-hyp = any-recons-oplus-left {l} {s} {loc} {c} {w} {u} pdisˡ (pdiʳ ∷ pdisʳ) pxs
-any-recons-oplus-left {l} {s} {loc} {c} {w} {u} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (here (recons {p}
-                                                                         {l + s ` loc}
-                                                                         {c'} {w'} {inj} {sound-ev} left-u ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡left-u ) ))
-                                                                         = here {!!}  
-  
+    prf : ∀ ( pdis : List (PDInstance (l + s ` loc) c))
+          → Any (Recons { l + s ` loc} {c} (LeftU u)) pdis
+          → Any (Recons (LeftU u)) (concatMap (λ x → List.map (fuse x) (pdiʳ ∷ pdisʳ)) pdis)
+    prf []  any-recons-left-pdis =  Nullary.contradiction any-recons-left-pdis ¬Any[]
+    prf ( pdi ∷ pdis ) (there pxs) = any-right-concat ind-hyp  
+      where
+        ind-hyp :  Any (Recons (LeftU u)) (concatMap (λ x → List.map (fuse x) (pdiʳ ∷ pdisʳ)) pdis)
+        ind-hyp = prf pdis pxs
+    prf ( pdi ∷ pdis ) (here (recons {p} { l + s ` loc} {c} {w} {inj} {s-ev} (LeftU u) ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡left-u ) )) = any-left-concat (sub-prf pdiʳ pdisʳ)
+      where
+        sub-prf : (pdiʳ : (PDInstance (l + s ` loc) c))
+            → (pdisʳ : List (PDInstance (l + s ` loc) c))
+            → Any (Recons (LeftU u)) (List.map (fuse (pdinstance inj s-ev)) (pdiʳ ∷ pdisʳ))
+        sub-prf (pdinstance {pᵣ} { l + s ` loc} {_} injᵣ s-evᵣ) pdisʳ = here (recons { p + pᵣ ` loc } { l + s ` loc} {c} {w} (LeftU u) ((pᵣ +L w∈⟦p⟧) , inj-unflat-w∈⟦p⟧≡left-u) ) 
+
+
+any-recons-oplus-right : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List Char } { u : U s }
+    → ( pdisˡ : List (PDInstance (l + s ` loc) c))
+    → ( pdisʳ : List (PDInstance (l + s ` loc) c)) 
+    → Any (Recons { l + s ` loc} {c} (RightU u)) pdisʳ
+    → Any (Recons { l + s ` loc} {c} (RightU u))
+                (pdinstance-oplus pdisˡ pdisʳ)
+any-recons-oplus-right {l} {s} {loc} {c} {w} {u} pdisˡ  []             any-recons-right-pdis = Nullary.contradiction any-recons-right-pdis ¬Any[]
+any-recons-oplus-right {l} {s} {loc} {c} {w} {u} []     (pdiʳ ∷ pdisʳ) any-recons-right-pdis = any-recons-right-pdis 
+any-recons-oplus-right {l} {s} {loc} {c} {w} {u} (pdiˡ@(pdinstance {pˡ} { l + s ` loc} {_} injˡ s-ev-l) ∷ pdisˡ) (pdiʳ ∷ pdisʳ)  any-recons-right-pdis = prf  (pdiʳ ∷ pdisʳ) any-recons-right-pdis
+  where 
+    prf : ∀ ( pdis : List (PDInstance (l + s ` loc) c))
+          → Any (Recons { l + s ` loc} {c} (RightU u)) pdis
+          → Any (Recons (RightU u)) (concatMap (λ x → List.map (fuse x) pdis) ((pdinstance {pˡ} { l + s ` loc} {c} injˡ s-ev-l) ∷ pdisˡ))
+    prf pdis  any-recons-right-pdis  = any-left-concat (sub-prf  pdis  any-recons-right-pdis )
+      where
+        sub-prf : ∀ ( pdis : List (PDInstance (l + s ` loc) c))
+          → Any (Recons { l + s ` loc} {c} (RightU u)) pdis
+          → Any (Recons (RightU u)) (List.map (fuse (pdinstance injˡ s-ev-l)) pdis)
+        sub-prf [] any-recons-right-pdis =  Nullary.contradiction any-recons-right-pdis ¬Any[]
+        sub-prf (pdi ∷ pdis) (there pxs) = there (sub-prf pdis pxs)
+        sub-prf (pdi ∷ pdis) (here (recons {p} { l + s ` loc} {_} {w} {inj-r} {s-ev-r} (RightU _) ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡right-u ) )) =
+          here (recons { pˡ + p ` loc } { l + s ` loc} {c} {w}  (RightU u) ( (pˡ +R w∈⟦p⟧)  , inj-unflat-w∈⟦p⟧≡right-u )) 
 ```
 
 #### Main proof for Lemma 19 
@@ -418,4 +469,10 @@ pdU-complete {l + s ` loc} {c}  {w} (LeftU u)  proj1-flat-leftu≡cw = any-recon
     xs : Any (Recons {l} {c} u) pdU[ l , c ]
     xs =  pdU-complete {l} {c} u proj1-flat-leftu≡cw
     ys : Any (Recons { l + s ` loc} {c} (LeftU u)) (List.map pdinstance-left pdU[ l , c ])
-    ys =  any-recons-left {l} {s} {loc} {c}  {w} {u} pdU[ l , c ]  xs      
+    ys =  any-recons-left {l} {s} {loc} {c}  {w} {u} pdU[ l , c ]  xs
+pdU-complete {l + s ` loc} {c}  {w} (RightU u)  proj1-flat-rightu≡cw = any-recons-oplus-right {l} {s} {loc} {c} {w} {u} (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ s , c ]) ys
+  where
+    xs : Any (Recons {s} {c} u) pdU[ s , c ]
+    xs =  pdU-complete {s} {c} u proj1-flat-rightu≡cw
+    ys : Any (Recons { l + s ` loc} {c} (RightU u)) (List.map pdinstance-right pdU[ s , c ])
+    ys =  any-recons-right {l} {s} {loc} {c}  {w} {u} pdU[ s , c ]  xs

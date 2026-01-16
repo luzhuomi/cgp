@@ -31,7 +31,8 @@ open Recons using ( Recons ; recons ;
   any-recons-fst ; any-recons-star ;
   any-recons-pdinstance-snd ;
   any-recons-concatmap-pdinstance-snd ;
-  any-recons-assoc 
+  any-recons-assoc ;
+  Recons* ; recons* 
   )
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
@@ -430,6 +431,8 @@ data PDInstance* : ∀ ( r : RE ) ( pref : List Char ) → Set where
 
 ```agda
 
+-- advance--pdi*-with-c is depending on pdU, hence can't be moved into a common import.
+-- we leave compose-pid-with here too .
 -- helper function  for pdUMany-aux
 -- compose-pdi-with : copmose a PDInstance with the "downstream" PDinstance* injection and soundness evidence
 
@@ -503,15 +506,7 @@ such that pdi = { p , inj , sound-ev }
 Then we say pdi is prefix reconstructable w.r.t. pre iff there exists a word w ∈⟦p⟧ such that inj (unflat w∈⟦p⟧) ≡ u.
 
 
-```agda
-
-data Recons* : { r : RE } { pref : List Char } → ( u : U r ) → ( PDInstance* r pref ) → Set where
-  recons* : ∀ { p r : RE } { w : List Char } { pref : List Char } { inj : U p → U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ pref ++ ( proj₁ (flat {p} x) )) }
-    → ( u : U r )
-    → ∃[ w∈⟦p⟧ ] ( (inj (unflat {p} {w} w∈⟦p⟧)) ≡ u ) -- the completeness property.
-    → Recons* {r} {pref} u (pdinstance* {p} {r} {pref} inj sound-ev) -- <- the input PDI obj
-```
+Definition of Recons* is moved to Recons.lagda.md. 
 
 
 

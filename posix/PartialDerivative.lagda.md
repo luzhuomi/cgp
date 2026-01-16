@@ -574,3 +574,129 @@ pdUConcat-complete {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} u v proj1-flat-
         bs : Any (Recons { (l + t ` loc₁) ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} pdU[ s , c ]) 
         bs = any-recons-concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as
 
+
+```
+
+### Definition 20: Many steps Partial deriviatves with coercion functions `pdUMany[ r , w ]` and `PDInstance*`
+
+
+For the ease of establishing the completeness proof of `pdUMany[ r , w ]`, we introduce
+a data type `PDInstance*` (similar to `PDInstance`) to record the partial derivative descendant, the prefix of `w` which has been consumed
+so far, the injection function and the soundness evidence.
+
+As we collect the prefix, we make use of the snoc `∷ʳ` operation (which is a short hand for `λ xs x → xs ++ [ x ]`).
+And the prefix is used as the index of the dependent datatype. 
+
+
+One caveat of Agda is that it *does not automatically register* that ` xs ∷ʳ x ++ ys ` is equivalent to ` xs ++ ( x ∷ ys ) `. It has to be explicitly
+"taught" that the equivalence holds with the library function `∷ʳ-++`.
+
+Though this can be done manually as and when Agda complains about that the equivalence is not met, it gets trickier as the rewriting take place "implicitly".
+
+For example, it is hard to manually prove that, which is 
+
+pdUMany-aux≡ : ∀ {r : RE} {pref : List Char} {c : Char} {cs : Char} { pdis : List ( PDInstance* r pref ) }
+  → pdUMany-aux {r} {pref} (c ∷ cs) pdis ≡  pdUMany-aux {r} {pref ∷ʳ c} cs ( concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis )
+
+
+Simply because Agda can't find unify the type of the left-hand-side of the equivalence relation of type `List (PDInstance* r ( pref ++ cs ∷ cs ))` with
+the right hand side `List (PDInstance* r ( pref ∷ʳ c ++ cs ) )`.
+
+Hence using a global automatic rewriting language extension help to address this issue.
+
+
+```agda 
+
+import cgp.Rewriting  -- import ∷ʳ-++ rewriting rule
+
+-- the result type for pdUMany, a variant of PDInstance
+
+
+```
+
+
+```agda
+
+---------------------------------------------------------------------------------------------------------
+-- A helper function  for pdUMany-aux then pdUMany 
+-- compose-pdi-with : copmose a PDInstance with the "downstream" PDinstance* injection and soundness evidence
+
+compose-pdi-with : ∀ { r d : RE } { pref : List Char } { c : Char }
+                   → ( d→r-inj : U d → U r )
+                   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r-inj v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+                   → PDInstance d c
+                   → PDInstance* r (pref ∷ʳ c )
+compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r (pdinstance {p} {d} {c} p→d s-ev-p-d) = 
+                 pdinstance* {p} {r} {pref ∷ʳ c } ( d→r ∘ p→d ) 
+                                       (
+                                        λ u →
+                                          begin
+                                            proj₁ (flat (d→r (p→d u)))
+                                          ≡⟨ s-ev-d-r (p→d u) ⟩
+                                            pref ++ proj₁ (flat (p→d u))
+                                          ≡⟨ cong ( pref ++_ ) (s-ev-p-d u) ⟩
+                                            pref ++ ( c ∷ Product.proj₁ (flat u) )
+                                          -- ≡⟨ sym ( ∷ʳ-++ pref c (Product.proj₁ (flat u)) ) ⟩  -- this becomes a refl, thanks to the REWRITE ∷ʳ-++  pragma 
+                                          ≡⟨ refl ⟩                                         
+                                            pref ∷ʳ c ++ proj₁ (flat u) 
+                                          ∎
+                                        )
+                                        
+-- helper functions for pdUMany-aux then pdUMany                   
+-- advance-pdi*-with-c : advance a PDInstance* with a character c (by consuming it with pdU) and return a list of PDInstance*
+advance-pdi*-with-c : ∀ { r : RE } { pref : List Char } { c : Char }
+                     → PDInstance* r pref
+                     → List (PDInstance* r (pref ∷ʳ c ))
+advance-pdi*-with-c {r} {pref} {c} (pdinstance* {d} {r} {pref} d→r s-ev-d-r) =
+  List.map (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r ) pdU[ d , c ] 
+
+-- pdUMany's helper function 
+pdUMany-aux :  ∀ { r : RE }
+                 {pref : List Char}
+               → (suff : List Char) 
+               → List (PDInstance* r pref)
+               → List (PDInstance* r (pref ++ suff ) )
+pdUMany-aux {r} {pref} [] pdis rewrite (++-identityʳ pref) =  pdis
+pdUMany-aux {r} {pref} (c ∷ cs) pdis {- rewrite (cong (λ x → List (PDInstance* r x )) (sym (∷ʳ-++ pref c cs))) -}  =  -- the rewrite is no longer needed thanks to the REWRITE ∷ʳ-++  pragma 
+                pdUMany-aux {r} {pref ∷ʳ c} cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+
+
+
+injId : ∀ { r : RE } → U r  → U r 
+injId u = u
+
+injId-sound : ∀ { r : RE } → ( u : U r ) → proj₁  (flat {r} (injId u)) ≡ proj₁ (flat {r} u)
+injId-sound u = refl 
+
+pdUMany[_,_] : ( r : RE ) → ( cs : List Char ) → List (PDInstance* r cs )
+pdUMany[ r , cs ]         =
+   pdUMany-aux {r} {[]} cs [  ( pdinstance* {r} {r} {[]} injId injId-sound ) ]
+
+
+```
+
+### Lemma 21 : pdUMany[ r , w ] is sound
+
+Let r  be a non problematic regular expresion.
+Let w be a word.
+Let p be a partial derivative descendant of r w.r.t c, i.e. p ∈ proj₁ (proj₂ pdUMany[ r , w ] )
+Let f be the injection function from parse tree of o to parse tree of r.
+Let u be a parse tree of p, then |(f u)| = w ++ | u |, where (f u) is a parse tree of r.
+
+
+The proof is given as part of the PDInstance* being computed. 
+
+
+### Definition 22 (Parse Tree Reconstructability of PD Descendants):
+
+Let r be a non problematic regular expression.
+Let pref be a word,
+LEt u be a parse tree of r.
+Let pdi be a partial derivative descendant (instance) of r w.r.t. prefix pref,
+such that pdi = { p , inj , sound-ev }
+  where
+    1. p is the partial derivative descendant instance of r / pref
+    2. inj is the injection function from the parse tree of p back to the parse tree of r;
+    3. sound-ev is the soundness evidence pdi
+Then we say pdi is prefix reconstructable w.r.t. pre iff there exists a word w ∈⟦p⟧ such that inj (unflat w∈⟦p⟧) ≡ u.
+

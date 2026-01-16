@@ -228,5 +228,28 @@ any-recons-assoc {l} {t} {s} {loc₁} {loc₂} {c} {w} {u₁} {u₂} {v} (pdi@(p
 ```
 
 
+### Definition 22 (Parse Tree Reconstructability of PD Descendants):
+
+Let r be a non problematic regular expression.
+Let pref be a word,
+LEt u be a parse tree of r.
+Let pdi be a partial derivative descendant (instance) of r w.r.t. prefix pref,
+such that pdi = { p , inj , sound-ev }
+  where
+    1. p is the partial derivative descendant instance of r / pref
+    2. inj is the injection function from the parse tree of p back to the parse tree of r;
+    3. sound-ev is the soundness evidence pdi
+Then we say pdi is prefix reconstructable w.r.t. pre iff there exists a word w ∈⟦p⟧ such that inj (unflat w∈⟦p⟧) ≡ u.
+
+
+```agda
+
+data Recons* : { r : RE } { pref : List Char } → ( u : U r ) → ( PDInstance* r pref ) → Set where
+  recons* : ∀ { p r : RE } { w : List Char } { pref : List Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ pref ++ ( proj₁ (flat {p} x) )) }
+    → ( u : U r )
+    → ∃[ w∈⟦p⟧ ] ( (inj (unflat {p} {w} w∈⟦p⟧)) ≡ u ) -- the completeness property.
+    → Recons* {r} {pref} u (pdinstance* {p} {r} {pref} inj sound-ev) -- <- the input PDI obj
+```
 
 

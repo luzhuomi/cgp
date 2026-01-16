@@ -40,7 +40,8 @@ open Recons using ( Recons ; recons ;
   any-recons-fst ; any-recons-star ;
   any-recons-pdinstance-snd ;
   any-recons-concatmap-pdinstance-snd ;
-  any-recons-assoc 
+  any-recons-assoc ;
+  Recons* ; recons* 
   )
 
 import cgp.Utils as Utils
@@ -725,15 +726,8 @@ such that pdi = { p , inj , sound-ev }
 Then we say pdi is prefix reconstructable w.r.t. pre iff there exists a word w ∈⟦p⟧ such that inj (unflat w∈⟦p⟧) ≡ u.
 
 
-```agda
+Definition of Recons* is moved to Recons.lagda.md. 
 
-data Recons* : { r : RE } { pref : List Char } → ( u : U r ) → ( PDInstance* r pref ) → Set where
-  recons* : ∀ { p r : RE } { w : List Char } { pref : List Char } { inj : U p → U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ pref ++ ( proj₁ (flat {p} x) )) }
-    → ( u : U r )
-    → ∃[ w∈⟦p⟧ ] ( (inj (unflat {p} {w} w∈⟦p⟧)) ≡ u ) -- the completeness property.
-    → Recons* {r} {pref} u (pdinstance* {p} {r} {pref} inj sound-ev) -- <- the input PDI obj
-```
 
 
 ### Lemma (Error, not working) : pdUMany[ r , pref ] is complete 

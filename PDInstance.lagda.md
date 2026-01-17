@@ -48,6 +48,9 @@ open Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_ )
 open Σ using (proj₁ ; proj₂)
 
 
+open import Function using (_∘_ ; flip)
+
+
 
 
 -- partial derivative (descendant?) relation and coercion function
@@ -304,6 +307,34 @@ inv-assoc-assoc-u≡u {l} {s} {r} {loc₁} {loc₂} {PairU (PairU  v₁ v₂) v�
 -- pdinstance-assoc and its sub functions END 
 ------------------------------------------------------------------------------------
 
+import cgp.Rewriting  -- import ∷ʳ-++ rewriting rule
+
+---------------------------------------------------------------------------------------------------------
+-- A helper function  for pdUMany-aux then pdUMany 
+-- compose-pdi-with : copmose a PDInstance with the "downstream" PDinstance* injection and soundness evidence
+
+
+compose-pdi-with : ∀ { r d : RE } { pref : List Char } { c : Char }
+                   → ( d→r-inj : U d → U r )
+                   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r-inj v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+                   → PDInstance d c
+                   → PDInstance* r (pref ∷ʳ c )
+compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r (pdinstance {p} {d} {c} p→d s-ev-p-d) = 
+                 pdinstance* {p} {r} {pref ∷ʳ c } ( d→r ∘ p→d ) 
+                                       (
+                                        λ u →
+                                          begin
+                                            proj₁ (flat (d→r (p→d u)))
+                                          ≡⟨ s-ev-d-r (p→d u) ⟩
+                                            pref ++ proj₁ (flat (p→d u))
+                                          ≡⟨ cong ( pref ++_ ) (s-ev-p-d u) ⟩
+                                            pref ++ ( c ∷ Product.proj₁ (flat u) )
+                                          -- ≡⟨ sym ( ∷ʳ-++ pref c (Product.proj₁ (flat u)) ) ⟩  -- this becomes a refl, thanks to the REWRITE ∷ʳ-++  pragma 
+                                          ≡⟨ refl ⟩                                         
+                                            pref ∷ʳ c ++ proj₁ (flat u) 
+                                          ∎
+                                        )
+                                        
 
 
 ```

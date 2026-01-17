@@ -31,7 +31,8 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-fst ; mkinjFst ;
   pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
   concatmap-pdinstance-snd  ; zip-es-flat-[]-es ;
-  pdinstance-assoc ; mkinjAssoc ; inv-assoc ; assoc ; assoc-inv-assoc-u≡u 
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc ; assoc ; assoc-inv-assoc-u≡u ;
+  compose-pdi-with 
   ) 
 
 import cgp.Recons as Recons
@@ -41,7 +42,8 @@ open Recons using ( Recons ; recons ;
   any-recons-pdinstance-snd ;
   any-recons-concatmap-pdinstance-snd ;
   any-recons-assoc ;
-  Recons* ; recons* 
+  Recons* ; recons* ;
+  compose-pdi-with-can-recons*  
   )
 
 import cgp.Utils as Utils
@@ -617,27 +619,8 @@ import cgp.Rewriting  -- import ∷ʳ-++ rewriting rule
 ---------------------------------------------------------------------------------------------------------
 -- A helper function  for pdUMany-aux then pdUMany 
 -- compose-pdi-with : copmose a PDInstance with the "downstream" PDinstance* injection and soundness evidence
+-- it is moved to PDInstance.lagda.md 
 
-compose-pdi-with : ∀ { r d : RE } { pref : List Char } { c : Char }
-                   → ( d→r-inj : U d → U r )
-                   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r-inj v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
-                   → PDInstance d c
-                   → PDInstance* r (pref ∷ʳ c )
-compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r (pdinstance {p} {d} {c} p→d s-ev-p-d) = 
-                 pdinstance* {p} {r} {pref ∷ʳ c } ( d→r ∘ p→d ) 
-                                       (
-                                        λ u →
-                                          begin
-                                            proj₁ (flat (d→r (p→d u)))
-                                          ≡⟨ s-ev-d-r (p→d u) ⟩
-                                            pref ++ proj₁ (flat (p→d u))
-                                          ≡⟨ cong ( pref ++_ ) (s-ev-p-d u) ⟩
-                                            pref ++ ( c ∷ Product.proj₁ (flat u) )
-                                          -- ≡⟨ sym ( ∷ʳ-++ pref c (Product.proj₁ (flat u)) ) ⟩  -- this becomes a refl, thanks to the REWRITE ∷ʳ-++  pragma 
-                                          ≡⟨ refl ⟩                                         
-                                            pref ∷ʳ c ++ proj₁ (flat u) 
-                                          ∎
-                                        )
                                         
 -- helper functions for pdUMany-aux then pdUMany                   
 -- advance-pdi*-with-c : advance a PDInstance* with a character c (by consuming it with pdU) and return a list of PDInstance*
@@ -765,23 +748,8 @@ pdi is u-reconstructable w.r.t w.
 -- Sub Lemma 23.1 - 23.3 BEGIN 
 -------------------------------------------------------------------------------------------------------------
 
--- TODO the following lemma can be simplified. 
-compose-pdi-with-can-recons* : ∀ { r d : RE } { pref : List Char } { c : Char } 
-                   → ( u : U r ) 
-                   → ( v : U d ) 
-                   → ( d→r : U d → U r )
-                   → ( d→r-v≡u : d→r v ≡ u)  -- can we derive this w/o passing it in from the call site?
-                   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
-                   → ( pdi : PDInstance d c)
-                   → Recons {d} {c} v pdi  -- can we get rid of this premise? 
-                   → Recons* {r} {pref ∷ʳ c} u (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r pdi)
-compose-pdi-with-can-recons* {r} {d} {pref} {c}  u v d→r d→r-v≡u s-ev-d-r pdi@(pdinstance {p} {d} {c} p→d s-ev-p-d) (recons v ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡v ) )
-  = recons*  u (w∈⟦p⟧ , (begin
-    d→r (p→d (unflat w∈⟦p⟧)) ≡⟨ cong (λ x → (d→r x) ) inj-unflat-w∈⟦p⟧≡v ⟩
-    d→r v ≡⟨ d→r-v≡u ⟩
-    u 
-                         ∎ )) 
-
+-- TODO the following lemma can be simplified.
+-- compose-pdi-with-can-recons* is moved to Recons.lagda.md
 
 -- any-advance-pdi*-with-c : search for reconstructable pd Instance from (List.map (compose-pdi-with {r} {d}  {pref} {c} d→r-inj s-ev-d-r ) pdU [d , c]
 any-advance-pdi*-with-c : ∀ { r : RE } { pref : List Char } { c : Char } { cs : List Char }
@@ -960,8 +928,7 @@ PairU (LeftU (ListU (LetterU 'a' ∷ []))) (ListU (LetterU 'a' ∷ []))
 PairU (LeftU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])) ∷
 PairU (RightU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))) (ListU [])
 ∷
-PairU (RightU (ListU (LetterU 'a' ∷ [])))
-(ListU (LetterU 'a' ∷ []))
+PairU (RightU (ListU (LetterU 'a' ∷ []))) (ListU (LetterU 'a' ∷ []))
 ∷
 PairU (RightU (ListU [])) (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
 ∷ []

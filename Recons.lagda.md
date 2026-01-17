@@ -33,7 +33,8 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-fst ; mkinjFst ;
   pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
   concatmap-pdinstance-snd  ; zip-es-flat-[]-es ;
-  pdinstance-assoc ; mkinjAssoc ; inv-assoc ; assoc ; assoc-inv-assoc-u≡u   
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc ; assoc ; assoc-inv-assoc-u≡u ;
+  compose-pdi-with 
   ) 
 
 import cgp.Utils as Utils
@@ -253,3 +254,27 @@ data Recons* : { r : RE } { pref : List Char } → ( u : U r ) → ( PDInstance*
 ```
 
 
+Sub lemma 23.1 is moved here. 
+
+```agda
+
+compose-pdi-with-can-recons* : ∀ { r d : RE } { pref : List Char } { c : Char } 
+                   → ( u : U r ) 
+                   → ( v : U d ) 
+                   → ( d→r : U d → U r )
+                   → ( d→r-v≡u : d→r v ≡ u)  -- can we derive this w/o passing it in from the call site?
+                   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+                   → ( pdi : PDInstance d c)
+                   → Recons {d} {c} v pdi  -- can we get rid of this premise? 
+                   → Recons* {r} {pref ∷ʳ c} u (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r pdi)
+compose-pdi-with-can-recons* {r} {d} {pref} {c}  u v d→r d→r-v≡u s-ev-d-r pdi@(pdinstance {p} {d} {c} p→d s-ev-p-d) (recons v ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡v ) )
+  = recons*  u (w∈⟦p⟧ , (begin
+    d→r (p→d (unflat w∈⟦p⟧)) ≡⟨ cong (λ x → (d→r x) ) inj-unflat-w∈⟦p⟧≡v ⟩
+    d→r v ≡⟨ d→r-v≡u ⟩
+    u 
+                         ∎ )) 
+
+
+
+
+```

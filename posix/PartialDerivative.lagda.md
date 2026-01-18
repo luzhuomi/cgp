@@ -113,37 +113,7 @@ To enforce the posix ordering, we encode { } by singleton list, i.e Maybe. ∪ b
 
 [] ⊕ [ r ] = [ r ]
 [ r ] ⊕ [] = [ r ]
-[ s ] ⊕ [ t ] = [ s + t ] 
-
-
--- a version that replace all ∪ by ⊕ and { }  by Maybe
-_⊕_`_ : Maybe RE → Maybe RE → ℕ →  Maybe RE
-_⊕_`_ nothing mr loc = mr
-_⊕_`_ mr nothing loc = mr
-_⊕_`_ (just s) (just t) loc = just (s + t ` loc) 
-
-
-pd[_,_] : RE →  Char → Maybe RE
-pdConcat : ( l : RE ) → ( r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char)  → Maybe RE
-
-pd[ ε , c ]    = nothing
-pd[ $ c ` loc  , c' ] with c Char.≟ c'
-...                      | yes refl = just ε 
-...                      | no  _    = nothing
-pd[ l ● r ` loc , c ] with ε∈? l
-...                      | yes ε∈l =  pdConcat  l r ε∈l loc c
-...                      | no ¬ε∈l =  Maybe.map (λ l' → l' ● r ` loc ) pd[ l , c ]
-pd[ l + r ` loc , c ]               = pd[ l , c ] ⊕  pd[ r , c ] ` loc 
-pd[ r * nε ` loc , c ]              = Maybe.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
-{-# TERMINATING #-}
--- it seems to me that the ⊕ in pdConcat cases is unnecessary. 
-pdConcat ε  r  ε∈ε loc c  = pd[ r  , c ]
-pdConcat (l * ε∉l ` loc₂ ) r ε∈*             loc c = (Maybe.map (λ l' → l' ● r ` loc ) pd[ l * ε∉l ` loc₂ , c ]) ⊕ pd[ r , c ] ` loc  -- or loc₂? 
-pdConcat (l ● s ` loc₂ )   r (ε∈ ε∈l ● ε∈s)  loc c = (Maybe.map (λ p → p ● r ` loc ) pd[ l ● s ` loc₂ , c ]) ⊕ pd[ r , c ] ` loc  -- there is no need to apply assoc rule
-pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (Maybe.map (λ p → p ● r ` loc ) pd[ l + s ` loc₂ , c ]) ⊕ pd[ r , c ] ` loc  -- or loc₂? 
-
-
-
+[ s ] ⊕ [ t ] = [ s + t ]
 
 
 
@@ -161,31 +131,50 @@ w = ab
 
 #### Using lne
 
-pd[ r , a ] = [ r' ● r | r' ∈ pd[ ( a + b) + a ● b, a ] ]
+Recall in lne parsing, we specialize the pd( r₁ ● r₂ , ℓ ) case as follows,
+
+pd( r₁ ● r₂ , ℓ ) ｜ ¬ ε ∈ r₁ = { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } 
+pd( r₁ ● r₂ , ℓ ) ｜ ε ∈ r₁   =
+  if r₁ ≡ s ● t
+  then pd( s ● ( t ● r₂ ) )                -- (1)
+  else { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } ∪ pd( r₂ , ℓ )
+
+Apply it to the above running example 
+
+pd( r , a ) = [ r' ● r | r' ∈ pd( ( a + b) + a ● b, a ) ]
             = [ ε ● r , ε ● b ● r ]
-            ∵ pd[ (a + b) + a ● b, a ] =
-              pd[ a , a ] ++ pd[ b , a ] ++ pd[ a ● b , a ] =
+            ∵ pd( (a + b) + a ● b, a ) =
+              pd( a , a ) ++ pd( b , a ) ++ pd( a ● b , a ) =
               [ ε ] ++ [] ++ [ ε ● b ]
-concatMap pd[ _ , b ] [ ε ● r , ε ● b ● r ] = pd[ ε ● r , b ] ++ pd[ ε ● b ● r , b ]
+concatMap (λ x → pd( x , b )) [ ε ● r , ε ● b ● r ] = pd( ε ● r , b ) ++ pd( ε ● b ● r , b )
                                             = [ ε ● r ] ++ [ ε ● r ]  -- the first r has been unrolled again (in its 3rd iteration), while the 2nd r is stillin its 2nd iteration
 
-#### Using posix
+#### Using ⊕ to replace all ++ 
 
-pd[ r , a ] = [ r' ● r | r' ∈ pd[ ( a + b) + a ● b, a ] ]
+i.e. the following two cases are replaced
+
+pd(r₁ ● r₂ , ℓ ) = [ r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) ]  ⊕ [  r₂' ∣ ε ∈ r₁ ∧ r₂' ∈ pd( r₂ , ℓ ) ] -- (1) 
+
+pd(r₁ + r₂ , ℓ ) = pd( r₁ , ℓ ) ⊕ pd( r₂ , ℓ  ) -- (2)
+
+we replace all ++ by ⊕, we don't apply associativity rule, so that the structure of the overall regular expression is respect. 
+
+Apply the above to the running example 
+
+pd( r , a ) = [ r' ● r | r' ∈ pd( ( a + b) + a ● b, a ) ]
             = [ ( ε + ε ● b ) ● r ]
-            ∵ pd[ (a + b) + a ● b, a ] =
-              pd[ a , a ] ⊕ pd[ b , a ] ⊕ pd[ a ● b , a ] =
+            ∵ pd( (a + b) + a ● b, a ) =
+              pd( a , a ) ⊕ pd( b , a ) ⊕ pd( a ● b , a ) =
               [ ε ] ⊕ []  ⊕ [ ε ● b ] = 
-              [ ε + ε ● b ] 
-concatMap pd[ _ , b ] [ ( ε + ε ● b ) ● r ] = pd[ ( ε + ε ● b ) ● r , b ] 
-                                            = pdConcat ( ε + ε ● b ) r b
-                                            = ( map ( λ p → p ● r ) pd[ ε + ε ● b , b ] ) ⊕ pd[ r , b ] -- is this ⊕ necessary? 
-                                            = ( map ( λ p → p ● r ) pd[ ε , b ] ⊕  pd[ ε ● b , b ]) ⊕ pd[ r , b ]
-                                            = ( map ( λ p → p ● r ) [ ε ] ) ⊕  pd[ r , b ]
-                                            = [ ε ● r ] ⊕ pd[ r , b ] -- the left r is not touched, i.e. still in the 2nd iteration.
+              [ ε + ε ● b ]
+              
+concatMap (λ x →  pd( x , b ) [ ( ε + ε ● b ) ● r ] = pd( ( ε + ε ● b ) ● r , b )
+                                            = ( map ( λ p → p ● r ) pd( ε + ε ● b , b ) ) ⊕ pd( r , b ) 
+                                            = (( map ( λ p → p ● r ) pd( ε , b ) ) ⊕ pd( ε ● b , b )) ⊕ pd( r , b )
+                                            = (( map ( λ p → p ● r ) [ ε ] ) ⊕  pd( r , b )
+                                            = [ ε ● r ] ⊕ pd( r , b ) -- the left r is not touched, i.e. still in the 2nd iteration.
                                             = [ ε ● r ] ⊕ [ ε ● r ]   -- the right r is in the 3nd iteration. thanks to the lne policy by default 
                                             
-
 
 ### An example 
 
@@ -196,7 +185,7 @@ ps  = let a₁ = $ 'a' ` 1
           b₅ = $ 'b' ` 5
           a●b = a₄ ● b₅ ` 6
           r = ( a+b + a●b ` 7 ) * (ε∉ (ε∉ ε∉$ + ε∉$ ) + (ε∉fst ε∉$) ) ` 8 
-      in pd[ r , 'a'] >>= (λ p → pd[ p , 'b'] )
+      in pd( r , 'a') >>= (λ p → pd( p , 'b') )
 
 
 ps should be
@@ -214,13 +203,15 @@ just
  ` 8)
 
 
-
-
 ### a safe variant implementation of posix : using ⊕ only at + case, use ++ in the ● case.
+
+In this variant, we do not replace the ++ in the r₁ ● r₂ case by ⊕, we only apply ⊕ to the +  case.
+
+pd(r₁ + r₂ , ℓ ) = pd( r₁ , ℓ ) ⊕ pd( r₂ , ℓ  )
 
 pd[ r , a ] = [ r' ● r | r' ∈ pd[ ( a + b) + a ● b, a ] ]
             = [ ( ε + ε ● b ) ● r ]
-            ∵ pd[ (a + b) + a ● b, a ] =  -- this is + case, ⊕ is used to implement ∪ 
+            ∵ pd[ (a + b) + a ● b, a ] =  
               pd[ a , a ] ⊕ pd[ b , a ] ⊕ pd[ a ● b , a ] =
               [ ε ] ⊕ []  ⊕ [ ε ● b ] = 
               [ ε + ε ● b ]
@@ -245,15 +236,15 @@ _⊕_`_ rs ts loc = concatMap ( λ r → List.map (λ t → (r + t ` loc)) ts ) 
 
 
 pd[_,_] : RE →  Char → List RE
-pdConcat : ( l : RE ) → ( r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char)  → List RE
+pdConcat : ( l : RE ) → ( r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char ) → List RE
 
 pd[ ε , c ]    = []
 pd[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                      | yes refl = [ ε ] 
 ...                      | no  _    = [] 
 pd[ l ● r ` loc , c ] with ε∈? l
-...                      | yes ε∈l =  pdConcat  l r ε∈l loc c
-...                      | no ¬ε∈l =  List.map (λ l' → l' ● r ` loc ) pd[ l , c ]
+...                      | yes ε∈l  = pdConcat  l r ε∈l loc c
+...                      | no ¬ε∈l  = List.map (λ l' → l' ● r ` loc ) pd[ l , c ]
 pd[ l + r ` loc , c ]               = pd[ l , c ] ⊕  pd[ r , c ] ` loc 
 pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
 {-# TERMINATING #-}
@@ -266,7 +257,8 @@ pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p 
 
 ```
 
-#### Note
+#### Note : a possible simple algorithm
+
 the above cases for pdConcat can be combined into one
 for the ease of reusing the sub lemmas from lne and greedy parsing, let's keep the above for the time being.
 
@@ -452,17 +444,6 @@ To prove Lemma 19, we need to prove some sub lemmas.
 The sub lemmas (properties of pdinstance-reconstructabilities) are found in Recons.lagda.md. 
 
 
-
-foo :  Any (Recons (LeftU u))
-      (concatMap
-       (λ pdi →
-          cgp.posix.PartialDerivative.fuse (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) pdi  pdiʳ
-          ∷
-          List.map
-          (cgp.posix.PartialDerivative.fuse (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ)
-           pdiˡ)
-          pdisʳ)
-       (pdiˡ ∷ pdisˡ))
 
 ```agda
 any-recons-oplus-left : ∀ { l s : RE } { loc : ℕ } { c : Char } { w : List Char } { u : U l }
@@ -975,8 +956,8 @@ module ExampleParseAll where
   ex_zs : List ( U a*+a*●a*+a*●a* )
   ex_zs = parseAll[ a*+a*●a*+a*●a* , 'a' ∷ 'a' ∷ [] ]
 
-  posix-test-r : RE
-  posix-test-r =
+  posix-test-r₁ : RE
+  posix-test-r₁ =
       let a₁ = $ 'a' ` 1
           b₂ = $ 'b' ` 2
           a+b = a₁ + b₂ ` 3 
@@ -986,9 +967,33 @@ module ExampleParseAll where
           r = ( a+b + a●b ` 7 ) * (ε∉ (ε∉ ε∉$ + ε∉$ ) + (ε∉fst ε∉$) ) ` 8
       in r
 
-  ex_os : List ( U posix-test-r )
-  ex_os = parseAll[ posix-test-r , 'a' ∷ 'b' ∷ [] ] 
+  ex_os : List ( U posix-test-r₁ )
+  ex_os = parseAll[ posix-test-r₁ , 'a' ∷ 'b' ∷ [] ] 
 
+  -- ((ab + a) ● ( a + baa )) ● (c + ac)
+  posix-test-r₂ : RE   
+  posix-test-r₂ =
+      let a₁ = $ 'a' ` 1
+          b₂ = $ 'b' ` 2
+          a●b = a₁ ● b₂ ` 3 
+          a₄ = $ 'a' ` 4
+          a●b+a = a●b + a₄ ` 5
+          a₆ =  $ 'a' ` 6
+          b₇ =  $ 'b' ` 7
+          a₈ =  $ 'a' ` 8
+          a₉ =  $ 'a' ` 9
+          baa = b₇ ● ( a₈ ● a₉ ` 10) ` 11
+          a+baa = a₆ + baa ` 12
+          c₁₃ = $ 'c' ` 13
+          a₁₄ = $ 'a' ` 14
+          c₁₅ = $ 'c' ` 15
+          ac = a₁₄ ● c₁₅ ` 16
+          c+ac = c₁₃ + ac ` 17
+
+          r = ( a●b+a ● a+baa ` 18 ) ● c+ac ` 19
+      in r
+
+  ex_qs = parseAll[ posix-test-r₂ , 'a' ∷ 'b' ∷ 'a' ∷ 'a' ∷ 'c' ∷ [] ] 
 ```
 
 Evaluating ExampleParseAll.ex_us
@@ -1056,3 +1061,12 @@ ListU (RightU (PairU (LetterU 'a') (LetterU 'b')) ∷ [])
 ListU (LeftU (LeftU (LetterU 'a')) ∷ LeftU (RightU (LetterU 'b')) ∷ [])
 ∷
 []
+
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+evaluating ExampleParseAll.ex_qs yields
+
+PairU (PairU (LeftU (PairU (LetterU 'a') (LetterU 'b')))   (LeftU (LetterU 'a')))                                                (RightU (PairU (LetterU 'a') (LetterU 'c')))
+∷
+PairU (PairU (RightU (LetterU 'a'))                        (RightU (PairU (LetterU 'b') (PairU (LetterU 'a') (LetterU 'a')))))   (LeftU (LetterU 'c'))
+∷ []

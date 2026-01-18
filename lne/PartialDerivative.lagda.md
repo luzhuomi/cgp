@@ -103,6 +103,22 @@ pd(r₁ + r₂ , ℓ ) = pd( r₁ , ℓ ) ∪ pd( r₂ , ℓ  )
 
 pd(r* , ℓ ) = pd( r' ● r* ∣ r' ∈ pd( r , ℓ ) }
 
+
+To enforce the lne order, we need to adapt the pd(r₁ ● r₂ , ℓ ) case as follows,
+
+pd( r₁ ● r₂ , ℓ ) ｜ ¬ ε ∈ r₁ = { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } 
+pd( r₁ ● r₂ , ℓ ) ｜ ε ∈ r₁   =
+  if r₁ ≡ s ● t
+  then pd( s ● ( t ● r₂ ) )                -- (1)
+  else { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } ∪ pd( r₂ , ℓ) 
+
+at (1) we apply associativity law,
+the idea is to "go down to the left most possible sub tree to find the
+the non-empty parse tree for s".
+
+without (1), the ex_ys example will be the counter example showing it is not lne.
+
+
 ```agda
 
 pd[_,_] : RE →  Char → List RE

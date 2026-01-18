@@ -30,13 +30,14 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-fst ; mkinjFst ;
   pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
   concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
-  pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound   
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ;
+  compose-pdi-with 
   ) 
 
 
 import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
-  compose-pdi-with;  advance-pdi*-with-c ; 
+  advance-pdi*-with-c ; 
   pdUMany[_,_]; pdUMany-aux 
   ) 
 

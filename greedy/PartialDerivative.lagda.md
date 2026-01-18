@@ -118,11 +118,18 @@ To enforce the greedy order, we need to adapt the pd(r₁ ● r₂ , ℓ ) case 
 pd( r₁ ● r₂ , ℓ ) ｜ ¬ ε ∈ r₁ = { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } 
 pd( r₁ ● r₂ , ℓ ) ｜ ε ∈ r₁   =
   if r₁ ≡ s + t
-  then pd( s ● r₂ , ℓ ) ∪ pd( t ● r₂ , ℓ ) 
+  then pd( s ● r₂ , ℓ ) ∪ pd( t ● r₂ , ℓ )      -- (1)
   else if r₁ ≡ s ● t
-       then pd( s ● ( t ● r₂ ) )
+       then pd( s ● ( t ● r₂ ) )                -- (2)
        else { r₁' ● r₂ ∣ r₁' ∈ pd( r₁ , ℓ ) } ∪ pd( r₂ , ℓ )
 
+at (1) we apply distributivity law.
+at (2) we apply associativity law,
+both rules are required, the idea is to "go down to the left most possible sub tree to find the
+left or right choice, because greedy match favors the left choice over the right.
+
+without (1), the ex_vs example will be the counter example showing it is not greedy.
+without (2), the ex_us example will be the counter example showing it is not greedy.
 
 ```agda
 

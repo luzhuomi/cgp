@@ -34,12 +34,17 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-fst ; mkinjFst   ;
   pdinstance-snd ; mk-snd-pdi ; mkinjSnd ; 
   concatmap-pdinstance-snd ; zip-es-flat-[]-es  ;
-  pdinstance-assoc; inv-assoc 
+  pdinstance-assoc; inv-assoc ;
+  compose-pdi-with   
   ) 
 
 
 import cgp.Recons as Recons
-open Recons using ( Recons ; recons
+open Recons using ( Recons ; recons ;
+  Recons* ; recons* ;
+  inv-recons-left ;   inv-recons-right ; inv-recons-fst ; inv-recons-snd ; inv-recons-star ; inv-recons-assoc ; 
+  inv-recons*-compose-pdi-with ; 
+  ¬recons-right-from-pdinstance-left ; ¬recons-left-from-pdinstance-right ; ¬recons-[]-from-pdinstance-star 
   )
 
 
@@ -47,12 +52,8 @@ import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; pdUConcat ;
   pdUMany[_,_]; pdUMany-aux;
-  advance-pdi*-with-c ; compose-pdi-with ; 
-  Recons* ; recons* ;
+  advance-pdi*-with-c ; 
   parseAll[_,_] ; buildU ;
-  inv-recons-left ;   inv-recons-right ; inv-recons-fst ; inv-recons-snd ; inv-recons-star ; inv-recons-assoc ; 
-  inv-recons*-compose-pdi-with ; 
-  ¬recons-right-from-pdinstance-left ; ¬recons-left-from-pdinstance-right ; ¬recons-[]-from-pdinstance-star ;
   pdi*-∃  ;
   recons-v→¬proj₁flat-v≡[] ) 
 

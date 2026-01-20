@@ -1135,3 +1135,179 @@ PairU (PairU (LeftU (PairU (LetterU 'a') (LetterU 'b')))   (LeftU (LetterU 'a'))
 ∷
 PairU (PairU (RightU (LetterU 'a'))                        (RightU (PairU (LetterU 'b') (PairU (LetterU 'a') (LetterU 'a')))))   (LeftU (LetterU 'c'))
 ∷ []
+
+
+
+### Lemma 25 : buildU is sound
+Let r be a non problemantic regular expression.
+Let w be a word.
+Let pdi be a partial instance* of r w.r.t w.
+Then for all u ∈ buildU {r} {w} pdi, flat u ≡ w.
+
+```agda
+buildU-sound : ∀ { r : RE } {w : List Char }
+  → ( pdi : PDInstance* r w )
+  → All (λ u → proj₁ (flat {r} u) ≡ w ) (buildU pdi)
+buildU-sound {r} {w} (pdinstance* {p} {r} {pref} p→r s-ev) with ε∈? p
+... | yes ε∈p = prove-all (mkAllEmptyU ε∈p) (mkAllEmptyU-sound ε∈p)
+  where 
+    prove-all : ( vs : List (U p) ) → All (Flat-[] p) vs → All (λ u → proj₁ (flat {r} u) ≡ w ) (List.map p→r vs)
+    prove-all [] [] = [] 
+    prove-all ( e ∷ es ) ( (flat-[] {p} e proj1-flat-e≡[]) ∷ pxs ) =
+      (begin
+        proj₁ (flat (p→r e))
+      ≡⟨ s-ev e ⟩
+        w ++ proj₁ (flat e)
+      ≡⟨ cong ( w ++_ ) proj1-flat-e≡[] ⟩
+        w ++ []
+      ≡⟨ ++-identityʳ w ⟩
+        w
+      ∎) ∷ prove-all es pxs 
+... | no  _    = [] 
+
+
+
+```
+
+### Theorem 26 : ParseAll is sound 
+
+Let r be a non problematic regular expression.
+Let w be a word.
+Then for all u ∈ parseAll[ r , w ] , | u | ≡ w.
+
+
+```agda
+parseAll-sound : ∀ {r : RE } { w : List Char }
+  → All ( λ u → proj₁ (flat u) ≡ w ) parseAll[ r , w ]
+parseAll-sound {r} {w} = prove-all pdUMany[ r , w ]
+  where
+    prove-all : ( pdis : List (PDInstance* r w) ) → All ( λ u → proj₁ (flat u) ≡ w ) (concatMap buildU pdis)
+    prove-all [] = []
+    prove-all ( pdi ∷ pdis ) with buildU pdi | buildU-sound pdi
+    ... | []       | []         = prove-all pdis
+    ... | (v ∷ vs) | (pv ∷ pvs) = all-concat (pv ∷ pvs) (prove-all pdis)  
+
+```
+
+
+### Lemma 27 : buildU is complete
+
+Let r be a non problematic regular expression.
+Let u be a parse tree of r.
+Let pdi be a partial derivative descendant instance of r w.r.t to |u| such that 
+pdi is u-reconstructable. 
+Then u ∈ buildU pdi
+
+```agda
+buildU-complete : ∀ { r : RE } 
+  → ( u : U r )
+  → ( pdi : PDInstance* r (proj₁ (flat u)) )
+  → Recons* u pdi
+  → Any ( _≡_ u ) (buildU pdi)
+buildU-complete {r} u pdi@(pdinstance* {p} {r} {proj1-flat-u} inj s-ev-p-r) (recons* {p} {r} {w} {proj1-flat-u} {inj} {s-ev-p-r} u' ( w∈⟦p⟧ , inj-unflat-w∈⟦p⟧≡u) ) = u∈buildU-pdi
+  where
+    {- Manual proof to show w ≡ []
+      The main idea of the above proof to show w ≡ [] 
+        1. From soundness of p→r-inj 
+           we have 
+             s-ev-p-r (unflat w∈⟦p⟧) : proj₁ (flat (inj (unflat w∈⟦p⟧))) ≡ proj₁ (flat u) ++ proj₁ (flat (unflat w∈⟦p⟧))    (1) 
+        2. From completeness of p→r inj
+          we have
+            inj-unflat-w∈⟦p⟧≡u : inj (unflat w∈⟦p⟧) ≡ u   (2)
+
+        3. substituting (2) into (1)  :
+          
+          proj₁ (flat u) ≡  proj₁ (flat u) ++ proj₁ (flat (unflat w∈⟦p⟧))     (3) 
+
+        4. applying ++-identityʳ to the LHS of (3)
+        
+          proj₁ (flat u) ++ []  ≡  proj₁ (flat u) ++ proj₁ (flat (unflat w∈⟦p⟧))     (4)           
+        5. by applying ++-cancelˡ  to (4) (which cancel the common prefix proj₁ (flat u) from both LHS and RHS of (4) 
+          [] ≡ proj₁ (flat (unflat w∈⟦p⟧))
+        6. by applying flat∘unflat to the above we have
+          [] ≡ w 
+    -}
+    eq1 :  proj₁ (flat (inj (unflat w∈⟦p⟧))) ≡ proj₁ (flat u) ++ proj₁ (flat (unflat w∈⟦p⟧))
+    eq1 = s-ev-p-r (unflat w∈⟦p⟧)
+    
+    proj1-flat-u++[]≡proj1-flat-u++proj1-flat-unflat-w∈⟦p⟧ : proj₁ (flat u) ++ [] ≡  proj₁ (flat u) ++ proj₁ (flat (unflat w∈⟦p⟧))
+    proj1-flat-u++[]≡proj1-flat-u++proj1-flat-unflat-w∈⟦p⟧ =
+      begin
+        proj₁ (flat u) ++ []              ≡⟨ ++-identityʳ (proj₁ (flat u)) ⟩ 
+        proj₁ (flat u)                    ≡⟨ cong (λ x → proj₁ (flat x)) (sym inj-unflat-w∈⟦p⟧≡u)  ⟩ 
+        proj₁ (flat (inj (unflat w∈⟦p⟧))) ≡⟨ eq1 ⟩
+        proj₁ (flat u) ++ proj₁ (flat (unflat w∈⟦p⟧))
+      ∎
+
+    proj1-flat-unflat-w∈⟦p⟧≡[] : proj₁ (flat (unflat w∈⟦p⟧)) ≡ []
+    proj1-flat-unflat-w∈⟦p⟧≡[] =   ++-cancelˡ ( proj₁ (flat u) ) (proj₁ (flat (unflat w∈⟦p⟧))) [] (sym proj1-flat-u++[]≡proj1-flat-u++proj1-flat-unflat-w∈⟦p⟧)
+
+    flat-unflat-w∈⟦p⟧≡w×w∈⟦p⟧ : flat (unflat w∈⟦p⟧) ≡ ( w , w∈⟦p⟧ )
+    flat-unflat-w∈⟦p⟧≡w×w∈⟦p⟧ = flat∘unflat w∈⟦p⟧
+
+    proj1-flat-unflat-w∈⟦p⟧≡w : proj₁ (flat (unflat w∈⟦p⟧)) ≡ w
+    proj1-flat-unflat-w∈⟦p⟧≡w =
+      begin
+        proj₁ (flat (unflat w∈⟦p⟧)) ≡⟨ cong (λ x → proj₁ x ) flat-unflat-w∈⟦p⟧≡w×w∈⟦p⟧ ⟩
+        w
+      ∎ 
+
+    w≡[] : w ≡ []
+    w≡[] =
+      begin
+         w  ≡⟨ sym (proj1-flat-unflat-w∈⟦p⟧≡w) ⟩
+         proj₁ (flat (unflat w∈⟦p⟧)) ≡⟨ proj1-flat-unflat-w∈⟦p⟧≡[] ⟩
+         []
+      ∎
+
+    []∈⟦p⟧ : [] ∈⟦ p ⟧
+    []∈⟦p⟧ = Eq.subst (λ x → x ∈⟦ p ⟧)  w≡[] w∈⟦p⟧
+  
+    u∈buildU-pdi  : Any (_≡_ u) (buildU pdi)
+    u∈buildU-pdi  with ε∈? p
+    ... | no ¬ε∈p = Nullary.contradiction (Word.[]∈⟦r⟧→ε∈r []∈⟦p⟧) ¬ε∈p  
+    ... | yes ε∈p = find (mkAllEmptyU ε∈p) ( mkAllEmptyU-complete ε∈p ( unflat w∈⟦p⟧ ) (flat-[] (unflat w∈⟦p⟧)  proj1-flat-unflat-w∈⟦p⟧≡[] )   )
+      where
+        find : ∀ ( vs : List (U p) ) → Any ( _≡_ ( unflat w∈⟦p⟧ ) ) vs → (Any ( _≡_ u ) (List.map inj vs ))
+        find (x ∷ xs) (here px) = here ev-u≡injx
+           where
+              ev-u≡injx : u ≡ inj x 
+              ev-u≡injx  =
+               begin
+                 u ≡⟨ sym inj-unflat-w∈⟦p⟧≡u ⟩
+                 inj (unflat w∈⟦p⟧) ≡⟨ cong (λ z → inj z ) px ⟩
+                 inj x
+               ∎
+        find (x ∷ xs) (there pxs) = there (find xs pxs) 
+        find []       any≡ =  Nullary.contradiction any≡ ¬Any[] 
+
+
+```
+
+
+### Theorem 28 : ParseAll is complete
+
+Let r be a non problematic regular expression.
+Let u be a parse tree of r.
+Then u ∈ parseAll[ r , w ] for some w.
+
+```agda
+parseAll-complete : ∀ { r : RE }
+  → ( u : U r )
+  → ∃[ w ] (Any ( _≡_ u ) parseAll[ r , w ])
+parseAll-complete {r} u = proj₁ (flat u) , find pdinstances any-recons*-pdinstances 
+  where
+    pdinstances : List (PDInstance* r (proj₁ (flat u))) 
+    pdinstances = pdUMany[ r , proj₁ (flat u) ]
+
+    any-recons*-pdinstances : Any (Recons* {r} {proj₁ (flat u)} u ) pdinstances
+    any-recons*-pdinstances = pdUMany-complete {r} u
+
+
+    find : ∀ ( pdis :  List (PDInstance* r (proj₁ (flat u)))  ) →  Any (Recons* {r} {proj₁ (flat u)} u ) pdis → Any ( _≡_ u ) (concatMap buildU pdis)
+    find []            any-recons*           = Nullary.contradiction any-recons* ¬Any[]
+    find (pdi ∷ pdis)  (here recons*-u-pdi)  = any-left-concat (buildU-complete u pdi recons*-u-pdi)
+    find (pdi ∷ pdis)  (there pxs)           = any-right-concat (find pdis pxs)     
+    
+```
+

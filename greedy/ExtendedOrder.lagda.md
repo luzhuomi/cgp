@@ -33,12 +33,17 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-fst ; mkinjFst ;
   pdinstance-snd ; mk-snd-pdi ; mkinjSnd ;
   concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
+  compose-pdi-with ; 
   pdinstance-assoc; inv-assoc
   ) 
 
 
 import cgp.Recons as Recons
-open Recons using ( Recons ; recons
+open Recons using ( Recons ; recons ;
+  Recons* ; recons* ;
+  inv-recons-left ; inv-recons-right ; inv-recons-star ; inv-recons-fst ; inv-recons-snd ; inv-recons-assoc ;
+  inv-recons*-compose-pdi-with ;  
+  ¬recons-right-from-pdinstance-left ; ¬recons-left-from-pdinstance-right ; ¬recons-[]-from-pdinstance-star 
   )
 
 import cgp.greedy.PartialDerivative as PartialDerivative
@@ -46,15 +51,13 @@ open PartialDerivative using (
   pdU[_,_] ; pdUConcat ;
   pdinstance-dist ; inv-dist ; dist ; dist-inv-dist-u≡u ; inv-dist-dist-u≡u ; mkinjDist ;
   pdUMany[_,_]; pdUMany-aux;
-  advance-pdi*-with-c ; compose-pdi-with ; 
---   Recons ; recons ;
-  Recons* ; recons* ;
+  advance-pdi*-with-c ;
   injId ;
   pdUMany-aux-cs-[]≡[];
   parseAll[_,_] ; buildU;
-  inv-recons-left ; inv-recons-right ; inv-recons-star ; inv-recons-fst ; inv-recons-snd ; inv-recons-assoc ; inv-recons-dist-right ; inv-recons-dist-left ;
-  inv-recons*-compose-pdi-with ;
-  ¬recons-right-from-pdinstance-left ; ¬recons-left-from-pdinstance-right ; ¬recons-[]-from-pdinstance-star ; ¬recons-pair-right-from-pdinstance-dist-left ; 
+  inv-recons-dist-right ; inv-recons-dist-left ;
+
+  ¬recons-pair-right-from-pdinstance-dist-left ; 
   ¬recons-pair-left-from-pdinstance-dist-right ; 
   pdi*-∃ ) 
 

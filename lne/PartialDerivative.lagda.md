@@ -1065,6 +1065,7 @@ parseAll-complete {r} u = proj₁ (flat u) , find pdinstances any-recons*-pdinst
 
 
 
+
 #### Aux Lemma: pdUMany-aux returns an empty list of pdinstance*'s given an empty input list of pdinstance*'s .
 
 Let r be a non problematic regular expression.

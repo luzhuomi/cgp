@@ -1311,3 +1311,194 @@ parseAll-complete {r} u = proj₁ (flat u) , find pdinstances any-recons*-pdinst
     
 ```
 
+#### Aux Lemma: pdUMany-aux returns an empty list of pdinstance*'s given an empty input list of pdinstance*'s .
+
+Let r be a non problematic regular expression.
+Let pref and suff be words .
+Then pdUMany-aux {r} {pref} suff [] yields [] as result. 
+
+```agda
+-- sub lemma
+concatMap-advance-pdi*-with-c-[]≡[] : ∀ { r : RE } {pref : List Char} { c : Char }
+  → concatMap (advance-pdi*-with-c {r} {pref} {c}) [] ≡ [] 
+concatMap-advance-pdi*-with-c-[]≡[] = refl 
+-- main lemma
+pdUMany-aux-cs-[]≡[] : ∀ { r : RE } {pref : List Char}
+    → (suff : List Char)
+    → pdUMany-aux {r} {pref} suff [] ≡ [] 
+pdUMany-aux-cs-[]≡[] {r} {pref} [] rewrite (++-identityʳ pref) = refl 
+pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs) rewrite (concatMap-advance-pdi*-with-c-[]≡[] {r} {pref} {c})  = pdUMany-aux-cs-[]≡[] {r} {pref ∷ʳ c } cs
+```
+
+
+
+#### Aux Lemma : first r is not empty implies pdU r is not empty for some c.
+
+Let r be a non problematic regular expression.
+Let c be a character and cs be aword.
+Let first r ≡ c ∷ cs.
+Then pdU[ r , c ] must not be an empty list. 
+
+```agda
+-- sub sub lemma 
+zip-es-flat-[]-es≡[]→es≡[] : ∀ {l : RE} {ε∈l : ε∈ l }
+    → (es : List (U l))
+    → (flat-[]-es : All (Flat-[] l) es)
+    → (PDI.zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es  ≡ [] ) 
+    -----------------------------------------------------
+    → es ≡ []
+zip-es-flat-[]-es≡[]→es≡[] {l} {ε∈l} [] [] refl = refl     
+zip-es-flat-[]-es≡[]→es≡[] {l} {ε∈l} (e ∷ es) (flat-[]-e ∷ flat-[]-es) =  λ ()
+
+
+first≢[]→¬pdU≡[] : ∀ { r : RE } { c : Char } { cs : List Char }
+    → ( first r ≡ c ∷ cs )
+    ------------------------
+    → ¬ ( pdU[ r , c ] ≡ [] )
+first≢[]→¬pdUConcat≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { cs : List Char } 
+  → first l ++ first r ≡ c ∷ cs
+  --------------------------------------------------------------------
+  → ¬ ( pdUConcat l r ε∈l loc c ≡ [] ) 
+
+
+first≢[]→¬pdU≡[] {ε} {c} {cs} = λ()
+first≢[]→¬pdU≡[] {$ c ` loc} {c₁} {[]} first-c≡c∷[] = prf
+  where
+    c≡c₁ : c ≡ c₁
+    c≡c₁ = proj₁ (∷-inj first-c≡c∷[])
+    
+    prf : ¬ ( pdU[ $ c ` loc , c₁ ] ≡ [] )
+    prf pdU-r-c≡[] with c Char.≟ c₁
+    ...             | no ¬c≡c₁ = ¬c≡c₁ c≡c₁ 
+    ...             | yes refl with pdU[ $ c ` loc , c₁ ]  in eq 
+    ...                        | pdi ∷ [] = ¬∷≡[] pdU-r-c≡[]
+first≢[]→¬pdU≡[] { l + r ` loc } {c} {cs} first-l+r≡c∷cs with first l in l-eq | first r in r-eq 
+... | [] | c₁ ∷ cs₁ = {!!} 
+  where
+    c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ≡ cs)
+    c₁≡c×cs₁≡cs = (∷-inj first-l+r≡c∷cs)
+    ind-hyp : ¬ ( pdU[ r , c₁ ] ≡ [] )
+    ind-hyp =  first≢[]→¬pdU≡[] r-eq   
+    prf : ¬ ( List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ] ++ List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c ] ≡ [] )
+    prf  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁≡cs) =  ind-hyp (inv-map-[] map-right-pdu-r-c≡[])
+      where
+        map-right-pdu-r-c≡[] : List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] ≡ [] 
+        map-right-pdu-r-c≡[] = ++-conicalʳ (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[]
+... | c₁ ∷ cs₁ | cs₂ =  {!!} 
+  where 
+    c₁≡c×cs₁cs₂≡cs : (c₁ ≡ c) × (cs₁ ++ cs₂ ≡ cs)
+    c₁≡c×cs₁cs₂≡cs  = ∷-inj first-l+r≡c∷cs 
+    ind-hyp : ¬ ( pdU[ l , c₁ ] ≡ [] )
+    ind-hyp =  first≢[]→¬pdU≡[] l-eq   
+    prf : ¬ ( List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ] ++ List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c ] ≡ [] )
+    prf  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁cs₂≡cs) =  ind-hyp (inv-map-[] map-left-pdu-l-c≡[])
+      where
+        map-left-pdu-l-c≡[] : List.map (pdinstance-left {l} {r} {loc})  pdU[ l , c₁ ] ≡ [] 
+        map-left-pdu-l-c≡[] = ++-conicalˡ (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[]
+first≢[]→¬pdU≡[] { r * ε∉r ` loc } {c} {cs} first-r*≡c∷cs map-star-pdU-r-c≡[] = ind-hyp (inv-map-[] map-star-pdU-r-c≡[])
+  where
+    ind-hyp : ¬ ( pdU[ r , c ] ≡ [] )
+    ind-hyp = first≢[]→¬pdU≡[] {r} {c} {cs} first-r*≡c∷cs
+
+first≢[]→¬pdU≡[] { l ● r ` loc } {c} {cs} first-l●r≡c∷cs with ε∈? l
+... | no ¬ε∈l = λ map-fst-pdU-l-cs≡[] → ind-hyp (inv-map-[] map-fst-pdU-l-cs≡[])
+  where
+    ind-hyp : ¬ ( pdU[ l , c ] ≡ [] )
+    ind-hyp = first≢[]→¬pdU≡[] {l} {c} {cs} first-l●r≡c∷cs
+... | yes ε∈l = prf
+  where
+    prf : ¬ ( pdUConcat l r ε∈l loc c ≡ [] )
+    prf = first≢[]→¬pdUConcat≡[] first-l●r≡c∷cs
+
+{-# TERMINATING #-}
+first≢[]→¬pdUConcat≡[] {ε} {r} {ε∈ε} {loc} {c} {cs} first-r≡c∷cs
+  with (PDI.zip-es-flat-[]-es {ε} {ε∈ε} (mkAllEmptyU {ε} ε∈ε) (mkAllEmptyU-sound {ε} ε∈ε)) in eq 
+... | [] = λ map-mk-snd-pdi-es → ¬∷≡[] eq   
+... | (EmptyU , flat-[] EmptyU refl ) ∷ xs rewrite ++-identityʳ ( List.map (PDI.mk-snd-pdi {ε} {r} {loc} {c} (EmptyU , flat-[] EmptyU refl)) pdU[ r , c ] ) =
+    λ map-mk-snd-pdi-pdu-r-c≡[] → (first≢[]→¬pdU≡[] first-r≡c∷cs) (inv-map-[] map-mk-snd-pdi-pdu-r-c≡[])
+
+
+first≢[]→¬pdUConcat≡[] {l * ε∉l ` loc₁} {r} {ε∈*} {loc₂} {c} {cs} first-l*●r≡c∷cs
+  with first l in first-l-eq  | first r in first-r-eq 
+... | []                      | []        =  λ x → ¬∷≡[] (sym first-l*●r≡c∷cs)
+... | []                      | c₁ ∷ cs₁ rewrite ++-identityʳ (List.map (PDI.mk-snd-pdi {l * ε∉l ` loc₁} {r} {loc₂} {c} (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c ]) = prf
+  where
+    c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ≡ cs)
+    c₁≡c×cs₁≡cs = (∷-inj first-l*●r≡c∷cs)
+    ind-hyp : ¬ ( pdU[ r , c₁ ] ≡ [] )
+    ind-hyp =  first≢[]→¬pdU≡[] first-r-eq
+    prf : ¬ ( List.map (pdinstance-fst  {l * ε∉l ` loc₁} {r} {loc₂} {c}) (List.map pdinstance-star pdU[ l , c ]) ++ List.map (PDI.mk-snd-pdi (ListU [] , flat-[] (ListU []) refl))  pdU[ r , c ] ≡ [] ) 
+    prf map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁≡cs) = ind-hyp (inv-map-[] (++-conicalʳ (List.map pdinstance-fst (List.map pdinstance-star pdU[ l , c₁ ])) (List.map (PDI.mk-snd-pdi (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c₁ ])  map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[]))
+... | c₁ ∷ cs₁               | cs₂       rewrite ++-identityʳ (List.map (PDI.mk-snd-pdi {l * ε∉l ` loc₁} {r} {loc₂} {c} (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c ]) = prf 
+  where
+    c₁≡c×cs₁cs₂≡cs : (c₁ ≡ c) × (cs₁ ++ cs₂ ≡ cs)
+    c₁≡c×cs₁cs₂≡cs = (∷-inj first-l*●r≡c∷cs) 
+    ind-hyp : ¬ ( pdU[ l , c₁ ] ≡ [] )
+    ind-hyp =  first≢[]→¬pdU≡[] first-l-eq
+    prf : ¬ ( List.map (pdinstance-fst  {l * ε∉l ` loc₁} {r} {loc₂} {c}) (List.map pdinstance-star pdU[ l , c ]) ++ List.map (PDI.mk-snd-pdi (ListU [] , flat-[] (ListU []) refl))  pdU[ r , c ] ≡ [] ) 
+    prf map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁cs₂≡cs) = ind-hyp (inv-map-[] (inv-map-[] (++-conicalˡ (List.map pdinstance-fst (List.map pdinstance-star pdU[ l , c₁ ])) (List.map (PDI.mk-snd-pdi (ListU [] , flat-[] (ListU []) refl)) pdU[ r , c₁ ])  map-fst-map-star-pdu-l-c++map-mk-snd-pdi-pdu-r-c≡[])))
+
+first≢[]→¬pdUConcat≡[] {l + s ` loc₁} {r} {ε∈l+s} {loc₂} {c} {cs} first-l+s●r≡c∷cs
+  with first (l + s ` loc₁) in first-l+s-eq | first r in first-r-eq
+... | []                                    | []  = λ x → ¬∷≡[] (sym first-l+s●r≡c∷cs)
+... | []                                    | c₁ ∷ cs₁    =  {!!} 
+    where
+      c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ≡ cs)
+      c₁≡c×cs₁≡cs = (∷-inj first-l+s●r≡c∷cs)
+      ind-hyp : ¬ ( pdU[ r , c ] ≡ [] )
+      ind-hyp rewrite sym (proj₁ c₁≡c×cs₁≡cs) =  first≢[]→¬pdU≡[] first-r-eq
+      prf : ¬ ( List.map pdinstance-fst  (List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ s , c ])
+                ++
+                List.foldr _++_ [] (List.map (λ x₁ → List.map (PDI.mk-snd-pdi x₁) pdU[ r , c ]) (PDI.zip-es-flat-[]-es {l + s ` loc₁} {ε∈l+s} (mkAllEmptyU ε∈l+s)
+                                                                                         (mkAllEmptyU-sound ε∈l+s))) )
+                ≡ []
+      prf x = ind-hyp pdu-r-c≡[] 
+        where
+          y : (concatMap (λ x₁ → List.map (PDI.mk-snd-pdi x₁) pdU[ r , c ]) (PDI.zip-es-flat-[]-es {l + s ` loc₁} {ε∈l+s} (mkAllEmptyU ε∈l+s) (mkAllEmptyU-sound ε∈l+s))) ≡ []
+          y = ++-conicalʳ (List.map pdinstance-fst  (List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ s , c ]))
+                                                (concatMap (λ x₁ → List.map (PDI.mk-snd-pdi x₁) pdU[ r , c ]) (PDI.zip-es-flat-[]-es {l + s ` loc₁} {ε∈l+s} (mkAllEmptyU ε∈l+s) (mkAllEmptyU-sound ε∈l+s))) x
+          pdu-r-c≡[] : (pdU[ r , c ] ≡ [])
+          pdu-r-c≡[] with inv-concatMap-map-f-[] y
+          ...  | inj₁ zip-es-flat-[]-es≡[] = Nullary.contradiction (zip-es-flat-[]-es≡[]→es≡[]  {l + s ` loc₁} {ε∈l+s} (mkAllEmptyU ε∈l+s) (mkAllEmptyU-sound ε∈l+s) zip-es-flat-[]-es≡[]) ( mkAllEmptyU≢[] ε∈l+s )
+          ...  | inj₂ pdu-r-c≡[] =  pdu-r-c≡[]
+... | c₁ ∷ cs₁                              | cs₂      = {!!} -- prf
+    where
+      c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ++ cs₂ ≡ cs)
+      c₁≡c×cs₁≡cs = (∷-inj first-l+s●r≡c∷cs)
+      ind-hyp : ¬ ( pdU[ l + s ` loc₁ , c ] ≡ [] )
+      ind-hyp rewrite sym (proj₁ c₁≡c×cs₁≡cs) =  first≢[]→¬pdU≡[] first-l+s-eq
+      prf : ¬ ( List.map pdinstance-fst  (List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ s , c ])
+                ++
+                List.foldr _++_ [] (List.map (λ x₁ → List.map (PDI.mk-snd-pdi x₁) pdU[ r , c ]) (PDI.zip-es-flat-[]-es {l + s ` loc₁} {ε∈l+s} (mkAllEmptyU ε∈l+s)
+                                                                                         (mkAllEmptyU-sound ε∈l+s))) )
+                ≡ []
+      prf x = ind-hyp pdu-l+s-c≡[] 
+        where
+          y : List.map pdinstance-fst  (List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ s , c ])  ≡ []
+          y = ++-conicalˡ (List.map pdinstance-fst  (List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ s , c ]))
+                                                (concatMap (λ x₁ → List.map (PDI.mk-snd-pdi x₁) pdU[ r , c ]) (PDI.zip-es-flat-[]-es {l + s ` loc₁} {ε∈l+s} (mkAllEmptyU ε∈l+s) (mkAllEmptyU-sound ε∈l+s))) x
+          pdu-l+s-c≡[] : (pdU[ l + s ` loc₁ , c ] ≡ [])
+          pdu-l+s-c≡[] = inv-map-[] {!!} -- y
+
+
+first≢[]→¬pdUConcat≡[] {l ● s ` loc₁} {r} {ε∈ ε∈l ● ε∈s} {loc₂} {c} {cs} first-l●s-●r≡c∷cs with  ε∈? l in l-eq | ε∈? s in s-eq 
+... | no ¬ε∈l | _ = Nullary.contradiction ε∈l ¬ε∈l
+... | yes ε∈l | no ¬ε∈s = Nullary.contradiction ε∈s ¬ε∈s 
+... | yes ε∈l | yes ε∈s = λ x →  ind-hyp {!!} -- (inv-map-[] x)  
+    where
+      first-s●r≡first-s++first-r : first (s ● r ` loc₂) ≡ first s ++ first r
+      first-s●r≡first-s++first-r rewrite s-eq = refl 
+      first-l●s-●r≡first-l-●s●r : first l ++ (first (s ● r ` loc₂)) ≡ c ∷ cs 
+      first-l●s-●r≡first-l-●s●r  = 
+        begin
+          (first l) ++ (first (s ● r ` loc₂)) 
+        ≡⟨ cong ((first l) ++_ )  first-s●r≡first-s++first-r ⟩
+          (first l) ++ ((first s)  ++ (first r)) 
+        ≡⟨ sym ( ++-assoc (first l) (first s) (first r) ) ⟩
+          (first l ++ first s)  ++ first r 
+        ≡⟨ first-l●s-●r≡c∷cs ⟩
+          c ∷ cs 
+        ∎  
+      ind-hyp : ¬ (pdUConcat l ( s ● r ` loc₂) ε∈l loc₁ c ≡ [] )
+      ind-hyp  = first≢[]→¬pdUConcat≡[] {l}  {s ● r ` loc₂} {ε∈l} {loc₁} {c} {cs}   first-l●s-●r≡first-l-●s●r
+```

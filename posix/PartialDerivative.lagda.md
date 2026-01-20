@@ -397,7 +397,7 @@ pdU[ $ c ` loc , c' ] with c Char.≟ c'
                                                     ∎) ) ]
 ...                     | no _    =  []
 pdU[ l + r ` loc , c ]  =
-  pdinstance-oplus -- oplus is needed, other  posix is not guaranteed, refer to posix-test-r₁ example below
+  pdinstance-oplus -- oplus is needed, otherwise posix is violated, refer to posix-test-r₁ example below
     { l + r ` loc } {loc} {c} 
     ( List.map pdinstance-left pdU[ l , c ] )
     ( List.map pdinstance-right pdU[ r , c ])
@@ -413,7 +413,9 @@ pdUConcat (l * ε∉l ` loc₁)  r ε∈*   loc₂ c =
   ( List.map pdinstance-fst pdU[ (l * ε∉l ` loc₁) , c ] )
   ++ -- no need oplus?  seems so, because of  ε∉l 
   concatmap-pdinstance-snd {l * ε∉l ` loc₁} {r} {ε∈*}   {loc₂} {c} pdU[ r , c ]
-pdUConcat (l ● s ` loc₁)    r ε∈l●s loc₂ c = -- List.map pdinstance-assoc pdU[ ( l ● ( s ● r ` loc₂ ) ` loc₁ ) , c ]
+pdUConcat (l ● s ` loc₁)    r ε∈l●s loc₂ c =
+  -- to implement posix, we need to retain the structure, we don't apply assoc rule. 
+  -- List.map pdinstance-assoc pdU[ ( l ● ( s ● r ` loc₂ ) ` loc₁ ) , c ]
   ( List.map pdinstance-fst pdU[ (l ● s ` loc₁) , c ] )
   ++ -- no need oplus ? 
    concatmap-pdinstance-snd {l ● s ` loc₁}   {r} {ε∈l●s} {loc₂} {c} pdU[ r , c ]
@@ -421,9 +423,10 @@ pdUConcat (l ● s ` loc₁)    r ε∈l●s loc₂ c = -- List.map pdinstance-a
 pdUConcat (l + s ` loc₁)    r ε∈l+s loc₂ c =
   {-
   ( List.map pdinstance-fst pdU[ (l + s ` loc₁) , c ] )
-  ++ -- no need oplus ? seems not, ++ here does not give us posix, refer to the posix-test-r₂ example below  
+  ++ 
    concatmap-pdinstance-snd {l + s ` loc₁}   {r} {ε∈l+s} {loc₂} {c} pdU[ r , c ]
   -}
+  -- oplus is needed, otherwise posix is violated , refer to refer to posix-test-r₂ example below
   pdinstance-oplus
     { ( l + s ` loc₁ ) ● r ` loc₂ }  {loc₂} {c}
     ( List.map pdinstance-fst pdU[ (l + s ` loc₁) , c ] )
@@ -655,6 +658,7 @@ pdUConcat-complete {l ● t ` loc₁} {s} {ε∈l●t} {loc} {c} {w} u@(PairU u�
         bs : Any (Recons { (l ● t ` loc₁) ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {l ● t ` loc₁} {s} {ε∈l●t} {loc} {c} pdU[ s , c ]) 
         bs = any-recons-concatmap-pdinstance-snd {l ● t ` loc₁} {s} {ε∈l●t} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as
 {-
+-- the version not using oplus 
 pdUConcat-complete {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} u v proj1-flat-pair-u-v≡cw  = prove e1-e2-e3 
   where
     e1-e2-e3 :  ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ w ) ) 
@@ -686,13 +690,28 @@ pdUConcat-complete  {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} u v proj1-flat
                                                      (pdinstance-oplus {l + t ` loc₁} {loc₁} (List.map pdinstance-left pdU[ l , c ])
                                                                                              (List.map pdinstance-right pdU[ t , c ])))
                                            (concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c}  pdU[ s , c ]))
-    prove (inj₂ ( xs , ys , proj1-flat-u≡cxs , proj1-flat-v≡ys , refl ) )  = {!!}
+    prove (inj₂ ( xs , ys , proj1-flat-u≡cxs , proj1-flat-v≡ys , refl ) ) =
+      any-recons-oplus-left {(l + t ` loc₁) ● s ` loc} {loc} {c} {w} {PairU u v}
+                            (List.map pdinstance-fst
+                                      (pdinstance-oplus {l + t ` loc₁} {loc₁} (List.map pdinstance-left pdU[ l , c ])
+                                                                              (List.map pdinstance-right pdU[ t , c ])))
+                            (concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c}  pdU[ s , c ]) bs
       where 
         as : Any (Recons {l + t ` loc₁} {c} u) pdU[ l + t ` loc₁ , c ]
         as = pdU-complete {l + t ` loc₁} {c} {xs} u proj1-flat-u≡cxs   
         bs : Any (Recons { (l + t ` loc₁) ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l + t ` loc₁ , c ])
         bs = any-recons-fst {l + t ` loc₁} {s} {loc} {c} {w} {u} {v} pdU[ l + t ` loc₁ , c ] as 
-    
+    prove (inj₁ ( ys , proj1-flat-u≡[] , proj1-flat-v≡cys , refl ) ) =
+      any-recons-oplus-right {(l + t ` loc₁) ● s ` loc} {loc} {c} {w} {PairU u v}
+                            (List.map pdinstance-fst
+                                      (pdinstance-oplus {l + t ` loc₁} {loc₁} (List.map pdinstance-left pdU[ l , c ])
+                                                                              (List.map pdinstance-right pdU[ t , c ])))
+                            (concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c}  pdU[ s , c ]) bs 
+      where 
+        as : Any (Recons {s} {c} v) pdU[ s , c ] 
+        as = pdU-complete {s} {c} {ys} v proj1-flat-v≡cys
+        bs : Any (Recons { (l + t ` loc₁) ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} pdU[ s , c ]) 
+        bs = any-recons-concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as    
 ```
 
 ### Definition 20: Many steps Partial deriviatves with coercion functions `pdUMany[ r , w ]` and `PDInstance*`

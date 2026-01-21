@@ -1340,7 +1340,18 @@ Let first r ≡ c ∷ cs.
 Then pdU[ r , c ] must not be an empty list. 
 
 ```agda
--- sub sub lemma 
+
+inv-pdinstance-oplus-[] : ∀ { r : RE } { loc : ℕ } { c : Char }
+    → ( ps : List (PDInstance r c ) )
+    → ( qs : List (PDInstance r c ) ) 
+    → ( pdinstance-oplus {r} {loc} {c} ps qs ≡ [] )
+    → ( ps ≡ [] × qs ≡ [] )
+inv-pdinstance-oplus-[] {r} {loc} {c} [] [] refl = (refl , refl)
+inv-pdinstance-oplus-[] {r} {loc} {c} (p ∷ ps) [] pdinstance-oplus-ps-qs≡[] = Nullary.contradiction pdinstance-oplus-ps-qs≡[] ¬∷≡[] 
+inv-pdinstance-oplus-[] {r} {loc} {c} [] (q ∷ qs) pdinstance-oplus-ps-qs≡[] = Nullary.contradiction pdinstance-oplus-ps-qs≡[] ¬∷≡[]     
+
+-- sub sub lemma
+
 zip-es-flat-[]-es≡[]→es≡[] : ∀ {l : RE} {ε∈l : ε∈ l }
     → (es : List (U l))
     → (flat-[]-es : All (Flat-[] l) es)
@@ -1373,28 +1384,30 @@ first≢[]→¬pdU≡[] {$ c ` loc} {c₁} {[]} first-c≡c∷[] = prf
     ...             | yes refl with pdU[ $ c ` loc , c₁ ]  in eq 
     ...                        | pdi ∷ [] = ¬∷≡[] pdU-r-c≡[]
 first≢[]→¬pdU≡[] { l + r ` loc } {c} {cs} first-l+r≡c∷cs with first l in l-eq | first r in r-eq 
-... | [] | c₁ ∷ cs₁ = {!!} 
+... | [] | c₁ ∷ cs₁ = prf
   where
     c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ≡ cs)
     c₁≡c×cs₁≡cs = (∷-inj first-l+r≡c∷cs)
     ind-hyp : ¬ ( pdU[ r , c₁ ] ≡ [] )
     ind-hyp =  first≢[]→¬pdU≡[] r-eq   
-    prf : ¬ ( List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ] ++ List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c ] ≡ [] )
-    prf  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁≡cs) =  ind-hyp (inv-map-[] map-right-pdu-r-c≡[])
+    prf : ¬ ( ( pdinstance-oplus {l + r ` loc} {loc} {c} (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ]) (List.map (pdinstance-right {l} {r} {loc}) pdU[ r , c ]) ) ≡ [] )
+    prf oplus-map-pdinstance-left-pdu-l-c-map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁≡cs) =  ind-hyp (inv-map-[] map-right-pdu-r-c≡[]) 
       where
         map-right-pdu-r-c≡[] : List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] ≡ [] 
-        map-right-pdu-r-c≡[] = ++-conicalʳ (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[]
-... | c₁ ∷ cs₁ | cs₂ =  {!!} 
+        map-right-pdu-r-c≡[] = proj₂ ( inv-pdinstance-oplus-[] (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  oplus-map-pdinstance-left-pdu-l-c-map-pdinstance-right-pdu-r-c≡[] ) 
+
+... | c₁ ∷ cs₁ | cs₂ =  prf 
   where 
     c₁≡c×cs₁cs₂≡cs : (c₁ ≡ c) × (cs₁ ++ cs₂ ≡ cs)
     c₁≡c×cs₁cs₂≡cs  = ∷-inj first-l+r≡c∷cs 
     ind-hyp : ¬ ( pdU[ l , c₁ ] ≡ [] )
     ind-hyp =  first≢[]→¬pdU≡[] l-eq   
-    prf : ¬ ( List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ] ++ List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c ] ≡ [] )
-    prf  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁cs₂≡cs) =  ind-hyp (inv-map-[] map-left-pdu-l-c≡[])
+    prf : ¬ ( ( pdinstance-oplus {l + r ` loc} {loc} {c} (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c ]) (List.map (pdinstance-right {l} {r} {loc}) pdU[ r , c ]) ) ≡ [] )
+    prf  oplus-map-pdinstance-left-pdu-l-c-map-pdinstance-right-pdu-r-c≡[] rewrite sym (proj₁ c₁≡c×cs₁cs₂≡cs) =  ind-hyp (inv-map-[] map-left-pdu-l-c≡[])
       where
         map-left-pdu-l-c≡[] : List.map (pdinstance-left {l} {r} {loc})  pdU[ l , c₁ ] ≡ [] 
-        map-left-pdu-l-c≡[] = ++-conicalˡ (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  map-pdinstance-left-pdu-l-c++map-pdinstance-right-pdu-r-c≡[]
+        map-left-pdu-l-c≡[] = proj₁ ( inv-pdinstance-oplus-[] (List.map (pdinstance-left {l} {r} {loc}) pdU[ l , c₁ ]) (List.map (pdinstance-right {l} {r} {loc})  pdU[ r , c₁ ] )  oplus-map-pdinstance-left-pdu-l-c-map-pdinstance-right-pdu-r-c≡[] )
+        
 first≢[]→¬pdU≡[] { r * ε∉r ` loc } {c} {cs} first-r*≡c∷cs map-star-pdU-r-c≡[] = ind-hyp (inv-map-[] map-star-pdU-r-c≡[])
   where
     ind-hyp : ¬ ( pdU[ r , c ] ≡ [] )

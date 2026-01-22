@@ -1314,6 +1314,7 @@ pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
 
 #### Aux Lemma : A parse tree this reconstructible from a pdinstance should not be flattened to empty word.
 
+this lemma is needed in lne/ExtendedOrder.lagda.md (not needed in greedy), if it were also needed by posix/ExtendedOrder.lagda.md, we shall move it to Recons.lagda.md
 ```agda
 recons-v→¬proj₁flat-v≡[] : ∀ { r : RE } { c : Char }
   → ( v : U r )

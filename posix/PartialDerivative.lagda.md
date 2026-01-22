@@ -1572,3 +1572,59 @@ first≢[]→¬pdUConcat≡[] {l ● s ` loc₁} {r} {ε∈ ε∈l ● ε∈s} {
           ind-hyp : ¬ (pdU[ l ● s ` loc₁ , c ] ≡ [] )
           ind-hyp rewrite (sym (proj₁ c₁≡c×cs₁++cs₂≡cs)) = first≢[]→¬pdU≡[] {l ● s ` loc₁} {c₁} {cs₁} first-l●s-eq  
 ```
+
+
+
+#### Aux Lemma: All partial derivative descendants produce some parse tree.
+
+Let r be a non problematic regular expression. 
+Let pdi be a partial derivative descendant instance of r w.r.t to prefix pref.
+Then there exists a parse tree u, such that u can be reconstructed from pdi. 
+
+```agda
+{-# TERMINATING #-}
+pdi*-∃ : ∀ { r : RE } { pref : List Char }
+       → ( pdi : PDInstance* r pref )
+       → ∃[ u ] Recons* u pdi
+
+pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  inj s-ev)
+  with ε∈? d
+... |  yes ε∈d with (mkAllEmptyU ε∈d )in mkAllEmptyU-e∈p-eq 
+...              | ( e ∷ es ) = inj e , recons* (inj e) ((proj₂ (flat e)) , prf) -- base case, 
+  where
+    prf  : inj (unflat (Product.proj₂ (flat e))) ≡ inj e
+    prf = cong (λ x → inj x ) unflat∘proj₂∘flat
+...              | [] = Nullary.contradiction  mkAllEmptyU-e∈p-eq ( mkAllEmptyU≢[] ε∈d)     -- we need to create a contradiction here. mkAllEmptyU is not empty
+
+pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
+    |  no ¬ε∈d  with first d in first-d-eq
+...               |  [] =   Nullary.contradiction first-d-eq (ε∉r→¬first-r≡[] {d} {¬ε∈r→ε∉r ¬ε∈d})      
+...               |  ( c₁ ∷ cs₁ ) with pdU[ d , c₁ ] in pdU-d-c₁-eq 
+...                                | []  =  Nullary.contradiction pdU-d-c₁-eq (first≢[]→¬pdU≡[] first-d-eq)  -- since c₁ is in first d, pdU[ d , c₁ ] should not be [] 
+...                                | (pdi'@(pdinstance {p} {d} {c₁} p→d s-ev-p-d) ∷ _ )
+                                          with pdi*-∃ {r} {pref ∷ʳ c₁} (compose-pdi-with {r} {d} {pref} {c₁} d→r s-ev-d-r pdi' )
+...                                         | ( u , recons* {p} {r} {w} { pref∷ʳc₁ } {p→r} {s-ev-p-r} .u (w∈⟦p⟧ , d→r∘p→d-unflat-w∈⟦p⟧≡u ) )
+                                                with flat {d} (p→d (unflat w∈⟦p⟧)) in flat-p→d-unflat-w∈⟦p⟧-eq 
+...                                              | c₁w , c₁w∈⟦d⟧ = prf 
+                                                          where
+                                                              -- sub goals
+                                                              unflat-c₁w∈⟦d⟧≡p→d-unflat-w∈⟦p⟧ :  unflat c₁w∈⟦d⟧ ≡ p→d (unflat w∈⟦p⟧)
+                                                              unflat-c₁w∈⟦d⟧≡p→d-unflat-w∈⟦p⟧ =
+                                                                begin
+                                                                  unflat c₁w∈⟦d⟧
+                                                                ≡⟨ cong (λ x → unflat ( proj₂ x ) ) (sym flat-p→d-unflat-w∈⟦p⟧-eq)  ⟩
+                                                                  unflat ( proj₂ (flat (p→d (unflat w∈⟦p⟧))) )
+                                                                ≡⟨ unflat∘proj₂∘flat {d} {(p→d (unflat w∈⟦p⟧))} ⟩
+                                                                  p→d (unflat w∈⟦p⟧)
+                                                                ∎
+                                                              d→r-unflat-c₁w∈⟦d⟧≡u : d→r (unflat c₁w∈⟦d⟧) ≡ u
+                                                              d→r-unflat-c₁w∈⟦d⟧≡u rewrite  unflat-c₁w∈⟦d⟧≡p→d-unflat-w∈⟦p⟧ | d→r∘p→d-unflat-w∈⟦p⟧≡u = refl 
+
+                                                              -- main goal 
+                                                              prf : ∃[ u ] Recons* u (pdinstance* d→r s-ev-d-r)
+                                                              prf   = u , recons*   u ( c₁w∈⟦d⟧  ,  d→r-unflat-c₁w∈⟦d⟧≡u )     
+
+
+
+```
+

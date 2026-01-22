@@ -37,7 +37,10 @@ import Data.Char as Char
 open Char using (Char )
 
 import Data.Nat as Nat
-open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ )
+open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  )
+
+import Data.Nat.Properties as NatProperties
+open NatProperties using ( <⇒≤ ; ≤-trans )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -125,8 +128,9 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
 
   star-cons-nil : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v : U r } { vs : List (U r) }
     → ( r * nε ` loc ) ⊢ (ListU (v ∷ vs)) > ( ListU [] )
-    
 
+  -- star-nil-cons rule is not needed as we are dealing with non problematic regular expression.
+  
   star-head : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
     → r ⊢ v₁ > v₂
     ----------------------------------------------------------------------
@@ -141,6 +145,7 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
 
 
 ```
+
 
 F. Ausaf, R. Dyckhoff, and C. Urban. “POSIX Lexing with Derivatives of Regular Expressions (Proof Pearl)”. In: Proc. of the 7th International Conference on
 Interactive Theorem Proving (ITP). Vol. 9807. LNCS. 2016, pp. 69–86.
@@ -248,4 +253,26 @@ postulate
     → ( v ≡ u ) ⊎ ( r ⊢ v > u )
 
 
+```
+
+
+
+Note : The > order is transitive. 
+
+```agda
+>-trans : { r : RE } { u₁ u₂ u₃ : U r }
+  → r ⊢ u₁ > u₂
+  → r ⊢ u₂ > u₃
+  -----------------
+  → r ⊢ u₁ > u₃
+>-trans {ε} = λ()
+>-trans {$ c ` loc} = λ()
+>-trans {r * ε∉r ` loc} star-cons-nil = λ()
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃) = star-head (>-trans v₁>v₂ v₂>v₃)
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil  = star-cons-nil
+>-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
+>-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ 
+>-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
+>-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} |v₂|≥|v₃|) = choice-lr ( ≤-trans |v₂|≥|v₃| {!!} ) -- we have l ⊢ v₁ > v₂, how to get |v₁| ≥ |v₂| 
 ```

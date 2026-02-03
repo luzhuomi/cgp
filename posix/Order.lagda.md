@@ -260,6 +260,7 @@ postulate
 Note : The > order is transitive. 
 
 ```agda
+{-
 >-trans : { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ > u₂
   → r ⊢ u₂ > u₃
@@ -274,5 +275,29 @@ Note : The > order is transitive.
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ 
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
->-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} |v₂|≥|v₃|) = choice-lr ( ≤-trans |v₂|≥|v₃| {!!} ) -- we have l ⊢ v₁ > v₂, how to get |v₁| ≥ |v₂| 
+>-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} |v₂|≥|v₃|) = choice-lr ( ≤-trans |v₂|≥|v₃| {!!} ) -- we have l ⊢ v₁ > v₂, how to get |v₁| ≥ |v₂|
+-}
+```
+
+Maybe we need to weaken the transitivity lemma to include the underlying word.
+
+
+```agda
+
+weak->-trans : { r : RE } { u₁ u₂ u₃ : U r } 
+  → r ⊢ u₁ > u₂
+  → r ⊢ u₂ > u₃
+  → proj₁ (flat u₁) ≡ proj₁ (flat u₂)
+  → proj₁ (flat u₂) ≡ proj₁ (flat u₃)     
+  -----------------
+  → r ⊢ u₁ > u₃
+weak->-trans {ε} = λ()
+weak->-trans {$ c ` loc} = λ()
+weak->-trans {r * ε∉r ` loc} star-cons-nil = λ()
+weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃) eq₁ eq₂                          = star-head (weak->-trans v₁>v₂ v₂>v₃ eq₁ eq₂) -- does not work either,
+ --  | cons u1 u2  |  == | cons v1 v2 | does not imply | u1 | == | v1 | 
+weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) _  _ rewrite (sym v₂≡v₃) = star-head v₁>v₂
+weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil     _  _                             = star-cons-nil
+
+
 ```

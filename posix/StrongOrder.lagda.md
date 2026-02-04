@@ -1,6 +1,6 @@
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.posix.Order where
+module cgp.posix.StrongOrder where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
@@ -40,7 +40,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( <⇒≤ ; ≤-trans ; +-monoʳ-≤ ; ≤-refl)
+open NatProperties using ( <⇒≤ ; ≤-trans )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -130,15 +130,9 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     → ( r * nε ` loc ) ⊢ (ListU (v ∷ vs)) > ( ListU [] )
 
   -- star-nil-cons rule is not needed as we are dealing with non problematic regular expression.
-
-
-  -- the following rule is weakened by only considering len | v₁ ∷ vs₁ | >= len | v₂ ∷ vs₂ |
-  -- notation  | v |  is proj₁ (flat v)
-
+  
   star-head : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
     → r ⊢ v₁ > v₂
-    -- → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂)) -- is this redundant? 
-    → length (proj₁ (flat (ListU {r} {nε} {loc} (v₁ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU  {r} {nε} {loc} (v₂ ∷ vs₂))))
     ----------------------------------------------------------------------
     → ( r * nε ` loc ) ⊢ (ListU (v₁ ∷ vs₁)) > (ListU (v₂ ∷ vs₂))
 
@@ -259,11 +253,6 @@ postulate
     → ( v ≡ u ) ⊎ ( r ⊢ v > u )
 
 
-  >→len|≥| : { r : RE } { u v : U r } 
-    → r ⊢ u > v
-    -------------------------------------
-    → length (proj₁ (flat u)) ≥ length (proj₁ (flat v))
-
 ```
 
 
@@ -271,14 +260,6 @@ postulate
 Note : The > order is transitive. 
 
 ```agda
-
-
-len|x++z|≥len|y++z| : ∀ { A : Set } { x y z : List A }
-  → length x ≥ length y
-  -----------------------------------
-  → length (x ++ z) ≥ length (y ++ z)
-len|x++z|≥len|y++z| {A} {[]} {[]} {z} 0≥0 = {!!}   
-
 
 >-trans : { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ > u₂
@@ -288,32 +269,11 @@ len|x++z|≥len|y++z| {A} {[]} {[]} {z} 0≥0 = {!!}
 >-trans {ε} = λ()
 >-trans {$ c ` loc} = λ()
 >-trans {r * ε∉r ` loc} star-cons-nil = λ()
->-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
-        (star-head v₁>v₂ len|v₁∷vs₁|≥len|v₂∷vs₂| )   (star-head v₂>v₃ len|v₂∷vs₂|≥len|v₃∷vs₃| ) = star-head (>-trans v₁>v₂ v₂>v₃) (≤-trans len|v₂∷vs₂|≥len|v₃∷vs₃| len|v₁∷vs₁|≥len|v₂∷vs₂| )
-
->-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
-        (star-head v₁>v₂ len|v₁∷vs₁|≥len|v₂∷vs₂| )   (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂ len|v₁∷vs₁|≥len|v₂∷vs₃|
-  where
-    len|vs₂|≥len|vs₃| : length (proj₁ (flat (ListU vs₂))) ≥ length (proj₁ (flat (ListU vs₃)))
-    len|vs₂|≥len|vs₃| = >→len|≥|  vs₂>vs₃
-
-    |v₂∷vs₂|≡|v₂|++|vs₂| : (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₂)))) ≡ (proj₁ (flat v₂)) ++ (proj₁ (flat (ListU {r} {ε∉r} {loc}  vs₂)))
-    |v₂∷vs₂|≡|v₂|++|vs₂| = refl
-
-    |v₂∷vs₃|≡|v₂|++|vs₃| : (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃)))) ≡ (proj₁ (flat v₂)) ++ (proj₁ (flat (ListU {r} {ε∉r} {loc}  vs₃)))
-    |v₂∷vs₃|≡|v₂|++|vs₃| = refl
-
-    len|v₂∷vs₂|≥len|v₂∷vs₃| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₂)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃))))
-    len|v₂∷vs₂|≥len|v₂∷vs₃| rewrite |v₂∷vs₂|≡|v₂|++|vs₂| | |v₂∷vs₃|≡|v₂|++|vs₃|  = {!!}
-
-    len|v₁∷vs₁|≥len|v₂∷vs₃| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₁ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃))))
-    len|v₁∷vs₁|≥len|v₂∷vs₃| = ≤-trans len|v₂∷vs₂|≥len|v₂∷vs₃| len|v₁∷vs₁|≥len|v₂∷vs₂|
-
-    
-    
->-trans {r * ε∉r ` loc} (star-head v₁>v₂ _ )         star-cons-nil  = star-cons-nil
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃) = star-head (>-trans v₁>v₂ v₂>v₃)
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
+>-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil  = star-cons-nil
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
->-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃ |v₂∷vs₂|>|v₃∷vs₃|) rewrite v₁≡v₂ = star-head v₂>v₃ {!!} 
+>-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ 
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
 >-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} |v₂|≥|v₃|) = choice-lr ( ≤-trans |v₂|≥|v₃| {!!} ) -- we have l ⊢ v₁ > v₂, how to get |v₁| ≥ |v₂|
 
@@ -347,3 +307,24 @@ we need to ensure that |v₁| ≥ |v₂| and |v₁| + |vs₁| ≥ |v₂| + |vs�
 which will reject the counter example above. 
 
 >>> what about nested *, the ≡ won't hold but that's problematic.
+
+
+```agda
+
+weak->-trans : { r : RE } { u₁ u₂ u₃ : U r } 
+  → r ⊢ u₁ > u₂
+  → r ⊢ u₂ > u₃
+  → proj₁ (flat u₁) ≡ proj₁ (flat u₂)
+  → proj₁ (flat u₂) ≡ proj₁ (flat u₃)     
+  -----------------
+  → r ⊢ u₁ > u₃
+weak->-trans {ε} = λ()
+weak->-trans {$ c ` loc} = λ()
+weak->-trans {r * ε∉r ` loc} star-cons-nil = λ()
+weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃) eq₁ eq₂                          = star-head (weak->-trans v₁>v₂ v₂>v₃ {!!} {!!}) -- does not work either,
+ --  | cons u1 u2  |  == | cons v1 v2 | does not imply | u1 | == | v1 | 
+weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) _  _ rewrite (sym v₂≡v₃) = star-head v₁>v₂
+weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil     _  _                             = star-cons-nil
+
+
+```

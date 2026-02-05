@@ -94,15 +94,16 @@ infix 4 _⊢_>_
 
 data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
   seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U  l } { v₂ v₂' : U r }
-    →   l ⊢ v₁ >  v₁'   
+    → l ⊢ v₁ >  v₁'
+    → length (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))) ≥ length (proj₁ (flat (PairU {l} {r} {loc} v₁' v₂')))
     ------------------------------------------------------------------
-    →   l  ● r ` loc ⊢ PairU v₁ v₂ > PairU v₁' v₂'
+    → l ● r ` loc ⊢ PairU v₁ v₂ > PairU v₁' v₂'
 
   seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → v₁ ≡ v₁'
     → r ⊢ v₂ > v₂'
     -------------------------------------------------------------------
-    →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
+    → ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
     → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))
@@ -134,6 +135,7 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
 
   -- the following rule is weakened by only considering len | v₁ ∷ vs₁ | >= len | v₂ ∷ vs₂ |
   -- notation  | v |  is proj₁ (flat v)
+  -- do we need the same treament for seq₁ ? 
 
   star-head : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
     → r ⊢ v₁ > v₂
@@ -259,11 +261,42 @@ postulate
     → ( v ≡ u ) ⊎ ( r ⊢ v > u )
 
 
-  >→len|≥| : { r : RE } { u v : U r } 
+
+len|xs++ys|≥len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }
+  → length ys ≥ length zs
+  -----------------------------------
+  → length (xs ++ ys) ≥ length (xs ++ zs)
+len|xs++ys|≥len|xs++zs| {A} {[]}        {ys} {zs} len-ys≥len-zs = len-ys≥len-zs
+len|xs++ys|≥len|xs++zs| {A} {(x ∷ xs)} {ys} {zs} len-ys≥len-zs = Nat.s≤s (len|xs++ys|≥len|xs++zs|  {A} {xs} {ys} {zs} len-ys≥len-zs)
+
+
+
+>→len|≥| : { r : RE } { u v : U r } 
     → r ⊢ u > v
     -------------------------------------
     → length (proj₁ (flat u)) ≥ length (proj₁ (flat v))
+>→len|≥| {ε}           {EmptyU}      {EmptyU} = λ ()
+>→len|≥| {$ c ` loc}   {LetterU _}   {LetterU _} = λ ()
+>→len|≥| {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} (seq₁ v₁>u₁ len|v₁v₂|≥len|u₁u₂|) = len|v₁v₂|≥len|u₁u₂|
+>→len|≥| {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} (seq₂ v₁≡u₁ v₂>u₂) rewrite v₁≡u₁ = len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat u₁)} {proj₁ (flat v₂)} {proj₁ (flat u₂)} len|v₂|≥len|u₂|  
+  where 
+    len|v₂|≥len|u₂| : length (proj₁ (flat v₂)) ≥ length (proj₁ (flat u₂))
+    len|v₂|≥len|u₂| = >→len|≥| v₂>u₂
+>→len|≥| {l + r ` loc} {LeftU v₁} {LeftU v₂} (choice-ll v₁>v₂) = >→len|≥| v₁>v₂
+>→len|≥| {l + r ` loc} {RightU v₁} {RightU v₂} (choice-rr v₁>v₂) = >→len|≥| v₁>v₂
+>→len|≥| {l + r ` loc} {LeftU v₁} {RightU v₂} (choice-lr len|v₁|≥len|v₂|) = len|v₁|≥len|v₂|
+>→len|≥| {l + r ` loc} {RightU v₁} {LeftU v₂} (choice-rl len|v₁|>len|v₂|) = <⇒≤  len|v₁|>len|v₂|
+>→len|≥| {r * ε∉r ` loc } {ListU []} {ListU []} = λ()
+>→len|≥| {r * ε∉r ` loc } {ListU []} {ListU ( u ∷ us) } = λ()
+>→len|≥| {r * ε∉r ` loc } {ListU (v ∷ vs) } {ListU [] } star-cons-nil = Nat.z≤n
+>→len|≥| {r * ε∉r ` loc } {ListU (v ∷ vs) } {ListU ( u ∷ us)} (star-head u>v len|v∷vs|>len|u∷us|) = len|v∷vs|>len|u∷us|
+>→len|≥| {r * ε∉r ` loc } {ListU (v ∷ vs) } {ListU ( u ∷ us)} (star-tail v≡u vs>us) rewrite v≡u =  len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat u)} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs))} {proj₁ (flat (ListU {r} {ε∉r} {loc} us))} len|vs|≥len|us|  
+  where 
+    len|vs|≥len|us| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} vs))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} us)))
+    len|vs|≥len|us| = >→len|≥| vs>us
 
+
+len|>|→> 
 ```
 
 
@@ -273,11 +306,6 @@ Note : The > order is transitive.
 ```agda
 
 
-len|x++z|≥len|y++z| : ∀ { A : Set } { x y z : List A }
-  → length x ≥ length y
-  -----------------------------------
-  → length (x ++ z) ≥ length (y ++ z)
-len|x++z|≥len|y++z| {A} {[]} {[]} {z} 0≥0 = {!!}   
 
 
 >-trans : { r : RE } { u₁ u₂ u₃ : U r }
@@ -297,14 +325,8 @@ len|x++z|≥len|y++z| {A} {[]} {[]} {z} 0≥0 = {!!}
     len|vs₂|≥len|vs₃| : length (proj₁ (flat (ListU vs₂))) ≥ length (proj₁ (flat (ListU vs₃)))
     len|vs₂|≥len|vs₃| = >→len|≥|  vs₂>vs₃
 
-    |v₂∷vs₂|≡|v₂|++|vs₂| : (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₂)))) ≡ (proj₁ (flat v₂)) ++ (proj₁ (flat (ListU {r} {ε∉r} {loc}  vs₂)))
-    |v₂∷vs₂|≡|v₂|++|vs₂| = refl
-
-    |v₂∷vs₃|≡|v₂|++|vs₃| : (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃)))) ≡ (proj₁ (flat v₂)) ++ (proj₁ (flat (ListU {r} {ε∉r} {loc}  vs₃)))
-    |v₂∷vs₃|≡|v₂|++|vs₃| = refl
-
     len|v₂∷vs₂|≥len|v₂∷vs₃| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₂)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃))))
-    len|v₂∷vs₂|≥len|v₂∷vs₃| rewrite |v₂∷vs₂|≡|v₂|++|vs₂| | |v₂∷vs₃|≡|v₂|++|vs₃|  = {!!}
+    len|v₂∷vs₂|≥len|v₂∷vs₃| = len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat v₂)} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₂))} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₃))} len|vs₂|≥len|vs₃| 
 
     len|v₁∷vs₁|≥len|v₂∷vs₃| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₁ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃))))
     len|v₁∷vs₁|≥len|v₂∷vs₃| = ≤-trans len|v₂∷vs₂|≥len|v₂∷vs₃| len|v₁∷vs₁|≥len|v₂∷vs₂|
@@ -313,9 +335,23 @@ len|x++z|≥len|y++z| {A} {[]} {[]} {z} 0≥0 = {!!}
     
 >-trans {r * ε∉r ` loc} (star-head v₁>v₂ _ )         star-cons-nil  = star-cons-nil
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
->-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃ |v₂∷vs₂|>|v₃∷vs₃|) rewrite v₁≡v₂ = star-head v₂>v₃ {!!} 
+>-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
+  (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃ len|v₂∷vs₂|≥len|v₃∷vs₃|) rewrite v₁≡v₂ = star-head v₂>v₃ (≤-trans  len|v₂∷vs₂|≥len|v₃∷vs₃| len|v₂∷vs₁|≥len|v₂∷vs₂|)
+  where
+    len|vs₁|≥len|vs₂| :  length (proj₁ (flat (ListU {r} {ε∉r} {loc} vs₁))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} vs₂)))
+    len|vs₁|≥len|vs₂| = >→len|≥|  vs₁>vs₂
+
+    len|v₂∷vs₁|≥len|v₂∷vs₂| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₂))))
+    len|v₂∷vs₁|≥len|v₂∷vs₂| =  len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat v₂)} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₁))} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₂))} len|vs₁|≥len|vs₂| 
+ 
 >-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
->-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} |v₂|≥|v₃|) = choice-lr ( ≤-trans |v₂|≥|v₃| {!!} ) -- we have l ⊢ v₁ > v₂, how to get |v₁| ≥ |v₂|
+>-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} len|v₂|≥len|v₃|) = choice-lr ( ≤-trans len|v₂|≥len|v₃| ( >→len|≥| v₁>v₂) ) -- we have l ⊢ v₁ > v₂, how to get |v₁| ≥ |v₂|
+>-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-ll {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-ll (>-trans v₁>v₂ v₂>v₃)
+>-trans {l + r ` loc} (choice-lr {l} {r} {.loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rr {l} {r} {.loc} {.v₂} {v₃} v₂>v₃) = choice-lr ( ≤-trans (>→len|≥| v₂>v₃) len|v₁|≥len|v₂| )
+>-trans {l + r ` loc} (choice-lr {l} {r} {.loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rl {l} {r} {.loc} {.v₂} {v₃} len|v₂|>len|v₃|) = choice-ll {!!}  -- we know len|v₁|>len|v₃| we need len|>|→> ? 
+>-trans {l + r ` loc} (choice-rr {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-rr {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-rr (>-trans v₁>v₂ v₂>v₃)
+
+
 
 ```
 
@@ -347,3 +383,24 @@ we need to ensure that |v₁| ≥ |v₂| and |v₁| + |vs₁| ≥ |v₂| + |vs�
 which will reject the counter example above. 
 
 >>> what about nested *, the ≡ won't hold but that's problematic.
+
+
+>>> what about ● ? 
+
+r = ( ( a + ε ) ● ( a + ε ) ) ● ( a + ε )
+
+r ⊢ Pair (Pair (L a) (R Empty)) (R Empty)
+  >
+    Pair (Pair (R Empty) (L a)) (L a)
+
+>>> what about the following
+
+r = ( ( a + ε ) ● ( a * ) ) ● ( a + ε )
+
+r ⊢ Pair (Pair (L a) (List [])) (L a)
+  >
+    Pair (Pair (R Empty) (List [a,a])) (L a)
+
+proof is seq₁ (seq₁ choice-lr 1>0)
+
+but in FLOPS 2014 paper, we assume ● is always right associative. 

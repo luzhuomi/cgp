@@ -303,9 +303,18 @@ len|>|→> : { r : RE } { u v : U r }
     → r ⊢ u > v
 len|>|→> {ε} {EmptyU} {EmptyU} = λ()
 len|>|→> {$ c ` loc} {LetterU _ } {LetterU _} len[c]>len[c] = Nullary.contradiction len[c]>len[c] (<-irrefl refl) 
-len|>|→> {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} len|v₁v₂|>len|u₁u₂| with v₁ ≡? u₁
-... | yes v₁≡u₁ = {!!}     
+len|>|→> {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} len|v₁v₂|>len|u₁u₂| = {!!} 
+  -- with v₁ ≟ u₁
+-- ... | yes v₁≡u₁ = {!!}
 ```
+
+case v₁≡u₁  : len|v₂|>len|u₂| implies v₂ > u₂
+case v₁ > u₁ : seq₁ v₁>u₁ len|v₁v₂|>len|u₁u₂|
+case ¬ v₁ > u₁ : ¬ len|v₁| > len|u₁| implies
+                 len|u₁| ≥ len|v₁| implies 
+                 len|v₂| > len|u₂| implies
+                 v₂ > u₂ ? 
+is r ⊢ _ > _ total ? 
 
 
 
@@ -356,7 +365,7 @@ Note : The > order is transitive.
 >-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} len|v₂|≥len|v₃|) = choice-lr ( ≤-trans len|v₂|≥len|v₃| ( >→len|≥| v₁>v₂) ) -- we have l ⊢ v₁ > v₂, how to get |v₁| ≥ |v₂|
 >-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-ll {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-ll (>-trans v₁>v₂ v₂>v₃)
 >-trans {l + r ` loc} (choice-lr {l} {r} {.loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rr {l} {r} {.loc} {.v₂} {v₃} v₂>v₃) = choice-lr ( ≤-trans (>→len|≥| v₂>v₃) len|v₁|≥len|v₂| )
->-trans {l + r ` loc} (choice-lr {l} {r} {.loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rl {l} {r} {.loc} {.v₂} {v₃} len|v₂|>len|v₃|) = choice-ll {!!}  -- we know len|v₁|>len|v₃| we need len|>|→> ? 
+>-trans {l + r ` loc} (choice-lr {l} {r} {.loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rl {l} {r} {.loc} {.v₂} {v₃} len|v₂|>len|v₃|) = choice-ll {!!}  -- we know len|v₁|>len|v₃|, can we construct v₁>v₃, do we need len|>|→> ? 
 >-trans {l + r ` loc} (choice-rr {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-rr {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-rr (>-trans v₁>v₂ v₂>v₃)
 
 

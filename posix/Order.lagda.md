@@ -40,7 +40,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( <⇒≤ ; ≤-trans ; +-monoʳ-≤ ; ≤-refl)
+open NatProperties using ( <⇒≤ ; ≤-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl)
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -53,7 +53,7 @@ open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++
 
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
+open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst ; _≡?_)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 
 
@@ -296,7 +296,15 @@ len|xs++ys|≥len|xs++zs| {A} {(x ∷ xs)} {ys} {zs} len-ys≥len-zs = Nat.s≤s
     len|vs|≥len|us| = >→len|≥| vs>us
 
 
-len|>|→> 
+
+len|>|→> : { r : RE } { u v : U r } 
+    → length (proj₁ (flat u)) > length (proj₁ (flat v))
+    -------------------------------------
+    → r ⊢ u > v
+len|>|→> {ε} {EmptyU} {EmptyU} = λ()
+len|>|→> {$ c ` loc} {LetterU _ } {LetterU _} len[c]>len[c] = Nullary.contradiction len[c]>len[c] (<-irrefl refl) 
+len|>|→> {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} len|v₁v₂|>len|u₁u₂| with v₁ ≡? u₁
+... | yes v₁≡u₁ = {!!}     
 ```
 
 

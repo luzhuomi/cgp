@@ -330,7 +330,6 @@ choice-rr-> : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
 
 
-
 choice-rr-= : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
     → length (proj₁ (flat v₂)) ≡ length (proj₁ (flat v₂'))
     →  r ⊢ v₂ >  v₂'

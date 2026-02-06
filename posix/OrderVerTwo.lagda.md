@@ -1,6 +1,6 @@
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.posix.Order where
+module cgp.posix.OrderVerTwo where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
@@ -90,37 +90,21 @@ open import Function using (_∘_ ; flip)
 
 ```agda
 infix 4 _⊢_>_
-infix 4 _⊢_≻_
 
 
 data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set
 
-data _⊢_≻_ : ∀ ( r : RE ) → U r → U r → Set 
-
-
-data _⊢_≻_ where
-  len-≡ : ∀ { r : RE } { v₁ v₂ : U r }
-    → length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₂))
-    → r ⊢ v₁ > v₂
-    -----------------------------------------------------
-    → r ⊢ v₁ ≻ v₂
-
-  len-> : ∀ { r : RE } { v₁ v₂ : U r }
-    → length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))
-    -----------------------------------------------------
-    → r ⊢ v₁ ≻ v₂
-
 data _⊢_>_  where
 
   seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U  l } { v₂ v₂' : U r }
-    → l ⊢ v₁ ≻  v₁'
+    → l ⊢ v₁ >  v₁'
     → length (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))) ≥ length (proj₁ (flat (PairU {l} {r} {loc} v₁' v₂')))
     ------------------------------------------------------------------
     → l ● r ` loc ⊢ PairU v₁ v₂ > PairU v₁' v₂'
 
   seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
     → v₁ ≡ v₁'
-    → r ⊢ v₂ ≻ v₂'
+    → r ⊢ v₂ > v₂'
     -------------------------------------------------------------------
     → ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
@@ -136,13 +120,13 @@ data _⊢_>_  where
     → ( l + r ` loc ) ⊢ (RightU v₁) > (LeftU v₂)
 
   choice-ll : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
-    → l ⊢ v₁ ≻ v₁'
+    → l ⊢ v₁ > v₁'
     -------------------------------------------------------------------
     → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
 
 
   choice-rr : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
-    →  r ⊢ v₂ ≻  v₂'
+    →  r ⊢ v₂ >  v₂'
     -------------------------------------------------------------------
     → ( l + r ` loc ) ⊢ (RightU v₂) > (RightU v₂')
 
@@ -158,7 +142,8 @@ data _⊢_>_  where
   -- do we need the same treament for seq₁ ? 
 
   star-head : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
-    → r ⊢ v₁ ≻ v₂
+    → r ⊢ v₁ > v₂
+    -- → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂)) -- is this redundant? 
     → length (proj₁ (flat (ListU {r} {nε} {loc} (v₁ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU  {r} {nε} {loc} (v₂ ∷ vs₂))))
     ----------------------------------------------------------------------
     → ( r * nε ` loc ) ⊢ (ListU (v₁ ∷ vs₁)) > (ListU (v₂ ∷ vs₂))
@@ -166,7 +151,7 @@ data _⊢_>_  where
 
   star-tail : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
     → v₁ ≡ v₂
-    → ( r * nε ` loc ) ⊢ (ListU vs₁) ≻ (ListU vs₂)
+    → ( r * nε ` loc ) ⊢ (ListU vs₁) > (ListU vs₂)
     ----------------------------------------------------------------------
     → ( r * nε ` loc ) ⊢ (ListU (v₁ ∷ vs₁)) > (ListU (v₂ ∷ vs₂))
 
@@ -280,7 +265,7 @@ postulate
     → ( v ≡ u ) ⊎ ( r ⊢ v > u )
 
 
-
+{-
 len|xs++ys|≥len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }
   → length ys ≥ length zs
   -----------------------------------
@@ -325,7 +310,7 @@ len|>|→> {$ c ` loc} {LetterU _ } {LetterU _} len[c]>len[c] = Nullary.contradi
 len|>|→> {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} len|v₁v₂|>len|u₁u₂| = {!!} 
   -- with v₁ ≟ u₁
 -- ... | yes v₁≡u₁ = {!!}
-
+-}
 ```
 
 case v₁≡u₁  : len|v₂|>len|u₂| implies v₂ > u₂ we have seq₂
@@ -349,7 +334,7 @@ Note : The > order is transitive.
 
 
 
-
+{-
 >-trans : { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ > u₂
   → r ⊢ u₂ > u₃
@@ -395,6 +380,7 @@ Note : The > order is transitive.
 -- is there a contradiction here? 
 >-trans {l + r ` loc} (choice-rr {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-rr {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-rr (>-trans v₁>v₂ v₂>v₃)
 
+-}
 
 ```
 

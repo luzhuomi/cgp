@@ -305,7 +305,39 @@ v₁ = Pair u₁ []
 v₂ = Pair u₂ []
 v₃ = Pair u₃ [a]
 
-A Proposed solution. change the choice-ll and choice-rr to use len||>len|| instead of > 
+A proposed solution. change the choice-ll and choice-rr to use len||>len|| instead of r ⊢ _ > _
+
+
+
+
+choice-ll-> : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
+    → length (proj₁ (flat v₁)) > length (proj₁ (flat v₁'))
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
+
+
+choice-ll-= : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
+    → length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₁'))
+    → l ⊢ v₁ > v₁' 
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
+
+
+
+choice-rr-> : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
+    → length (proj₁ (flat v₂)) > length (proj₁ (flat v₂'))
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (LeftU v₁) > (LeftU v₁')
+
+
+
+choice-rr-= : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
+    → length (proj₁ (flat v₂)) ≡ length (proj₁ (flat v₂'))
+    →  r ⊢ v₂ >  v₂'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (RightU v₂) > (RightU v₂')
+
+
 
 
 

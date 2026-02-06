@@ -493,7 +493,7 @@ The POSIX order defined in FLOPS 2014 is problematic, it is creating a loop amon
 The main issue lies in the ChoiceLL and ChoiceRR rules 
 
 
-
+```
 r₁ ⊢ v₁ > v₁'
 ----------------------------------(ChoiceLL)
 r₁ + r₂ ⊢ LeftU v₁ > LeftU v₁' 
@@ -502,37 +502,44 @@ r₁ + r₂ ⊢ LeftU v₁ > LeftU v₁'
 r₂ ⊢ v₂ > v₂'
 ----------------------------------(ChoiceRR)
 r₁ + r₂ ⊢ RightU v₂ > RightU v₂' 
+```
 
 
-
-Consider r = (a* ● a*) + a*
+Consider `r = (a* ● a*) + a*`
 
 Let 
+
+```
 u₁ = L (Pair [] [a,a])
 u₂ = R [a,a]
+```
+According to ChoiceLL rule, `r ⊢ u₁ > u₂`
 
-According to ChoiceLL rule, r ⊢ u₁ > u₂
+Let
 
-Let 
+```
 u₃ = L (Pair [a] [] )
+```
+According to ChoiceRL rule, `r ⊢ u₂ > u₃`
 
-According to ChoiceRL rule, r ⊢ u₂ > u₃
+According to ChoiceLL rule, `r ⊢ u₃ > u₁`
 
-According to ChoiceLL rule, r ⊢ u₃ > u₁
-
-We have a loop! Why this is bad? consider another regular expression t = r ● a*
+We have a loop! Why this is bad? consider another regular expression `t = r ● a*`
 
 what is the max value according to the > order?
 
+```
 v₁ = Pair u₁ []
 v₂ = Pair u₂ []
 v₃ = Pair u₃ [a]
+```
 
 
+A proposed solution. refine the ChoiceLL and ChoiceRR to use `length |_| > len |_|` 
+instead of `r ⊢ _ > _` only when the length are equal, we break the tie using `r ⊢ _ > _`.
 
-A proposed solution. refine the ChoiceLL and ChoiceRR to use len |_| > len |_| instead of r ⊢ _ > _
 
-
+```
 length |v₁| = length |v₁'|
 r₁ ⊢ v₁ > v₁'
 ----------------------------------(ChoiceLL-=)
@@ -553,7 +560,7 @@ r₁ + r₂ ⊢ RightU v₂ > RightU v₂'
 length |v₂| > length |v₂'|
 ----------------------------------(ChoiceRR->)
 r₁ + r₂ ⊢ RightU v₂ > RightU v₂' 
-
+```
 
 
 ### How to establish robustness between POSIX and LNE and Greedy?

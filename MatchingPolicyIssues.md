@@ -180,7 +180,6 @@ which means the list (7) is not sorted according to the POSIX order.
 
 
 
-
 ### The observation:
 
 
@@ -505,7 +504,9 @@ r₁ + r₂ ⊢ RightU v₂ > RightU v₂'
 ```
 
 
-Consider `r = (a* ● a*) + a*`
+Consider `r = (a* ● a*) + a*` 
+
+w = `aa`
 
 Let 
 
@@ -513,10 +514,11 @@ Let
 u₁ = L (Pair [] [a,a])
 u₂ = R [a,a]
 ```
-According to ChoiceLL rule, `r ⊢ u₁ > u₂`
+According to ChoiceLR rule, `r ⊢ u₁ > u₂`
 
 Let
 
+w' = `a`
 ```
 u₃ = L (Pair [a] [] )
 ```
@@ -535,7 +537,7 @@ v₃ = Pair u₃ [a]
 ```
 
 
-A proposed solution. refine the ChoiceLL and ChoiceRR to use `length |_| > len |_|` 
+A proposed solution. refine the ChoiceLL and ChoiceRR to use `length |_| > length |_|` 
 instead of `r ⊢ _ > _` only when the length are equal, we break the tie using `r ⊢ _ > _`.
 
 

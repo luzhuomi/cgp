@@ -562,6 +562,8 @@ length |v₂| > length |v₂'|
 r₁ + r₂ ⊢ RightU v₂ > RightU v₂' 
 ```
 
+>>> Question: do we need to adjust the Seq and Star rules?
+
 
 ### How to establish robustness between POSIX and LNE and Greedy?
 

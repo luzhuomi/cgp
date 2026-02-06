@@ -279,6 +279,43 @@ Note : The > order is transitive.
 
 ```
 
+
+
+the posix > we defined in FLOPS 2014 is not transitive, b/c of the ll, lr, rl and rr rules.
+
+Consider r = (a* ● a*) + a*
+
+u₁ = L (Pair [] [a,a])
+u₂ = R [a,a]
+
+according to choice-lr rule, r ⊢ u₁ > u₂
+
+u₃ = L (Pair [a] [] )
+
+according to choice-rl rule, r ⊢ u₂ > u₃
+
+according to choice-ll rule, r ⊢ u₃ > u₁
+
+
+Why this is bad? Consider another regular expression t = r ● a*
+
+what is the max value according to the > order?
+
+v₁ = Pair u₁ []
+v₂ = Pair u₂ []
+v₃ = Pair u₃ [a]
+
+A Proposed solution. change the choice-ll and choice-rr to use len||>len|| instead of > 
+
+
+
+
+
+
+
+> The following is probably not necessary.
+
+
 Maybe we need to weaken the transitivity lemma to include the underlying word.
 
 a) Does r ⊢ v₁ > v₂ imply |v₁| ≥ |v₂| ? no.
@@ -309,22 +346,3 @@ which will reject the counter example above.
 >>> what about nested *, the ≡ won't hold but that's problematic.
 
 
-```agda
-
-weak->-trans : { r : RE } { u₁ u₂ u₃ : U r } 
-  → r ⊢ u₁ > u₂
-  → r ⊢ u₂ > u₃
-  → proj₁ (flat u₁) ≡ proj₁ (flat u₂)
-  → proj₁ (flat u₂) ≡ proj₁ (flat u₃)     
-  -----------------
-  → r ⊢ u₁ > u₃
-weak->-trans {ε} = λ()
-weak->-trans {$ c ` loc} = λ()
-weak->-trans {r * ε∉r ` loc} star-cons-nil = λ()
-weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃) eq₁ eq₂                          = star-head (weak->-trans v₁>v₂ v₂>v₃ {!!} {!!}) -- does not work either,
- --  | cons u1 u2  |  == | cons v1 v2 | does not imply | u1 | == | v1 | 
-weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) _  _ rewrite (sym v₂≡v₃) = star-head v₁>v₂
-weak->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil     _  _                             = star-cons-nil
-
-
-```

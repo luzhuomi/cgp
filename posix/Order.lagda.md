@@ -86,6 +86,83 @@ open import Function using (_∘_ ; flip)
 ### Definition : POSIX ordering among parse trees
 
 
+Note that we have adjusted the POSIX ordering defined in FLOPS 2014 as follows, the one in FLOPS 2014 has an issue with the cyclic relation >
+refer to the MatchingIssue.md, section "update Feb 6 2026". 
+
+
+
+The adjustment is to introduce a top level > and an internal level >ⁱ
+
+The internal level >ⁱ is the same as the one defined in FLOPS 2024.
+
+
+
+r₁ ⊢ v₁ > v₁'
+-------------------------------------------- (Seq₁)
+r₁ ● r₂ ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
+
+
+
+v₁ ≡ v₁'  r₂ ⊢ v₂ > v₂'
+-------------------------------------------- (Seq₂)
+r₁ ● r₂ ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
+
+
+r₁ ⊢ v₁ > v₁'
+----------------------------------(ChoiceLL)
+r₁ + r₂ ⊢ LeftU v₁ >ⁱ LeftU v₁' 
+
+
+r₂ ⊢ v₂ > v₂'
+----------------------------------(ChoiceRR)
+r₁ + r₂ ⊢ RightU v₂ >ⁱ RightU v₂' 
+
+
+length |v₁| ≥ length |v₂|
+----------------------------------------------(ChoiceLR)
+r₁ + r₂ ⊢ LeftU v₁ >ⁱ RightU v₂ 
+
+
+
+length |v₂| > length |v₁|
+----------------------------------------------(ChoiceRL)
+r₁ + r₂ ⊢ RightU v₂ >ⁱ LeftU v₁ 
+
+
+r ⊢ v₁ > v₂ 
+---------------------------------(StarHd)
+r* ⊢ ConsU v₁ vs₁ >ⁱ ConsU v₂ vs₂
+
+
+v₁ ≡ v₂        r* ⊢ vs₁ > vs₂ 
+---------------------------------(StarTl)
+r* ⊢ ConsU v₁ vs₁ >ⁱ ConsU v₂ vs₂
+
+
+
+length |v| + length |vs| == 0
+-----------------------------------------------(StarNilCons)
+r* ⊢ NilU >ⁱ ConsU v vs
+
+
+
+length |v| + length |vs| > 0
+------------------------------------------------(StarNilCons)
+r* ⊢ ConsU v vs >ⁱ NilU
+
+
+
+The top level > has the following two rules
+
+len |v₁| ≡ len |v₂|
+r ⊢ v₁ >ⁱ v₂
+--------------------------------(≡-len)
+r ⊢ v₁ > v₂
+
+len |v₁| > len |v₂|
+--------------------------------(>-len)
+r ⊢ v₁ > v₂
+
 
 
 ```agda
@@ -115,7 +192,6 @@ data _⊢_>ⁱ_  where
 
   seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U  l } { v₂ v₂' : U r }
     → l ⊢ v₁ >  v₁'
-    → length (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))) ≥ length (proj₁ (flat (PairU {l} {r} {loc} v₁' v₂')))
     ------------------------------------------------------------------
     → l ● r ` loc ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
 
@@ -154,13 +230,11 @@ data _⊢_>ⁱ_  where
   -- star-nil-cons rule is not needed as we are dealing with non problematic regular expression.
 
 
-  -- the following rule is weakened by only considering len | v₁ ∷ vs₁ | >= len | v₂ ∷ vs₂ |
   -- notation  | v |  is proj₁ (flat v)
   -- do we need the same treament for seq₁ ? 
 
   star-head : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
     → r ⊢ v₁ > v₂
-    -- → length (proj₁ (flat (ListU {r} {nε} {loc} (v₁ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU  {r} {nε} {loc} (v₂ ∷ vs₂))))
     ----------------------------------------------------------------------
     → ( r * nε ` loc ) ⊢ (ListU (v₁ ∷ vs₁)) >ⁱ (ListU (v₂ ∷ vs₂))
 
@@ -281,7 +355,7 @@ postulate
     → ( v ≡ u ) ⊎ ( r ⊢ v > u )
 
 
-
+{-
 len|xs++ys|≥len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }
   → length ys ≥ length zs
   -----------------------------------
@@ -289,8 +363,8 @@ len|xs++ys|≥len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }
 len|xs++ys|≥len|xs++zs| {A} {[]}        {ys} {zs} len-ys≥len-zs = len-ys≥len-zs
 len|xs++ys|≥len|xs++zs| {A} {(x ∷ xs)} {ys} {zs} len-ys≥len-zs = Nat.s≤s (len|xs++ys|≥len|xs++zs| {A} {xs} {ys} {zs}  len-ys≥len-zs) 
 
+-}
 
--- postulate 
 >→len|≥| : { r : RE } { u v : U r } 
            → r ⊢ u > v
            -------------------------------------
@@ -298,33 +372,6 @@ len|xs++ys|≥len|xs++zs| {A} {(x ∷ xs)} {ys} {zs} len-ys≥len-zs = Nat.s≤s
 >→len|≥| {r} {u} {v} (len-> len-u>len-v) = <⇒≤ len-u>len-v
 >→len|≥| {r} {u} {v} (len-≡ len-u≡len-v u>ⁱv) = ≤-reflexive (sym len-u≡len-v)  
 
-
--- do we still need this lemma to achieve transitivity? what if we apply the same > and = trick of the choice-ll and choice-rr rules to star-head and seq₁?
-{-
->ⁱ→len|≥| : { r : RE } { u v : U r } 
-    → r ⊢ u >ⁱ v
-    -------------------------------------
-    → length (proj₁ (flat u)) ≥ length (proj₁ (flat v))
->ⁱ→len|≥| {ε}           {EmptyU}      {EmptyU} = λ ()
->ⁱ→len|≥| {$ c ` loc}   {LetterU _}   {LetterU _} = λ ()
->ⁱ→len|≥| {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} (seq₁ v₁>u₁ len|v₁v₂|≥len|u₁u₂|) = len|v₁v₂|≥len|u₁u₂|
->ⁱ→len|≥| {l ● r ` loc} {PairU v₁ v₂} {PairU u₁ u₂} (seq₂ v₁≡u₁ v₂>u₂) rewrite v₁≡u₁ = len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat u₁)} {proj₁ (flat v₂)} {proj₁ (flat u₂)} len|v₂|≥len|u₂|  
-  where 
-    len|v₂|≥len|u₂| : length (proj₁ (flat v₂)) ≥ length (proj₁ (flat u₂))
-    len|v₂|≥len|u₂| = >→len|≥| v₂>u₂
->ⁱ→len|≥| {l + r ` loc} {LeftU v₁} {LeftU v₂} (choice-ll v₁>v₂) = >→len|≥| v₁>v₂
->ⁱ→len|≥| {l + r ` loc} {RightU v₁} {RightU v₂} (choice-rr v₁>v₂) = >→len|≥| v₁>v₂
->ⁱ→len|≥| {l + r ` loc} {LeftU v₁} {RightU v₂} (choice-lr len|v₁|≥len|v₂|) = len|v₁|≥len|v₂|
->ⁱ→len|≥| {l + r ` loc} {RightU v₁} {LeftU v₂} (choice-rl len|v₁|>len|v₂|) = <⇒≤  len|v₁|>len|v₂|
->ⁱ→len|≥| {r * ε∉r ` loc } {ListU []} {ListU []} = λ()
->ⁱ→len|≥| {r * ε∉r ` loc } {ListU []} {ListU ( u ∷ us) } = λ()
->ⁱ→len|≥| {r * ε∉r ` loc } {ListU (v ∷ vs) } {ListU [] } star-cons-nil = Nat.z≤n
->ⁱ→len|≥| {r * ε∉r ` loc } {ListU (v ∷ vs) } {ListU ( u ∷ us)} (star-head u>v len|v∷vs|>len|u∷us|) = len|v∷vs|>len|u∷us|
->ⁱ→len|≥| {r * ε∉r ` loc } {ListU (v ∷ vs) } {ListU ( u ∷ us)} (star-tail v≡u vs>us) rewrite v≡u =  len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat u)} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs))} {proj₁ (flat (ListU {r} {ε∉r} {loc} us))} len|vs|≥len|us|  
-  where 
-    len|vs|≥len|us| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} vs))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} us)))
-    len|vs|≥len|us| = >→len|≥| vs>us
--}
 
 
 
@@ -337,20 +384,6 @@ len|>|→> {r} {u} {v} len|u|>len|v| = len-> len|u|>len|v|
 
 
 ```
-
-case v₁≡u₁  : len|v₂|>len|u₂| implies v₂ > u₂ we have seq₂
-
-case v₁ > u₁ : seq₁ v₁>u₁ len|v₁v₂|>len|u₁u₂|
-case ¬ v₁ > u₁ : ¬ len|v₁| > len|u₁| implies
-                 len|u₁| ≥ len|v₁| implies 
-                 len|v₂| > len|u₂| implies
-                 v₂ > u₂ ? 
-is r ⊢ _ > _ total ?
-
-case len|v₁|>len|u₁| : ind-hyp v₁>u₁, we have seq₁
-case len|u₁|≥len|v₁| : len|v₁v₂|>len|u₁u₂| implies len|u₂|>len|v₂|,
-                       by ind-hyp we have. u₂ > v₂ but then? 
-
 
 
 Note : The > order is transitive. 
@@ -397,36 +430,11 @@ Note : The > order is transitive.
 
 >ⁱ-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
         (star-head v₁>v₂ )   (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
---         (star-head v₁>v₂ len|v₁∷vs₁|≥len|v₂∷vs₂| )   (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂ len|v₁∷vs₁|≥len|v₂∷vs₃|
-{-        
-  where
-    len|vs₂|≥len|vs₃| : length (proj₁ (flat (ListU vs₂))) ≥ length (proj₁ (flat (ListU vs₃)))
-    len|vs₂|≥len|vs₃| = >→len|≥|  vs₂>vs₃
 
-    len|v₂∷vs₂|≥len|v₂∷vs₃| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₂)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃))))
-    len|v₂∷vs₂|≥len|v₂∷vs₃| = 
-      len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat v₂)} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₂))} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₃))} len|vs₂|≥len|vs₃| 
-
-    len|v₁∷vs₁|≥len|v₂∷vs₃| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₁ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₃))))
-    len|v₁∷vs₁|≥len|v₂∷vs₃| = ≤-trans len|v₂∷vs₂|≥len|v₂∷vs₃| len|v₁∷vs₁|≥len|v₂∷vs₂|
--}
-    
-    
--- >ⁱ-trans {r * ε∉r ` loc} (star-head v₁>v₂ _ )         star-cons-nil  = star-cons-nil
 >ⁱ-trans {r * ε∉r ` loc} (star-head v₁>v₂ )         star-cons-nil  = star-cons-nil
 >ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
 >ⁱ-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
   (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ -- (≤-trans  len|v₂∷vs₂|≥len|v₃∷vs₃| len|v₂∷vs₁|≥len|v₂∷vs₂|)
---  (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃ len|v₂∷vs₂|≥len|v₃∷vs₃|) rewrite v₁≡v₂ = star-head v₂>v₃ (≤-trans  len|v₂∷vs₂|≥len|v₃∷vs₃| len|v₂∷vs₁|≥len|v₂∷vs₂|)  
-{-  
-  where
-    len|vs₁|≥len|vs₂| :  length (proj₁ (flat (ListU {r} {ε∉r} {loc} vs₁))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} vs₂)))
-    len|vs₁|≥len|vs₂| = >→len|≥|  vs₁>vs₂
-
-    len|v₂∷vs₁|≥len|v₂∷vs₂| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₁)))) ≥ length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v₂ ∷ vs₂))))
-    len|v₂∷vs₁|≥len|v₂∷vs₂| =  
-      len|xs++ys|≥len|xs++zs| {Char} {proj₁ (flat v₂)} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₁))} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs₂))} len|vs₁|≥len|vs₂| 
--}  
 >ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
 >ⁱ-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} len|v₂|≥len|v₃|) = choice-lr ( ≤-trans len|v₂|≥len|v₃| ( >→len|≥| v₁>v₂) ) 
 >ⁱ-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-ll {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-ll (>-trans v₁>v₂ v₂>v₃)
@@ -440,6 +448,10 @@ Note : The > order is transitive.
 >ⁱ-trans {l + r ` loc} (choice-rr {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-rl {l} {r} {.loc} {.v₂} {v₃} len|v₂|>len|v₃|) =  choice-rl ( ≤-trans len|v₂|>len|v₃| (>→len|≥| v₁>v₂ ) ) 
 >ⁱ-trans {l + r ` loc} (choice-rl {l} {r} {.loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-lr {l} {r} {.loc} {.v₂} {v₃} len|v₂|≥len|v₃|) = choice-rr (len|>|→> (≤-trans (Nat.s≤s len|v₂|≥len|v₃|)  len|v₁|>len|v₂|) )
 >ⁱ-trans {l + r ` loc} (choice-rl {l} {r} {.loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-ll {l} {r} {.loc} {.v₂} {v₃} v₂>v₃) = choice-rl ( ≤-trans (Nat.s≤s (>→len|≥| v₂>v₃ )) len|v₁|>len|v₂| )
+>ⁱ-trans {l ● r ` loc} (seq₁ v₁>v₂) (seq₁ v₂>v₃) = seq₁ (>-trans v₁>v₂ v₂>v₃ )
+>ⁱ-trans {l ● r ` loc} (seq₁ v₁>v₂) (seq₂ v₂≡v₃ vs₂>vs₃) rewrite v₂≡v₃ = seq₁ v₁>v₂ 
+>ⁱ-trans {l ● r ` loc} (seq₂ v₁≡v₂ vs₁>vs₂) (seq₂ v₂≡v₃ vs₂>vs₃) rewrite (sym v₁≡v₂) = seq₂ v₂≡v₃ (>-trans vs₁>vs₂ vs₂>vs₃)
+>ⁱ-trans {l ● r ` loc} (seq₂ v₁≡v₂ vs₁>vs₂) (seq₁ v₂>v₃) rewrite v₁≡v₂ = seq₁ v₂>v₃ 
 ```
 
 Maybe we need to weaken the transitivity lemma to include the underlying word.

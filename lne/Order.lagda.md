@@ -607,7 +607,7 @@ map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u ∷ u' ∷ us)   (v �
 map-pairU-empty-sorted : ∀ { l r : RE } { loc : ℕ }
   → ( us : List (U l) )
   → ( vs : List (U r) )
-  → All (Flat-[] l) us
+  → All (Flat-[] l) us -- TODO: is this premise actually needed?
   → >-sorted {l} us   
   → >-sorted {r} vs
   → >-sorted {l ● r ` loc } (List.foldr _++_ [] (List.map (λ u₁ → List.map (PairU u₁) vs) us))

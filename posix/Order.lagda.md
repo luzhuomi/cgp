@@ -426,7 +426,6 @@ Note : The > order is transitive.
 >ⁱ-trans {r * ε∉r ` loc} star-cons-nil = λ()
 >ⁱ-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
         (star-head v₁>v₂)   (star-head v₂>v₃ ) = star-head (>-trans v₁>v₂ v₂>v₃) 
-        -- (star-head v₁>v₂ len|v₁∷vs₁|≥len|v₂∷vs₂| )   (star-head v₂>v₃ len|v₂∷vs₂|≥len|v₃∷vs₃| ) = star-head (>-trans v₁>v₂ v₂>v₃) (≤-trans len|v₂∷vs₂|≥len|v₃∷vs₃| len|v₁∷vs₁|≥len|v₂∷vs₂| )
 
 >ⁱ-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
         (star-head v₁>v₂ )   (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
@@ -434,7 +433,8 @@ Note : The > order is transitive.
 >ⁱ-trans {r * ε∉r ` loc} (star-head v₁>v₂ )         star-cons-nil  = star-cons-nil
 >ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
 >ⁱ-trans {r * ε∉r ` loc} {ListU (v₁ ∷ vs₁)} {ListU (v₂ ∷ vs₂)} {ListU (v₃ ∷ vs₃)}
-  (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ -- (≤-trans  len|v₂∷vs₂|≥len|v₃∷vs₃| len|v₂∷vs₁|≥len|v₂∷vs₂|)
+  (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃
+  
 >ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
 >ⁱ-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} len|v₂|≥len|v₃|) = choice-lr ( ≤-trans len|v₂|≥len|v₃| ( >→len|≥| v₁>v₂) ) 
 >ⁱ-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-ll {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-ll (>-trans v₁>v₂ v₂>v₃)

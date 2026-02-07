@@ -87,13 +87,13 @@ open import Function using (_∘_ ; flip)
 
 
 Note that we have adjusted the POSIX ordering defined in FLOPS 2014 as follows, the one in FLOPS 2014 has an issue with the cyclic relation >
-refer to the MatchingIssue.md, section "update Feb 6 2026". 
+refer to the MatchingIssue.md, section "Updated on Feb 6 2026". 
 
 
 
 The adjustment is to introduce a top level > and an internal level >ⁱ
 
-The internal level >ⁱ is the same as the one defined in FLOPS 2024.
+The internal level >ⁱ is the same as the one defined in FLOPS 2024 modulo the inductive call.
 
 
 

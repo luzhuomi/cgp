@@ -40,7 +40,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl)
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl)
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -359,19 +359,35 @@ Note : The > order is transitive.
 
 
 
-postulate
-  >-trans : { r : RE } { u₁ u₂ u₃ : U r }
+
+>-trans : { r : RE } { u₁ u₂ u₃ : U r }
     → r ⊢ u₁ > u₂
     → r ⊢ u₂ > u₃
     -----------------
     → r ⊢ u₁ > u₃
-
 
 >ⁱ-trans : { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ >ⁱ u₂
   → r ⊢ u₂ >ⁱ u₃
   -----------------
   → r ⊢ u₁ >ⁱ u₃
+
+
+>-trans {r} {u₁} {u₂} {u₃} (len-≡ {r} {v₁} {v₂} len-|v₁|≡len-|v₂| v₁>ⁱv₂) (len-≡ {r} {.v₂} {v₃} len-|v₂|≡len-|v₃| v₂>ⁱv₃) =
+  len-≡ {r} {v₁} {v₃} (trans len-|v₁|≡len-|v₂| len-|v₂|≡len-|v₃|) (>ⁱ-trans v₁>ⁱv₂ v₂>ⁱv₃)
+>-trans {r} {u₁} {u₂} {u₃} (len-≡ {r} {v₁} {v₂} len-|v₁|≡len-|v₂| v₁>ⁱv₂) (len-> {r} {.v₂} {v₃} len-|v₂|>len-|v₃|) = 
+  len-> {r} {v₁} {v₃} len-|v₁|>len|v₃|
+  where
+    len-|v₁|>len|v₃| : length (proj₁ (flat u₁)) > length (proj₁ (flat u₃))
+    len-|v₁|>len|v₃| rewrite  len-|v₁|≡len-|v₂| = len-|v₂|>len-|v₃| 
+>-trans {r} {u₁} {u₂} {u₃} (len-> {r} {v₁} {v₂} len-|v₁|>len-|v₂|) (len-> {r} {.v₂} {v₃} len-|v₂|>len-|v₃|) = len-> {r} {v₁} {v₃} (<-trans len-|v₂|>len-|v₃| len-|v₁|>len-|v₂| )
+>-trans {r} {u₁} {u₂} {u₃} (len-> {r} {v₁} {v₂} len-|v₁|>len-|v₂|) (len-≡ {r} {.v₂} {v₃} len-|v₂|≡len-|v₃|  v₂>ⁱv₃) = len-> {r} {v₁} {v₃} len-|v₁|>len|v₃|
+  where
+    len-|v₁|>len|v₃| : length (proj₁ (flat u₁)) > length (proj₁ (flat u₃))
+    len-|v₁|>len|v₃| rewrite (sym len-|v₂|≡len-|v₃|) = len-|v₁|>len-|v₂| 
+
+
+
 >ⁱ-trans {ε} = λ()
 >ⁱ-trans {$ c ` loc} = λ()
 >ⁱ-trans {r * ε∉r ` loc} star-cons-nil = λ()

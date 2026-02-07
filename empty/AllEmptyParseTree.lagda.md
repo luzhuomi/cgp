@@ -353,6 +353,36 @@ flat-[]-left→flat-[] (flat-[] (LeftU u) prf) = flat-[] u prf -- we can use prf
 ```
 
 
+#### 15.2.3
+Let l and r be regular expressions.
+Let loc be a source location.
+Let u be a parse tree of r
+such that flat u ≡ [].
+Then flat (RightU u) ≡ [].
+```agda
+flat-[]→flat-[]-right : ∀ { l r : RE } { loc : ℕ } { u : U r }
+  → Flat-[] r u
+  -------------------------------------
+  → Flat-[] ( l + r ` loc ) (RightU u)
+flat-[]→flat-[]-right (flat-[] u prf) = flat-[] (RightU u) prf 
+```
+
+
+#### 15.2.4
+Let l and r be regular expressions.
+Let loc be a source location.
+Let u be a parse tree of r
+such that flat u ≡ [].
+Then flat (LeftU u) ≡ [].
+```agda
+flat-[]→flat-[]-left : ∀ { l r : RE } { loc : ℕ } { u : U l }
+  → Flat-[] l u
+  -------------------------------------
+  → Flat-[] ( l + r ` loc ) (LeftU u)
+flat-[]→flat-[]-left (flat-[] u prf) = flat-[] (LeftU u) prf 
+```
+
+
 
 
 #### Sub Lemma 15.3

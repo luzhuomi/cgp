@@ -1012,7 +1012,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         |right-inj-u₂|≡|inj-u₂| = refl
 
         len-|right-inj-u₁|≡len-|right-inj-u₂| : length (proj₁ (flat (RightU {l} {r} {loc} (inj u₁)))) ≡ length (proj₁ (flat (RightU {l} {r} {loc} (inj u₂))))
-        len-|right-inj-u₁|≡len-|right-inj-u₂| rewrite |right-inj-u₁|≡|inj-u₁| | |right-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = cong suc len|u₁|≡len|u₂|  
+        len-|right-inj-u₁|≡len-|right-inj-u₂|
+          rewrite |right-inj-u₁|≡|inj-u₁| | |right-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = cong suc len|u₁|≡len|u₂|  
 
 
 
@@ -1028,18 +1029,34 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
   where
     injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
     injFst = mkinjFst inj
+
+    len-|inj-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
+
+    len-|injFst-pair-uv|≡len-|pair-uv|+1 : (u : U p) → (v : U r) → length (proj₁ (flat ((PairU {l} {r} {loc} (inj u) v)))) ≡ suc (length (proj₁ (flat (PairU {p} {r} {loc} u v))))
+    len-|injFst-pair-uv|≡len-|pair-uv|+1 u v rewrite (sound-ev u) = refl 
+    
     >-inc-ev : ∀ (uv₁ : U ( p ● r ` loc ))
               → (uv₂ : U ( p ● r ` loc ))
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
 
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-> len|pair-u₁v₁|>len|pair-u₂v₂|) =  {!!}
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-> len|pair-u₁v₁|>len|pair-u₂v₂|) = len-> len-|injFst-pair-u₁v₁|>len-|injFst-pair-u₂v₂|
+      where
+        len-|injFst-pair-u₁v₁|>len-|injFst-pair-u₂v₂| : length (proj₁ (flat (PairU {l} {r} {loc}  (inj u₁) v₁))) > length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂)))
+        len-|injFst-pair-u₁v₁|>len-|injFst-pair-u₂v₂| rewrite (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₁ v₁) | (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₂ v₂) = Nat.s≤s len|pair-u₁v₁|>len|pair-u₂v₂| 
+      
     >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-≡ len|pair-u₁v₁|≡len|pair-u₂v₂| (seq₁  u₁>u₂)) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-      in (len-≡ {!!} (seq₁ inj-u₁>inj-u₂))
+      in (len-≡ len-|injFst-pair-u₁v₁|>len≡|injFst-pair-u₂v₂| (seq₁ inj-u₁>inj-u₂))
+      where
+        len-|injFst-pair-u₁v₁|>len≡|injFst-pair-u₂v₂| : length (proj₁ (flat (PairU {l} {r} {loc}  (inj u₁) v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂)))
+        len-|injFst-pair-u₁v₁|>len≡|injFst-pair-u₂v₂| rewrite (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₁ v₁) | (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₂ v₂) = cong suc len|pair-u₁v₁|≡len|pair-u₂v₂|  
 
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-≡ len|pair-u₁v₁|≡len|pair-u₂v₂| (seq₂  u₁≡u₂ v₁>v₂ )) = len-≡ {!!} (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
-        where
-          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
-          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-≡ len|pair-u₁v₁|≡len|pair-u₂v₂| (seq₂  u₁≡u₂ v₁>v₂ )) = len-≡ len-|injFst-pair-u₁v₁|>len≡|injFst-pair-u₂v₂| (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
+      where
+        len-|injFst-pair-u₁v₁|>len≡|injFst-pair-u₂v₂| : length (proj₁ (flat (PairU {l} {r} {loc}  (inj u₁) v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂)))
+        len-|injFst-pair-u₁v₁|>len≡|injFst-pair-u₂v₂| rewrite (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₁ v₁) | (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₂ v₂) = cong suc len|pair-u₁v₁|≡len|pair-u₂v₂| 
+        inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
+        inj-u₁≡inj-u₂ = cong inj u₁≡u₂

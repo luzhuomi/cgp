@@ -746,27 +746,45 @@ map-pairU-empty-sorted : ∀ { l r : RE } { loc : ℕ }
   → >-sorted {r} vs
   -------------------------------------------------------------------------------------------
   → >-sorted {l ● r ` loc } (List.foldr _++_ [] (List.map (λ u₁ → List.map (PairU u₁) vs) us))
-map-pairU-empty-sorted  {l} {r} {loc} []        vs []               _ >-sorted-[]                         >-sorted-vs  = >-nil
-map-pairU-empty-sorted  {l} {r} {loc} (u ∷ [])  vs all-flat-[]-us  all-flat-[]-vs (>-cons  >-nil >-nothing)   >-sorted-vs rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (PairU {l} {r} {loc} u) vs)))  = map-pair-u-vs-sorted u vs >-sorted-vs
+map-pairU-empty-sorted  {l} {r} {loc} []        vs []                _              >-sorted-[]                 >-sorted-vs  = >-nil
+map-pairU-empty-sorted  {l} {r} {loc} (u ∷ [])  vs (flat-[]-u ∷ _ )  all-flat-[]-vs (>-cons  >-nil >-nothing)   >-sorted-vs rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (PairU {l} {r} {loc} u) vs)))  = map-pair-u-vs-sorted u flat-[]-u vs all-flat-[]-vs >-sorted-vs
   where
-    map-pair-u-vs-sorted : ( u : U l ) → ( vs : List (U r )) → >-sorted {r} vs → >-sorted { l ● r ` loc } (List.map (PairU u) vs)
-    map-pair-u-vs-sorted u []          >-nil = >-nil
-    map-pair-u-vs-sorted u ( v ∷ vs ) (>-cons >-sorted-vs v>head-vs) with >-sorted-vs
-    ... | >-nil          = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) >-nothing
-    ... | >-cons  >-sorted-vs' v'>head-vs' with v>head-vs
-    ...            | >-just {r} {_} {v'} v>v' = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (len-≡ {!!} (seq₂ refl v>v') ))
+    map-pair-u-vs-sorted : ( u : U l ) → Flat-[] l u → ( vs : List (U r )) → All (Flat-[] r) vs → >-sorted {r} vs → >-sorted { l ● r ` loc } (List.map (PairU u) vs)
+    map-pair-u-vs-sorted u _                     []         []  >-nil = >-nil
+    map-pair-u-vs-sorted u (flat-[] _ flat-u≡[]) ( v ∷ vs ) ((flat-[] v flat-v≡[]) ∷ all-flat-[]-vs) (>-cons >-sorted-vs v>head-vs) with >-sorted-vs
+    ... | >-nil          = >-cons (map-pair-u-vs-sorted u (flat-[] u flat-u≡[]) vs all-flat-[]-vs >-sorted-vs) >-nothing
+    ... | >-cons  >-sorted-vs' v'>head-vs' with v>head-vs | all-flat-[]-vs 
+    ...            | >-just {r} {_} {v'} v>v' | ((flat-[] v' flat-v'≡[]) ∷ all-flat-[]-vs')  = >-cons (map-pair-u-vs-sorted u (flat-[] u flat-u≡[]) vs all-flat-[]-vs  >-sorted-vs) (>-just (len-≡ len-|pairuv|≡len-|pair-uv'| (seq₂ refl v>v') ))
+      where
+        |pairuv|≡[] : proj₁ (flat (PairU {l} {r} {loc} u v)) ≡ []
+        |pairuv|≡[] rewrite flat-u≡[] | flat-v≡[] = refl 
+        |pairuv'|≡[] : proj₁ (flat (PairU {l} {r} {loc} u v')) ≡ []
+        |pairuv'|≡[] rewrite flat-u≡[] | flat-v'≡[] = refl
+        |pairuv|≡|pairuv'| : proj₁ (flat (PairU {l} {r} {loc} u v)) ≡  proj₁ (flat (PairU {l} {r} {loc} u v'))
+        |pairuv|≡|pairuv'| rewrite |pairuv'|≡[] = |pairuv|≡[]
+        len-|pairuv|≡len-|pair-uv'| : length (proj₁ (flat (PairU {l} {r} {loc} u v))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u v') ))
+        len-|pairuv|≡len-|pair-uv'| rewrite |pairuv|≡|pairuv'| = refl 
 
 map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡[] ∷ flat-[] u' flat-u'≡[] ∷ all-flat-[]-us) all-flat-[]-vs (>-cons >-sorted-uus (>-just u>u'))  >-sorted-vs
-  = combine {u} {u'} {vs} {us} {vs} u>u' (flat-[] u flat-u≡[]) (flat-[] u' flat-u'≡[]) (map-pair-u-vs-sorted u vs >-sorted-vs) ind-hyp
+  = combine {u} {u'} {vs} {us} {vs} u>u' (flat-[] u flat-u≡[]) (flat-[] u' flat-u'≡[]) all-flat-[]-vs all-flat-[]-vs  (map-pair-u-vs-sorted u (flat-[] u flat-u≡[]) vs all-flat-[]-vs >-sorted-vs) ind-hyp
   where
-    map-pair-u-vs-sorted : ( u : U l ) → ( vs : List (U r )) → >-sorted {r} vs → >-sorted { l ● r ` loc } (List.map (PairU u) vs)
-    map-pair-u-vs-sorted u []          >-nil = >-nil
-    map-pair-u-vs-sorted u ( v ∷ vs ) (>-cons >-sorted-vs v>head-vs) with >-sorted-vs
-    ... | >-nil          = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) >-nothing 
-    ... | >-cons >-sorted-vs' v'>head-vs' with v>head-vs
-    ...            | >-just {r} {v} {v'} v>v' = >-cons  (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (len-≡ {!!} (seq₂ refl v>v') ))
+    map-pair-u-vs-sorted : ( u : U l ) → Flat-[] l u → ( vs : List (U r )) → All (Flat-[] r) vs → >-sorted {r} vs → >-sorted { l ● r ` loc } (List.map (PairU u) vs)
+    map-pair-u-vs-sorted u _                     []         []  >-nil = >-nil
+    map-pair-u-vs-sorted u (flat-[] _ flat-u≡[]) ( v ∷ vs ) ((flat-[] v flat-v≡[]) ∷ all-flat-[]-vs) (>-cons >-sorted-vs v>head-vs) with >-sorted-vs
+    ... | >-nil          = >-cons (map-pair-u-vs-sorted u (flat-[] u flat-u≡[]) vs all-flat-[]-vs >-sorted-vs) >-nothing
+    ... | >-cons  >-sorted-vs' v'>head-vs' with v>head-vs | all-flat-[]-vs 
+    ...            | >-just {r} {_} {v'} v>v' | ((flat-[] v' flat-v'≡[]) ∷ all-flat-[]-vs')  = >-cons (map-pair-u-vs-sorted u (flat-[] u flat-u≡[]) vs all-flat-[]-vs  >-sorted-vs) (>-just (len-≡ len-|pairuv|≡len-|pair-uv'| (seq₂ refl v>v') ))
+      where
+        |pairuv|≡[] : proj₁ (flat (PairU {l} {r} {loc} u v)) ≡ []
+        |pairuv|≡[] rewrite flat-u≡[] | flat-v≡[] = refl 
+        |pairuv'|≡[] : proj₁ (flat (PairU {l} {r} {loc} u v')) ≡ []
+        |pairuv'|≡[] rewrite flat-u≡[] | flat-v'≡[] = refl
+        |pairuv|≡|pairuv'| : proj₁ (flat (PairU {l} {r} {loc} u v)) ≡  proj₁ (flat (PairU {l} {r} {loc} u v'))
+        |pairuv|≡|pairuv'| rewrite |pairuv'|≡[] = |pairuv|≡[]
+        len-|pairuv|≡len-|pair-uv'| : length (proj₁ (flat (PairU {l} {r} {loc} u v))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u v') ))
+        len-|pairuv|≡len-|pair-uv'| rewrite |pairuv|≡|pairuv'| = refl 
 
-    
+
     ind-hyp : >-sorted {l ● r ` loc } (concatMap (λ u₁ → List.map (PairU u₁) vs) (u' ∷ us))
     ind-hyp = map-pairU-empty-sorted {l} {r} {loc} (u' ∷ us) vs (flat-[] u' flat-u'≡[] ∷ all-flat-[]-us) all-flat-[]-vs >-sorted-uus >-sorted-vs
 
@@ -776,21 +794,33 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
     combine   :  { u u' : U l } { ts : List (U r) }  { us : List (U l) } { vs : List (U r)  }
               →   l ⊢ u > u'
               →   Flat-[] l u
-              →   Flat-[] l u' 
-              →   >-sorted {l ● r ` loc } (List.map (PairU {l} {r} {loc} u) ts) 
+              →   Flat-[] l u'
+              →   All (Flat-[] r) ts 
+              →   All (Flat-[] r) vs 
+              →   >-sorted {l ● r ` loc } (List.map (PairU {l} {r} {loc} u) ts)
               →   >-sorted {l ● r ` loc } (List.foldr _++_ [] (List.map (λ u₁ → List.map (PairU u₁) vs) (u' ∷ us)))
             -----------------------------------------------------------------------------------
               →   >-sorted {l ● r ` loc } ((List.map (PairU {l} {r} {loc} u) ts)  ++ (List.foldr _++_ [] (List.map (λ u₁ → List.map (PairU u₁) vs) (u' ∷ us))))
-    combine {u} {u'} {[]}      {us} {[]}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
-    combine {u} {u'} {[]}      {us} {vs}     u>u' _ _  >-nil                                                      >-sorted-ys = >-sorted-ys
-    combine {u} {u'} {t ∷ []} {us} {v ∷ vs} u>u'  (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons >-sorted-map-pair-u-ts u-t>head-map-pair-u-ts)  >-sorted-ys = 
-      >-cons  >-sorted-ys (>-just  (len-≡ {!!} (seq₁ u>u') ))
-    combine {u} {u'} {t ∷ t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (>-cons >-sorted-map-pair-u-tts u-t>head-map-pair-u-tts) >-sorted-ys =
+    combine {u} {u'} {[]}      {us} {[]}     u>u' _ _                                          _ _  >-nil                                              >-sorted-ys = >-sorted-ys
+    combine {u} {u'} {[]}      {us} {vs}     u>u' _ _                                          _ _  >-nil                                              >-sorted-ys = >-sorted-ys
+    combine {u} {u'} {t ∷ []} {us} {v ∷ vs} u>u'  (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) ((flat-[] _ flat-t≡[]) ∷ _)  ((flat-[] _ flat-v≡[]) ∷ all-flat-[]-vs) (>-cons >-sorted-map-pair-u-ts u-t>head-map-pair-u-ts)  >-sorted-ys = 
+      >-cons  >-sorted-ys (>-just  (len-≡ len-|pairut|≡len-|pair-u'v| (seq₁ u>u') ))
+      where
+        |pairut|≡[] : proj₁ (flat (PairU {l} {r} {loc} u t)) ≡ []
+        |pairut|≡[] rewrite flat-u≡[] | flat-t≡[] = refl 
+        |pairu'v|≡[] : proj₁ (flat (PairU {l} {r} {loc} u' v)) ≡ []
+        |pairu'v|≡[] rewrite flat-u'≡[] | flat-v≡[] = refl
+        |pairut|≡|pairu'v| : proj₁ (flat (PairU {l} {r} {loc} u t)) ≡  proj₁ (flat (PairU {l} {r} {loc} u' v))
+        |pairut|≡|pairu'v| rewrite |pairu'v|≡[] = |pairut|≡[]
+        len-|pairut|≡len-|pair-u'v| : length (proj₁ (flat (PairU {l} {r} {loc} u t))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u' v) ))
+        len-|pairut|≡len-|pair-u'v| rewrite |pairut|≡|pairu'v| = refl 
+        
+    combine {u} {u'} {t ∷ t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) (flat-[]-t ∷ all-flat-t'ts)  all-flat-vs                              (>-cons >-sorted-map-pair-u-tts u-t>head-map-pair-u-tts) >-sorted-ys =
       >-cons  ind-hyp' u-t>head-map-pair-u-tts
       where
         ind-hyp' : >-sorted {l ● r ` loc } ((List.map (PairU {l} {r} {loc} u) (t' ∷ ts))  ++ (List.foldr _++_ [] (List.map (λ u₁ → List.map (PairU u₁) vs) (u' ∷ us))))
-        ind-hyp' = combine {u} {u'} {t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[])  >-sorted-map-pair-u-tts >-sorted-ys
+        ind-hyp' = combine {u} {u'} {t' ∷ ts} {us} {vs} u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) all-flat-t'ts all-flat-vs  >-sorted-map-pair-u-tts >-sorted-ys
     -- the following is impossible to be reached actually, since ts is a subfix of vs
-    combine {u} {u'} {t∷[]}   {us}  {[]}    u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) >-sorted-xs  >-sorted-ys
-      rewrite (cong (λ x → >-sorted (List.map (PairU {l} {r} {loc} u) t∷[] ++ x )) (foldr++ys-map-λ_→[]-xs≡ys us []) )
-      | (cong (λ x → >-sorted x) ( ++-identityʳ (List.map (PairU {l} {r} {loc} u) t∷[]) ))                                   = >-sorted-xs
+    combine {u} {u'} {t ∷ []}   {us}  {[]}    u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) ((flat-[] _ flat-t≡[]) ∷ _) []  >-sorted-xs  >-sorted-ys
+      rewrite (cong (λ x → >-sorted (List.map (PairU {l} {r} {loc} u) (t ∷ []) ++ x )) (foldr++ys-map-λ_→[]-xs≡ys us []) )
+      | (cong (λ x → >-sorted x) ( ++-identityʳ (List.map (PairU {l} {r} {loc} u) (t ∷ [])) ))                                   = >-sorted-xs

@@ -1060,3 +1060,23 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         len-|injFst-pair-u₁v₁|>len≡|injFst-pair-u₂v₂| rewrite (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₁ v₁) | (len-|injFst-pair-uv|≡len-|pair-uv|+1 u₂ v₂) = cong suc len|pair-u₁v₁|≡len|pair-u₂v₂| 
         inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
         inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+
+
+
+-----------------------------------------------------------------------------------------
+-- aux lemma to show that injSnd is >-strict increasing
+>-inc-injSnd : ∀ {l r p : RE } { loc : ℕ } { c : Char } 
+         → ( v : U l )
+         → ( inj : U p → U r )
+         → ( ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )
+         → ( u₁ : U p )
+         → ( u₂ : U p )
+         → r ⊢ inj u₁ > inj u₂
+         --------------------------------------------------------------------------
+         → ( l ● r ` loc ) ⊢  (mkinjSnd inj v u₁) > (mkinjSnd inj v u₂) 
+>-inc-injSnd {l} {r} {p} {loc} {c} v inj sound-ev u₁ u₂ (len-≡ len|inj-u₁|≡len|inj-u₂| inj-u₁>inj-u₂) = len-≡ len-|injSnd-pair-vu₁|≡len-|injSnd-pair-vu₂| (seq₂ refl (len-≡ len|inj-u₁|≡len|inj-u₂| inj-u₁>inj-u₂)) 
+  where
+    len-|injSnd-pair-uv|≡len-|pair-uv|+1 : (u : U l) → (v : U p) → length (proj₁ (flat ((PairU {l} {r} {loc} u (inj v))))) ≡ suc (length (proj₁ (flat (PairU {l} {p} {loc} u v))))
+    len-|injSnd-pair-uv|≡len-|pair-uv|+1 u v rewrite (sound-ev v) = {!!} 
+    len-|injSnd-pair-vu₁|≡len-|injSnd-pair-vu₂| : length (proj₁ (flat ((PairU {l} {r} {loc} v (inj u₁))))) ≡ length (proj₁ (flat ((PairU {l} {r} {loc} v (inj u₂)))))
+    len-|injSnd-pair-vu₁|≡len-|injSnd-pair-vu₂| rewrite len-|injSnd-pair-uv|≡len-|pair-uv|+1 v u₁ | len-|injSnd-pair-uv|≡len-|pair-uv|+1 v u₂ =  {!!}

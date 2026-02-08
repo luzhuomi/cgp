@@ -22,16 +22,23 @@ open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-
 
 
 import cgp.PDInstance as PDI
-open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ) 
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
+  pdinstance-left ; pdinstance-right ;
+  pdinstance-star ; mkinjList ;
+  pdinstance-fst ; mkinjFst ;
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
+  concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ;
+  compose-pdi-with   
+  ) 
 
 
-{-
-import cgp.lne.PartialDerivative as PartialDerivative
+
+import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
-  -- PDInstance ; pdinstance ;
-  pdinstance-left ; pdinstance-right;  pdinstance-fst ; mkinjFst ;  pdinstance-snd ; zip-es-flat-[]-es;   mk-snd-pdi ; mkinjSnd ; compose-pdi-with;  advance-pdi*-with-c ; concatmap-pdinstance-snd; pdinstance-star ; mkinjList ; pdinstance-assoc ; mkinjAssoc ; pdUMany[_,_]; pdUMany-aux ) 
--- ;   PDInstance* ; pdinstance*  ) 
--} 
+  pdUMany[_,_]; pdUMany-aux )
+
+
 
 import Data.Char as Char
 open Char using (Char )
@@ -364,6 +371,9 @@ len|xs++ys|≥len|xs++zs| {A} {[]}        {ys} {zs} len-ys≥len-zs = len-ys≥l
 len|xs++ys|≥len|xs++zs| {A} {(x ∷ xs)} {ys} {zs} len-ys≥len-zs = Nat.s≤s (len|xs++ys|≥len|xs++zs| {A} {xs} {ys} {zs}  len-ys≥len-zs) 
 
 -}
+
+
+
 
 >→len|≥| : { r : RE } { u v : U r } 
            → r ⊢ u > v
@@ -824,3 +834,130 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
     combine {u} {u'} {t ∷ []}   {us}  {[]}    u>u' (flat-[] _ flat-u≡[]) (flat-[] _ flat-u'≡[]) ((flat-[] _ flat-t≡[]) ∷ _) []  >-sorted-xs  >-sorted-ys
       rewrite (cong (λ x → >-sorted (List.map (PairU {l} {r} {loc} u) (t ∷ []) ++ x )) (foldr++ys-map-λ_→[]-xs≡ys us []) )
       | (cong (λ x → >-sorted x) ( ++-identityʳ (List.map (PairU {l} {r} {loc} u) (t ∷ [])) ))                                   = >-sorted-xs
+
+
+
+
+-----------------------------------------------------------------------------
+-- Sub Lemma 31.1 - 31.4  END
+----------------------------------------------------------------------------
+
+```
+
+#### Main proof for Lemma 31
+
+```agda
+
+-- main lemma and its proof
+mkAllEmptyU-sorted : ∀ { r : RE }
+  → ( ε∈r : ε∈ r)
+  → >-sorted (mkAllEmptyU {r} ε∈r) 
+mkAllEmptyU-sorted {$ c ` loc }         = λ()
+mkAllEmptyU-sorted {ε}             ε∈ε = >-cons >-nil >-nothing 
+mkAllEmptyU-sorted {r * nε ` loc}  ε∈* = >-cons >-nil >-nothing 
+mkAllEmptyU-sorted {l + r  ` loc}  (ε∈ ε∈l <+ ε∉r) = map-leftU-sorted es ind-hyp  (mkAllEmptyU-sound {l} ε∈l) 
+  where
+    es : List (U l)
+    es = mkAllEmptyU ε∈l 
+    ind-hyp : >-sorted  (mkAllEmptyU ε∈l)
+    ind-hyp = mkAllEmptyU-sorted {l} ε∈l
+mkAllEmptyU-sorted {l + r  ` loc}  (ε∈ ε∉l +> ε∈r) = map-rightU-sorted es ind-hyp (mkAllEmptyU-sound {r} ε∈r) 
+  where
+    es : List (U r)
+    es = mkAllEmptyU ε∈r 
+    ind-hyp : >-sorted  (mkAllEmptyU ε∈r)
+    ind-hyp = mkAllEmptyU-sorted {r} ε∈r
+mkAllEmptyU-sorted {l + r  ` loc}  (ε∈ ε∈l + ε∈r) =  map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} l-es r-es l-ind-hyp r-ind-hyp (mkAllEmptyU-sound {l} ε∈l) (mkAllEmptyU-sound {r} ε∈r)
+  where
+    r-es : List (U r)
+    r-es = mkAllEmptyU ε∈r 
+    r-ind-hyp : >-sorted  (mkAllEmptyU ε∈r)
+    r-ind-hyp = mkAllEmptyU-sorted {r} ε∈r
+
+    l-es : List (U l)
+    l-es = mkAllEmptyU ε∈l
+    l-ind-hyp : >-sorted  (mkAllEmptyU ε∈l)
+    l-ind-hyp = mkAllEmptyU-sorted {l} ε∈l
+mkAllEmptyU-sorted {l ● r ` loc }  (ε∈ ε∈l ● ε∈r ) = map-pairU-empty-sorted l-es r-es (mkAllEmptyU-sound {l} ε∈l) (mkAllEmptyU-sound {r} ε∈r) l-ind-hyp r-ind-hyp
+  where
+    r-es : List (U r)
+    r-es = mkAllEmptyU ε∈r 
+    r-ind-hyp : >-sorted  (mkAllEmptyU ε∈r)
+    r-ind-hyp = mkAllEmptyU-sorted {r} ε∈r
+
+
+    l-es : List (U l)
+    l-es = mkAllEmptyU ε∈l
+    l-ind-hyp : >-sorted  (mkAllEmptyU ε∈l)
+    l-ind-hyp = mkAllEmptyU-sorted {l} ε∈l
+```
+
+
+### Definition 32: >-Strict increasing PDInstance
+
+Let r be a non problematic regular expression.
+Let c be a letter.
+Let pdi be a PDInstance  w.r.t r and c.
+We say pdi is >-inc (strict increasing) iff, 
+  1. p is the partial derivative inhabited in pdi, and
+  2. inj is the injection function from parse trees of p to parse trees of r.
+  3. for all parse trees of p, u₁ and u₂  where p ⊢ u₁ > u₂
+  Then r ⊢ inj u₁ > inj u₂ 
+
+```agda
+
+data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
+  >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( (u₁ : U p) → (u₂ : U p)
+        →  p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
+    → >-Inc {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+```
+
+### Lemma 33: all pdinstances from pdU[ r , c ] are >-strict increasing .
+
+Let r be a  non problematic regular expression.
+Let c be a letter.
+Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
+
+
+
+#### Sub Lemma 33.1 - 33.9 : >-Inc is preserved inductively by the pdinstance operations. 
+
+```agda
+-----------------------------------------------------------------------------
+-- Sub Lemma 33.1 - 33.9  BEGIN
+----------------------------------------------------------------------------
+>-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( pdis : List (PDInstance l c) )
+    → All (>-Inc {l} {c}) pdis
+    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-left pdis)
+>-inc-map-left [] [] = []
+>-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis)
+  (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+  = >-inc >-inc-ev   ∷ >-inc-map-left pdis pxs
+  where
+    >-inc-ev : ∀ (u₁ : U p)
+              → (u₂ : U p)
+              → p ⊢ u₁ > u₂
+              --------------
+              → (l + r ` loc) ⊢ LeftU (inj u₁) > LeftU (inj u₂)
+    >-inc-ev u₁ u₂ (len-> len|u₁|>len|u₂|) = len-> len-|left-inj-u₁|>len-|left-inj-u₂|
+      where
+        |left-inj-u₁|≡|inj-u₁| : proj₁ (flat (LeftU {l} {r} {loc} (inj u₁))) ≡ proj₁ (flat (inj u₁))
+        |left-inj-u₁|≡|inj-u₁| = refl
+        |left-inj-u₂|≡|inj-u₂| : proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))) ≡ proj₁ (flat (inj u₂))
+        |left-inj-u₂|≡|inj-u₂| = refl
+        len-|left-inj-u₁|>len-|left-inj-u₂| : length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₁)))) > length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))))
+        len-|left-inj-u₁|>len-|left-inj-u₂| rewrite |left-inj-u₁|≡|inj-u₁| | |left-inj-u₂|≡|inj-u₂| = {!len|u₁|>len|u₂|!} 
+        
+        
+    >-inc-ev u₁ u₂ (len-≡ len|u₁|≡len|u₂| u₁>ⁱu₂) =
+      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  (len-≡ len|u₁|≡len|u₂| u₁>ⁱu₂)
+      in (len-≡ {!!} (choice-ll  inj-u₁>inj-u₂) )
+      where
+        ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
+        ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
+        ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
+        ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
+

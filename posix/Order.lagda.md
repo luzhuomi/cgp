@@ -363,14 +363,41 @@ postulate
 
 
 {-
-len|xs++ys|≥len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }
+len|ys|≥len|zs|→len|xs++ys|≥len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }
   → length ys ≥ length zs
   -----------------------------------
   → length (xs ++ ys) ≥ length (xs ++ zs)
-len|xs++ys|≥len|xs++zs| {A} {[]}        {ys} {zs} len-ys≥len-zs = len-ys≥len-zs
-len|xs++ys|≥len|xs++zs| {A} {(x ∷ xs)} {ys} {zs} len-ys≥len-zs = Nat.s≤s (len|xs++ys|≥len|xs++zs| {A} {xs} {ys} {zs}  len-ys≥len-zs) 
+len|ys|≥len|zs|→len|xs++ys|≥len|xs++zs| {A} {[]}        {ys} {zs} len-ys≥len-zs = len-ys≥len-zs
+len|ys|≥len|zs|→len|xs++ys|≥len|xs++zs| {A} {(x ∷ xs)} {ys} {zs} len-ys≥len-zs = Nat.s≤s (len|ys|≥len|zs|→len|xs++ys|≥len|xs++zs| {A} {xs} {ys} {zs}  len-ys≥len-zs) 
 
 -}
+
+
+len|ys|>len|zs|→len|xs++ys|>len|xs++zs|ʳ : ∀ { A : Set } { xs ys zs : List A }
+  → length ys > length zs
+  -----------------------------------
+  → length (xs ++ ys) > length (xs ++ zs)
+len|ys|>len|zs|→len|xs++ys|>len|xs++zs|ʳ {A} {[]}       {ys} {zs} len-ys>len-zs = len-ys>len-zs
+len|ys|>len|zs|→len|xs++ys|>len|xs++zs|ʳ {A} {(x ∷ xs)} {ys} {zs} len-ys>len-zs = Nat.s≤s (len|ys|>len|zs|→len|xs++ys|>len|xs++zs|ʳ {A} {xs} {ys} {zs}  len-ys>len-zs) 
+
+
+len|xs|>len|ys|→len|xs++zs|>len|ys++zs|ˡ : ∀ { A : Set } { xs ys zs : List A }
+  → length xs > length ys
+  -----------------------------------
+  → length (xs ++ zs) > length (ys ++ zs)
+len|xs|>len|ys|→len|xs++zs|>len|ys++zs|ˡ {A} {xs} {ys} {[]} len-xs>len-ys rewrite ++-identityʳ xs | ++-identityʳ ys  = len-xs>len-ys
+len|xs|>len|ys|→len|xs++zs|>len|ys++zs|ˡ {A} {xs} {ys} {z ∷ zs} len-xs>len-ys = {!!}  -- Nat.s≤s (len|xs|>len|ys|→len|xs++zs|>len|ys++zs|ˡ {A} {xs} {ys} {zs}  len-xs>len-ys) 
+
+
+
+
+
+len|ys|≡len|zs|→len|xs++ys|≡len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }
+  → length ys ≡ length zs
+  -----------------------------------
+  → length (xs ++ ys) ≡ length (xs ++ zs)
+len|ys|≡len|zs|→len|xs++ys|≡len|xs++zs| {A} {[]}     {ys} {zs} len-|ys|≡len-|zs| = len-|ys|≡len-|zs| 
+len|ys|≡len|zs|→len|xs++ys|≡len|xs++zs| {A} {x ∷ xs} {ys} {zs} len-|ys|≡len-|zs| = cong suc (len|ys|≡len|zs|→len|xs++ys|≡len|xs++zs| {A} {xs} {ys} {zs} len-|ys|≡len-|zs|) 
 
 
 
@@ -1076,7 +1103,109 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
          → ( l ● r ` loc ) ⊢  (mkinjSnd inj v u₁) > (mkinjSnd inj v u₂) 
 >-inc-injSnd {l} {r} {p} {loc} {c} v inj sound-ev u₁ u₂ (len-≡ len|inj-u₁|≡len|inj-u₂| inj-u₁>inj-u₂) = len-≡ len-|injSnd-pair-vu₁|≡len-|injSnd-pair-vu₂| (seq₂ refl (len-≡ len|inj-u₁|≡len|inj-u₂| inj-u₁>inj-u₂)) 
   where
-    len-|injSnd-pair-uv|≡len-|pair-uv|+1 : (u : U l) → (v : U p) → length (proj₁ (flat ((PairU {l} {r} {loc} u (inj v))))) ≡ suc (length (proj₁ (flat (PairU {l} {p} {loc} u v))))
-    len-|injSnd-pair-uv|≡len-|pair-uv|+1 u v rewrite (sound-ev v) = {!!} 
+    -- len-|injSnd-pair-uv|≡len-|pair-uv|+1 : (u : U l) → (v : U p) → length (proj₁ (flat ((PairU {l} {r} {loc} u (inj v))))) ≡ suc (length (proj₁ (flat (PairU {l} {p} {loc} u v))))
+    -- len-|injSnd-pair-uv|≡len-|pair-uv|+1 u v rewrite (sound-ev v) = {!!} 
     len-|injSnd-pair-vu₁|≡len-|injSnd-pair-vu₂| : length (proj₁ (flat ((PairU {l} {r} {loc} v (inj u₁))))) ≡ length (proj₁ (flat ((PairU {l} {r} {loc} v (inj u₂)))))
-    len-|injSnd-pair-vu₁|≡len-|injSnd-pair-vu₂| rewrite len-|injSnd-pair-uv|≡len-|pair-uv|+1 v u₁ | len-|injSnd-pair-uv|≡len-|pair-uv|+1 v u₂ =  {!!}
+    len-|injSnd-pair-vu₁|≡len-|injSnd-pair-vu₂|  =   (len|ys|≡len|zs|→len|xs++ys|≡len|xs++zs| {Char} {proj₁ (flat v)} {proj₁ (flat (inj u₁))} {proj₁ (flat (inj u₂))} len|inj-u₁|≡len|inj-u₂| )
+>-inc-injSnd {l} {r} {p} {loc} {c} v inj sound-ev u₁ u₂ (len-> len|inj-u₁|>len|inj-u₂|) = len-> (len|ys|>len|zs|→len|xs++ys|>len|xs++zs|ʳ {Char} {proj₁ (flat v)} {proj₁ (flat (inj u₁))} {proj₁ (flat (inj u₂))} len|inj-u₁|>len|inj-u₂| ) 
+
+
+
+-- aux lemma to show that mk-snd-pdi is >-strict increasing
+>-inc-mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
+   → ( e-flat-[]-e : (∃[ e ] Flat-[] l e)  )
+   → ( pdi : PDInstance r c )
+   → >-Inc {r} {c} pdi 
+   -------------------------------------------------------------------
+   → >-Inc (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi) 
+>-inc-mk-snd-pdi {l} {r} {loc} {c} (e , flat-[] e' proj₁∘flate≡[]) (pdinstance {p} {r} {c} inj s-ev) (>-inc >-inc-inj) =
+  >-inc (λ u₁ u₂ u₁>u₂ → ( >-inc-injSnd {l} {r} {p} {loc} e inj s-ev u₁ u₂  (>-inc-inj u₁ u₂ u₁>u₂))  )
+  where
+    -- duplicated from mk-snd-pdi from PartialDerivativeParseTree so that the PDInstance can be inferred
+    -- this is needed because p is an existential type `hidden` inside PDInstance r c 
+    injSnd :  U p → U (l ● r ` loc)
+    injSnd = mkinjSnd {l} {r} {p} {loc} inj e
+    injSnd-s-ev =
+      (λ u → 
+           begin
+             proj₁ (flat (PairU {l} {r} {loc} e (inj u)))
+           ≡⟨⟩
+             (proj₁ (flat e)) ++ (proj₁ (flat (inj u)))
+           ≡⟨ cong (λ x → ( x ++  (proj₁ (flat (inj u))))) proj₁∘flate≡[] ⟩  --  e must be an empty; we do have flat v ≡ [] from mkAllEmptyU-sound
+             [] ++ (proj₁ (flat (inj u)))
+           ≡⟨⟩
+             proj₁ (flat (inj u))
+           ≡⟨ s-ev u ⟩
+             c ∷ (proj₁ (flat u))
+           ∎
+          )    
+
+
+-- aux lemma to show that concatMap pdinstance-snd  is >-strict increasing
+
+>-inc-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
+  → ( pdis : List (PDInstance r c ) )
+  → All (>-Inc {r} {c}) pdis
+  ---------------------------------------------------------------------------
+  → All  (>-Inc {l ● r ` loc} {c}) (List.map  (mk-snd-pdi e-flat-[]-e ) pdis )
+>-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e []           [] = [] 
+>-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e (pdi ∷ pdis) (>-inc-pdi ∷ all>-inc-pdis) = (>-inc-mk-snd-pdi e-flat-[]-e pdi >-inc-pdi) ∷ >-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e pdis all>-inc-pdis
+
+>-inc-concatmap-pdinstance-snd-sub :  ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-es  : List ( ∃[ e ] Flat-[] l e ) )
+  → ( pdis : List (PDInstance r c ) )
+  → All (>-Inc {r} {c}) pdis
+  -----------------------------------------------------------------------------------------------------
+  → All (>-Inc {l ● r ` loc} {c}) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) e-flat-[]-es)
+>-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} [] _ _ = []
+>-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} ( e-flat-[]-e ∷ e-flat-[]-es ) pdis all>-inc-pdis =
+  all-concat  (>-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  e-flat-[]-e  pdis all>-inc-pdis)
+              (>-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} e-flat-[]-es pdis all>-inc-pdis)  
+
+
+>-inc-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+               → ( pdis : List (PDInstance r c ) )
+               → All (>-Inc {r} {c}) pdis
+               → All (>-Inc {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
+>-inc-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis all>-inc-pdis = >-inc-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) pdis all>-inc-pdis
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l    
+
+>-inc-map-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+               → ( pdis : List (PDInstance r c)  )
+               → All (>-Inc {r} {c}) pdis
+               → All (>-Inc {r * ε∉r ` loc} {c}) (List.map (pdinstance-star {r} {ε∉r} {loc} {c}) pdis)
+>-inc-map-star {r} {ε∉r} {loc} {c} [] [] = []
+>-inc-map-star {r} {ε∉r} {loc} {c} (pdinstance {p} {r} {c} inj s-ev ∷ pdis) (>-inc >-ev ∷ pxs)  =
+  >-inc >-inc-ev ∷ >-inc-map-star pdis pxs
+  where
+    injList : U (p ● (r * ε∉r ` loc ) ` loc ) → U ( r * ε∉r ` loc )
+    injList = mkinjList inj   
+
+    >-inc-ev : ∀ (uv₁ : U ( p ● (r * ε∉r ` loc ) ` loc ))
+              → (uv₂ : U ( p ● (r * ε∉r ` loc ) ` loc ))
+              → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ > uv₂
+              ------------------------------------
+              → (r * ε∉r ` loc) ⊢ (injList uv₁) > (injList uv₂)
+
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (len-> len-|pair-u₁-vs₁|>len-|pair-u₂-vs₂|) =
+      len-> {!!}  
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (len-≡ len-|pair-u₁-vs₁|≡len-|pair-u₂-vs₂| (seq₁ u₁>u₂)) = 
+      let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
+      in len-≡ {!!} (star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂)
+
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (len-≡ len-|pair-u₁-vs₁|≡len-|pair-u₂-vs₂| (seq₂  u₁≡u₂ list-vs₁>list-vs₂ )) =
+      len-≡ {!!} (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
+        where
+          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
+          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+
+-----------------------------------------------------------------------------
+-- Sub Lemma 33.1 - 33.9 END
+----------------------------------------------------------------------------
+
+```

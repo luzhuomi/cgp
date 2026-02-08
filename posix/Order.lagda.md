@@ -970,3 +970,76 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
         len-|left-inj-u₁|≡len-|left-inj-u₂| : length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₁)))) ≡ length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))))
         len-|left-inj-u₁|≡len-|left-inj-u₂| rewrite |left-inj-u₁|≡|inj-u₁| | |left-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = cong suc len|u₁|≡len|u₂|  
+
+
+
+>-inc-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( pdis : List (PDInstance r c) )
+    → All (>-Inc {r} {c}) pdis
+    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-right pdis)
+>-inc-map-right [] [] = []
+>-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c}  inj sound-ev) ∷ pdis)
+  (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+  = >-inc >-inc-ev   ∷ >-inc-map-right pdis pxs
+  where
+
+    len-|inj-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
+
+    >-inc-ev : ∀ (u₁ : U p)
+              → (u₂ : U p)
+              → p ⊢ u₁ > u₂
+              --------------
+              → (l + r ` loc) ⊢ RightU (inj u₁) > RightU (inj u₂)
+    >-inc-ev u₁ u₂ (len-> len|u₁|>len|u₂|) = len-> len-|right-inj-u₁|>len-|right-inj-u₂|
+      where
+        |right-inj-u₁|≡|inj-u₁| : proj₁ (flat (RightU {l} {r} {loc} (inj u₁))) ≡ proj₁ (flat (inj u₁))
+        |right-inj-u₁|≡|inj-u₁| = refl
+        |right-inj-u₂|≡|inj-u₂| : proj₁ (flat (RightU {l} {r} {loc} (inj u₂))) ≡ proj₁ (flat (inj u₂))
+        |right-inj-u₂|≡|inj-u₂| = refl
+  
+        len-|right-inj-u₁|>len-|right-inj-u₂| : length (proj₁ (flat (RightU {l} {r} {loc} (inj u₁)))) > length (proj₁ (flat (RightU {l} {r} {loc} (inj u₂))))
+        len-|right-inj-u₁|>len-|right-inj-u₂| rewrite |right-inj-u₁|≡|inj-u₁| | |right-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = Nat.s≤s len|u₁|>len|u₂| 
+
+
+    >-inc-ev u₁ u₂ (len-≡ len|u₁|≡len|u₂| u₁>ⁱu₂) =
+      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  (len-≡ len|u₁|≡len|u₂| u₁>ⁱu₂)
+      in (len-≡ len-|right-inj-u₁|≡len-|right-inj-u₂| (choice-rr  inj-u₁>inj-u₂) )
+      where
+        |right-inj-u₁|≡|inj-u₁| : proj₁ (flat (RightU {l} {r} {loc} (inj u₁))) ≡ proj₁ (flat (inj u₁))
+        |right-inj-u₁|≡|inj-u₁| = refl
+        |right-inj-u₂|≡|inj-u₂| : proj₁ (flat (RightU {l} {r} {loc} (inj u₂))) ≡ proj₁ (flat (inj u₂))
+        |right-inj-u₂|≡|inj-u₂| = refl
+
+        len-|right-inj-u₁|≡len-|right-inj-u₂| : length (proj₁ (flat (RightU {l} {r} {loc} (inj u₁)))) ≡ length (proj₁ (flat (RightU {l} {r} {loc} (inj u₂))))
+        len-|right-inj-u₁|≡len-|right-inj-u₂| rewrite |right-inj-u₁|≡|inj-u₁| | |right-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = cong suc len|u₁|≡len|u₂|  
+
+
+
+
+>-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+               → ( pdis : List (PDInstance l c ) )
+               → All (>-Inc {l} {c}) pdis
+               → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+>-inc-map-fst [] [] = []
+
+>-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+  = (>-inc >-inc-ev)  ∷  >-inc-map-fst pdis pxs
+  where
+    injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
+    injFst = mkinjFst inj
+    >-inc-ev : ∀ (uv₁ : U ( p ● r ` loc ))
+              → (uv₂ : U ( p ● r ` loc ))
+              → (p ● r ` loc )  ⊢ uv₁ > uv₂
+              ------------------------------------
+              → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
+
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-> len|pair-u₁v₁|>len|pair-u₂v₂|) =  {!!}
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-≡ len|pair-u₁v₁|≡len|pair-u₂v₂| (seq₁  u₁>u₂)) = 
+      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+      in (len-≡ {!!} (seq₁ inj-u₁>inj-u₂))
+
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (len-≡ len|pair-u₁v₁|≡len|pair-u₂v₂| (seq₂  u₁≡u₂ v₁>v₂ )) = len-≡ {!!} (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
+        where
+          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
+          inj-u₁≡inj-u₂ = cong inj u₁≡u₂

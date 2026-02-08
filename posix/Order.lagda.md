@@ -927,7 +927,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 ```agda
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9  BEGIN
-----------------------------------------------------------------------------
+-----------------------------------------------------------------------------
+
+
 >-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdis : List (PDInstance l c) )
     → All (>-Inc {l} {c}) pdis
@@ -937,6 +939,10 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
   (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = >-inc >-inc-ev   ∷ >-inc-map-left pdis pxs
   where
+
+    len-|inj-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
+
     >-inc-ev : ∀ (u₁ : U p)
               → (u₂ : U p)
               → p ⊢ u₁ > u₂
@@ -948,16 +954,19 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         |left-inj-u₁|≡|inj-u₁| = refl
         |left-inj-u₂|≡|inj-u₂| : proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))) ≡ proj₁ (flat (inj u₂))
         |left-inj-u₂|≡|inj-u₂| = refl
+  
         len-|left-inj-u₁|>len-|left-inj-u₂| : length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₁)))) > length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))))
-        len-|left-inj-u₁|>len-|left-inj-u₂| rewrite |left-inj-u₁|≡|inj-u₁| | |left-inj-u₂|≡|inj-u₂| = {!len|u₁|>len|u₂|!} 
-        
-        
+        len-|left-inj-u₁|>len-|left-inj-u₂| rewrite |left-inj-u₁|≡|inj-u₁| | |left-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = Nat.s≤s len|u₁|>len|u₂| 
+
+
     >-inc-ev u₁ u₂ (len-≡ len|u₁|≡len|u₂| u₁>ⁱu₂) =
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  (len-≡ len|u₁|≡len|u₂| u₁>ⁱu₂)
-      in (len-≡ {!!} (choice-ll  inj-u₁>inj-u₂) )
+      in (len-≡ len-|left-inj-u₁|≡len-|left-inj-u₂| (choice-ll  inj-u₁>inj-u₂) )
       where
-        ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
-        ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
-        ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
-        ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
+        |left-inj-u₁|≡|inj-u₁| : proj₁ (flat (LeftU {l} {r} {loc} (inj u₁))) ≡ proj₁ (flat (inj u₁))
+        |left-inj-u₁|≡|inj-u₁| = refl
+        |left-inj-u₂|≡|inj-u₂| : proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))) ≡ proj₁ (flat (inj u₂))
+        |left-inj-u₂|≡|inj-u₂| = refl
 
+        len-|left-inj-u₁|≡len-|left-inj-u₂| : length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₁)))) ≡ length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))))
+        len-|left-inj-u₁|≡len-|left-inj-u₂| rewrite |left-inj-u₁|≡|inj-u₁| | |left-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = cong suc len|u₁|≡len|u₂|  

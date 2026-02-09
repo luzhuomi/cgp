@@ -1256,6 +1256,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 -- sub lemmas to show that pdinstance-oplus preserves >-inc 
 
+{-
 >-inc-fuse : ∀ { r : RE } { loc : ℕ } { c : Char }
   → ( pdiˡ : PDInstance r c ) -- these are all the leftU? 
   → ( pdiʳ : PDInstance r c ) -- these are all the rightU? 
@@ -1303,8 +1304,59 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         len|inj-left-v₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (RightU v₂))))
         len|inj-left-v₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂) = cong suc len-|left-v₁|≡len|right-v₂| 
         inj-left-v₁>inj-right-v₂ : r ⊢ inj (LeftU v₁) > inj (RightU v₂)
-        inj-left-v₁>inj-right-v₂  = len-≡ len|inj-left-v₁|≡len|inj-right-v₂| {!choice-lr ? !}  
+        inj-left-v₁>inj-right-v₂  = len-≡ len|inj-left-v₁|≡len|inj-right-v₂| {!!}  -- is it too general? if we make r more specific as l + r and 
       
+
+-}
+
+>-inc-fuse-left-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdiˡ : PDInstance l c ) -- these are all the leftU? 
+  → ( pdiʳ : PDInstance r c ) -- these are all the rightU? 
+  → >-Inc (pdinstance-left {l} {r} {loc} {c} pdiˡ)
+  → >-Inc (pdinstance-right {l} {r} {loc} {c} pdiʳ)
+  -----------------------------------------------------------
+  → >-Inc (fuse {l + r ` loc} {loc} {c}  (pdinstance-left {l} {r} {loc} {c} pdiˡ) (pdinstance-right {l} {r} {loc} {c} pdiʳ))
+>-inc-fuse-left-right {l} {r} {loc} {c} (pdinstance {pˡ} {l} {_} inj-l s-ev-l) (pdinstance {pʳ} {r} {_} inj-r s-ev-r) (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂) (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂) = >-inc ev-> 
+
+  where
+    inj : U (pˡ + pʳ ` loc ) → U ( l + r ` loc )
+    inj = mkfuseInj (LeftU ∘ inj-l)  (RightU ∘ inj-r)
+
+
+    sound-ev : (u : U (pˡ + pʳ ` loc)) 
+               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+    sound-ev (LeftU v₁) = s-ev-l v₁
+    sound-ev (RightU v₂) = s-ev-r v₂
+
+
+    len-|inj-u|≡len-|u|+1 : (u : U (pˡ + pʳ ` loc )) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
+
+
+    ev-> : ( u₁ : U ( pˡ + pʳ ` loc ) )
+        →  ( u₂ : U ( pˡ + pʳ ` loc ) ) 
+        →  pˡ + pʳ ` loc ⊢ u₁ > u₂
+        -------------------------------
+        → l + r ` loc  ⊢ inj u₁ > inj u₂
+    ev-> (LeftU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|left-v₂| (choice-ll v₁>v₂) ) = u₁>u₂→inj-l-u₁>inj-l-u₂ v₁ v₂ v₁>v₂ 
+      -- where
+        -- len|inj-left-v₁|≡len|inj-left-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (LeftU v₂))))
+        -- len|inj-left-v₁|≡len|inj-left-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (LeftU v₂) = cong suc len-|left-v₁|≡len|left-v₂| 
+
+        -- inj-left-v≡inj-l-v : ( v : U pˡ ) → inj (LeftU v) ≡ inj-l v
+        -- inj-left-v≡inj-l-v v = refl 
+
+      --  inj-left-v₁>inj-left-v₂ : r ⊢ inj (LeftU v₁) > inj (LeftU v₂)
+      --  inj-left-v₁>inj-left-v₂  = 
+
+    ev-> (RightU v₁) (RightU v₂) (len-≡ len-|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂) ) = u₁>u₂→inj-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂ 
+        
+    ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-lr v₁≥v₂) ) = inj-left-v₁>inj-right-v₂ 
+      where
+        len|inj-left-v₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (RightU v₂))))
+        len|inj-left-v₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂) = cong suc len-|left-v₁|≡len|right-v₂| 
+        inj-left-v₁>inj-right-v₂ : l + r ` loc  ⊢ inj (LeftU v₁) > inj (RightU v₂)
+        inj-left-v₁>inj-right-v₂ rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂)  = len-≡ len|inj-left-v₁|≡len|inj-right-v₂| (choice-lr {!≤-refl len|inj-left-v₁|≡len|inj-right-v₂|!} )  -- is it too general? if we make r more specific as l + r and 
 
 
 >-inc-pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }

@@ -38,7 +38,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
   pdUMany[_,_]; pdUMany-aux ;
-  pdinstance-oplus ; fuse
+  pdinstance-oplus ; fuse ; mkfuseInj 
   )
 
 
@@ -1256,26 +1256,67 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 -- sub lemmas to show that pdinstance-oplus preserves >-inc 
 
->-inc-fuse : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  → ( pdiˡ : PDInstance (l + r ` loc) c ) 
-  → ( pdiʳ : PDInstance (l + r ` loc) c )
+>-inc-fuse : ∀ { r : RE } { loc : ℕ } { c : Char }
+  → ( pdiˡ : PDInstance r c ) -- these are all the leftU? 
+  → ( pdiʳ : PDInstance r c ) -- these are all the rightU? 
   → >-Inc pdiˡ
   → >-Inc pdiʳ
   -----------------------------------------------------------
-  → >-Inc (fuse {l + r ` loc} {loc} {c}  pdiˡ pdiʳ)
->-inc-fuse {l} {r} {loc} {c} (pdinstance {pˡ} {l + r ` loc} {_} inj-l s-ev-l) (pdinstance {pʳ} {l + r ` loc} {_} inj-r s-ev-r) >-inc-pdiˡ >-inc-pdiʳ = {!!}   
-  
+  → >-Inc (fuse {r} {loc} {c}  pdiˡ pdiʳ)
+>-inc-fuse {r} {loc} {c} (pdinstance {pˡ} {r} {_} inj-l s-ev-l) (pdinstance {pʳ} {r} {_} inj-r s-ev-r) (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂) (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂) = >-inc ev-> 
+
+  where
+    inj : U (pˡ + pʳ ` loc ) → U r
+    inj = mkfuseInj inj-l inj-r
+
+
+    sound-ev : (u : U (pˡ + pʳ ` loc)) 
+               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+    sound-ev (LeftU v₁) = s-ev-l v₁
+    sound-ev (RightU v₂) = s-ev-r v₂
+
+
+    len-|inj-u|≡len-|u|+1 : (u : U (pˡ + pʳ ` loc )) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
+
+
+    ev-> : ( u₁ : U ( pˡ + pʳ ` loc ) )
+        →  ( u₂ : U ( pˡ + pʳ ` loc ) ) 
+        →  pˡ + pʳ ` loc ⊢ u₁ > u₂
+        -------------------------------
+        → r ⊢ inj u₁ > inj u₂
+    ev-> (LeftU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|left-v₂| (choice-ll v₁>v₂) ) = u₁>u₂→inj-l-u₁>inj-l-u₂ v₁ v₂ v₁>v₂ 
+      -- where
+        -- len|inj-left-v₁|≡len|inj-left-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (LeftU v₂))))
+        -- len|inj-left-v₁|≡len|inj-left-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (LeftU v₂) = cong suc len-|left-v₁|≡len|left-v₂| 
+
+        -- inj-left-v≡inj-l-v : ( v : U pˡ ) → inj (LeftU v) ≡ inj-l v
+        -- inj-left-v≡inj-l-v v = refl 
+
+      --  inj-left-v₁>inj-left-v₂ : r ⊢ inj (LeftU v₁) > inj (LeftU v₂)
+      --  inj-left-v₁>inj-left-v₂  = 
+
+    ev-> (RightU v₁) (RightU v₂) (len-≡ len-|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂) ) = u₁>u₂→inj-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂ 
+        
+    ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-lr v₁≥v₂) ) = inj-left-v₁>inj-right-v₂ 
+      where
+        len|inj-left-v₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (RightU v₂))))
+        len|inj-left-v₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂) = cong suc len-|left-v₁|≡len|right-v₂| 
+        inj-left-v₁>inj-right-v₂ : r ⊢ inj (LeftU v₁) > inj (RightU v₂)
+        inj-left-v₁>inj-right-v₂  = len-≡ len|inj-left-v₁|≡len|inj-right-v₂| {!choice-lr ? !}  
+      
 
 
 >-inc-pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdisˡ : List (PDInstance l c) )
   → ( pdisʳ : List (PDInstance r c) )
   → All >-Inc pdisˡ
-    → All >-Inc pdisʳ 
+  → All >-Inc pdisʳ
+  -----------------------------------------------------------------------------------------------------------------------
   → All >-Inc (pdinstance-oplus {l + r ` loc} {loc} {c} (List.map pdinstance-left pdisˡ) (List.map pdinstance-right pdisʳ)) 
 >-inc-pdinstance-oplus {l} {r} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-map-right pdisʳ all->-inc-pdisʳ
 >-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] = >-inc-map-left (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
->-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  = {!>-inc ?!} ∷ {!!} 
+>-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  = {!!} ∷ {!!} 
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
@@ -1292,7 +1333,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc {r} {c}) pdU[ r , c ]
 
-pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+postulate 
+  pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → All (>-Inc {l ● r ` loc } {c}) (pdUConcat l r ε∈l loc c)
 
 

@@ -346,6 +346,15 @@ pdinstance-oplus {l} {r} {loc} {c} pdis   []    = pdis
 pdinstance-oplus {l} {r} {loc} {c} pdisˡ  pdisᵣ =  concatMap (λ pdiˡ → List.map (fuse pdiˡ) pdisᵣ) pdisˡ
 -}
 
+mkfuseInj : ∀ { pˡ pʳ r : RE } { loc : ℕ }
+  → ( inj-l : U pˡ → U r )
+  → ( inj-r : U pʳ → U r )
+  -----------------------------------
+  → U (pˡ + pʳ ` loc ) → U r
+mkfuseInj {pˡ} {pʳ} {r} {loc} inj-l inj-r (LeftU v₁) = inj-l v₁
+mkfuseInj {pˡ} {pʳ} {r} {loc} inj-l inj-r (RightU v₂) = inj-r v₂
+
+
 
 fuse : ∀ { r : RE } { loc : ℕ } { c : Char } 
   → PDInstance r c
@@ -355,8 +364,9 @@ fuse {r} {loc} {c} (pdinstance {pˡ} {r} {_} inj-l s-ev-l) (pdinstance {pʳ} {r}
         (pdinstance {pˡ + pʳ ` loc} {r} {c} inj sound-ev )
      where
        inj : U (pˡ + pʳ ` loc ) → U r
-       inj (LeftU v₁) = inj-l v₁
-       inj (RightU v₂) = inj-r v₂ 
+       inj = mkfuseInj inj-l inj-r 
+       -- inj (LeftU v₁) = inj-l v₁
+       -- inj (RightU v₂) = inj-r v₂ 
        sound-ev : (u : U (pˡ + pʳ ` loc)) 
                    → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
        sound-ev (LeftU v₁) = s-ev-l v₁

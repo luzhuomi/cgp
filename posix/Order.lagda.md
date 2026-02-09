@@ -18,7 +18,8 @@ import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
-open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ; proj₁flat-v≡[]→ε∈r ; flat-[]→flat-[]-left ; flat-[]→flat-[]-right )
+open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ;
+  proj₁flat-v≡[]→ε∈r ; flat-[]→flat-[]-left ; flat-[]→flat-[]-right )
 
 
 import cgp.PDInstance as PDI
@@ -29,14 +30,16 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
   concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
   pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ;
-  compose-pdi-with   
+  compose-pdi-with 
   ) 
 
 
 
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
-  pdUMany[_,_]; pdUMany-aux )
+  pdUMany[_,_]; pdUMany-aux ;
+  pdinstance-oplus ; fuse
+  )
 
 
 
@@ -1249,6 +1252,31 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         len-|list-inj-u₁∷vs₁|≡len-|list-inj-u₂∷vs₂| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} ((inj u₁) ∷ vs₁)) )) ≡ length (proj₁ (flat (ListU {r} {ε∉r} {loc} ((inj u₂) ∷ vs₂)) ))
         len-|list-inj-u₁∷vs₁|≡len-|list-inj-u₂∷vs₂|
           rewrite len-|injList-pair-uvs|≡len-|pair-uvs|+1 u₁ (ListU {r} {ε∉r} {loc} vs₁) |  len-|injList-pair-uvs|≡len-|pair-uvs|+1 u₂ (ListU {r} {ε∉r} {loc} vs₂) = cong suc len-|pair-u₁-vs₁|≡len-|pair-u₂-vs₂|
+
+
+-- sub lemmas to show that pdinstance-oplus preserves >-inc 
+
+>-inc-fuse : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdiˡ : PDInstance (l + r ` loc) c ) 
+  → ( pdiʳ : PDInstance (l + r ` loc) c )
+  → >-Inc pdiˡ
+  → >-Inc pdiʳ
+  -----------------------------------------------------------
+  → >-Inc (fuse {l + r ` loc} {loc} {c}  pdiˡ pdiʳ)
+>-inc-fuse {l} {r} {loc} {c} (pdinstance {pˡ} {l + r ` loc} {_} inj-l s-ev-l) (pdinstance {pʳ} {l + r ` loc} {_} inj-r s-ev-r) >-inc-pdiˡ >-inc-pdiʳ = {!!}   
+  
+
+
+>-inc-pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdisˡ : List (PDInstance l c) )
+  → ( pdisʳ : List (PDInstance r c) )
+  → All >-Inc pdisˡ
+    → All >-Inc pdisʳ 
+  → All >-Inc (pdinstance-oplus {l + r ` loc} {loc} {c} (List.map pdinstance-left pdisˡ) (List.map pdinstance-right pdisʳ)) 
+>-inc-pdinstance-oplus {l} {r} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-map-right pdisʳ all->-inc-pdisʳ
+>-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] = >-inc-map-left (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
+>-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  = {!>-inc ?!} ∷ {!!} 
+
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
 ----------------------------------------------------------------------------
@@ -1271,22 +1299,24 @@ pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char
 pdU->-inc {ε} {c} = []
 pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
 ...  | no ¬c≡c' = []
-...  | yes refl =  ( >-inc (λ { EmptyU EmptyU  →  λ() } ) ) ∷ []
+...  | yes refl =  ( >-inc (λ { EmptyU EmptyU empty>empty →  Nullary.contradiction refl (>→¬≡ empty>empty)  } ) ) ∷ []
 
-{-
-pdU->-inc {l + r ` loc} {c} = all-concat map-ind-hyp-l map-ind-hyp-r 
+pdU->-inc {l + r ` loc} {c} =  >-inc-pdinstance-oplus {l} {r} {loc} {c} pdU[ l , c ] pdU[ r , c ]  ind-hyp-l ind-hyp-r  -- all-concat map-ind-hyp-l map-ind-hyp-r 
   where
     ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
     ind-hyp-l = pdU->-inc {l} {c}
     
     ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
-    ind-hyp-r = pdU->-inc {r} {c}     
-
+    ind-hyp-r = pdU->-inc {r} {c}
+    
+    {-
     map-ind-hyp-l : All (>-Inc {l + r ` loc} {c}) (List.map pdinstance-left pdU[ l , c ])
     map-ind-hyp-l = >-inc-map-left pdU[ l , c ]  ind-hyp-l
 
     map-ind-hyp-r : All (>-Inc {l + r ` loc} {c}) (List.map pdinstance-right pdU[ r , c ])
     map-ind-hyp-r = >-inc-map-right pdU[ r , c ]  ind-hyp-r
+    -} 
+{-    
 pdU->-inc {r * ε∉r ` loc } {c} = all->-inc-map-star
   where
     ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]

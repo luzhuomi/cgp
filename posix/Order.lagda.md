@@ -1330,8 +1330,13 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 
     len-|inj-u|≡len-|u|+1 : (u : U (pˡ + pʳ ` loc )) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl
 
+    len-|inj-l-u|≡len-|u|+1 : ( u : U pˡ ) → length (proj₁ (flat (inj-l u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-l-u|≡len-|u|+1 u rewrite (s-ev-l u) = refl 
+
+    len-|inj-r-u|≡len-|u|+1 : ( u : U pʳ ) → length (proj₁ (flat (inj-r u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-r-u|≡len-|u|+1 u rewrite (s-ev-r u) = refl 
 
     ev-> : ( u₁ : U ( pˡ + pʳ ` loc ) )
         →  ( u₂ : U ( pˡ + pʳ ` loc ) ) 
@@ -1351,13 +1356,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
     ev-> (RightU v₁) (RightU v₂) (len-≡ len-|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂) ) = u₁>u₂→inj-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂ 
         
-    ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-lr v₁≥v₂) ) = inj-left-v₁>inj-right-v₂ 
+    ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-lr len|v₁|≥len|v₂|) ) = inj-left-v₁>inj-right-v₂ 
       where
         len|inj-left-v₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (RightU v₂))))
-        len|inj-left-v₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂) = cong suc len-|left-v₁|≡len|right-v₂| 
+        len|inj-left-v₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂) = cong suc len-|left-v₁|≡len|right-v₂|
+        len|inj-l-v₁|≡len|inj-r-v₂| : length (proj₁ (flat (inj-l v₁))) ≡ length (proj₁ (flat (inj-r v₂)))
+        len|inj-l-v₁|≡len|inj-r-v₂| rewrite len-|inj-l-u|≡len-|u|+1 v₁ | len-|inj-r-u|≡len-|u|+1 v₂  = cong suc len-|left-v₁|≡len|right-v₂| 
         inj-left-v₁>inj-right-v₂ : l + r ` loc  ⊢ inj (LeftU v₁) > inj (RightU v₂)
-        inj-left-v₁>inj-right-v₂ rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂)  = len-≡ len|inj-left-v₁|≡len|inj-right-v₂| (choice-lr {!≤-refl len|inj-left-v₁|≡len|inj-right-v₂|!} )  -- is it too general? if we make r more specific as l + r and 
-
+        inj-left-v₁>inj-right-v₂ =
+          len-≡ len|inj-left-v₁|≡len|inj-right-v₂| (choice-lr (≤-reflexive  (sym len|inj-l-v₁|≡len|inj-r-v₂| )) )  
+    ev-> (RightU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-rl len|v₁|>len|v₂|) ) = {!Nullary.contradiction len|v₁|>len|v₂| (<-irrefl ? ?) !}
+      
 
 >-inc-pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdisˡ : List (PDInstance l c) )

@@ -970,14 +970,12 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 -----------------------------------------------------------------------------
 
 
->-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ( pdis : List (PDInstance l c) )
-    → All (>-Inc {l} {c}) pdis
-    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-left pdis)
->-inc-map-left [] [] = []
->-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis)
-  (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = >-inc >-inc-ev   ∷ >-inc-map-left pdis pxs
+>-inc-left : ∀ {l r : RE } { loc : ℕ } { c : Char }
+  → (pdi : PDInstance l c )
+  → >-Inc {l} {c} pdi
+  → >-Inc {l + r ` loc } {c} (pdinstance-left pdi)
+>-inc-left {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev)
+  (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc >-inc-ev
   where
 
     len-|inj-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
@@ -1010,17 +1008,24 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
         len-|left-inj-u₁|≡len-|left-inj-u₂| : length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₁)))) ≡ length (proj₁ (flat (LeftU {l} {r} {loc} (inj u₂))))
         len-|left-inj-u₁|≡len-|left-inj-u₂| rewrite |left-inj-u₁|≡|inj-u₁| | |left-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = cong suc len|u₁|≡len|u₂|  
+  
+
+>-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( pdis : List (PDInstance l c) )
+    → All (>-Inc {l} {c}) pdis
+    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-left pdis)
+>-inc-map-left [] [] = []
+>-inc-map-left {l} {r} {loc} {c} (pdi ∷ pdis) (>-inc-pdi ∷ >-inc-pdis) =
+  ((>-inc-left pdi >-inc-pdi) ∷  (>-inc-map-left pdis >-inc-pdis))
 
 
 
->-inc-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ( pdis : List (PDInstance r c) )
-    → All (>-Inc {r} {c}) pdis
-    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-right pdis)
->-inc-map-right [] [] = []
->-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c}  inj sound-ev) ∷ pdis)
-  (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = >-inc >-inc-ev   ∷ >-inc-map-right pdis pxs
+>-inc-right : ∀ {l r : RE } { loc : ℕ } { c : Char }
+  → (pdi : PDInstance r c )
+  → >-Inc {r} {c} pdi
+  → >-Inc {l + r ` loc } {c} (pdinstance-right pdi)
+>-inc-right {l} {r} {loc} {c} (pdinstance {p} {r} {c}  inj sound-ev)
+  (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc >-inc-ev
   where
 
     len-|inj-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
@@ -1055,6 +1060,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         len-|right-inj-u₁|≡len-|right-inj-u₂|
           rewrite |right-inj-u₁|≡|inj-u₁| | |right-inj-u₂|≡|inj-u₂| | len-|inj-u|≡len-|u|+1 u₁ | len-|inj-u|≡len-|u|+1 u₂ = cong suc len|u₁|≡len|u₂|  
 
+
+
+
+
+>-inc-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( pdis : List (PDInstance r c) )
+    → All (>-Inc {r} {c}) pdis
+    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-right pdis)
+>-inc-map-right [] [] = []
+>-inc-map-right {l} {r} {loc} {c} (pdi ∷ pdis) (>-inc-pdi ∷ >-inc-pdis) =
+  ((>-inc-right pdi >-inc-pdi) ∷  (>-inc-map-right pdis >-inc-pdis))
 
 
 
@@ -1344,16 +1360,6 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         -------------------------------
         → l + r ` loc  ⊢ inj u₁ > inj u₂
     ev-> (LeftU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|left-v₂| (choice-ll v₁>v₂) ) = u₁>u₂→inj-l-u₁>inj-l-u₂ v₁ v₂ v₁>v₂ 
-      -- where
-        -- len|inj-left-v₁|≡len|inj-left-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (LeftU v₂))))
-        -- len|inj-left-v₁|≡len|inj-left-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (LeftU v₂) = cong suc len-|left-v₁|≡len|left-v₂| 
-
-        -- inj-left-v≡inj-l-v : ( v : U pˡ ) → inj (LeftU v) ≡ inj-l v
-        -- inj-left-v≡inj-l-v v = refl 
-
-      --  inj-left-v₁>inj-left-v₂ : r ⊢ inj (LeftU v₁) > inj (LeftU v₂)
-      --  inj-left-v₁>inj-left-v₂  = 
-
     ev-> (RightU v₁) (RightU v₂) (len-≡ len-|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂) ) = u₁>u₂→inj-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂ 
         
     ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-lr len|v₁|≥len|v₂|) ) = inj-left-v₁>inj-right-v₂ 
@@ -1365,8 +1371,16 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         inj-left-v₁>inj-right-v₂ : l + r ` loc  ⊢ inj (LeftU v₁) > inj (RightU v₂)
         inj-left-v₁>inj-right-v₂ =
           len-≡ len|inj-left-v₁|≡len|inj-right-v₂| (choice-lr (≤-reflexive  (sym len|inj-l-v₁|≡len|inj-r-v₂| )) )  
-    ev-> (RightU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-rl len|v₁|>len|v₂|) ) = {!Nullary.contradiction len|v₁|>len|v₂| (<-irrefl ? ?) !}
-      
+    ev-> (RightU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-rl len|v₁|>len|v₂|) ) = Nullary.contradiction len|v₁|>len|v₂|  ¬len|v₁|>len|v₂|
+      where
+        len|v₁|≡len|v₂| : length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₂))
+        len|v₁|≡len|v₂| = len-|left-v₁|≡len|right-v₂| 
+        ¬len|v₁|>len|v₂| : ¬ length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))
+        ¬len|v₁|>len|v₂| = <-irrefl (sym len|v₁|≡len|v₂|) 
+    ev-> v₁ v₂ (len-> len-|v₁|>len|v₂|) = len-> len|inj-v₁|>len|inj-v₂|
+      where
+        len|inj-v₁|>len|inj-v₂| : length (proj₁ (flat (inj v₁))) > length (proj₁ (flat (inj v₂)))
+        len|inj-v₁|>len|inj-v₂| rewrite len-|inj-u|≡len-|u|+1 v₁ | len-|inj-u|≡len-|u|+1 v₂ = Nat.s≤s len-|v₁|>len|v₂| 
 
 >-inc-pdinstance-oplus : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdisˡ : List (PDInstance l c) )
@@ -1374,10 +1388,32 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
   → All >-Inc pdisˡ
   → All >-Inc pdisʳ
   -----------------------------------------------------------------------------------------------------------------------
-  → All >-Inc (pdinstance-oplus {l + r ` loc} {loc} {c} (List.map pdinstance-left pdisˡ) (List.map pdinstance-right pdisʳ)) 
+  → All >-Inc (pdinstance-oplus {l + r ` loc} {loc} {c} (List.map (pdinstance-left {l} {r} {loc} {c}) pdisˡ) (List.map (pdinstance-right {l} {r} {loc} {c}) pdisʳ)) 
 >-inc-pdinstance-oplus {l} {r} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-map-right pdisʳ all->-inc-pdisʳ
 >-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] = >-inc-map-left (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
->-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  = {!!} ∷ {!!} 
+>-inc-pdinstance-oplus {l} {r} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  = -- we can't apply IH on this level. hence we need a sub proof to apply IH 
+  
+  >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
+  where
+    >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l c) )
+        → ( psʳ : List (PDInstance r c) )
+        → All >-Inc psˡ
+        → All >-Inc psʳ
+        → All >-Inc (concatMap (λ pˡ → List.map (fuse {l + r ` loc} {loc} {c} pˡ) (List.map (pdinstance-right  {l} {r} {loc} {c}) psʳ )) (List.map pdinstance-left psˡ))
+    >-inc-pdinstance-oplus-sub []         psʳ        [] _ = []
+    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) []         (>-inc-pˡ ∷ all->-inc-psˡ) []                         = >-inc-pdinstance-oplus-sub psˡ [] all->-inc-psˡ []  
+    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) (pʳ ∷ psʳ) (>-inc-pˡ ∷ all->-inc-psˡ) (>-inc-pʳ ∷ all->-inc-psʳ) = all-concat first rest
+      where
+        first : All >-Inc (List.map (fuse {l + r ` loc} {loc} {c}  (pdinstance-left {l} {r} {loc} {c} pˡ)) (List.map (pdinstance-right {l} {r} {loc} {c}) (pʳ ∷ psʳ)))
+        first = sub  (pʳ ∷ psʳ)  (>-inc-pʳ ∷ all->-inc-psʳ)  
+          where
+            sub : (qs : List (PDInstance r c)) → All >-Inc qs
+                  →  All >-Inc (List.map (fuse {l + r ` loc} {loc} {c}  (pdinstance-left {l} {r} {loc} {c} pˡ)) (List.map (pdinstance-right {l} {r} {loc} {c}) qs))
+            sub [] [] = []
+            sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) = (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
+        rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁) (pdinstance-right  {l} {r} {loc} {c} pʳ ∷ List.map pdinstance-right psʳ)) (List.map pdinstance-left psˡ)))
+        rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ) 
+
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
@@ -1394,8 +1430,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc {r} {c}) pdU[ r , c ]
 
-postulate 
-  pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+
+pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → All (>-Inc {l ● r ` loc } {c}) (pdUConcat l r ε∈l loc c)
 
 
@@ -1404,7 +1440,7 @@ pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
 ...  | no ¬c≡c' = []
 ...  | yes refl =  ( >-inc (λ { EmptyU EmptyU empty>empty →  Nullary.contradiction refl (>→¬≡ empty>empty)  } ) ) ∷ []
 
-pdU->-inc {l + r ` loc} {c} =  >-inc-pdinstance-oplus {l} {r} {loc} {c} pdU[ l , c ] pdU[ r , c ]  ind-hyp-l ind-hyp-r  -- all-concat map-ind-hyp-l map-ind-hyp-r 
+pdU->-inc {l + r ` loc} {c} =  >-inc-pdinstance-oplus {l} {r} {loc} {c} pdU[ l , c ] pdU[ r , c ]  ind-hyp-l ind-hyp-r 
   where
     ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
     ind-hyp-l = pdU->-inc {l} {c}
@@ -1412,14 +1448,7 @@ pdU->-inc {l + r ` loc} {c} =  >-inc-pdinstance-oplus {l} {r} {loc} {c} pdU[ l ,
     ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
     ind-hyp-r = pdU->-inc {r} {c}
     
-    {-
-    map-ind-hyp-l : All (>-Inc {l + r ` loc} {c}) (List.map pdinstance-left pdU[ l , c ])
-    map-ind-hyp-l = >-inc-map-left pdU[ l , c ]  ind-hyp-l
 
-    map-ind-hyp-r : All (>-Inc {l + r ` loc} {c}) (List.map pdinstance-right pdU[ r , c ])
-    map-ind-hyp-r = >-inc-map-right pdU[ r , c ]  ind-hyp-r
-    -} 
-{-    
 pdU->-inc {r * ε∉r ` loc } {c} = all->-inc-map-star
   where
     ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
@@ -1438,6 +1467,7 @@ pdU->-inc {l ● r ` loc} {c}  | yes ε∈l = pdUConcat->-inc
 
 
 
+
 {-# TERMINATING #-}
 pdUConcat->-inc {ε} {r} {ε∈ε} {loc} {c} = all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd 
   where
@@ -1452,6 +1482,7 @@ pdUConcat->-inc {ε} {r} {ε∈ε} {loc} {c} = all-concat all->-inc-pdis-inj-fro
 
     all->-inc-concatmap-pdinstance-snd : All (>-Inc {ε ● r ` loc} {c}) (concatmap-pdinstance-snd {ε} {r} {ε∈ε} {loc} {c} pdU[ r , c ])
     all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd {ε} {r} {ε∈ε} {loc} {c} pdU[ r , c ] ind-hyp-r
+
 pdUConcat->-inc { l * ε∉l ` loc₂ } {r} {ε∈*} {loc} {c} = all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd 
   where
     ind-hyp-l : All (>-Inc {l * ε∉l ` loc₂} {c}) pdU[ l * ε∉l ` loc₂ , c ]
@@ -1465,6 +1496,7 @@ pdUConcat->-inc { l * ε∉l ` loc₂ } {r} {ε∈*} {loc} {c} = all-concat all-
 
     all->-inc-concatmap-pdinstance-snd : All (>-Inc {(l * ε∉l ` loc₂) ● r ` loc} {c}) (concatmap-pdinstance-snd {l * ε∉l ` loc₂} {r} {ε∈*} {loc} {c}  pdU[ r , c ])
     all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd {l * ε∉l ` loc₂} {r} {ε∈*} {loc} {c}  pdU[ r , c ] ind-hyp-r
+
 pdUConcat->-inc { l ● s ` loc₂ } {r} {ε∈l●s} {loc} {c} = assoc->-inc pdU[ l ● ( s ● r ` loc ) ` loc₂ , c ] ind-hyp
   where
     ind-hyp : All (>-Inc {l ● ( s ● r ` loc)  ` loc₂} {c}) pdU[ l ● ( s ● r ` loc ) ` loc₂ , c ]
@@ -1483,7 +1515,7 @@ pdUConcat->-inc { l ● s ` loc₂ } {r} {ε∈l●s} {loc} {c} = assoc->-inc pd
         ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₁ v₁>v₄                  = seq₁ (seq₁ v₁>v₄)
         ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₂ refl (seq₁ v₂>v₅)      = seq₁ (seq₂ refl v₂>v₅)
         ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₂ refl (seq₂ refl v₃>v₆) = seq₂ refl v₃>v₆
-
+{-        
 pdUConcat->-inc { l + s ` loc₂ } {r} {ε∈l+s} {loc} {c} =  all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd  
 
   where

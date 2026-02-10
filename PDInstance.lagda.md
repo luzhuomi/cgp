@@ -338,3 +338,12 @@ compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r (pdinstance {p} {d} {c} p→d
 
 
 ```
+
+```agda
+{-
+concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ []
+concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = {!!}   
+-}  
+
+```

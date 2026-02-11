@@ -180,6 +180,9 @@ r ⊢ v₁ > v₂
 
 
 ```agda
+
+-- TODO: greedy order can be adjusted into this 2-level style, can lne order be adjusted in this 2-level style?
+-- if yes, the robustness check will be easier to establish.
 infix 4 _⊢_>_
 infix 4 _⊢_>ⁱ_
 
@@ -216,13 +219,13 @@ data _⊢_>ⁱ_  where
     → ( l ● r ` loc) ⊢ (PairU v₁ v₂) >ⁱ (PairU v₁' v₂')
 
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))
+    → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))                -- is this check redunant? if we come from the top level >, the length of both parse trees must be same
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (LeftU v₁) >ⁱ (RightU v₂)
 
 
-  choice-rl : ∀ { l r : RE } { loc : ℕ } { v₁ : U r } { v₂ : U l }
-    → length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))
+  choice-rl : ∀ { l r : RE } { loc : ℕ } { v₁ : U r } { v₂ : U l }       -- is this rule reduant? if we come from the top level >, the length of both parse trees must be same
+    → length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))               
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (RightU v₁) >ⁱ  (LeftU v₂)
 
@@ -1073,15 +1076,11 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
   ((>-inc-right pdi >-inc-pdi) ∷  (>-inc-map-right pdis >-inc-pdis))
 
 
-
->-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-               → ( pdis : List (PDInstance l c ) )
-               → All (>-Inc {l} {c}) pdis
-               → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
->-inc-map-fst [] [] = []
-
->-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = (>-inc >-inc-ev)  ∷  >-inc-map-fst pdis pxs
+>-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c  )
+  → >-Inc {l} {c} pdi
+  → >-Inc {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+>-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc >-inc-ev
   where
     injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
     injFst = mkinjFst inj
@@ -1117,7 +1116,14 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
         inj-u₁≡inj-u₂ = cong inj u₁≡u₂
 
+  
 
+>-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+               → ( pdis : List (PDInstance l c ) )
+               → All (>-Inc {l} {c}) pdis
+               → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+>-inc-map-fst [] [] = []
+>-inc-map-fst {l} {r} {loc} {c} (pdi ∷ pdis) (>-inc-pdi ∷ all->-inc-pdis) = >-inc-fst pdi >-inc-pdi ∷  >-inc-map-fst pdis all->-inc-pdis
 
 -----------------------------------------------------------------------------------------
 -- aux lemma to show that injSnd is >-strict increasing
@@ -1417,10 +1423,46 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 -- oplus >-inc for (l + s) ● r case
 
-
-postulate
-  concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  
+-- this should be moved to PDInstance
+concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ []
+concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es 
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    e-flat-es :  List ( ∃[ e ] (Flat-[] l e) )
+    e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+    sub : (xs :  List ( ∃[ e ] (Flat-[] l e) )) → concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x []) xs ≡ []
+    sub [] = refl
+    sub (x ∷ xs) = sub xs 
+
+-- goal  >-Inc (fuse (pdinstance-fst pˡ) q)
+
+
+>-inc-fuse-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( pdiˡ : PDInstance l c ) 
+    → ( pdiʳ : PDInstance (l ● r ` loc) c ) -- these are all pdinstance-snd'ed pdi
+    → >-Inc (pdinstance-fst {l} {r} {loc} {c} pdiˡ)
+    → >-Inc pdiʳ
+    -----------------------------------------------------------
+    → >-Inc (fuse {l ● r ` loc} {loc} {c}  (pdinstance-fst {l} {r} {loc} {c} pdiˡ) pdiʳ)
+>-inc-fuse-fst {l} {r} {loc} {c} (pdinstance {pˡ} {l} {_} inj-l s-ev-l) (pdinstance {pʳ} {l●r} {_} inj-r s-ev-r) (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂) (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂) = >-inc ev-> 
+  where
+    inj : U ( ( pˡ ● r ` loc) + pʳ ` loc ) → U ( l ● r ` loc )
+    inj = mkfuseInj (mkinjFst inj-l) inj-r -- hm... we should get use of mkinjSnd here... so that we know that the v₂ below must be empty and v₁ is not 
+
+
+    ev-> : ( u₁ : U ( ( pˡ ● r ` loc) + pʳ ` loc ) )
+        →  ( u₂ : U ( ( pˡ ● r ` loc) + pʳ ` loc ) ) 
+        →  ( pˡ ● r ` loc) + pʳ ` loc ⊢ u₁ > u₂
+        -------------------------------
+        → l ● r ` loc  ⊢ inj u₁ > inj u₂
+    ev-> (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁|≡len|left-v₂| v₁>ⁱv₂)  =   {!!} 
+  
+
 
 
 >-inc-pdinstance-oplus-+● : ∀ { l+s r : RE } {ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char } 
@@ -1430,9 +1472,34 @@ postulate
     → All >-Inc pdisʳ
     -----------------------------------------------------------------------------------------------------------------------
     → All >-Inc (pdinstance-oplus {l+s ● r ` loc} {loc} {c} (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdisˡ) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdisʳ))
->-inc-pdinstance-oplus-+● {l+s} {r} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
->-inc-pdinstance-oplus-+● {l+s} {r} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] = {!!} -- >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] rewrite (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c})  =  >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ -- >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
+  -- agda does not know (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ)) --> pdiʳ' ∷ pdisʳ'
+  with concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ) in concat-eq | >-inc-concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ) 
+... | []     | [] = {!!} -- we need a contradiction here.
+... | x ∷ xs | >-inc-x ∷ >-inc-xs =  >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (x ∷ xs) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-x ∷ >-inc-xs)  
 
+  -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
+  where
+    >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l+s c) )
+        → ( psʳ : List (PDInstance (l+s ● r ` loc) c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
+        → All >-Inc psˡ
+        → All >-Inc psʳ
+        → All >-Inc (concatMap (λ pˡ → List.map (fuse {l+s ● r ` loc} {loc} {c} pˡ) psʳ) (List.map (pdinstance-fst {l+s} {r} {loc} {c}) psˡ))
+    >-inc-pdinstance-oplus-sub []         psʳ        [] _ = []
+    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) []         (>-inc-pˡ ∷ all->-inc-psˡ) []                         = >-inc-pdinstance-oplus-sub psˡ [] all->-inc-psˡ []
+    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) (pʳ ∷ psʳ) (>-inc-pˡ ∷ all->-inc-psˡ) (>-inc-pʳ ∷ all->-inc-psʳ) = all-concat first rest
+      where
+        first : All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) (pʳ ∷ psʳ))
+        first = sub  (pʳ ∷ psʳ)  (>-inc-pʳ ∷ all->-inc-psʳ)  
+          where
+            sub : (qs : List (PDInstance (l+s ● r ` loc) c)) → All >-Inc qs
+                  →  All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) qs)
+            sub [] [] = []
+            sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
+        rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁)  ( pʳ ∷ psʳ)) (List.map pdinstance-fst psˡ)))
+        rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ) 
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END

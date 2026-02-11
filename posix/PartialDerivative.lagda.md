@@ -378,8 +378,8 @@ pdinstance-oplus : ∀ { r : RE } { loc : ℕ } { c : Char }
   → List (PDInstance r c)
   → List (PDInstance r c)
 pdinstance-oplus {r} {loc} {c} []     pdisʳ  = pdisʳ
-pdinstance-oplus {r} {loc} {c} pdisˡ  []     = pdisˡ
-pdinstance-oplus {r} {loc} {c} pdisˡ  pdisʳ  =  concatMap (λ pdiˡ → List.map (fuse {r} {loc} {c}  pdiˡ) pdisʳ) pdisˡ 
+pdinstance-oplus {r} {loc} {c} (pdiˡ ∷ pdisˡ)  []     = pdiˡ ∷ pdisˡ
+pdinstance-oplus {r} {loc} {c} (pdiˡ ∷ pdisˡ)  (pdiʳ ∷ pdisʳ)  =  concatMap (λ pdiˡ₁ → List.map (fuse {r} {loc} {c}  pdiˡ₁) (pdiʳ ∷ pdisʳ)) (pdiˡ ∷ pdisˡ)  
 
  
 

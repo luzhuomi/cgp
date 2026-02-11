@@ -1472,13 +1472,32 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
     → All >-Inc pdisʳ
     -----------------------------------------------------------------------------------------------------------------------
     → All >-Inc (pdinstance-oplus {l+s ● r ` loc} {loc} {c} (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdisˡ) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdisʳ))
->-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] rewrite (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c})  =  >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ -- >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
   -- agda does not know (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ)) --> pdiʳ' ∷ pdisʳ'
   with concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ) in concat-eq | >-inc-concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ) 
 ... | []     | [] = {!!} -- we need a contradiction here.
-... | x ∷ xs | >-inc-x ∷ >-inc-xs = ? 
+... | x ∷ xs | >-inc-x ∷ >-inc-xs = {!!}
+
+-- we was trying to rewrite sym concat-eq here, but concatmap (λ pdiˡ₁ → List.map (fuse pdiˡ₁) (x ∷ xs))  (List.map pdinstance-fst (pdiˡ ∷ pdisˡ)))
+-- has been unrolled into  concatMap (λ pdiˡ₁ → fuse pdiˡ₁ x ∷ List.map (fuse pdiˡ₁) xs)  (pdinstance-fst pdiˡ ∷ List.map pdinstance-fst pdisˡ)), hence the rewrite fails. 
+
+-- the issue with having x ∷ xs instead of (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ))  is that , in the sub call to >-inc-fuse-fst , we lose the informatiopn tghat x is a pdinstance resulted from pdinstance-snd
+-- which means the inj was created by a mkinjSnd, which guanrantee the first of the pairU parse tree is empty.
+-- can we pass that information explicityly? 
+
+
+
+-- the following is one of the attempt to fix. 
+
+-- we try to delay the breaking of pdisˡ so that we can use rewrite sym concat-eq but it seems too complicated. 
+-- >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} pdisˡ' (pdiʳ ∷ pdisʳ) all->-inc-pdisˡ' (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
+--  with concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ) in concat-eq | >-inc-concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ) 
+-- ... | []     | [] = {!!} -- we need a contradiction here.
+-- ... | x ∷ xs | >-inc-x ∷ >-inc-xs rewrite sym concat-eq with pdisˡ' | all->-inc-pdisˡ' 
+-- ...                                                      | []            | [] = {!>-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ!} 
+-- ...                                                      | pdiˡ ∷ pdisˡ  | >-inc-pdiˡ ∷ all->-inc-pdisˡ = {! >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  !} 
   -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (x ∷ xs) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-x ∷ >-inc-xs)  
 
   -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
@@ -1510,7 +1529,13 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
         → All >-Inc (concatMap (λ pˡ → List.map (fuse {l+s ● r ` loc} {loc} {c} pˡ) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} psʳ)) (List.map (pdinstance-fst {l+s} {r} {loc} {c}) psˡ))
 
     >-inc-pdinstance-oplus-sub []         psʳ        [] _ = []
-    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) []         (>-inc-pˡ ∷ all->-inc-psˡ) []                         = ?  -- >-inc-pdinstance-oplus-sub psˡ [] all->-inc-psˡ []
+    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) []         (>-inc-pˡ ∷ all->-inc-psˡ) []    rewrite   (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c})   = sub psˡ  
+      where
+          sub : (ps : List (PDInstance l+s c) ) →
+              All (>-Inc {l+s ● r ` loc} {c})  (List.concatMap (λ x →  []) (List.map (pdinstance-fst  {l+s} {r} {loc} {c} ) ps) )
+          sub [] = []
+          sub (q ∷ qs) = sub qs 
+
     >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) (pʳ ∷ psʳ) (>-inc-pˡ ∷ all->-inc-psˡ) (>-inc-pʳ ∷ all->-inc-psʳ) = all-concat first rest
       where
         first : All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pʳ ∷ psʳ)))
@@ -1518,8 +1543,8 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
           where
             sub : (qs : List (PDInstance r c)) → All >-Inc qs
                   →  All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} qs))
-            sub [] [] = ? 
-            sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  ? -- >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
+            sub [] [] rewrite (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c}) = [] 
+            sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  {!!} -- >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
         rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁)  (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} ( pʳ ∷ psʳ))) (List.map pdinstance-fst psˡ)))
         rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)     
 

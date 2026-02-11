@@ -1478,10 +1478,12 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
   -- agda does not know (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ)) --> pdiʳ' ∷ pdisʳ'
   with concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ) in concat-eq | >-inc-concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ) 
 ... | []     | [] = {!!} -- we need a contradiction here.
-... | x ∷ xs | >-inc-x ∷ >-inc-xs =  >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (x ∷ xs) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-x ∷ >-inc-xs)  
+... | x ∷ xs | >-inc-x ∷ >-inc-xs = ? 
+  -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (x ∷ xs) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-x ∷ >-inc-xs)  
 
   -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
   where
+    {- 
     >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l+s c) )
         → ( psʳ : List (PDInstance (l+s ● r ` loc) c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
         → All >-Inc psˡ
@@ -1499,7 +1501,27 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
             sub [] [] = []
             sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
         rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁)  ( pʳ ∷ psʳ)) (List.map pdinstance-fst psˡ)))
-        rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ) 
+        rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)
+    -}
+    >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l+s c) )
+        → ( psʳ : List (PDInstance r c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
+        → All >-Inc psˡ
+        → All >-Inc psʳ
+        → All >-Inc (concatMap (λ pˡ → List.map (fuse {l+s ● r ` loc} {loc} {c} pˡ) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} psʳ)) (List.map (pdinstance-fst {l+s} {r} {loc} {c}) psˡ))
+
+    >-inc-pdinstance-oplus-sub []         psʳ        [] _ = []
+    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) []         (>-inc-pˡ ∷ all->-inc-psˡ) []                         = ?  -- >-inc-pdinstance-oplus-sub psˡ [] all->-inc-psˡ []
+    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) (pʳ ∷ psʳ) (>-inc-pˡ ∷ all->-inc-psˡ) (>-inc-pʳ ∷ all->-inc-psʳ) = all-concat first rest
+      where
+        first : All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pʳ ∷ psʳ)))
+        first = sub  (pʳ ∷ psʳ)  (>-inc-pʳ ∷ all->-inc-psʳ)  
+          where
+            sub : (qs : List (PDInstance r c)) → All >-Inc qs
+                  →  All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} qs))
+            sub [] [] = ? 
+            sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  ? -- >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
+        rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁)  (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} ( pʳ ∷ psʳ))) (List.map pdinstance-fst psˡ)))
+        rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)     
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END

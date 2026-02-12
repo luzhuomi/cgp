@@ -19,7 +19,7 @@ open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; f
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ;
-  proj₁flat-v≡[]→ε∈r ; flat-[]→flat-[]-left ; flat-[]→flat-[]-right )
+  proj₁flat-v≡[]→ε∈r ; flat-[]→flat-[]-left ; flat-[]→flat-[]-right ; mkAllEmptyU≢[]  )
 
 
 import cgp.PDInstance as PDI
@@ -1531,12 +1531,69 @@ inspect x = x with≡ refl
 
 -- we try to delay the breaking of pdisˡ so that we can use rewrite sym concat-eq but it seems too complicated.
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
->-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) ( >-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) ( >-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = {!!}
+  with mkAllEmptyU ε∈l+s in mkAllEmpty-eq | mkAllEmptyU-sound ε∈l+s 
+... | []                 | _ =   Nullary.contradiction mkAllEmpty-eq (mkAllEmptyU≢[] {l+s} ε∈l+s) -- we need a contradiction here
+... | e ∷ es             | flat-[]-e ∷ flat-[]-es = foo (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
+{-
   with inspect (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)) 
 ... | []       with≡ concat-eq = {!!} -- we need a contradiction here.
-... | (x ∷ xs) with≡ concat-eq = {!!} 
+... | (x ∷ xs) with≡ concat-eq = {!!}
+-}
   -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
-  where 
+  where
+
+    {-
+    All >-Inc (pdinstance-oplus  (List.map pdinstance-fst (pdiˡ ∷ pdisˡ)
+        (concatMap (λ x₁ → List.map (mk-snd-pdi x₁) (pdiʳ ∷ pdisʳ)) (zip-es-flat-[]-es (mkAllEmptyU ε∈l+s) (mkAllEmptyU-sound ε∈l+s))))
+
+    All >-Inc
+      (pdinstance-oplus  (pdinstance-fst pdiˡ ∷ List.map pdinstance-fst pdisˡ)
+       (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ)))
+
+
+    All >-Inc
+      (concatMap
+        (λ pdiˡ₁ →  List.map (fuse pdiˡ₁)  (concatMap (λ x → List.map (mk-snd-pdi x) (pdiʳ ∷ pdisʳ))
+                                                      (zip-es-flat-[]-es (e ∷ es) (flat-[]-e ∷ flat-[]-es))))
+          (List.map pdinstance-fst (pdiˡ ∷ pdisˡ)))
+
+
+    All >-Inc (concatMap (λ pdiˡ₁ →  List.map (fuse  {l+s ● r ` loc} {loc} {c} pdiˡ₁)  (concatMap (λ x → List.map (mk-snd-pdi x) psʳ)  (zip-es-flat-[]-es {l+s} {ε∈l+s} (e ∷ es) (flat-[]-e ∷ flat-[]-es))))
+           (List.map pdinstance-fst (pdiˡ ∷ pdisˡ)))
+
+    -}
+    foo : ( psˡ : List (PDInstance l+s c) )
+        → ( psʳ : List (PDInstance r c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
+        → All >-Inc psˡ
+        → All >-Inc psʳ
+        ---------------------------------------------------------------
+        → All >-Inc (concatMap (λ pˡ₁ →  List.map (fuse  {l+s ● r ` loc} {loc} {c} pˡ₁) (concatMap (λ x → List.map (mk-snd-pdi x) psʳ) (zip-es-flat-[]-es {l+s} {ε∈l+s} (e ∷ es) (flat-[]-e ∷ flat-[]-es))))
+           (List.map pdinstance-fst psˡ))        
+    foo  []         psʳ        [] _ = [] 
+    foo  (pˡ ∷ psˡ) []         (>-inc-pˡ ∷ all->-inc-psˡ) []    {- rewrite   (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c}) -}  = {!!}
+      {-
+      Goal: w/o rewrite
+      All >-Inc
+      (concatMap (λ pˡ₁ →           List.map (fuse pˡ₁)
+          (concatMap (λ x → [])
+           ((e , flat-[]-e) ∷ zip-es-flat-[]-es es flat-[]-es)))
+       (pdinstance-fst pˡ ∷ List.map pdinstance-fst psˡ))
+
+      -- goal with rewrite
+      All >-Inc (List.map (fuse (pdinstance-fst pˡ)) (List.foldr _++_ []
+                                                     (List.map (λ x → []) (zip-es-flat-[]-es es flat-[]-es)))
+                                                     ++
+                                                     List.foldr _++_ []
+                                                     (List.map (λ pˡ₁ → List.map (fuse pˡ₁) (List.foldr _++_ [] (List.map (λ x → []) (zip-es-flat-[]-es es flat-[]-es))))
+                          (List.map pdinstance-fst psˡ)))
+      -} 
+      where
+          sub : (ps : List (PDInstance l+s c) ) →
+              All (>-Inc {l+s ● r ` loc} {c})  (List.concatMap (λ x →  []) (List.map (pdinstance-fst  {l+s} {r} {loc} {c} ) ps) )
+          sub [] = []
+          sub (q ∷ qs) = sub qs 
+    {-
     >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l+s c) )
         → ( psʳ : List (PDInstance r c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
         → All >-Inc psˡ
@@ -1562,7 +1619,7 @@ inspect x = x with≡ refl
             sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  {!!} -- >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
         rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁)  (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} ( pʳ ∷ psʳ))) (List.map pdinstance-fst psˡ)))
         rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)     
-
+    -}
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
 ----------------------------------------------------------------------------

@@ -1441,6 +1441,14 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
 
 -- goal  >-Inc (fuse (pdinstance-fst pˡ) q)
 
+{-
+-- an PDInstance whose injection is created by mkInjSnd
+data InjSnd-PDInstance : { l r : RE } { loc : ℕ } { c : Char } ( pdi : PDInstance (l ● r ` loc) c ) → Set  where
+  injSndPD : ∀ { p l r : RE } { c : Char } 
+    → (inj : U p → U (l ● r ` loc) )
+    → (s-ev : ( ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )) -- ^ soundness evidence of the inject function
+    → (emp-ev :  ∀ ( u : U p ) →  ( inj u ) ≡ 
+-}     
 
 >-inc-fuse-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdiˡ : PDInstance l c ) 
@@ -1465,6 +1473,14 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
 
 
 
+data Singleton {a} {A : Set a} (x : A) : Set a where
+  _with≡_ : (y : A) → x ≡ y → Singleton x
+
+inspect : ∀ {a} {A : Set a} (x : A) → Singleton x
+inspect x = x with≡ refl
+
+
+
 >-inc-pdinstance-oplus-+● : ∀ { l+s r : RE } {ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char } 
     → ( pdisˡ : List (PDInstance l+s c) )
     → ( pdisʳ : List (PDInstance r c) )
@@ -1473,36 +1489,17 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
     -----------------------------------------------------------------------------------------------------------------------
     → All >-Inc (pdinstance-oplus {l+s ● r ` loc} {loc} {c} (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdisˡ) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdisʳ))
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] rewrite (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c})  =  >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ -- >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
+{-
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
   -- agda does not know (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ)) --> pdiʳ' ∷ pdisʳ'
   with concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ) in concat-eq | >-inc-concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ) 
 ... | []     | [] = {!!} -- we need a contradiction here.
-... | x ∷ xs | >-inc-x ∷ >-inc-xs = {!!}
+... | x ∷ xs | >-inc-x ∷ >-inc-xs = 
+    >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (x ∷ xs) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-x ∷ >-inc-xs)  
 
--- we was trying to rewrite sym concat-eq here, but concatmap (λ pdiˡ₁ → List.map (fuse pdiˡ₁) (x ∷ xs))  (List.map pdinstance-fst (pdiˡ ∷ pdisˡ)))
--- has been unrolled into  concatMap (λ pdiˡ₁ → fuse pdiˡ₁ x ∷ List.map (fuse pdiˡ₁) xs)  (pdinstance-fst pdiˡ ∷ List.map pdinstance-fst pdisˡ)), hence the rewrite fails. 
-
--- the issue with having x ∷ xs instead of (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ))  is that , in the sub call to >-inc-fuse-fst , we lose the informatiopn tghat x is a pdinstance resulted from pdinstance-snd
--- which means the inj was created by a mkinjSnd, which guanrantee the first of the pairU parse tree is empty.
--- can we pass that information explicityly? 
-
-
-
--- the following is one of the attempt to fix. 
-
--- we try to delay the breaking of pdisˡ so that we can use rewrite sym concat-eq but it seems too complicated. 
--- >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} pdisˡ' (pdiʳ ∷ pdisʳ) all->-inc-pdisˡ' (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
---  with concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ) in concat-eq | >-inc-concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ) 
--- ... | []     | [] = {!!} -- we need a contradiction here.
--- ... | x ∷ xs | >-inc-x ∷ >-inc-xs rewrite sym concat-eq with pdisˡ' | all->-inc-pdisˡ' 
--- ...                                                      | []            | [] = {!>-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ!} 
--- ...                                                      | pdiˡ ∷ pdisˡ  | >-inc-pdiˡ ∷ all->-inc-pdisˡ = {! >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  !} 
-  -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (x ∷ xs) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-x ∷ >-inc-xs)  
-
-  -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
   where
-    {- 
+
     >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l+s c) )
         → ( psʳ : List (PDInstance (l+s ● r ` loc) c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
         → All >-Inc psˡ
@@ -1521,7 +1518,25 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es
             sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
         rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁)  ( pʳ ∷ psʳ)) (List.map pdinstance-fst psˡ)))
         rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)
-    -}
+-}
+-- we was trying to rewrite sym concat-eq here, but concatmap (λ pdiˡ₁ → List.map (fuse pdiˡ₁) (x ∷ xs))  (List.map pdinstance-fst (pdiˡ ∷ pdisˡ)))
+-- has been unrolled into  concatMap (λ pdiˡ₁ → fuse pdiˡ₁ x ∷ List.map (fuse pdiˡ₁) xs)  (pdinstance-fst pdiˡ ∷ List.map pdinstance-fst pdisˡ)), hence the rewrite fails. 
+
+-- the issue with having x ∷ xs instead of (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ))  is that , in the sub call to >-inc-fuse-fst , we lose the informatiopn tghat x is a pdinstance resulted from pdinstance-snd
+-- which means the inj was created by a mkinjSnd, which guanrantee the first of the pairU parse tree is empty.
+-- can we pass that information explicityly? 
+
+
+-- the following is one of the attempt to fix. 
+
+-- we try to delay the breaking of pdisˡ so that we can use rewrite sym concat-eq but it seems too complicated.
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) ( >-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
+  with inspect (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)) 
+... | []       with≡ concat-eq = {!!} -- we need a contradiction here.
+... | (x ∷ xs) with≡ concat-eq = {!!} 
+  -- >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  
+  where 
     >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l+s c) )
         → ( psʳ : List (PDInstance r c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
         → All >-Inc psˡ

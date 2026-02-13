@@ -346,6 +346,8 @@ pdinstance-oplus {l} {r} {loc} {c} pdis   []    = pdis
 pdinstance-oplus {l} {r} {loc} {c} pdisˡ  pdisᵣ =  concatMap (λ pdiˡ → List.map (fuse pdiˡ) pdisᵣ) pdisˡ
 -}
 
+
+
 mkfuseInj : ∀ { pˡ pʳ r : RE } { loc : ℕ }
   → ( inj-l : U pˡ → U r )
   → ( inj-r : U pʳ → U r )

@@ -1459,12 +1459,12 @@ concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs
   (pdinstance {pʳ} {r} {_} inj-r s-ev-r)
   (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂)
   (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂)
-  =  {! >-inc ? !} -- -- >-inc ev->
---  with (mk-snd-pdi {l} {r} {loc} (e , flat-[]-e)  (pdinstance {pʳ} {r} {c} inj-r s-ev-r) )
--- ... | pdinstance {pʳ} {l ● r ` loc} {_} inj' sev  = >-inc {!!} 
+--  =  {! >-inc ? !} -- -- >-inc ev->
+  with (mk-snd-pdi {l} {r} {loc} (e , flat-[]-e)  (pdinstance {pʳ} {r} {c} inj-r s-ev-r) ) in eq 
+... | pdinstance {pʳ} {l ● r ` loc} {_} injsnd-inj-r-e s-ev-injsnd-inj-r-e  = >-inc ev->  
   where
     inj : U ( ( pˡ ● r ` loc) + pʳ ` loc ) → U ( l ● r ` loc )
-    inj = mkfuseInj (mkinjFst inj-l) (mkinjSnd inj-r e)  -- hm... we should get use of mkinjSnd here... so that we know that the v₂ below must be empty and v₁ is not 
+    inj = mkfuseInj (mkinjFst inj-l) injsnd-inj-r-e --(mkinjSnd inj-r e)  -- hm... we should get use of mkinjSnd here... so that we know that the v₂ below must be empty and v₁ is not 
 
 
     ev-> : ( u₁ : U ( ( pˡ ● r ` loc) + pʳ ` loc ) )
@@ -1472,7 +1472,8 @@ concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs
         →  ( pˡ ● r ` loc) + pʳ ` loc ⊢ u₁ > u₂
         -------------------------------
         → l ● r ` loc  ⊢ inj u₁ > inj u₂
-    ev-> (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁|≡len|left-v₂| v₁>ⁱv₂)  =   {!!} 
+    ev-> (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll v₁w₁>ⁱv₂w₂))  =   {!!}
+    ev-> (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| (choice-lr v₁w₁>ⁱv₂w₂)) = ? 
   
 
 

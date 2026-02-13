@@ -656,7 +656,7 @@ The adjusted ordering is the POSIX ordering.  Some key observations
 2. (ChoiceRL) rule can be omitted, assuming we are always starting from the top level.
 3. the premise length |v₁| ≥ length |v₂| in the (ChoiceLR) can be dropped, assuming we are always starting from the top level.
 
-As the result, the remaining set of internal rule is the same set of rule for greedy order modulo the top-level inductive premises.
+As a result, the remaining set of internal rules is the same set for greedy order (Frisch's) modulo the top-level inductive premises.
 
 Hence, we can also adjust the greedy order by introducing an identity top level. 
 

@@ -594,6 +594,18 @@ We adjust the > from FLOPS 2014 as the internal order by replacing all the induc
 
 
 ```
+
+r₁ ⊢ v₁ > v₁'
+-------------------------------------------- (Seq₁)
+r₁ ● r₂ ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
+
+
+
+v₁ ≡ v₁'  r₂ ⊢ v₂ > v₂'
+-------------------------------------------- (Seq₂)
+r₁ ● r₂ ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
+
+
 r₁ ⊢ v₁ > v₁'
 ----------------------------------(ChoiceLL)
 r₁ + r₂ ⊢ LeftU v₁ >ⁱ LeftU v₁' 
@@ -659,6 +671,16 @@ r ⊢ v₁ > v₂
 
 
 ```
+r₁ ⊢ v₁ > v₁'
+-------------------------------------------- (Seq₁)
+r₁ ● r₂ ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
+
+
+v₁ ≡ v₁'  r₂ ⊢ v₂ > v₂'
+-------------------------------------------- (Seq₂)
+r₁ ● r₂ ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
+
+
 r₁ ⊢ v₁ > v₁'
 ----------------------------------(ChoiceLL)
 r₁ + r₂ ⊢ LeftU v₁ >ⁱ LeftU v₁' 

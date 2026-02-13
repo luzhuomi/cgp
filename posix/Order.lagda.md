@@ -1467,13 +1467,18 @@ concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs
     inj = mkfuseInj (mkinjFst inj-l) injsnd-inj-r-e --(mkinjSnd inj-r e)  -- hm... we should get use of mkinjSnd here... so that we know that the v₂ below must be empty and v₁ is not 
 
 
+    len-|inj-u|≡len-|u|+1 : (u : U ( ( pˡ ● r ` loc) + pʳ ` loc ) ) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl
+
+
+
     ev-> : ( u₁ : U ( ( pˡ ● r ` loc) + pʳ ` loc ) )
         →  ( u₂ : U ( ( pˡ ● r ` loc) + pʳ ` loc ) ) 
         →  ( pˡ ● r ` loc) + pʳ ` loc ⊢ u₁ > u₂
         -------------------------------
         → l ● r ` loc  ⊢ inj u₁ > inj u₂
     ev-> (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll v₁w₁>ⁱv₂w₂))  =   {!!}
-    ev-> (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| (choice-lr v₁w₁>ⁱv₂w₂)) = ? 
+    ev-> (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| (choice-lr v₁w₁>ⁱv₂w₂)) = {!!} 
   
 
 

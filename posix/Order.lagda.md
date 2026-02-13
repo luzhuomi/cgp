@@ -1460,21 +1460,26 @@ concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs
   (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂)
   (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂)
 --  =  {! >-inc ? !} -- -- >-inc ev->
-  with (mk-snd-pdi {l} {r} {loc} (e , flat-[]-e)  (pdinstance {pʳ} {r} {c} inj-r s-ev-r) ) in eq 
-... | pdinstance {pʳ} {l ● r ` loc} {_} injsnd-inj-r-e s-ev-injsnd-inj-r-e  = >-inc ev->  
+  with pdinstance-fst {l} {r} {loc} (pdinstance {pˡ} {l} {c} inj-l s-ev-l) |  (mk-snd-pdi {l} {r} {loc} (e , flat-[]-e)  (pdinstance {pʳ} {r} {c} inj-r s-ev-r) ) in snd-eq 
+... | pdinstance {pˡ} {l ● r ` loc} {_} injfst-inj-l s-ev-injfst-inj-l | pdinstance {pʳ} {l ● r ` loc} {_} injsnd-inj-r-e s-ev-injsnd-inj-r-e   = >-inc ev->  
   where
-    inj : U ( ( pˡ ● r ` loc) + pʳ ` loc ) → U ( l ● r ` loc )
-    inj = mkfuseInj (mkinjFst inj-l) injsnd-inj-r-e --(mkinjSnd inj-r e)  -- hm... we should get use of mkinjSnd here... so that we know that the v₂ below must be empty and v₁ is not 
+    inj : U (  pˡ + pʳ ` loc ) → U ( l ● r ` loc )
+    inj = mkfuseInj injfst-inj-l injsnd-inj-r-e --(mkinjSnd inj-r e)  -- hm... we should get use of mkinjSnd here... so that we know that the v₂ below must be empty and v₁ is not 
 
+    sound-ev : (u :  U ( pˡ + pʳ ` loc) )  
+               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+    sound-ev (LeftU v₁) = s-ev-injfst-inj-l v₁
+    sound-ev (RightU v₂) = s-ev-injsnd-inj-r-e v₂
+    
 
-    len-|inj-u|≡len-|u|+1 : (u : U ( ( pˡ ● r ` loc) + pʳ ` loc ) ) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 : (u : U (  pˡ + pʳ ` loc ) ) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
     len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl
 
 
 
-    ev-> : ( u₁ : U ( ( pˡ ● r ` loc) + pʳ ` loc ) )
-        →  ( u₂ : U ( ( pˡ ● r ` loc) + pʳ ` loc ) ) 
-        →  ( pˡ ● r ` loc) + pʳ ` loc ⊢ u₁ > u₂
+    ev-> : ( u₁ : U (  pˡ + pʳ ` loc ) )
+        →  ( u₂ : U ( pˡ  + pʳ ` loc ) ) 
+        →   pˡ + pʳ ` loc ⊢ u₁ > u₂
         -------------------------------
         → l ● r ` loc  ⊢ inj u₁ > inj u₂
     ev-> (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll v₁w₁>ⁱv₂w₂))  =   {!!}

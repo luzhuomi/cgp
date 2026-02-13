@@ -55,7 +55,7 @@ r* ⊢ NilU > ConsU v vs
 
 
 length |v| + length |vs| > 0
-------------------------------------------------(StarNilCons)
+------------------------------------------------(StarConsNil)
 r* ⊢ ConsU v vs > NilU
 ```
 
@@ -565,6 +565,169 @@ r₁ + r₂ ⊢ RightU v₂ > RightU v₂'
 ```
 
 >>> Question: do we need to adjust the Seq and Star rules?
+Answer: yes, see below.
+
+
+#### Updated on Feb 13 2026
+
+to address the above issue mentioned on Feb 6 2026, we introduce a two-level definition for the posix order.
+
+We write r ⊢ v > v' to denote the "top" level order and 
+r ⊢ v >ⁱ v' to denote the "internal" or "intermediate" level order. 
+
+There are only two cases for the top level. 
+
+```
+len |v₁| ≡ len |v₂|
+r ⊢ v₁ >ⁱ v₂
+--------------------------------(≡-len)
+r ⊢ v₁ > v₂
+
+
+len |v₁| > len |v₂|
+--------------------------------(>-len)
+r ⊢ v₁ > v₂
+```
+
+
+We adjust the > from FLOPS 2014 as the internal order by replacing all the inductive premises by top level order.
+
+
+```
+r₁ ⊢ v₁ > v₁'
+----------------------------------(ChoiceLL)
+r₁ + r₂ ⊢ LeftU v₁ >ⁱ LeftU v₁' 
+
+
+r₂ ⊢ v₂ > v₂'
+----------------------------------(ChoiceRR)
+r₁ + r₂ ⊢ RightU v₂ >ⁱ RightU v₂' 
+
+
+length |v₁| ≥ length |v₂| <-- the premise of this rule can be omitted 
+----------------------------------------------(ChoiceLR) 
+r₁ + r₂ ⊢ LeftU v₁ >ⁱ RightU v₂ 
+
+
+
+length |v₂| > length |v₁|
+----------------------------------------------(ChoiceRL)  <-- this rule can be omitted 
+r₁ + r₂ ⊢ RightU v₂ >ⁱ LeftU v₁ 
+
+
+r ⊢ v₁ > v₂ 
+---------------------------------(StarHd)
+r* ⊢ ConsU v₁ vs₁ >ⁱ ConsU v₂ vs₂
+
+
+v₁ ≡ v₂        r* ⊢ vs₁ > vs₂ 
+---------------------------------(StarTl)
+r* ⊢ ConsU v₁ vs₁ >ⁱ ConsU v₂ vs₂
+
+
+
+length |v| + length |vs| == 0
+-------------------------------------------(StarNilCons)  <-- this rule can be omitted 
+r* ⊢ NilU >ⁱ ConsU v vs
+
+
+
+length |v| + length |vs| > 0
+------------------------------------------(StarConsNil)
+r* ⊢ ConsU v vs >ⁱ NilU
+```
+
+
+The adjusted ordering is the POSIX ordering.  Some key observations
+
+1. (StarNilCons) rule can be omitted, assuming we are dealing with non problematic regular exprssions.
+2. (ChoiceRL) rule can be omitted, assuming we are always starting from the top level.
+3. the premise length |v₁| ≥ length |v₂| in the (ChoiceLR) can be dropped, assuming we are always starting from the top level.
+
+As the result, the remaining set of internal rule is the same set of rule for greedy order modulo the top-level inductive premises.
+
+Hence, we can also adjust the greedy order by introducing an identity top level. 
+
+
+Adjusted greedy order
+
+```
+r ⊢ v₁ >ⁱ v₂
+--------------------------------(GreedyTop)
+r ⊢ v₁ > v₂
+```
+
+
+```
+r₁ ⊢ v₁ > v₁'
+----------------------------------(ChoiceLL)
+r₁ + r₂ ⊢ LeftU v₁ >ⁱ LeftU v₁' 
+
+
+r₂ ⊢ v₂ > v₂'
+----------------------------------(ChoiceRR)
+r₁ + r₂ ⊢ RightU v₂ >ⁱ RightU v₂' 
+
+
+----------------------------------------------(ChoiceLR)             
+r₁ + r₂ ⊢ LeftU v₁ >ⁱ RightU v₂ 
+
+
+r ⊢ v₁ > v₂ 
+---------------------------------(StarHd)
+r* ⊢ ConsU v₁ vs₁ >ⁱ ConsU v₂ vs₂
+
+
+v₁ ≡ v₂        r* ⊢ vs₁ > vs₂ 
+---------------------------------(StarTl)
+r* ⊢ ConsU v₁ vs₁ >ⁱ ConsU v₂ vs₂
+
+
+length |v| + length |vs| > 0
+------------------------------------------------(StarConsNil)
+r* ⊢ ConsU v vs >ⁱ NilU
+
+```
+
+
+This adjustment is minimal, but is insightful, the top level of POSIX order tells us that it is longer the better;
+The top level of Greedy tells us that it does not look for longest match, it favors left over right, cons over nil. 
+
+
+Next question: Can LNE be adjusted in this kind of two level definitions? 
+
+My conjecture: For LNE, we adjust the top level as follows, 
+
+
+```
+len|v₁|=len|v₂|=0
+r ⊢  v₁ >ⁱ v₂
+--------------------------------(BothEmpty)
+r ⊢ v₁ > v₂
+
+len|v₁|>0
+len|v₂|>0 
+r ⊢ v₁ >ⁱ v₂
+--------------------------------(BothNonEmpty)
+r ⊢ v₁ > v₂
+
+
+len|v₁|>0 
+len|v₂|=0 
+--------------------------------(LeftNonEmpty)
+r ⊢ v₁ > v₂
+```
+
+The internal rules are identical to the POSIX's and the greedy's. 
+
+
+What is the advantage of this reformation? 
+
+1. We have a "plugin-like" matching policy template.
+2. Would it make the robustness check easier? 
+
+
+
 
 
 ### How to establish robustness between POSIX and LNE and Greedy?

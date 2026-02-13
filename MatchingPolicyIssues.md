@@ -743,7 +743,7 @@ r ⊢ v₁ > v₂
 The internal rules are identical to the POSIX's and the greedy's. 
 
 
-What is the advantage of this reformation? 
+What is the advantage of this reformulation? 
 
 1. We have a "plugin-like" matching policy template.
 2. Would it make the robustness check easier? 

@@ -1489,7 +1489,7 @@ concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs
 
 
 
--- similar to flat-[], it is ensure the first component of the PairU is flattened to [] 
+-- similar to flat-[], a parse tree PairU x y is Flat-[]-fst iff the first component x is flattened to [] 
 data Flat-[]-Fst : (l r : RE) ( loc : ℕ ) → ( u : U ( l ● r ` loc ) ) → Set where
   flat-[]-fst :  ∀ {l r : RE} { loc : ℕ } 
     → ( x : U l )
@@ -1498,7 +1498,7 @@ data Flat-[]-Fst : (l r : RE) ( loc : ℕ ) → ( u : U ( l ● r ` loc ) ) → 
     -------------------------------------------------
     → Flat-[]-Fst l r loc ( PairU {l} {r} {loc} x y )
 
--- PDInstance whose injection function will produce Flat-[]-Fst parse trees only. 
+-- A PDInstance is Flat-[]-Fst-PDI  iff all parse trees produced by its injection function are Flat-[]-Fst. 
 data Flat-[]-Fst-PDI : ∀ {l r : RE} { loc : ℕ } { c : Char } →  (PDInstance ( l ● r ` loc ) c) → Set where
   fst-flat-[] : ∀ { p l r : RE} { loc : ℕ } { c : Char }
     → (inj : U p → U (l ● r ` loc ) )

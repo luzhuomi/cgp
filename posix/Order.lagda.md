@@ -1514,6 +1514,7 @@ postulate
     → ( pdisʳ : List (PDInstance (l ● r ` loc) c ) )
     → >-Inc pdiˡ
     → All >-Inc pdisʳ
+    -- we need to include the All Flat-[]-Fst-PDI  pdisʳ here 
     -------------------------------------------------------
     → All >-Inc (List.map (fuse {l ● r ` loc} {loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdiˡ)) pdisʳ)
     

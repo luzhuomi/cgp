@@ -1508,16 +1508,19 @@ data Flat-[]-Fst-PDI : ∀ {l r : RE} { loc : ℕ } { c : Char } →  (PDInstanc
     → Flat-[]-Fst-PDI  {l} {r} {loc} {c} (pdinstance {p} {l ● r ` loc} {c} inj sound-ev)
     
 
-postulate 
-  >-inc-map-fuse-pdi-fst : ∀ { l r : RE } {ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+
+>-inc-map-fuse-pdi-fst : ∀ { l r : RE } {ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → ( pdiˡ : PDInstance l c )
     → ( pdisʳ : List (PDInstance (l ● r ` loc) c ) )
     → >-Inc pdiˡ
     → All >-Inc pdisʳ
-    -- we need to include the All Flat-[]-Fst-PDI  pdisʳ here 
+    -- we need to include the All Flat-[]-Fst-PDI  pdisʳ here
+    → All Flat-[]-Fst-PDI  pdisʳ
     -------------------------------------------------------
     → All >-Inc (List.map (fuse {l ● r ` loc} {loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdiˡ)) pdisʳ)
-    
+>-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c} pdiˡ [] >-inc-pdiˡ [] [] = []
+>-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c} pdiˡ (pdiʳ ∷ pdisʳ) >-inc-pdiˡ (>-inc-pdiʳ ∷ >-inc-pdisʳ ) ((fst-flat-[] _injʳ _s-evʳ flat-[]-fst-ev) ∷ fst-flat-[]-pdisʳ) =
+  {!!} ∷ (>-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c}  pdiˡ pdisʳ >-inc-pdiˡ >-inc-pdisʳ fst-flat-[]-pdisʳ) 
 
 
 
@@ -1608,12 +1611,16 @@ inspect x = x with≡ refl
               → All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) (concatMap (λ x → List.map (mk-snd-pdi x) qs) es-flat-[]-es))
             sub []                                  qs         >-inc-qs             = []
             sub ( (e , flat-[]-e) ∷ es-flat-[]-es ) []        []                    = sub es-flat-[]-es [] []
-            sub ( (e , flat-[]-e) ∷ es-flat-[]-es ) (q ∷ qs ) (>-inc-q ∷ >-inc-qs ) = >-inc-map-fuse-pdi-fst  {l+s} {r} {ε∈l+s} {loc} {c}  pˡ (List.concatMap (λ x → List.map (mk-snd-pdi x) (q ∷ qs)) ((e , flat-[]-e) ∷ es-flat-[]-es))  >-inc-pˡ >-inc-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es   
+            sub ( (e , flat-[]-e) ∷ es-flat-[]-es ) (q ∷ qs ) (>-inc-q ∷ >-inc-qs ) = >-inc-map-fuse-pdi-fst  {l+s} {r} {ε∈l+s} {loc} {c}  pˡ (List.concatMap (λ x → List.map (mk-snd-pdi x) (q ∷ qs)) ((e , flat-[]-e) ∷ es-flat-[]-es))  >-inc-pˡ >-inc-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es flat-[]-fst-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es 
               where
                 >-inc-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es : All >-Inc (List.concatMap (λ x → List.map (mk-snd-pdi x) (q ∷ qs)) ((e , flat-[]-e) ∷ es-flat-[]-es))
                 >-inc-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es = >-inc-concatmap-pdinstance-snd-sub {l+s} {r} {ε∈l+s} {loc} {c} ((e , flat-[]-e) ∷ es-flat-[]-es) (q ∷ qs) (>-inc-q ∷ >-inc-qs )
+
+                                          
+                flat-[]-fst-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es : All (Flat-[]-Fst-PDI {l+s} {r} {loc} {c})  (List.concatMap (λ x → List.map (mk-snd-pdi x) (q ∷ qs)) ((e , flat-[]-e) ∷ es-flat-[]-es))
+                flat-[]-fst-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es = {!!} 
         rest : All >-Inc (concatMap (λ pˡ₁ → List.map (fuse pˡ₁)  (concatMap (λ x → List.map (mk-snd-pdi x) (pʳ ∷ psʳ)) (zip-es-flat-[]-es {l+s} {ε∈l+s} (e ∷ es) (flat-[]-e ∷ flat-[]-es)))) (List.map pdinstance-fst psˡ))
-        rest =  >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)     
+        rest =  >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)
 
 
 -----------------------------------------------------------------------------

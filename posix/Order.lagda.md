@@ -365,13 +365,49 @@ Lemma : a posix value is the largest value in posix ordering
 
 
 ```agda
-postulate
-  ⇒>-max : ∀ { r : RE } { v : U r } { w : List Char} 
+⇒→>-max : ∀ { r : RE } { v : U r } { w : List Char} 
     → w , r ⇒ v
     → ( u : U r )
-    ------------------------
-    → ( v ≡ u ) ⊎ ( r ⊢ v > u )
+    → ¬ ( v ≡ u )
+    → proj₁ (flat v) ≡ proj₁ (flat u) 
+    ------------------
+    → ( r ⊢ v > u )
+⇒→>-max {ε}           {EmptyU}    {[]}      p₁          EmptyU      ¬empty≡empty       refl   = Nullary.contradiction refl ¬empty≡empty
+⇒→>-max {$ c ` loc}   {LetterU _} {.c ∷ []} pc          (LetterU _) ¬letter-c≡letter-c refl = Nullary.contradiction refl ¬letter-c≡letter-c
+⇒→>-max {l + r ` loc} {LeftU v}   {w}       (p+l w,l→v) (LeftU u)   ¬left-v≡left-u     |left-v|≡|left-u|  = len-≡  len|left-v|≡len|left-u| (choice-ll v>u )
+  where
+    len|left-v|≡len|left-u| : length (proj₁ (flat (LeftU {l} {r} {loc} v))) ≡ length (proj₁ (flat (LeftU {l} {r} {loc} u)))
+    len|left-v|≡len|left-u| rewrite |left-v|≡|left-u| = refl
 
+    ¬v≡u : ¬ v ≡ u
+    ¬v≡u v≡u = ¬left-v≡left-u (cong LeftU v≡u) 
+
+    v>u : l ⊢ v > u
+    v>u = ⇒→>-max {l} {v} {w} w,l→v u ¬v≡u |left-v|≡|left-u|
+
+⇒→>-max {l + r ` loc} {RightU v}   {w}       (p+r w,r→v ¬w∈⟦l⟧) (RightU u)   ¬right-v≡right-u     |right-v|≡|right-u|  = len-≡  len|right-v|≡len|right-u| (choice-rr v>u )
+  where
+    len|right-v|≡len|right-u| : length (proj₁ (flat (RightU {l} {r} {loc} v))) ≡ length (proj₁ (flat (RightU {l} {r} {loc} u)))
+    len|right-v|≡len|right-u| rewrite |right-v|≡|right-u| = refl
+
+    ¬v≡u : ¬ v ≡ u
+    ¬v≡u v≡u = ¬right-v≡right-u (cong RightU v≡u) 
+
+    v>u : r ⊢ v > u
+    v>u = ⇒→>-max {r} {v} {w} w,r→v u ¬v≡u |right-v|≡|right-u|
+
+
+⇒→>-max {l + r ` loc} {RightU v}   {w}       (p+r w,r→v ¬w∈⟦l⟧) (LeftU u)   ¬right-v≡left-u     |right-v|≡|left-u|  = Nullary.contradiction w∈⟦l⟧ ¬w∈⟦l⟧
+  where
+    w∈⟦l⟧ : w ∈⟦ l ⟧
+    w∈⟦l⟧ = proj₂ (flat {l + r ` loc } (LeftU {l} {r} {loc}  u))  
+
+
+
+
+
+```
+```agda
 
 {-
 len|ys|≥len|zs|→len|xs++ys|≥len|xs++zs| : ∀ { A : Set } { xs ys zs : List A }

@@ -965,11 +965,11 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 
 
-#### Sub Lemma 33.1 - 33.9 : >-Inc is preserved inductively by the pdinstance operations. 
+#### Sub Lemma 33.1 - 33.19 : >-Inc is preserved inductively by the pdinstance operations. 
 
 ```agda
 -----------------------------------------------------------------------------
--- Sub Lemma 33.1 - 33.9  BEGIN
+-- Sub Lemma 33.1 - 33.19  BEGIN
 -----------------------------------------------------------------------------
 
 
@@ -1278,58 +1278,6 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 -- sub lemmas to show that pdinstance-oplus preserves >-inc 
 
-{-
->-inc-fuse : ∀ { r : RE } { loc : ℕ } { c : Char }
-  → ( pdiˡ : PDInstance r c ) -- these are all the leftU? 
-  → ( pdiʳ : PDInstance r c ) -- these are all the rightU? 
-  → >-Inc pdiˡ
-  → >-Inc pdiʳ
-  -----------------------------------------------------------
-  → >-Inc (fuse {r} {loc} {c}  pdiˡ pdiʳ)
->-inc-fuse {r} {loc} {c} (pdinstance {pˡ} {r} {_} inj-l s-ev-l) (pdinstance {pʳ} {r} {_} inj-r s-ev-r) (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂) (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂) = >-inc ev-> 
-
-  where
-    inj : U (pˡ + pʳ ` loc ) → U r
-    inj = mkfuseInj inj-l inj-r
-
-
-    sound-ev : (u : U (pˡ + pʳ ` loc)) 
-               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-    sound-ev (LeftU v₁) = s-ev-l v₁
-    sound-ev (RightU v₂) = s-ev-r v₂
-
-
-    len-|inj-u|≡len-|u|+1 : (u : U (pˡ + pʳ ` loc )) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
-
-
-    ev-> : ( u₁ : U ( pˡ + pʳ ` loc ) )
-        →  ( u₂ : U ( pˡ + pʳ ` loc ) ) 
-        →  pˡ + pʳ ` loc ⊢ u₁ > u₂
-        -------------------------------
-        → r ⊢ inj u₁ > inj u₂
-    ev-> (LeftU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|left-v₂| (choice-ll v₁>v₂) ) = u₁>u₂→inj-l-u₁>inj-l-u₂ v₁ v₂ v₁>v₂ 
-      -- where
-        -- len|inj-left-v₁|≡len|inj-left-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (LeftU v₂))))
-        -- len|inj-left-v₁|≡len|inj-left-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (LeftU v₂) = cong suc len-|left-v₁|≡len|left-v₂| 
-
-        -- inj-left-v≡inj-l-v : ( v : U pˡ ) → inj (LeftU v) ≡ inj-l v
-        -- inj-left-v≡inj-l-v v = refl 
-
-      --  inj-left-v₁>inj-left-v₂ : r ⊢ inj (LeftU v₁) > inj (LeftU v₂)
-      --  inj-left-v₁>inj-left-v₂  = 
-
-    ev-> (RightU v₁) (RightU v₂) (len-≡ len-|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂) ) = u₁>u₂→inj-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂ 
-        
-    ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-lr v₁≥v₂) ) = inj-left-v₁>inj-right-v₂ 
-      where
-        len|inj-left-v₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (RightU v₂))))
-        len|inj-left-v₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂) = cong suc len-|left-v₁|≡len|right-v₂| 
-        inj-left-v₁>inj-right-v₂ : r ⊢ inj (LeftU v₁) > inj (RightU v₂)
-        inj-left-v₁>inj-right-v₂  = len-≡ len|inj-left-v₁|≡len|inj-right-v₂| {!!}  -- is it too general? if we make r more specific as l + r and 
-      
-
--}
 
 >-inc-fuse-left-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdiˡ : PDInstance l c ) -- these are all the leftU? 
@@ -1582,6 +1530,46 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
           ... | PairU x₁ x₂ | PairU y₁ y₂ rewrite (sym inj-eq₁) | sym inj-eq₂ = seq₂ (cong inj-l v₁≡v₂) w₁>w₂ 
     ev (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll (len-> len|v₁w₁|>len|v₂w₂|))) rewrite len|left-v₁w₁|≡len|left-v₂w₂|  = Nullary.contradiction len|v₁w₁|>len|v₂w₂| (<-irrefl refl )
 
+    ev (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-> len|left-v₁w₁|>len|left-v₂w₂|)
+      {- rewrite len-|inj-l-u|≡len-|u|+1 v₁ | len-|inj-l-u|≡len-|u|+1 v₂ -} = len-> len|pair-inj-l-v₁-w₁|>len|pair-inj-l-v₂-w₂|
+        where
+          len|pair-inj-l-v₁-w₁|≡len|pair-v₁-w₁|+1 : length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₁) w₁))) ≡ suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₁ w₁))))
+          len|pair-inj-l-v₁-w₁|≡len|pair-v₁-w₁|+1 =
+            begin
+              length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₁) w₁)))
+            ≡⟨⟩
+              length (proj₁ (flat (inj-l v₁)) ++ (proj₁ (flat w₁))) 
+            ≡⟨ length-++  (proj₁ (flat (inj-l v₁)))  ⟩
+              length (proj₁ (flat (inj-l v₁))) + (length (proj₁ (flat w₁))) 
+            ≡⟨ cong (_+  (length (proj₁ (flat w₁)))) ( len-|inj-l-u|≡len-|u|+1 v₁ )⟩
+              suc (length (proj₁ (flat v₁))) + (length (proj₁ (flat w₁))) 
+            ≡⟨⟩
+              suc (length (proj₁ (flat v₁)) + (length (proj₁ (flat w₁))))
+            ≡⟨ cong suc (sym (length-++ (proj₁ (flat v₁))) ) ⟩
+              suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₁ w₁))))
+            ∎
+            
+          len|pair-inj-l-v₂-w₂|≡len|pair-v₂-w₂|+1 : length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₂) w₂))) ≡ suc (length (proj₁ (flat (PairU {pˡ} {r} {loc}  v₂ w₂))))
+          len|pair-inj-l-v₂-w₂|≡len|pair-v₂-w₂|+1 = 
+            begin
+              length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₂) w₂)))
+            ≡⟨⟩
+              length (proj₁ (flat (inj-l v₂)) ++ (proj₁ (flat w₂))) 
+            ≡⟨ length-++  (proj₁ (flat (inj-l v₂)))  ⟩
+              length (proj₁ (flat (inj-l v₂))) + (length (proj₁ (flat w₂))) 
+            ≡⟨ cong (_+  (length (proj₁ (flat w₂)))) ( len-|inj-l-u|≡len-|u|+1 v₂ )⟩
+              suc (length (proj₁ (flat v₂))) + (length (proj₁ (flat w₂))) 
+            ≡⟨⟩
+              suc (length (proj₁ (flat v₂)) + (length (proj₁ (flat w₂))))
+            ≡⟨ cong suc (sym (length-++ (proj₁ (flat v₂))) ) ⟩
+              suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₂ w₂))))
+            ∎
+          
+          len|pair-inj-l-v₁-w₁|>len|pair-inj-l-v₂-w₂| : length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₁) w₁))) > length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₂) w₂)))
+          len|pair-inj-l-v₁-w₁|>len|pair-inj-l-v₂-w₂| rewrite  len|pair-inj-l-v₁-w₁|≡len|pair-v₁-w₁|+1 | len|pair-inj-l-v₂-w₂|≡len|pair-v₂-w₂|+1 = Nat.s≤s  len|left-v₁w₁|>len|left-v₂w₂|  
+          
+
+
     ev (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| (choice-lr len|v₁w₁|≥len|v₂|)) = len-≡ len|inj-left-v₁w₁|≡len|inj-right-v₂| prf  
         where
           len|inj-left-v₁w₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU (PairU v₁ w₁))))) ≡  length (proj₁ (flat (inj  (RightU v₂ ))))
@@ -1594,42 +1582,51 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
               len|inj-l-v₁|>len|flat-v₁| : length (Product.proj₁ (flat (inj-l v₁))) > length (Product.proj₁ (flat y₁))
               len|inj-l-v₁|>len|flat-v₁| rewrite |y₁|≡[] |   len-|inj-l-u|≡len-|u|+1 v₁ = Nat.s≤s Nat.z≤n 
 
+    ev (LeftU (PairU v₁ w₁)) (RightU v₂) (len-> len|left-v₁w₁|>len|right-v₂|)  = len-> len|pair-inj-l-v₁-w₁|>len|inj-r-v₂| 
+        where
+          len|pair-inj-l-v₁-w₁|≡len|pair-v₁-w₁|+1 : length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₁) w₁))) ≡ suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₁ w₁))))
+          len|pair-inj-l-v₁-w₁|≡len|pair-v₁-w₁|+1 =
+            begin
+              length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₁) w₁)))
+            ≡⟨⟩
+              length (proj₁ (flat (inj-l v₁)) ++ (proj₁ (flat w₁))) 
+            ≡⟨ length-++  (proj₁ (flat (inj-l v₁)))  ⟩
+              length (proj₁ (flat (inj-l v₁))) + (length (proj₁ (flat w₁))) 
+            ≡⟨ cong (_+  (length (proj₁ (flat w₁)))) ( len-|inj-l-u|≡len-|u|+1 v₁ )⟩
+              suc (length (proj₁ (flat v₁))) + (length (proj₁ (flat w₁))) 
+            ≡⟨⟩
+              suc (length (proj₁ (flat v₁)) + (length (proj₁ (flat w₁))))
+            ≡⟨ cong suc (sym (length-++ (proj₁ (flat v₁))) ) ⟩
+              suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₁ w₁))))
+            ∎
+        
+          len|pair-inj-l-v₁-w₁|>len|inj-r-v₂| : length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₁) w₁))) > length (proj₁ (flat (inj (RightU v₂))))
+          len|pair-inj-l-v₁-w₁|>len|inj-r-v₂|  rewrite  len|pair-inj-l-v₁-w₁|≡len|pair-v₁-w₁|+1 |  len-|inj-u|≡len-|u|+1 (RightU v₂)  = Nat.s≤s len|left-v₁w₁|>len|right-v₂| 
+      
+    ev (RightU v₁) (RightU v₂) (len-≡ len|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂)) = u₁>u₂→inj-snd-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂
+    ev (RightU v₁) (RightU v₂) (len-> len|right-v₁|>len|right-v₂|) = u₁>u₂→inj-snd-r-u₁>inj-r-u₂ v₁ v₂ (len-> len|right-v₁|>len|right-v₂|)
 
-{-    
->-inc-fuse-fst-mk-snd-pdi {l} {r} {ε∈l} {loc} {c} (pdinstance {pˡ} {l} {_} inj-l s-ev-l) (pdinstance
-  (pdinstance {pʳ} {r} {_} inj-r s-ev-r)
-  (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂)
-  (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂)
---  =  {! >-inc ? !} -- -- >-inc ev->
-  with pdinstance-fst {l} {r} {loc} (pdinstance {pˡ} {l} {c} inj-l s-ev-l) |  (mk-snd-pdi {l} {r} {loc} (e , flat-[]-e)  (pdinstance {pʳ} {r} {c} inj-r s-ev-r) ) in snd-eq 
-... | pdinstance {pˡ} {l ● r ` loc} {_} injfst-inj-l s-ev-injfst-inj-l | pdinstance {pʳ} {l ● r ` loc} {_} injsnd-inj-r-e s-ev-injsnd-inj-r-e   = >-inc ev->  
-  where
-    inj : U (  pˡ + pʳ ` loc ) → U ( l ● r ` loc )
-    inj = mkfuseInj injfst-inj-l injsnd-inj-r-e --(mkinjSnd inj-r e)  -- hm... we should get use of mkinjSnd here... so that we know that the v₂ below must be empty and v₁ is not 
-
-    sound-ev : (u :  U ( pˡ + pʳ ` loc) )  
-               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-    sound-ev (LeftU v₁) = s-ev-injfst-inj-l v₁
-    sound-ev (RightU v₂) = s-ev-injsnd-inj-r-e v₂
-    
-
-    len-|inj-u|≡len-|u|+1 : (u : U (  pˡ + pʳ ` loc ) ) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl
-
-
-
-    ev-> : ( u₁ : U (  pˡ + pʳ ` loc ) )
-        →  ( u₂ : U ( pˡ  + pʳ ` loc ) ) 
-        →   pˡ + pʳ ` loc ⊢ u₁ > u₂
-        -------------------------------
-        → l ● r ` loc  ⊢ inj u₁ > inj u₂
-    ev-> (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll v₁w₁>ⁱv₂w₂))  =   {!!}
-    ev-> (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| (choice-lr v₁w₁>ⁱv₂w₂)) = {!!} 
--}
-
-
-
-    
+    ev (RightU v₁) (LeftU (PairU v₂ w₂)) (len-≡ len|right-v₁|≡len|left-v₂w₂| (choice-rl len|right-v₁|>len|left-v₂w₂|)) rewrite len|right-v₁|≡len|left-v₂w₂|  = Nullary.contradiction len|right-v₁|>len|left-v₂w₂| (<-irrefl refl)
+    ev (RightU v₁) (LeftU (PairU v₂ w₂)) (len-> len|right-v₁|>len|left-v₂w₂|) = len-> len|inj-right-v₁|>len|pair-inj-l-v₂-w₂| 
+      where
+        len|pair-inj-l-v₂-w₂|≡len|pair-v₂-w₂|+1 : length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₂) w₂))) ≡ suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₂ w₂))))
+        len|pair-inj-l-v₂-w₂|≡len|pair-v₂-w₂|+1 =
+            begin
+              length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₂) w₂)))
+            ≡⟨⟩
+              length (proj₁ (flat (inj-l v₂)) ++ (proj₁ (flat w₂))) 
+            ≡⟨ length-++  (proj₁ (flat (inj-l v₂)))  ⟩
+              length (proj₁ (flat (inj-l v₂))) + (length (proj₁ (flat w₂))) 
+            ≡⟨ cong (_+  (length (proj₁ (flat w₂)))) ( len-|inj-l-u|≡len-|u|+1 v₂ )⟩
+              suc (length (proj₁ (flat v₂))) + (length (proj₁ (flat w₂))) 
+            ≡⟨⟩
+              suc (length (proj₁ (flat v₂)) + (length (proj₁ (flat w₂))))
+            ≡⟨ cong suc (sym (length-++ (proj₁ (flat v₂))) ) ⟩
+              suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₂ w₂))))
+            ∎
+      
+        len|inj-right-v₁|>len|pair-inj-l-v₂-w₂| : length (proj₁ (flat (inj (RightU v₁)))) > length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₂) w₂)))
+        len|inj-right-v₁|>len|pair-inj-l-v₂-w₂| rewrite len|pair-inj-l-v₂-w₂|≡len|pair-v₂-w₂|+1 | len-|inj-u|≡len-|u|+1 (RightU v₁) = Nat.s≤s len|right-v₁|>len|left-v₂w₂| 
 
 
 >-inc-map-fuse-pdi-fst : ∀ { l r : RE } {ε∈l : ε∈ l } { loc : ℕ } { c : Char }
@@ -1657,48 +1654,7 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
     → All >-Inc pdisʳ
     -----------------------------------------------------------------------------------------------------------------------
     → All >-Inc (pdinstance-oplus {l+s ● r ` loc} {loc} {c} (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdisˡ) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdisʳ))
->-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] rewrite (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c})  =  >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ -- >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ
-{-
->-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
->-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = -- {!!}
-  -- agda does not know (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ)) --> pdiʳ' ∷ pdisʳ'
-  with concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ) in concat-eq | >-inc-concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} (pdiʳ ∷ pdisʳ)  (>-inc-pdiʳ ∷ all->-inc-pdisʳ) 
-... | []     | [] = {!!} -- we need a contradiction here.
-... | x ∷ xs | >-inc-x ∷ >-inc-xs = 
-    >-inc-pdinstance-oplus-sub (pdiˡ ∷ pdisˡ) (x ∷ xs) (>-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-x ∷ >-inc-xs)  
-
-  where
-
-    >-inc-pdinstance-oplus-sub : ( psˡ : List (PDInstance l+s c) )
-        → ( psʳ : List (PDInstance (l+s ● r ` loc) c) ) -- problem, we should know that all the parse trees coming out from psʳ are having the empty fst.
-        → All >-Inc psˡ
-        → All >-Inc psʳ
-        → All >-Inc (concatMap (λ pˡ → List.map (fuse {l+s ● r ` loc} {loc} {c} pˡ) psʳ) (List.map (pdinstance-fst {l+s} {r} {loc} {c}) psˡ))
-    >-inc-pdinstance-oplus-sub []         psʳ        [] _ = []
-    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) []         (>-inc-pˡ ∷ all->-inc-psˡ) []                         = >-inc-pdinstance-oplus-sub psˡ [] all->-inc-psˡ []
-    >-inc-pdinstance-oplus-sub (pˡ ∷ psˡ) (pʳ ∷ psʳ) (>-inc-pˡ ∷ all->-inc-psˡ) (>-inc-pʳ ∷ all->-inc-psʳ) = all-concat first rest
-      where
-        first : All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) (pʳ ∷ psʳ))
-        first = sub  (pʳ ∷ psʳ)  (>-inc-pʳ ∷ all->-inc-psʳ)  
-          where
-            sub : (qs : List (PDInstance (l+s ● r ` loc) c)) → All >-Inc qs
-                  →  All >-Inc (List.map (fuse {l+s ● r ` loc} {loc} {c}  (pdinstance-fst {l+s} {r} {loc} {c} pˡ)) qs)
-            sub [] [] = []
-            sub (q ∷ qs) (>-inc-q ∷ all->-inc-qs) =  >-inc-fuse-fst pˡ q (>-inc-fst {l+s} {r} {loc} {c}  pˡ >-inc-pˡ) >-inc-q ∷ (sub qs all->-inc-qs) -- (>-inc-fuse-left-right pˡ q (>-inc-left {l} {r} {loc} {c} pˡ >-inc-pˡ) (>-inc-right {l} {r} {loc} {c} q >-inc-q) ) ∷ (sub qs all->-inc-qs) 
-        rest : All >-Inc (List.foldr _++_ [] (List.map (λ pˡ₁ → List.map (fuse pˡ₁)  ( pʳ ∷ psʳ)) (List.map pdinstance-fst psˡ)))
-        rest = >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)
--}
--- we was trying to rewrite sym concat-eq here, but concatmap (λ pdiˡ₁ → List.map (fuse pdiˡ₁) (x ∷ xs))  (List.map pdinstance-fst (pdiˡ ∷ pdisˡ)))
--- has been unrolled into  concatMap (λ pdiˡ₁ → fuse pdiˡ₁ x ∷ List.map (fuse pdiˡ₁) xs)  (pdinstance-fst pdiˡ ∷ List.map pdinstance-fst pdisˡ)), hence the rewrite fails. 
-
--- the issue with having x ∷ xs instead of (concatmap-pdinstance-snd (pdiʳ ∷ pdisʳ))  is that , in the sub call to >-inc-fuse-fst , we lose the informatiopn tghat x is a pdinstance resulted from pdinstance-snd
--- which means the inj was created by a mkinjSnd, which guanrantee the first of the pairU parse tree is empty.
--- can we pass that information explicityly? 
-
-
--- the following is one of the attempt to fix. 
-
--- we try to delay the breaking of pdisˡ so that we can use rewrite sym concat-eq but it seems too complicated.
+>-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) [] all->-inc-pdisˡ [] rewrite (concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c})  =  >-inc-map-fst (pdiˡ ∷ pdisˡ) all->-inc-pdisˡ 
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} [] pdisʳ [] all->-inc-pdisʳ           =  >-inc-concatmap-pdinstance-snd pdisʳ all->-inc-pdisʳ
 >-inc-pdinstance-oplus-+● {l+s} {r} {ε∈l+s} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) ( >-inc-pdiˡ ∷ all->-inc-pdisˡ) (>-inc-pdiʳ ∷ all->-inc-pdisʳ)  -- = {!!}
   with mkAllEmptyU ε∈l+s in mkAllEmpty-eq | mkAllEmptyU-sound ε∈l+s 

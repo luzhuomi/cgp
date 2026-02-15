@@ -38,7 +38,8 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
   pdUMany[_,_]; pdUMany-aux ;
-  pdinstance-oplus ; fuse ; mkfuseInj 
+  pdinstance-oplus ; fuse ; mkfuseInj ;
+  advance-pdi*-with-c
   )
 
 
@@ -1818,4 +1819,127 @@ pdUConcat->-inc { l + s ` loc₂ } {r} {ε∈l+s} {loc} {c} =  all->-inc-oplus-m
                                 all->-inc-oplus-map-left-pdu-l-c-map-right-pdu-r-c
                                 ind-hyp-r 
 
+```
+
+
+
+### Definition 34: >-Strict increaseing PDInstance*
+
+Let r be a non problematic regular expression.
+Let w be a word.
+Let pdi be a PDInstance* w.r.t r and w.
+We say pdi is >-inc (strict increasing) iff,
+  1. p be the partial derivative descendant inhabited in pdi, and
+  2. inj is the injection function from parse tress of p to parse tress of r.
+  3. for all parse trees p, u₁ and u₂ where p ⊢ u₁ > u₂
+  Then r ⊢ inj u₁ > inj u₂
+
+```agda
+
+data *>-Inc : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set where
+  *>-inc : ∀ { p r : RE } { w : List Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → (proj₁ ( flat {r} (inj x ) ) ≡ w ++ (proj₁ (flat {p} x))) }
+    → ( (u₁ : U p) → (u₂ : U p ) → p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence
+    → *>-Inc {r} {w} (pdinstance* {p} {r} {w} inj sound-ev) 
+
+```
+
+
+
+### Lemma 35 : all pdinstance*'s from pdUMany[ r , w ] are >-strict increasing .
+
+Let r be a non problematic regular expression.
+Let w be a word.
+Then for all pdi ∈ pdUMany[ r , w ], pdi is >-strict increasing. 
+
+
+#### Sub Lemma 35.1 - 35.3 : *>-Inc is preserved inductively over pdinstance*'s operations
+
+```agda
+-----------------------------------------------------------------------------
+-- Sub Lemma 35.1 - 35.3 BEGIN 
+----------------------------------------------------------------------------
+compose-pdi-with-*>-inc : { r d : RE } { pref : List Char } { c : Char }
+                   → ( d→r : U d → U r )
+                   → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+                   → (pdi : PDInstance d c)
+                   → >-Inc pdi
+                   → ( (x₁ : U d) → (x₂ : U d) → (d ⊢ x₁ > x₂) → r ⊢ d→r x₁ > d→r x₂ )
+                   ---------------------------------------------------------------
+                   → *>-Inc (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r pdi)
+compose-pdi-with-*>-inc {r} {d} {pref} {c} d→r s-ev-d→r pdi@(pdinstance {p} {d} {c}  p→d s-ev-p→d) (>-inc u₁→u₂→u₁>u₂→pd-u₁>pd-u₂ ) x₁→x₂→x₁>x₂→dr-x₁>dr-x₂ = *>-inc ev-*>-inc 
+  where
+    ev-*>-inc : (v₁ v₂ : U p)
+      → p ⊢ v₁ > v₂
+      → r ⊢ d→r (p→d v₁) > d→r (p→d v₂)
+    ev-*>-inc v₁ v₂ v₁>v₂ = x₁→x₂→x₁>x₂→dr-x₁>dr-x₂ (p→d v₁) (p→d v₂) (u₁→u₂→u₁>u₂→pd-u₁>pd-u₂ v₁ v₂ v₁>v₂)   
+
+
+advance-pdi*-with-c-*>-inc : ∀ { r : RE } { pref : List Char } { c : Char}
+  → (pdi : PDInstance* r pref)
+  → *>-Inc pdi
+  ----------------------------------------------------------
+  → All *>-Inc (advance-pdi*-with-c {r} {pref} {c} pdi)
+advance-pdi*-with-c-*>-inc {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r s-ev-d→r) (*>-inc u₁→u₂→u₁>u₂→dr-u₁>dr-u₂)= go pdU[ d , c ]  (pdU->-inc {d} {c}) 
+  where
+    go : ( pdis : List (PDInstance d c) )
+       → All >-Inc pdis
+       → All *>-Inc (List.map (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r) pdis)
+    go [] [] = []
+    go (pdi ∷ pdis) (pdi->-inc ∷ all->-inc-pdis) = ( compose-pdi-with-*>-inc {r} {d} {pref} {c} d→r s-ev-d→r pdi pdi->-inc u₁→u₂→u₁>u₂→dr-u₁>dr-u₂ ) ∷ go pdis all->-inc-pdis 
+
+
+concatmap-advance-pdi*-with-c-*>inc : ∀ { r : RE } { pref : List Char } { c : Char}
+  → (pdis : List (PDInstance* r pref) )
+  → All *>-Inc pdis
+  ----------------------------------------------------------
+  → All *>-Inc (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} [] [] = []
+concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} (pdi ∷ pdis) (pdi-*>-inc ∷ all-*>-inc-pdis) = all-concat all-*>-inc-advance-pdi*-with-c-pdi ind-hyp 
+
+  where
+    all-*>-inc-advance-pdi*-with-c-pdi : All *>-Inc (advance-pdi*-with-c {r} {pref} {c} pdi)
+    all-*>-inc-advance-pdi*-with-c-pdi = advance-pdi*-with-c-*>-inc pdi pdi-*>-inc
+
+    ind-hyp : All *>-Inc (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    ind-hyp = concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} pdis all-*>-inc-pdis
+
+-----------------------------------------------------------------------------
+-- Sub Lemma 35.1 - 35.3 END
+----------------------------------------------------------------------------
+
+```
+
+
+
+#### Main proof for Lemma 35
+
+```agda
+
+pdUMany-aux-*>-inc : ∀ { r : RE } { pref : List Char} 
+  → (suff : List Char )
+  → (pdis : List (PDInstance* r pref))
+  → All *>-Inc pdis
+  ----------------------------------------------------
+  → All *>-Inc (pdUMany-aux suff pdis)
+pdUMany-aux-*>-inc {r} {pref} [] pdis all-*>-inc-pdis rewrite (++-identityʳ pref) = all-*>-inc-pdis
+pdUMany-aux-*>-inc {r} {pref} ( c ∷ cs) pdis all-*>-inc-pdis = pdUMany-aux-*>-inc {r} {pref ∷ʳ c} cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) concatmap-advance-pdi*-with-c-pdis-all-*>inc
+
+  where
+    concatmap-advance-pdi*-with-c-pdis-all-*>inc : All *>-Inc (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    concatmap-advance-pdi*-with-c-pdis-all-*>inc = concatmap-advance-pdi*-with-c-*>inc pdis all-*>-inc-pdis 
+
+
+
+pdUMany-*>-inc : ∀ { r : RE } { w : List Char }
+  → All (*>-Inc {r} {w}) pdUMany[ r  , w ]
+pdUMany-*>-inc {r} {w} = pdUMany-aux-*>-inc w  [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (*>-inc ev-*>-inc  ∷ [] )
+  where
+    ev-*>-inc : (u₁ : U r)
+      → (u₂ : U r)
+      → r ⊢ u₁ > u₂
+      --------------------------------
+      → r ⊢ (λ u → u) u₁ > (λ u → u) u₂ 
+    ev-*>-inc u₁ u₂ u₁>u₂ = u₁>u₂ 
+  
 ```

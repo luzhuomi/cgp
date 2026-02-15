@@ -1445,18 +1445,158 @@ concatmap-λx→[]-xs≡[] : ∀ { A : Set } { B : Set} ( xs : List A )
 concatmap-λx→[]-xs≡[] {A} {B} [] = refl
 concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs 
 
--- goal  >-Inc (fuse (pdinstance-fst pˡ) q)
 
-{-
->-inc-fuse-fst-mk-snd-pdi : ∀ { l r : RE } {ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+-- similar to flat-[], a parse tree PairU x y is Flat-[]-fst iff the first component x is flattened to [] 
+data Flat-[]-Fst : (l r : RE) ( loc : ℕ ) → ( u : U ( l ● r ` loc ) ) → Set where
+  flat-[]-fst :  ∀ {l r : RE} { loc : ℕ } 
+    → ( x : U l )
+    → ( y : U r )
+    → ( (proj₁ (flat {l} x) ) ≡ [] )
+    -------------------------------------------------
+    → Flat-[]-Fst l r loc ( PairU {l} {r} {loc} x y )
+
+-- A PDInstance is Flat-[]-Fst-PDI  iff all parse trees produced by its injection function are Flat-[]-Fst. 
+data Flat-[]-Fst-PDI : ∀ {l r : RE} { loc : ℕ } { c : Char } →  (PDInstance ( l ● r ` loc ) c) → Set where
+  fst-flat-[] : ∀ { p l r : RE} { loc : ℕ } { c : Char }
+    → (inj : U p → U (l ● r ` loc ) )
+    → (sound-ev : ( ∀ ( u : U p ) → ( proj₁ ( flat {l ● r ` loc } (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  )
+    → ( ∀ ( u : U p ) →  (Flat-[]-Fst l r loc (inj u)))
+    --------------------------------------------------
+    → Flat-[]-Fst-PDI  {l} {r} {loc} {c} (pdinstance {p} {l ● r ` loc} {c} inj sound-ev)
+
+-- goal >-Inc (fuse (pdinstance-fst pdiˡ) (pdinstance _injʳ _s-evʳ)) 
+
+
+flat-[]-fst-pdinstance-snd :  ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
+  → ( pdis : List (PDInstance r c ) )
+  --------------------------------------------------
+  → All (Flat-[]-Fst-PDI {l} {r} {loc} {c} ) (List.map  (mk-snd-pdi e-flat-[]-e ) pdis )
+flat-[]-fst-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e  [] rewrite Utils.map-[] {(PDInstance r c )} {(PDInstance (l ● r ` loc) c )} {[]} {λ x → mk-snd-pdi e-flat-[]-e x } refl = []
+flat-[]-fst-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (e , flat-[] e' ev ) (pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis) = prf ∷ (flat-[]-fst-pdinstance-snd  {l} {r} {ε∈l} {loc} {c} (e , flat-[] e ev) pdis)
+  where
+    -- copied and modified from PDInstance.mk-snd-pdi 
+    injSnd-s-ev =
+                (λ u → 
+                   begin
+                     proj₁ (flat (PairU {l} {r} {loc} e (inj u)))
+                   ≡⟨⟩
+                     (proj₁ (flat e)) ++ (proj₁ (flat (inj u)))
+                   ≡⟨ cong (λ x → ( x ++  (proj₁ (flat (inj u))))) ev ⟩  --  e must be an empty; we do have flat v ≡ [] from mkAllEmptyU-sound
+                     [] ++ (proj₁ (flat (inj u)))
+                   ≡⟨⟩
+                     proj₁ (flat (inj u))
+                   ≡⟨ s-ev u ⟩
+                     c ∷ (proj₁ (flat u))
+                   ∎
+                )
+
+    prf : Flat-[]-Fst-PDI {l} {r} {loc} {c} (mk-snd-pdi (e , flat-[] e ev) pdi)
+    prf = fst-flat-[] (mkinjSnd inj e)
+           injSnd-s-ev 
+           (λ u → flat-[]-fst e (inj u) ev) 
+
+  
+flat-[]-fst-concatmap-pdinstance-snd-sub :  ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-es  : List ( ∃[ e ] Flat-[] l e ) )
+  → ( pdis : List (PDInstance r c ) )
+  -----------------------------------------------------------------------------------------------------
+  → All (Flat-[]-Fst-PDI {l} {r} {loc} {c} ) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) e-flat-[]-es)
+flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} [] _  = []
+flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]-e ∷ e-flat-[]-es ) pdis =
+  all-concat (flat-[]-fst-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e pdis)
+   (flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} e-flat-[]-es pdis) 
+
+>-inc-fuse-fst-pdi-flat-[]-fst-pdi : ∀ { l r : RE } {ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → ( pdiˡ : PDInstance l c )
-    → ( e-flat-[]-e : ∃[ e ](Flat-[] l e ) )
-    → ( pdiʳ : PDInstance r c ) -- these are all pdinstance-snd'ed pdi
+    → ( pdiʳ : PDInstance (l ● r ` loc) c ) -- must be pdinstance-snd'ed (i.e. mk-snd-pdi) pdi
     → >-Inc pdiˡ
     → >-Inc pdiʳ
+    → Flat-[]-Fst-PDI pdiʳ 
     -----------------------------------------------------------
-    → >-Inc (fuse {l ● r ` loc} {loc} {c}  (pdinstance-fst {l} {r} {loc} {c} pdiˡ) (mk-snd-pdi {l} {r} {loc}  e-flat-[]-e pdiʳ))
->-inc-fuse-fst-mk-snd-pdi {l} {r} {ε∈l} {loc} {c} (pdinstance {pˡ} {l} {_} inj-l s-ev-l) (e , flat-[]-e)
+    → >-Inc (fuse {l ● r ` loc} {loc} {c}  (pdinstance-fst {l} {r} {loc} {c} pdiˡ) pdiʳ)
+
+>-inc-fuse-fst-pdi-flat-[]-fst-pdi {l} {r} {ε∈l} {loc} {c} (pdinstance {pˡ} {l} {_} inj-l s-ev-l)
+                                   (pdinstance {pʳ} {l●r} {_} .inj-snd-r .s-ev-injsnd-r)
+                                   (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂)
+                                   (>-inc u₁>u₂→inj-snd-r-u₁>inj-r-u₂)
+                                   (fst-flat-[] inj-snd-r s-ev-injsnd-r fst-flat-[]-injsnd-ev)
+                                   = >-inc ev  
+
+  where
+    -- copied and monomorphized from PDInstance.pdinstance-fst
+    injFst : U ( pˡ ● r ` loc)  → U (l ● r ` loc )
+    injFst = mkinjFst inj-l
+    -- copied and monomorphized from PDInstance.pdinstance-fst
+    sound-injfst-inj-l : ∀ ( u : U ( pˡ ● r ` loc) ) → (proj₁ (flat { l ● r ` loc } (injFst u )) ≡ c ∷ (proj₁ (flat { pˡ ● r ` loc } u)))
+    sound-injfst-inj-l (PairU {pˡ} {r} {loc} u v) =
+               begin
+                 proj₁ (flat (PairU {l} {r} {loc} (inj-l u) v))
+               ≡⟨⟩
+                 (proj₁ (flat (inj-l u))) ++ (proj₁ (flat v))
+               ≡⟨ cong (λ x → ( x ++ (proj₁ (flat v)))) (s-ev-l u) ⟩
+                 (c ∷ (proj₁ (flat u))) ++ (proj₁ (flat v))
+               ≡⟨⟩
+                 c ∷ (proj₁ (flat (PairU {pˡ} {r} {loc} u v)))
+               ∎
+               
+    inj : U ( (pˡ ● r ` loc) + pʳ ` loc ) → U ( l ● r ` loc )
+    inj = mkfuseInj injFst inj-snd-r  
+
+
+
+    sound-ev : (u :  U ( (pˡ ● r ` loc ) + pʳ ` loc) )  
+               → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+    sound-ev (LeftU v₁) = sound-injfst-inj-l v₁
+    sound-ev (RightU v₂) = s-ev-injsnd-r v₂
+
+
+
+
+    len-|inj-l-u|≡len-|u|+1 : (u : U  pˡ  ) → length (proj₁ (flat (inj-l u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-l-u|≡len-|u|+1 u rewrite (s-ev-l u) = refl
+
+
+    len-|inj-u|≡len-|u|+1 : (u : U (  (pˡ ● r ` loc) + pʳ ` loc ) ) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (sound-ev u) = refl
+
+
+    ev :  (u₁ u₂ : U ((pˡ ● r ` loc) + pʳ ` loc)) →
+          ((pˡ ● r ` loc) + pʳ ` loc) ⊢ u₁ > u₂ →
+          (l ● r ` loc) ⊢ inj u₁ > inj u₂
+    ev (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll (len-≡ len|v₁w₁|≡len|v₂w₂|  (seq₁ v₁>v₂)))) = len-≡ len|inj-left-v₁w₁|≡len|inj-left-v₂w₂| prf
+        where
+          len|inj-left-v₁w₁|≡len|inj-left-v₂w₂| : length (proj₁ (flat (inj (LeftU (PairU v₁ w₁))))) ≡  length (proj₁ (flat (inj  (LeftU (PairU v₂ w₂)))))
+          len|inj-left-v₁w₁|≡len|inj-left-v₂w₂| rewrite len-|inj-u|≡len-|u|+1  (LeftU (PairU v₁ w₁)) | len-|inj-u|≡len-|u|+1  (LeftU (PairU v₂ w₂)) = cong suc len|left-v₁w₁|≡len|left-v₂w₂|
+          prf :  (l ● r ` loc) ⊢ inj (LeftU (PairU v₁ w₁)) >ⁱ
+                                 inj (LeftU (PairU v₂ w₂))
+          prf with  inj (LeftU (PairU v₁ w₁)) in inj-eq₁ | inj (LeftU (PairU v₂ w₂)) in inj-eq₂ 
+          ... | PairU x₁ x₂ | PairU y₁ y₂ rewrite (sym inj-eq₁) | sym inj-eq₂ = seq₁ (u₁>u₂→inj-l-u₁>inj-l-u₂ v₁ v₂ v₁>v₂)
+    ev (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll (len-≡ len|v₁w₁|≡len|v₂w₂|  (seq₂ v₁≡v₂ w₁>w₂)))) = len-≡ len|inj-left-v₁w₁|≡len|inj-left-v₂w₂| prf 
+        where
+          len|inj-left-v₁w₁|≡len|inj-left-v₂w₂| : length (proj₁ (flat (inj (LeftU (PairU v₁ w₁))))) ≡  length (proj₁ (flat (inj  (LeftU (PairU v₂ w₂)))))
+          len|inj-left-v₁w₁|≡len|inj-left-v₂w₂| rewrite len-|inj-u|≡len-|u|+1  (LeftU (PairU v₁ w₁)) | len-|inj-u|≡len-|u|+1  (LeftU (PairU v₂ w₂)) = cong suc len|left-v₁w₁|≡len|left-v₂w₂|
+          prf :  (l ● r ` loc) ⊢ inj (LeftU (PairU v₁ w₁)) >ⁱ
+                                 inj (LeftU (PairU v₂ w₂))
+          prf  with  inj (LeftU (PairU v₁ w₁)) in inj-eq₁ | inj (LeftU (PairU v₂ w₂)) in inj-eq₂ 
+          ... | PairU x₁ x₂ | PairU y₁ y₂ rewrite (sym inj-eq₁) | sym inj-eq₂ = seq₂ (cong inj-l v₁≡v₂) w₁>w₂ 
+    ev (LeftU (PairU v₁ w₁)) (LeftU (PairU v₂ w₂)) (len-≡ len|left-v₁w₁|≡len|left-v₂w₂| (choice-ll (len-> len|v₁w₁|>len|v₂w₂|))) rewrite len|left-v₁w₁|≡len|left-v₂w₂|  = Nullary.contradiction len|v₁w₁|>len|v₂w₂| (<-irrefl refl )
+
+    ev (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| (choice-lr len|v₁w₁|≥len|v₂|)) = len-≡ len|inj-left-v₁w₁|≡len|inj-right-v₂| prf  
+        where
+          len|inj-left-v₁w₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU (PairU v₁ w₁))))) ≡  length (proj₁ (flat (inj  (RightU v₂ ))))
+          len|inj-left-v₁w₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1  (LeftU (PairU v₁ w₁)) | len-|inj-u|≡len-|u|+1  (RightU v₂) = cong suc  len|left-v₁w₁|≡len|right-v₂| 
+          prf :  (l ● r ` loc) ⊢ inj (LeftU (PairU v₁ w₁)) >ⁱ
+                                 inj (RightU v₂)
+          prf  with  inj (LeftU (PairU v₁ w₁)) in inj-eq₁ | inj (RightU v₂) in inj-eq₂ | fst-flat-[]-injsnd-ev v₂ 
+          ... | PairU x₁ x₂ | PairU y₁ y₂  | flat-[]-fst .y₁ .y₂ |y₁|≡[] rewrite (sym inj-eq₁)  = seq₁ (len-> len|inj-l-v₁|>len|flat-v₁|) 
+            where
+              len|inj-l-v₁|>len|flat-v₁| : length (Product.proj₁ (flat (inj-l v₁))) > length (Product.proj₁ (flat y₁))
+              len|inj-l-v₁|>len|flat-v₁| rewrite |y₁|≡[] |   len-|inj-l-u|≡len-|u|+1 v₁ = Nat.s≤s Nat.z≤n 
+
+
+{-    
+>-inc-fuse-fst-mk-snd-pdi {l} {r} {ε∈l} {loc} {c} (pdinstance {pˡ} {l} {_} inj-l s-ev-l) (pdinstance
   (pdinstance {pʳ} {r} {_} inj-r s-ev-r)
   (>-inc u₁>u₂→inj-l-u₁>inj-l-u₂)
   (>-inc u₁>u₂→inj-r-u₁>inj-r-u₂)
@@ -1489,23 +1629,6 @@ concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs
 
 
 
--- similar to flat-[], a parse tree PairU x y is Flat-[]-fst iff the first component x is flattened to [] 
-data Flat-[]-Fst : (l r : RE) ( loc : ℕ ) → ( u : U ( l ● r ` loc ) ) → Set where
-  flat-[]-fst :  ∀ {l r : RE} { loc : ℕ } 
-    → ( x : U l )
-    → ( y : U r )
-    → ( (proj₁ (flat {l} x) ) ≡ [] )
-    -------------------------------------------------
-    → Flat-[]-Fst l r loc ( PairU {l} {r} {loc} x y )
-
--- A PDInstance is Flat-[]-Fst-PDI  iff all parse trees produced by its injection function are Flat-[]-Fst. 
-data Flat-[]-Fst-PDI : ∀ {l r : RE} { loc : ℕ } { c : Char } →  (PDInstance ( l ● r ` loc ) c) → Set where
-  fst-flat-[] : ∀ { p l r : RE} { loc : ℕ } { c : Char }
-    → (inj : U p → U (l ● r ` loc ) )
-    → (sound-ev : ( ∀ ( u : U p ) → ( proj₁ ( flat {l ● r ` loc } (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  )
-    → ( ∀ ( u : U p ) →  (Flat-[]-Fst l r loc (inj u)))
-    --------------------------------------------------
-    → Flat-[]-Fst-PDI  {l} {r} {loc} {c} (pdinstance {p} {l ● r ` loc} {c} inj sound-ev)
     
 
 
@@ -1519,18 +1642,12 @@ data Flat-[]-Fst-PDI : ∀ {l r : RE} { loc : ℕ } { c : Char } →  (PDInstanc
     -------------------------------------------------------
     → All >-Inc (List.map (fuse {l ● r ` loc} {loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdiˡ)) pdisʳ)
 >-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c} pdiˡ [] >-inc-pdiˡ [] [] = []
->-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c} pdiˡ (pdiʳ ∷ pdisʳ) >-inc-pdiˡ (>-inc-pdiʳ ∷ >-inc-pdisʳ ) ((fst-flat-[] _injʳ _s-evʳ flat-[]-fst-ev) ∷ fst-flat-[]-pdisʳ) =
-  {!!} ∷ (>-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c}  pdiˡ pdisʳ >-inc-pdiˡ >-inc-pdisʳ fst-flat-[]-pdisʳ) 
+>-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c} pdiˡ (pdiʳ ∷ pdisʳ) >-inc-pdiˡ (>-inc-pdiʳ ∷ >-inc-pdisʳ ) (fst-flat-[]-pdiʳ ∷ fst-flat-[]-pdisʳ) =
+  >-inc-fuse-fst-pdi-flat-[]-fst-pdi  {l} {r} {ε∈l} {loc} {c}  pdiˡ pdiʳ >-inc-pdiˡ >-inc-pdiʳ fst-flat-[]-pdiʳ
+  ∷ (>-inc-map-fuse-pdi-fst {l} {r} {ε∈l} {loc} {c}  pdiˡ pdisʳ >-inc-pdiˡ >-inc-pdisʳ fst-flat-[]-pdisʳ) 
 
 
 
-{-
-data Singleton {a} {A : Set a} (x : A) : Set a where
-  _with≡_ : (y : A) → x ≡ y → Singleton x
-
-inspect : ∀ {a} {A : Set a} (x : A) → Singleton x
-inspect x = x with≡ refl
--}
 
 
 >-inc-pdinstance-oplus-+● : ∀ { l+s r : RE } {ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char } 
@@ -1618,7 +1735,7 @@ inspect x = x with≡ refl
 
                                           
                 flat-[]-fst-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es : All (Flat-[]-Fst-PDI {l+s} {r} {loc} {c})  (List.concatMap (λ x → List.map (mk-snd-pdi x) (q ∷ qs)) ((e , flat-[]-e) ∷ es-flat-[]-es))
-                flat-[]-fst-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es = {!!} 
+                flat-[]-fst-concatmap-map-mk-snd-pdi-qs-es-flat-[]-es = flat-[]-fst-concatmap-pdinstance-snd-sub {l+s} {r} {ε∈l+s} {loc} {c}  ((e , flat-[]-e) ∷ es-flat-[]-es) (q ∷ qs) 
         rest : All >-Inc (concatMap (λ pˡ₁ → List.map (fuse pˡ₁)  (concatMap (λ x → List.map (mk-snd-pdi x) (pʳ ∷ psʳ)) (zip-es-flat-[]-es {l+s} {ε∈l+s} (e ∷ es) (flat-[]-e ∷ flat-[]-es)))) (List.map pdinstance-fst psˡ))
         rest =  >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)
 

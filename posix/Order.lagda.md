@@ -344,19 +344,20 @@ data _,_⇒_ : ∀ ( w : List Char ) → ( r : RE ) → U r → Set where
     →  w₁ , l ⇒ v₁
     →  w₂ , r ⇒ v₂
     → ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) × (w₃ ++ w₄ ≡ w₂) × ( (w₁ ++ w₃) ∈⟦ l ⟧ ) × w₄ ∈⟦ r ⟧ )
-    ------------------------------------------------------------
+    -----------------s-------------------------------------------
     → (w₁ ++ w₂) , l ● r ` loc ⇒ PairU v₁ v₂
     
   p[] : ∀ { r : RE } {ε∉r : ε∉ r } { loc : ℕ }
     → [] , r * ε∉r ` loc ⇒ ListU []
     
-  p* : ∀ { w₁ w₂ : List Char } { r : RE } {ε∉r : ε∉ r } { loc : ℕ } {v : U r } { vs : List (U r) }
+  p* : ∀ { w₁ w₂ w : List Char } { r : RE } {ε∉r : ε∉ r } { loc : ℕ } {v : U r } { vs : List (U r) }
+    →  w ≡ w₁ ++ w₂  -- having a separate index variable w make the proof easier
     →  w₁ , r ⇒ v
     →  w₂ , r * ε∉r ` loc ⇒ ListU vs
     →  ¬ w₁ ≡ []
     → ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) × (w₃ ++ w₄ ≡ w₂) × ( (w₁ ++ w₃) ∈⟦ r ⟧ ) × w₄ ∈⟦ r * ε∉r ` loc ⟧ )
     -----------------------------------------------------------
-    → (w₁ ++ w₂) , r * ε∉r ` loc ⇒ ListU (v ∷ vs)
+    → w , r * ε∉r ` loc ⇒ ListU (v ∷ vs)
     
 ```
 
@@ -452,15 +453,15 @@ Note : The > order is transitive.
   → r ⊢ u₁ >ⁱ u₃
 
 
->-trans {r} {u₁} {u₂} {u₃} (len-≡ {r} {v₁} {v₂} len-|v₁|≡len-|v₂| v₁>ⁱv₂) (len-≡ {r} {.v₂} {v₃} len-|v₂|≡len-|v₃| v₂>ⁱv₃) =
+>-trans {r} {u₁} {u₂} {u₃} (len-≡ {r} {v₁} {v₂} len-|v₁|≡len-|v₂| v₁>ⁱv₂) (len-≡ {r} .{v₂} {v₃} len-|v₂|≡len-|v₃| v₂>ⁱv₃) =
   len-≡ {r} {v₁} {v₃} (trans len-|v₁|≡len-|v₂| len-|v₂|≡len-|v₃|) (>ⁱ-trans v₁>ⁱv₂ v₂>ⁱv₃)
->-trans {r} {u₁} {u₂} {u₃} (len-≡ {r} {v₁} {v₂} len-|v₁|≡len-|v₂| v₁>ⁱv₂) (len-> {r} {.v₂} {v₃} len-|v₂|>len-|v₃|) = 
+>-trans {r} {u₁} {u₂} {u₃} (len-≡ {r} {v₁} {v₂} len-|v₁|≡len-|v₂| v₁>ⁱv₂) (len-> {r} .{v₂} {v₃} len-|v₂|>len-|v₃|) = 
   len-> {r} {v₁} {v₃} len-|v₁|>len|v₃|
   where
     len-|v₁|>len|v₃| : length (proj₁ (flat u₁)) > length (proj₁ (flat u₃))
     len-|v₁|>len|v₃| rewrite  len-|v₁|≡len-|v₂| = len-|v₂|>len-|v₃| 
->-trans {r} {u₁} {u₂} {u₃} (len-> {r} {v₁} {v₂} len-|v₁|>len-|v₂|) (len-> {r} {.v₂} {v₃} len-|v₂|>len-|v₃|) = len-> {r} {v₁} {v₃} (<-trans len-|v₂|>len-|v₃| len-|v₁|>len-|v₂| )
->-trans {r} {u₁} {u₂} {u₃} (len-> {r} {v₁} {v₂} len-|v₁|>len-|v₂|) (len-≡ {r} {.v₂} {v₃} len-|v₂|≡len-|v₃|  v₂>ⁱv₃) = len-> {r} {v₁} {v₃} len-|v₁|>len|v₃|
+>-trans {r} {u₁} {u₂} {u₃} (len-> {r} {v₁} {v₂} len-|v₁|>len-|v₂|) (len-> {r} .{v₂} {v₃} len-|v₂|>len-|v₃|) = len-> {r} {v₁} {v₃} (<-trans len-|v₂|>len-|v₃| len-|v₁|>len-|v₂| )
+>-trans {r} {u₁} {u₂} {u₃} (len-> {r} {v₁} {v₂} len-|v₁|>len-|v₂|) (len-≡ {r} .{v₂} {v₃} len-|v₂|≡len-|v₃|  v₂>ⁱv₃) = len-> {r} {v₁} {v₃} len-|v₁|>len|v₃|
   where
     len-|v₁|>len|v₃| : length (proj₁ (flat u₁)) > length (proj₁ (flat u₃))
     len-|v₁|>len|v₃| rewrite (sym len-|v₂|≡len-|v₃|) = len-|v₁|>len-|v₂| 
@@ -482,18 +483,18 @@ Note : The > order is transitive.
   (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃
   
 >ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
->ⁱ-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} {.loc} {.v₂} {v₃} len|v₂|≥len|v₃|) = choice-lr ( ≤-trans len|v₂|≥len|v₃| ( >→len|≥| v₁>v₂) ) 
->ⁱ-trans {l + r ` loc} (choice-ll {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-ll {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-ll (>-trans v₁>v₂ v₂>v₃)
->ⁱ-trans {l + r ` loc} (choice-lr {l} {r} {.loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rr {l} {r} {.loc} {.v₂} {v₃} v₂>v₃) = choice-lr ( ≤-trans (>→len|≥| v₂>v₃) len|v₁|≥len|v₂| )
->ⁱ-trans {l + r ` loc} (choice-lr {l} {r} {.loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rl {l} {r} {.loc} {.v₂} {v₃} len|v₂|>len|v₃|) = choice-ll (len|>|→> len|v₁|>len|v₃| )
+>ⁱ-trans {l + r ` loc} (choice-ll {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} .{loc} .{v₂} {v₃} len|v₂|≥len|v₃|) = choice-lr ( ≤-trans len|v₂|≥len|v₃| ( >→len|≥| v₁>v₂) ) 
+>ⁱ-trans {l + r ` loc} (choice-ll {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-ll {l} {r} .{loc} .{v₂} {v₃} v₂>v₃)     = choice-ll (>-trans v₁>v₂ v₂>v₃)
+>ⁱ-trans {l + r ` loc} (choice-lr {l} {r} .{loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rr {l} {r} .{loc} .{v₂} {v₃} v₂>v₃) = choice-lr ( ≤-trans (>→len|≥| v₂>v₃) len|v₁|≥len|v₂| )
+>ⁱ-trans {l + r ` loc} (choice-lr {l} {r} .{loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rl {l} {r} .{loc} .{v₂} {v₃} len|v₂|>len|v₃|) = choice-ll (len|>|→> len|v₁|>len|v₃| )
   where
     len|v₁|>len|v₃| : length (proj₁ (flat v₁)) > length (proj₁ (flat v₃))
     len|v₁|>len|v₃| = ≤-trans len|v₂|>len|v₃| len|v₁|≥len|v₂|  
 
->ⁱ-trans {l + r ` loc} (choice-rr {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-rr {l} {r} {.loc} {.v₂} {v₃} v₂>v₃)     = choice-rr (>-trans v₁>v₂ v₂>v₃)
->ⁱ-trans {l + r ` loc} (choice-rr {l} {r} {.loc} {v₁} {v₂} v₁>v₂) (choice-rl {l} {r} {.loc} {.v₂} {v₃} len|v₂|>len|v₃|) =  choice-rl ( ≤-trans len|v₂|>len|v₃| (>→len|≥| v₁>v₂ ) ) 
->ⁱ-trans {l + r ` loc} (choice-rl {l} {r} {.loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-lr {l} {r} {.loc} {.v₂} {v₃} len|v₂|≥len|v₃|) = choice-rr (len|>|→> (≤-trans (Nat.s≤s len|v₂|≥len|v₃|)  len|v₁|>len|v₂|) )
->ⁱ-trans {l + r ` loc} (choice-rl {l} {r} {.loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-ll {l} {r} {.loc} {.v₂} {v₃} v₂>v₃) = choice-rl ( ≤-trans (Nat.s≤s (>→len|≥| v₂>v₃ )) len|v₁|>len|v₂| )
+>ⁱ-trans {l + r ` loc} (choice-rr {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-rr {l} {r} .{loc} .{v₂} {v₃} v₂>v₃)     = choice-rr (>-trans v₁>v₂ v₂>v₃)
+>ⁱ-trans {l + r ` loc} (choice-rr {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-rl {l} {r} .{loc} .{v₂} {v₃} len|v₂|>len|v₃|) =  choice-rl ( ≤-trans len|v₂|>len|v₃| (>→len|≥| v₁>v₂ ) ) 
+>ⁱ-trans {l + r ` loc} (choice-rl {l} {r} .{loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-lr {l} {r} .{loc} .{v₂} {v₃} len|v₂|≥len|v₃|) = choice-rr (len|>|→> (≤-trans (Nat.s≤s len|v₂|≥len|v₃|)  len|v₁|>len|v₂|) )
+>ⁱ-trans {l + r ` loc} (choice-rl {l} {r} .{loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-ll {l} {r} .{loc} .{v₂} {v₃} v₂>v₃) = choice-rl ( ≤-trans (Nat.s≤s (>→len|≥| v₂>v₃ )) len|v₁|>len|v₂| )
 >ⁱ-trans {l ● r ` loc} (seq₁ v₁>v₂) (seq₁ v₂>v₃) = seq₁ (>-trans v₁>v₂ v₂>v₃ )
 >ⁱ-trans {l ● r ` loc} (seq₁ v₁>v₂) (seq₂ v₂≡v₃ vs₂>vs₃) rewrite v₂≡v₃ = seq₁ v₁>v₂ 
 >ⁱ-trans {l ● r ` loc} (seq₂ v₁≡v₂ vs₁>vs₂) (seq₂ v₂≡v₃ vs₂>vs₃) rewrite (sym v₁≡v₂) = seq₂ v₂≡v₃ (>-trans vs₁>vs₂ vs₂>vs₃)
@@ -1949,6 +1950,28 @@ postulate
     → proj₁ (flat {r} v) ≡ w
 
 
+postulate
+  w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ : ∀ { A : Set } { w₁ w₂ w₃ w₄ : List A }
+    → w₁ ++ w₂ ≡ w₃ ++ w₄
+    → length w₁ Nat.< length w₃
+    ---------------------------------------------------------------- 
+    →  ∃[ w₅ ] ( ¬ w₅ ≡ [] ) × ( w₁ ++ w₅ ≡ w₃ ) × ( w₂ ≡ w₅ ++ w₄ )
+
+
+-- this can be moved to Utils
+import Relation.Binary.Definitions
+open  Relation.Binary.Definitions using (
+  Tri ; tri< ; tri≈ ; tri> ) 
+¬m>n→n≡m⊎n>m : ∀ { n m : ℕ }
+    → ¬ (m > n)
+    → (n ≡ m) ⊎ (n > m)
+¬m>n→n≡m⊎n>m {n} {m} ¬m>n with (Nat.<-cmp m n)
+... | tri< m<n _    _    = inj₂ m<n          
+... | tri≈ _  m≡n  _     = inj₁ (sym m≡n)   
+... | tri> _   _    m>n  = Nullary.contradiction m>n ¬m>n 
+
+
+
 ⇒→>-max : ∀ { r : RE } { v : U r } { w : List Char} 
     → w , r ⇒ v
     → ( u : U r )
@@ -1957,7 +1980,7 @@ postulate
     ------------------
     → ( r ⊢ v > u )
 ⇒→>-max {ε}           {EmptyU}    {[]}      p₁          EmptyU      ¬empty≡empty       refl   = Nullary.contradiction refl ¬empty≡empty
-⇒→>-max {$ c ` loc}   {LetterU _} {.c ∷ []} pc          (LetterU _) ¬letter-c≡letter-c refl = Nullary.contradiction refl ¬letter-c≡letter-c
+⇒→>-max {$ c ` loc}   {LetterU _} .{c ∷ []} pc          (LetterU _) ¬letter-c≡letter-c refl = Nullary.contradiction refl ¬letter-c≡letter-c
 ⇒→>-max {l + r ` loc} {LeftU v}   {w}       (p+l w,l→v) (LeftU u)   ¬left-v≡left-u     |left-v|≡|left-u|  = len-≡  len|left-v|≡len|left-u| (choice-ll v>u )
   where
     len|left-v|≡len|left-u| : length (proj₁ (flat (LeftU {l} {r} {loc} v))) ≡ length (proj₁ (flat (LeftU {l} {r} {loc} u)))
@@ -1997,8 +2020,41 @@ postulate
     len|v|≥len|u| rewrite |left-v|≡|right-u| = ≤-refl  
 
 
-⇒→>-max {r * ε∉r ` loc} {ListU []} {[]}     (p[] {.r} {.ε∉r} {.loc}) (ListU []) ¬list-[]≡list-[] |list-[]|≡|list-[]| = Nullary.contradiction refl ¬list-[]≡list-[]
+⇒→>-max {r * ε∉r ` loc} {ListU []} {[]}             (p[] .{r} .{ε∉r} .{loc}) (ListU []) ¬list-[]≡list-[] |list-[]|≡|list-[]| = Nullary.contradiction refl ¬list-[]≡list-[]
 
+
+⇒→>-max {r * ε∉r ` loc} {ListU (v ∷ vs)}  {w}  (p*  {w₁} {w₂} .{w} {r} {ε∉r} {loc} .{v} .{vs} w≡w₁++w₂ w₁,r→v w₂,r*→list-vs ¬w₁≡[] longest-ev) (ListU (u ∷ us)) ¬list-v∷vs≡list-u∷us |list-v∷vs|≡|list-u∷us| = len-≡ len|left-v∷vs|≡len|left-u∷us| list-v∷vs>ˡlist-u∷us 
+  where
+    len|left-v∷vs|≡len|left-u∷us| : length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs)))) ≡ length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (u ∷ us))))
+    len|left-v∷vs|≡len|left-u∷us| rewrite |list-v∷vs|≡|list-u∷us| = refl
+    list-v∷vs>ˡlist-u∷us : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ⁱ ListU (u ∷ us)
+    list-v∷vs>ˡlist-u∷us with length (proj₁ (flat v)) Nat.<? length (proj₁ (flat u))
+    ... | yes len|v|<len|u| rewrite sym (⇒-member w₂,r*→list-vs) | sym (⇒-member w₁,r→v)
+          = Nullary.contradiction anti-longest-ev  longest-ev 
+
+        where
+          anti-longest-ev-part1 : ∃[ w₅ ] ( ¬ w₅ ≡ [] ) ×
+                                          ( (proj₁ (flat {r} v)) ++ w₅ ≡ (proj₁ (flat {r} u)) ) ×
+                                          ( (proj₁ (flat {r * ε∉r ` loc} (ListU vs))) ≡ w₅ ++ (proj₁ (flat {r * ε∉r ` loc} (ListU us)))) 
+          anti-longest-ev-part1 rewrite sym (⇒-member w₂,r*→list-vs)  = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {Char} {proj₁ (flat {r} v)} {proj₁ (flat {r * ε∉r ` loc} (ListU vs))} {proj₁ (flat {r} u)} {proj₁ (flat {r * ε∉r ` loc} (ListU us))}  |list-v∷vs|≡|list-u∷us|   len|v|<len|u|
+          anti-longest-ev : ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) ×
+                                            ( w₃ ++ w₄ ≡ proj₁ (flat {r * ε∉r ` loc} (ListU vs)) ) ×
+                                            ( ( (proj₁ (flat {r} v)) ++ w₃ ) ∈⟦ r ⟧ ) ×
+                                            ( w₄ ∈⟦ r * ε∉r ` loc ⟧ ) 
+          anti-longest-ev = (proj₁ anti-longest-ev-part1 , ( (proj₁ (flat {r * ε∉r ` loc} (ListU us))) ,
+                                      ( proj₁ (proj₂ anti-longest-ev-part1 ) ) ,
+                                         ( sym (proj₂ (proj₂ (proj₂ anti-longest-ev-part1))) ,
+                                            proj₁flat-v++proj₁-anti-longest-ev-part1∈⟦r⟧  , proj₂ (flat { r * ε∉r ` loc}  (ListU us))   ) ) )
+                          where
+                            proj₁flat-v++proj₁-anti-longest-ev-part1∈⟦r⟧ : (Product.proj₁ (flat v) ++ Product.proj₁ anti-longest-ev-part1)  ∈⟦ r ⟧
+                            proj₁flat-v++proj₁-anti-longest-ev-part1∈⟦r⟧ rewrite (proj₁ (proj₂ (proj₂  anti-longest-ev-part1 ))) =  proj₂ (flat {r} u) 
+          
+    ... | no ¬len|v|<len|u| with (¬m>n→n≡m⊎n>m ¬len|v|<len|u|)
+    ...                      | inj₁ len|v|≡len|u| = {!!}
+    ...                      | inj₂ len|v|>len|u| = {!!} 
+
+
+    
 {-
 ⇒→>-max {l ● r ` loc} {PairU {l} {r} {loc} v₁ v₂} {w}     (ps w₁,l→v₁ w₂,r→v₂ longest-ev) (PairU u₁ u₂) ¬pair-v₁v₂≡pair-u₁u₂ |pair-v₁v₂|≡|pair-u₁u₂| = ? -- len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| ?
   where

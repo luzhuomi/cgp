@@ -15,7 +15,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ) 
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; inv-listU1 ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ;
@@ -340,12 +340,13 @@ data _,_⇒_ : ∀ ( w : List Char ) → ( r : RE ) → U r → Set where
     → ¬ ( w ∈⟦ l ⟧ )
     ------------------------------------------------------------
     → w , l + r ` loc ⇒ RightU v
-  ps : ∀ { w₁ w₂ : List Char } { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+  ps : ∀ { w₁ w₂ w : List Char } { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+    →  w ≡ w₁ ++ w₂  -- having a separate index variable w make the proof easier  
     →  w₁ , l ⇒ v₁
     →  w₂ , r ⇒ v₂
     → ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) × (w₃ ++ w₄ ≡ w₂) × ( (w₁ ++ w₃) ∈⟦ l ⟧ ) × w₄ ∈⟦ r ⟧ )
     -----------------s-------------------------------------------
-    → (w₁ ++ w₂) , l ● r ` loc ⇒ PairU v₁ v₂
+    → w , l ● r ` loc ⇒ PairU v₁ v₂
     
   p[] : ∀ { r : RE } {ε∉r : ε∉ r } { loc : ℕ }
     → [] , r * ε∉r ` loc ⇒ ListU []
@@ -1958,6 +1959,15 @@ postulate
     →  ∃[ w₅ ] ( ¬ w₅ ≡ [] ) × ( w₁ ++ w₅ ≡ w₃ ) × ( w₂ ≡ w₅ ++ w₄ )
 
 
+  w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ : ∀ { A : Set } { w₁ w₂ w₃ w₄ : List A }
+    → w₁ ++ w₂ ≡ w₃ ++ w₄
+    → length w₁ ≡ length w₃
+    ---------------------------------------------------------------- 
+    → (w₁ ≡ w₃) × (w₂ ≡ w₄) 
+
+  
+
+
 -- this can be moved to Utils
 import Relation.Binary.Definitions
 open  Relation.Binary.Definitions using (
@@ -1968,7 +1978,18 @@ open  Relation.Binary.Definitions using (
 ¬m>n→n≡m⊎n>m {n} {m} ¬m>n with (Nat.<-cmp m n)
 ... | tri< m<n _    _    = inj₂ m<n          
 ... | tri≈ _  m≡n  _     = inj₁ (sym m≡n)   
-... | tri> _   _    m>n  = Nullary.contradiction m>n ¬m>n 
+... | tri> _   _    m>n  = Nullary.contradiction m>n ¬m>n
+
+
+
+postulate
+  _⊢_≟_ : ∀ ( r : RE ) ( u v : U (r ) ) → Dec ( u ≡ v )
+
+  ¬|list-u∷us|≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
+     → ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ []
+     
+  
+
 
 
 
@@ -2022,6 +2043,9 @@ open  Relation.Binary.Definitions using (
 
 ⇒→>-max {r * ε∉r ` loc} {ListU []} {[]}             (p[] .{r} .{ε∉r} .{loc}) (ListU []) ¬list-[]≡list-[] |list-[]|≡|list-[]| = Nullary.contradiction refl ¬list-[]≡list-[]
 
+⇒→>-max {r * ε∉r ` loc} {ListU []} {[]}             (p[] .{r} .{ε∉r} .{loc}) (ListU (u ∷ us)) ¬list-[]≡list-u∷us |list-[]|≡|list-u∷us| =  Nullary.contradiction  (sym  |list-[]|≡|list-u∷us|)  (¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us})
+
+⇒→>-max {r * ε∉r ` loc} {ListU (v ∷ vs)}  {w}  (p*  {w₁} {w₂} .{w} {r} {ε∉r} {loc} .{v} .{vs} w≡w₁++w₂ w₁,r→v w₂,r*→list-vs ¬w₁≡[] longest-ev) (ListU []) ¬list-v∷vs≡list-[] |list-v∷vs|≡|list-[]| =  Nullary.contradiction  |list-v∷vs|≡|list-[]| (¬|list-u∷us|≡[] {r} {ε∉r} {loc} {v} {vs}) 
 
 ⇒→>-max {r * ε∉r ` loc} {ListU (v ∷ vs)}  {w}  (p*  {w₁} {w₂} .{w} {r} {ε∉r} {loc} .{v} .{vs} w≡w₁++w₂ w₁,r→v w₂,r*→list-vs ¬w₁≡[] longest-ev) (ListU (u ∷ us)) ¬list-v∷vs≡list-u∷us |list-v∷vs|≡|list-u∷us| = len-≡ len|left-v∷vs|≡len|left-u∷us| list-v∷vs>ˡlist-u∷us 
   where
@@ -2050,16 +2074,27 @@ open  Relation.Binary.Definitions using (
                             proj₁flat-v++proj₁-anti-longest-ev-part1∈⟦r⟧ rewrite (proj₁ (proj₂ (proj₂  anti-longest-ev-part1 ))) =  proj₂ (flat {r} u) 
           
     ... | no ¬len|v|<len|u| with (¬m>n→n≡m⊎n>m ¬len|v|<len|u|)
-    ...                      | inj₁ len|v|≡len|u| = {!!}
-    ...                      | inj₂ len|v|>len|u| = {!!} 
+    ...                      | inj₂ len|v|>len|u| = star-head (len-> len|v|>len|u|)
+    ...                      | inj₁ len|v|≡len|u| with r ⊢ v ≟ u
+    ...                                            | no ¬v≡u = star-head (⇒→>-max  w₁,r→v u ¬v≡u  (proj₁ (w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ |list-v∷vs|≡|list-u∷us| len|v|≡len|u|)) )
+    ...                                            | yes v≡u = star-tail v≡u (⇒→>-max w₂,r*→list-vs (ListU us)  ¬list-vs≡list-us  (proj₂ (w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ |list-v∷vs|≡|list-u∷us| len|v|≡len|u|)))
+                                                         where
+                                                           ¬list-vs≡list-us : ¬ (ListU {r}  {ε∉r} {loc} vs) ≡ (ListU {r}  {ε∉r} {loc} us)
+                                                           ¬list-vs≡list-us list-vs≡list-us =  ¬list-v∷vs≡list-u∷us ( Eq.cong₂ (λ x xs → ListU  {r}  {ε∉r} {loc} (x ∷ xs)) v≡u vs≡us )
+                                                             where
+                                                               vs≡us : vs ≡ us
+                                                               vs≡us = inv-listU1 vs us list-vs≡list-us 
 
 
     
-{-
-⇒→>-max {l ● r ` loc} {PairU {l} {r} {loc} v₁ v₂} {w}     (ps w₁,l→v₁ w₂,r→v₂ longest-ev) (PairU u₁ u₂) ¬pair-v₁v₂≡pair-u₁u₂ |pair-v₁v₂|≡|pair-u₁u₂| = ? -- len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| ?
+⇒→>-max {l ● r ` loc} {PairU {l} {r} {loc} v₁ v₂} {w}   (ps {w₁} {w₂} .{w} .{l} .{r} .{loc} .{v₁} .{v₂} w≡w₁++w₂ w₁,l→v₁ w₂,r→v₂ longest-ev) (PairU u₁ u₂) ¬pair-v₁v₂≡pair-u₁u₂ |pair-v₁v₂|≡|pair-u₁u₂| =
+  len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| pair-v₁v₂>ˡpair-u₁u₂ 
   where
-    len|pair-v₁v₂|≡len|pair-u₁u₂| : length (proj₁ (flat (PairU v₁ v₂))) ≡ length (proj₁ (flat (PairU u₁ u₂)))
-    len|pair-v₁v₂|≡len|pair-u₁u₂| rewrite |pair-v₁v₂|≡|pair-u₁u₂|  =  ? 
--}
+    len|pair-v₁v₂|≡len|pair-u₁u₂| : length (proj₁ (flat (PairU  {l} {r} {loc} v₁ v₂))) ≡ length (proj₁ (flat (PairU  {l} {r} {loc} u₁ u₂)))
+    len|pair-v₁v₂|≡len|pair-u₁u₂| rewrite |pair-v₁v₂|≡|pair-u₁u₂|  =  refl 
+    pair-v₁v₂>ˡpair-u₁u₂ : (l ● r ` loc) ⊢ PairU v₁ v₂ >ⁱ PairU u₁ u₂
+    pair-v₁v₂>ˡpair-u₁u₂ with length (proj₁ (flat v₁)) Nat.<? length (proj₁ (flat u₁))
+    ... | yes len|v₁|<len|u₁| rewrite sym (⇒-member w₂,r→v₂) | sym (⇒-member w₁,l→v₁) =  {!!}
+    ... | no ¬len|v₁|<len|u₁| = ? 
 
 ```

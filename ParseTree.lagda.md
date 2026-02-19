@@ -552,6 +552,14 @@ inv-listU : ∀ { r : RE } {ε∉r : ε∉ r} { loc : ℕ }
 inv-listU _ _ _ _ refl = refl , refl   
   
 
+inv-listU1 : ∀ { r : RE } {ε∉r : ε∉ r} { loc : ℕ }
+  → ( us : List (U r) )
+  → ( us' : List (U r ) )
+  → ( ListU {r} {ε∉r} {loc} us) ≡ ListU {r} {ε∉r} {loc} us'
+  ----------------------------------------------------------------
+  → us ≡ us'
+inv-listU1  _ _ refl = refl   
+
 
 
 ```

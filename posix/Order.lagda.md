@@ -2114,3 +2114,49 @@ Lemma : a posix parse tree is the max value in posix ordering >
                                                                ¬v₂≡u₂ v₂≡u₂ = ¬pair-v₁v₂≡pair-u₁u₂ (Eq.cong₂ (λ x y → (PairU {l} {r} {loc} x y)) v₁≡u₁ v₂≡u₂) 
 
 ```
+
+
+Lemma : the max value in the posix ordering > must be a posix parse tree.
+
+
+
+```agda
+
+postulate
+  intersect-memberʳ : ∀ { l r : RE } { v : U r } 
+    → proj₁ (flat {r} v) ∈⟦ l ⟧
+    → ∃[ u ] proj₁ (flat {l} u) ∈⟦ l ⟧ 
+
+
+>-max→⇒ :  ∀ { r : RE } { v : U r } 
+  → ( ∀ ( u : U r ) → r ⊢ v > u )
+  -----------------------------------
+  → proj₁ (flat {r} v) , r ⇒ v
+
+>-max→⇒ {ε}           {EmptyU}      max-ev = p₁
+>-max→⇒ {$ c ` loc}   {LetterU .c}  max-ev = pc
+>-max→⇒ {l + r ` loc} {LeftU v}     max-ev = p+l |v|,l→v
+  where
+    ∀u→v>u : ( u : U l ) → l ⊢ v > u
+    ∀u→v>u u with max-ev (LeftU u)
+    ... | len-> len|left-v|>len|left-u|                 = len-> len|left-v|>len|left-u|
+    ... | len-≡ len|left-v|≡len|left-u| (choice-ll v>u) = v>u 
+    |v|,l→v : proj₁ (flat {l} v) , l ⇒ v
+    |v|,l→v = >-max→⇒  {l} {v} ∀u→v>u
+>-max→⇒ {l + r ` loc} {RightU v}     max-ev = p+r |v|,r→v ¬|v|∈⟦l⟧ 
+  where
+    ∀u→v>u : ( u : U r ) → r ⊢ v > u
+    ∀u→v>u u with max-ev (RightU u)
+    ... | len-> len|right-v|>len|right-u|                 = len-> len|right-v|>len|right-u|
+    ... | len-≡ len|right-v|≡len|right-u| (choice-rr v>u) = v>u 
+  
+    |v|,r→v : proj₁ (flat {r} v) , r ⇒ v
+    |v|,r→v = >-max→⇒  {r} {v} ∀u→v>u
+    
+    ¬|v|∈⟦l⟧ : ¬ proj₁ (flat {r} v) ∈⟦ l ⟧
+    ¬|v|∈⟦l⟧ |v|∈⟦l⟧ with intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧
+    ... |  u , proj₁flat-u∈⟦l⟧  = {!!} 
+
+
+
+```

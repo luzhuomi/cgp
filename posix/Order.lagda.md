@@ -15,7 +15,10 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; inv-listU1 ; inv-pairU ) 
+open ParseTree using ( U; EmptyU ; LetterU ;
+  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ;
+  unflat∘proj₂∘flat ; flat∘unflat ;
+  inv-listU ; inv-listU1 ; inv-pairU ; inv-leftU ; inv-rightU ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ;
@@ -1946,13 +1949,33 @@ Lemma : a posix value is the largest value in posix ordering
 
 
 ```agda
-postulate
-  ⇒-member : ∀ { r : RE } { v : U r } { w : List Char} 
+-- postulate
+⇒-member : ∀ { r : RE } { v : U r } { w : List Char} 
     → w , r ⇒ v
     → proj₁ (flat {r} v) ≡ w
+⇒-member {ε}             {EmptyU}     {[]}      p₁                 = refl
+⇒-member {$ c ` loc}     {LetterU .c} {.c ∷ []} (pc .{c} .{loc})   = refl
+⇒-member {l ● r ` loc}   {PairU v u}  {w}       (ps {w₁} {w₂} .{w} .{l} .{r} .{loc} .{v} .{u} w≡w₁++w₂ w₁,l→v w₂,r→u longest-ev) = prf
+  where
+    ind-hyp-l : proj₁ (flat {l} v) ≡ w₁
+    ind-hyp-l = ⇒-member w₁,l→v 
+    ind-hyp-r : proj₁ (flat {r} u) ≡ w₂
+    ind-hyp-r = ⇒-member w₂,r→u
+    prf : proj₁ (flat (PairU {l} {r} {loc} v u)) ≡ w
+    prf rewrite  ind-hyp-l |  ind-hyp-r = sym w≡w₁++w₂
+⇒-member {l + r ` loc}   {LeftU v}  {w}       (p+l .{w} .{l} .{r} .{loc} .{v} w,l→v)       = ⇒-member w,l→v 
+⇒-member {l + r ` loc}   {RightU v} {w}       (p+r .{w} .{l} .{r} .{loc} .{v} w,r→v ¬w∈⟦l⟧) = ⇒-member w,r→v 
+⇒-member {r * ε∉r ` loc} {ListU []} {[]}      (p[] .{r} .{ε∉r} .{loc}) = refl 
+⇒-member {r * ε∉r ` loc} {ListU (x ∷ xs)} {w} (p* {w₁} {w₂} .{w} .{r} .{ε∉r} .{loc} .{x} .{xs} w≡w₁++w₂ w₁,r→x w₂,r*→list-xs ¬w₁≡[] longest-ev) = prf
+  where
+    ind-hyp-x : proj₁ (flat {r} x) ≡ w₁
+    ind-hyp-x = ⇒-member w₁,r→x
+    ind-hyp-list-xs : proj₁ (flat {r * ε∉r ` loc} (ListU xs)) ≡ w₂
+    ind-hyp-list-xs = ⇒-member w₂,r*→list-xs 
+    prf : proj₁ (flat {r * ε∉r ` loc} (ListU (x ∷ xs))) ≡ w
+    prf rewrite  ind-hyp-x |  ind-hyp-list-xs = sym w≡w₁++w₂
 
-
-
+-- this can be moved to Utils
 w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ : ∀ { w₁ w₂ w₃ w₄ : List Char }
     → w₁ ++ w₂ ≡ w₃ ++ w₄
     → length w₁ ≡ length w₃
@@ -1978,7 +2001,7 @@ w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {x₁ ∷ 
   
 
   
-
+-- this can be moved to Utils 
 w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ : ∀ {w₁ w₂ w₃ w₄ : List Char}
   → w₁ ++ w₂ ≡ w₃ ++ w₄
   → length w₁ Nat.< length w₃
@@ -2014,8 +2037,7 @@ open  Relation.Binary.Definitions using (
 
 
 
--- postulate
-
+-- this can be moved to ParseTree 
 _⊢_≟_ : ∀ ( r : RE ) ( u v : U r ) → Dec ( u ≡ v )
 _⊢_≟_ ε             EmptyU        EmptyU       = yes refl -- Agda.Builtin.Bool.Bool.true Decidable.because Nullary.ofʸ refl
 _⊢_≟_ ($ c ` loc)   (LetterU .c)  (LetterU .c) = yes refl
@@ -2023,10 +2045,25 @@ _⊢_≟_ (l ● r ` loc) (PairU v₁ v₂) (PairU u₁ u₂) with l ⊢ v₁ �
 ... | no ¬v₁≡u₁ | _ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₁≡u₁ (proj₁ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
 ... | _         | no ¬v₂≡u₂ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₂≡u₂ (proj₂ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
 ... | yes v₁≡u₁ | yes v₂≡u₂ = yes (Eq.cong₂ (λ x y → PairU {l} {r} {loc} x y)  v₁≡u₁  v₂≡u₂)
+_⊢_≟_ (l + r ` loc) (LeftU v)     (LeftU u)     with l ⊢ v ≟ u
+... | no ¬v≡u = no λ left-v≡left-u → ¬v≡u (inv-leftU v u left-v≡left-u) 
+... | yes v≡u = yes (cong LeftU v≡u )
+_⊢_≟_ (l + r ` loc) (LeftU v)     (RightU u)   = no λ () 
+_⊢_≟_ (l + r ` loc) (RightU v)    (RightU u)    with r ⊢ v ≟ u
+... | no ¬v≡u = no λ right-v≡right-u → ¬v≡u (inv-rightU v u right-v≡right-u) 
+... | yes v≡u = yes (cong RightU v≡u )
+_⊢_≟_ (l + r ` loc) (RightU v)    (LeftU u)   = no λ ()
+_⊢_≟_ (r * ε∉r ` loc) (ListU [])  (ListU [])  = yes refl
+_⊢_≟_ (r * ε∉r ` loc) (ListU (x ∷ xs)) (ListU (y ∷ ys)) with r ⊢ x ≟ y | (r * ε∉r ` loc) ⊢ ListU xs ≟ ListU ys
+... | no ¬x≡y   | _                   = no λ list-x∷xs≡list-y∷ys → ¬x≡y (proj₁ (inv-listU x xs y ys list-x∷xs≡list-y∷ys ))
+... | _         | no ¬list-xs≡list-ys = no λ list-x∷xs≡list-y∷ys → ¬list-xs≡list-ys (cong ListU (proj₂ (inv-listU x xs y ys list-x∷xs≡list-y∷ys )))
+... | yes x≡y   | yes list-xs≡list-ys = yes (Eq.cong₂ (λ z zs → ListU (z ∷ zs)) x≡y (inv-listU1 xs ys list-xs≡list-ys))
+_⊢_≟_ (r * ε∉r ` loc) (ListU (x ∷ xs)) (ListU []) = no λ () 
+_⊢_≟_ (r * ε∉r ` loc) (ListU []) (ListU (y ∷ ys))  = no λ () 
 
 
 
-
+-- this can be moved to ParseTree 
 ¬|list-u∷us|≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
      → ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ []
 ¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us} |list-u∷us|≡[] =  ([]∈⟦r⟧→¬ε∉r []∈⟦r⟧ ) ε∉r

@@ -2022,8 +2022,9 @@ postulate
      → ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ []
 ¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us} |list-u∷us|≡[] = {!!}
   where
-    |u|≡[] : proj₁ ( flat {r} u ) ≡ []
-    |u|≡[] =  |list-u∷us|≡[] 
+    |u|++|list-us|≡[] : proj₁ ( flat {r} u ) ++ proj₁ (flat {r * ε∉r ` loc} (ListU us))  ≡ []
+    |u|++|list-us|≡[] = |list-u∷us|≡[] --  |list-u∷us|≡[]
+    
   
 
 

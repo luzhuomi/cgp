@@ -13,6 +13,11 @@ open Utils using ( ∷-inj )
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap )
 
+import Data.List.Properties
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ;
+  length-++ 
+  )
+
 
 import Data.Char as Char
 open Char using (Char)
@@ -587,4 +592,50 @@ r-∃u (l + r ` loc) = ( LeftU v , parseTreeOf )
     v : U l 
     v = proj₁ (r-∃u l) 
 r-∃u (r * ε∉r ` loc) = ( ListU [] , parseTreeOf ) 
+```
+
+
+
+-- decidability of structural equality of parse trees
+```agda
+
+_⊢_≟_ : ∀ ( r : RE ) ( u v : U r ) → Dec ( u ≡ v )
+_⊢_≟_ ε             EmptyU        EmptyU       = yes refl -- Agda.Builtin.Bool.Bool.true Decidable.because Nullary.ofʸ refl
+_⊢_≟_ ($ c ` loc)   (LetterU .c)  (LetterU .c) = yes refl
+_⊢_≟_ (l ● r ` loc) (PairU v₁ v₂) (PairU u₁ u₂) with l ⊢ v₁ ≟ u₁ | r ⊢ v₂ ≟ u₂
+... | no ¬v₁≡u₁ | _ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₁≡u₁ (proj₁ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
+... | _         | no ¬v₂≡u₂ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₂≡u₂ (proj₂ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
+... | yes v₁≡u₁ | yes v₂≡u₂ = yes (Eq.cong₂ (λ x y → PairU {l} {r} {loc} x y)  v₁≡u₁  v₂≡u₂)
+_⊢_≟_ (l + r ` loc) (LeftU v)     (LeftU u)     with l ⊢ v ≟ u
+... | no ¬v≡u = no λ left-v≡left-u → ¬v≡u (inv-leftU v u left-v≡left-u) 
+... | yes v≡u = yes (cong LeftU v≡u )
+_⊢_≟_ (l + r ` loc) (LeftU v)     (RightU u)   = no λ () 
+_⊢_≟_ (l + r ` loc) (RightU v)    (RightU u)    with r ⊢ v ≟ u
+... | no ¬v≡u = no λ right-v≡right-u → ¬v≡u (inv-rightU v u right-v≡right-u) 
+... | yes v≡u = yes (cong RightU v≡u )
+_⊢_≟_ (l + r ` loc) (RightU v)    (LeftU u)   = no λ ()
+_⊢_≟_ (r * ε∉r ` loc) (ListU [])  (ListU [])  = yes refl
+_⊢_≟_ (r * ε∉r ` loc) (ListU (x ∷ xs)) (ListU (y ∷ ys)) with r ⊢ x ≟ y | (r * ε∉r ` loc) ⊢ ListU xs ≟ ListU ys
+... | no ¬x≡y   | _                   = no λ list-x∷xs≡list-y∷ys → ¬x≡y (proj₁ (inv-listU x xs y ys list-x∷xs≡list-y∷ys ))
+... | _         | no ¬list-xs≡list-ys = no λ list-x∷xs≡list-y∷ys → ¬list-xs≡list-ys (cong ListU (proj₂ (inv-listU x xs y ys list-x∷xs≡list-y∷ys )))
+... | yes x≡y   | yes list-xs≡list-ys = yes (Eq.cong₂ (λ z zs → ListU (z ∷ zs)) x≡y (inv-listU1 xs ys list-xs≡list-ys))
+_⊢_≟_ (r * ε∉r ` loc) (ListU (x ∷ xs)) (ListU []) = no λ () 
+_⊢_≟_ (r * ε∉r ` loc) (ListU []) (ListU (y ∷ ys))  = no λ () 
+
+```
+
+flattening non empty list should not be empty.
+
+```agda
+¬|list-u∷us|≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
+     → ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ []
+¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us} |list-u∷us|≡[] =  ([]∈⟦r⟧→¬ε∉r []∈⟦r⟧ ) ε∉r
+  where
+    |u|≡[] :  proj₁ ( flat {r} u ) ≡ []
+    |u|≡[] = ++-conicalˡ (proj₁ ( flat {r} u )) (proj₁ (flat {r * ε∉r ` loc} (ListU us))) |list-u∷us|≡[]  
+    []∈⟦r⟧ : [] ∈⟦ r ⟧ 
+    []∈⟦r⟧  rewrite (sym |u|≡[]) = proj₂ ( flat {r} u )
+  
+
+
 ```

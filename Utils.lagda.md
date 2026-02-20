@@ -2,16 +2,20 @@
 module cgp.Utils where
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap ; _∷ʳ_)
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (∷-injective ; ++-identityʳ ; unfold-reverse ; ∷ʳ-++ )
+open Data.List.Properties using (∷-injective ; ++-identityʳ ; unfold-reverse ; ∷ʳ-++  )
 
 import Data.Char as Char
 open Char using (Char)
 
 import Data.Nat as Nat
 open Nat using (ℕ ; _>_ ; zero ; suc ) 
+
+import Data.Nat.Properties as NatProperties
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective )
+
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
@@ -183,6 +187,70 @@ inv-concatMap-map-f-[] {A} {B} {C}  {xs}  {[]} {f} concatMap-map-f-[]-xs≡[] = 
 
 xs-all-∈xs : { A : Set } → ( xs : List A ) → All ( _∈ xs) xs 
 xs-all-∈xs xs = tabulate  (λ p → p)  
+
+
+```
+
+```agda
+
+w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ : ∀ { w₁ w₂ w₃ w₄ : List Char }
+    → w₁ ++ w₂ ≡ w₃ ++ w₄
+    → length w₁ ≡ length w₃
+    ---------------------------------------------------------------- 
+    → (w₁ ≡ w₃) × (w₂ ≡ w₄) 
+w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {[]}        {xs₂} {[]}       {xs₄} xs₂≡xs₄               len-[]≡len-[]         = refl , xs₂≡xs₄
+w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {x₁ ∷ xs₁ } {xs₂} {x₃ ∷ xs₃} {xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ len-x₁∷xs₁≡len-x₃∷xs₃ =  Eq.cong₂ (_∷_) x₁≡x₃ (proj₁ ind-hyp) , proj₂ ind-hyp
+  where
+    x₁≡x₃ : x₁ ≡ x₃
+    x₁≡x₃ = proj₁ (∷-inj x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ ) 
+
+    xs₁++xs₂≡xs₃++xs₄ : xs₁ ++ xs₂ ≡ xs₃ ++ xs₄
+    xs₁++xs₂≡xs₃++xs₄  = proj₂ (∷-inj  {x₁} {x₃} {xs₁ ++ xs₂} {xs₃ ++ xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄)
+
+    len-xs₁≡len-xs₃ : length xs₁ ≡ length xs₃
+    len-xs₁≡len-xs₃ = suc-injective len-x₁∷xs₁≡len-x₃∷xs₃ 
+
+
+    ind-hyp : xs₁ ≡ xs₃ × xs₂ ≡ xs₄
+    ind-hyp = w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {xs₁} {xs₂} {xs₃} {xs₄} xs₁++xs₂≡xs₃++xs₄ len-xs₁≡len-xs₃  
+    
+
+  
+
+  
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ : ∀ {w₁ w₂ w₃ w₄ : List Char}
+  → w₁ ++ w₂ ≡ w₃ ++ w₄
+  → length w₁ Nat.< length w₃
+  ---------------------------------------------------------------- 
+  → ∃[ w₅ ] (¬ w₅ ≡ []) × (w₁ ++ w₅ ≡ w₃) × (w₂ ≡ w₅ ++ w₄)
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {[]}        {xs₂}    {[]}       {xs₄} []++xs₂≡[]++xs₄         len-[]<len-[]         = Nullary.contradiction len-[]<len-[] (NatProperties.n≮n 0 )
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {[]}        {xs₂}    {x₃ ∷ xs₃} {xs₄} []++xs₂≡x₃∷xs₃++xs₄     len-[]<len-x₃∷xs₃     = (x₃ ∷ xs₃) , (λ()) , refl , []++xs₂≡x₃∷xs₃++xs₄  
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {x₁ ∷ xs₁}  {xs₂}    {x₃ ∷ xs₃} {xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ len-x₁∷xs₁<len-x₃∷xs₃ =
+  proj₁ ind-hyp ,  proj₁ (proj₂ ind-hyp) , Eq.cong₂ (_∷_) x₁≡x₃  (proj₁ (proj₂ (proj₂ ind-hyp)))  , (proj₂ (proj₂ (proj₂ ind-hyp)))  
+  where
+    x₁≡x₃ : x₁ ≡ x₃
+    x₁≡x₃ = proj₁ (∷-inj x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ ) 
+    xs₁++xs₂≡xs₃++xs₄ : xs₁ ++ xs₂ ≡ xs₃ ++ xs₄
+    xs₁++xs₂≡xs₃++xs₄  = proj₂ (∷-inj  {x₁} {x₃} {xs₁ ++ xs₂} {xs₃ ++ xs₄}  x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄)
+    len-xs₁<len-xs₃ : length xs₁ Nat.< length xs₃
+    len-xs₁<len-xs₃ = Nat.s<s⁻¹ len-x₁∷xs₁<len-x₃∷xs₃ 
+    ind-hyp :  ∃[ w₅ ] (¬ w₅ ≡ []) × (xs₁ ++ w₅ ≡ xs₃) × (xs₂ ≡ w₅ ++ xs₄)
+    ind-hyp = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {xs₁} {xs₂} {xs₃} {xs₄} xs₁++xs₂≡xs₃++xs₄ len-xs₁<len-xs₃ 
+
+
+
+-- this can be moved to Utils
+import Relation.Binary.Definitions
+open  Relation.Binary.Definitions using (
+  Tri ; tri< ; tri≈ ; tri> ) 
+¬m>n→n≡m⊎n>m : ∀ { n m : ℕ }
+    → ¬ (m > n)
+    → (n ≡ m) ⊎ (n > m)
+¬m>n→n≡m⊎n>m {n} {m} ¬m>n with (Nat.<-cmp m n)
+... | tri< m<n _    _    = inj₂ m<n          
+... | tri≈ _  m≡n  _     = inj₁ (sym m≡n)   
+... | tri> _   _    m>n  = Nullary.contradiction m>n ¬m>n
+
 
 
 ```

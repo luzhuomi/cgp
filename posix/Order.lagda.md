@@ -7,7 +7,11 @@ open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_
 
 
 import cgp.Utils as Utils
-open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  ;
+  w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ ;
+  w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ ;
+  ¬m>n→n≡m⊎n>m 
+  {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
 
 
 import cgp.Word as Word
@@ -18,7 +22,8 @@ import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LetterU ;
   LeftU ; RightU ; PairU ; ListU ; flat ; unflat ;
   unflat∘proj₂∘flat ; flat∘unflat ;
-  inv-listU ; inv-listU1 ; inv-pairU ; inv-leftU ; inv-rightU ) 
+  inv-listU ; inv-listU1 ; inv-pairU ; inv-leftU ; inv-rightU ;
+  _⊢_≟_  ; ¬|list-u∷us|≡[] ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ;
@@ -65,8 +70,6 @@ open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ;
   length-++ 
-
-  
   -- ; length-++-sucʳ -- this is only available after v2.3
   )
 
@@ -587,11 +590,11 @@ Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
 >ⁱ→¬≡ {$ c ` loc}     {LetterU _} {LetterU _} = λ()
 
 >ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
->ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs)) 
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (inv-listU u us v vs list-u∷us≡list-v∷vs)) 
   where
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
->ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs))
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (inv-listU u us v vs list-u∷us≡list-v∷vs))
   where
     ¬list-us≡list-vs : ¬ (ListU us) ≡ (ListU vs)
     ¬list-us≡list-vs = >→¬≡ {r * ε∉r ` loc} {ListU us} {ListU vs} list-us>list-vs
@@ -601,21 +604,21 @@ Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
       where
         list-us≡list-vs : (ListU {r} {ε∉r} {loc} us) ≡ (ListU {r} {ε∉r} {loc} vs)
         list-us≡list-vs rewrite (cong (λ x → ListU {r} {ε∉r} {loc} x) us≡vs ) = refl 
->ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+>ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
   where
     ¬u₁≡v₁ : ¬ u₁ ≡ v₁
     ¬u₁≡v₁ = >→¬≡ {l} {u₁} {v₁} u₁>v₁
->ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+>ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
   where
     ¬u₂≡v₂ : ¬ u₂ ≡ v₂
     ¬u₂≡v₂ = >→¬≡ {r} {u₂} {v₂} u₂>v₂
 >ⁱ→¬≡ {l + r ` loc} {LeftU u} {RightU v} _  = λ ()
 >ⁱ→¬≡ {l + r ` loc} {RightU u} {LeftU v} _  = λ ()
->ⁱ→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v)  = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
+>ⁱ→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v)  = λ left-u≡left-v →  ¬u≡v (inv-leftU u v left-u≡left-v)
   where 
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {l} {u} {v} u>v
->ⁱ→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v)  = λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
+>ⁱ→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v)  = λ right-u≡right-v →  ¬u≡v (inv-rightU u v right-u≡right-v)
   where 
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
@@ -1945,11 +1948,11 @@ pdUMany-*>-inc {r} {w} = pdUMany-aux-*>-inc w  [  ( pdinstance* {r} {r} {[]} (λ
 
 
 
-Lemma : a posix value is the largest value in posix ordering
+Lemma : a posix parse tree must be flattened to the indexed word. 
 
 
 ```agda
--- postulate
+
 ⇒-member : ∀ { r : RE } { v : U r } { w : List Char} 
     → w , r ⇒ v
     → proj₁ (flat {r} v) ≡ w
@@ -1975,107 +1978,11 @@ Lemma : a posix value is the largest value in posix ordering
     prf : proj₁ (flat {r * ε∉r ` loc} (ListU (x ∷ xs))) ≡ w
     prf rewrite  ind-hyp-x |  ind-hyp-list-xs = sym w≡w₁++w₂
 
--- this can be moved to Utils
-w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ : ∀ { w₁ w₂ w₃ w₄ : List Char }
-    → w₁ ++ w₂ ≡ w₃ ++ w₄
-    → length w₁ ≡ length w₃
-    ---------------------------------------------------------------- 
-    → (w₁ ≡ w₃) × (w₂ ≡ w₄) 
-w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {[]}        {xs₂} {[]}       {xs₄} xs₂≡xs₄               len-[]≡len-[]         = refl , xs₂≡xs₄
-w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {x₁ ∷ xs₁ } {xs₂} {x₃ ∷ xs₃} {xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ len-x₁∷xs₁≡len-x₃∷xs₃ =  Eq.cong₂ (_∷_) x₁≡x₃ (proj₁ ind-hyp) , proj₂ ind-hyp
-  where
-    x₁≡x₃ : x₁ ≡ x₃
-    x₁≡x₃ = proj₁ (∷-inj x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ ) 
+```
 
-    xs₁++xs₂≡xs₃++xs₄ : xs₁ ++ xs₂ ≡ xs₃ ++ xs₄
-    xs₁++xs₂≡xs₃++xs₄  = proj₂ (∷-inj  {x₁} {x₃} {xs₁ ++ xs₂} {xs₃ ++ xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄)
+Lemma : a posix parse tree is the max value in posix ordering > 
 
-    len-xs₁≡len-xs₃ : length xs₁ ≡ length xs₃
-    len-xs₁≡len-xs₃ = suc-injective len-x₁∷xs₁≡len-x₃∷xs₃ 
-
-
-    ind-hyp : xs₁ ≡ xs₃ × xs₂ ≡ xs₄
-    ind-hyp = w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {xs₁} {xs₂} {xs₃} {xs₄} xs₁++xs₂≡xs₃++xs₄ len-xs₁≡len-xs₃  
-    
-
-  
-
-  
--- this can be moved to Utils 
-w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ : ∀ {w₁ w₂ w₃ w₄ : List Char}
-  → w₁ ++ w₂ ≡ w₃ ++ w₄
-  → length w₁ Nat.< length w₃
-  ---------------------------------------------------------------- 
-  → ∃[ w₅ ] (¬ w₅ ≡ []) × (w₁ ++ w₅ ≡ w₃) × (w₂ ≡ w₅ ++ w₄)
-w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {[]}        {xs₂}    {[]}       {xs₄} []++xs₂≡[]++xs₄         len-[]<len-[]         = Nullary.contradiction len-[]<len-[] (NatProperties.n≮n 0 )
-w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {[]}        {xs₂}    {x₃ ∷ xs₃} {xs₄} []++xs₂≡x₃∷xs₃++xs₄     len-[]<len-x₃∷xs₃     = (x₃ ∷ xs₃) , (λ()) , refl , []++xs₂≡x₃∷xs₃++xs₄  
-w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {x₁ ∷ xs₁}  {xs₂}    {x₃ ∷ xs₃} {xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ len-x₁∷xs₁<len-x₃∷xs₃ =
-  proj₁ ind-hyp ,  proj₁ (proj₂ ind-hyp) , Eq.cong₂ (_∷_) x₁≡x₃  (proj₁ (proj₂ (proj₂ ind-hyp)))  , (proj₂ (proj₂ (proj₂ ind-hyp)))  
-  where
-    x₁≡x₃ : x₁ ≡ x₃
-    x₁≡x₃ = proj₁ (∷-inj x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ ) 
-    xs₁++xs₂≡xs₃++xs₄ : xs₁ ++ xs₂ ≡ xs₃ ++ xs₄
-    xs₁++xs₂≡xs₃++xs₄  = proj₂ (∷-inj  {x₁} {x₃} {xs₁ ++ xs₂} {xs₃ ++ xs₄}  x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄)
-    len-xs₁<len-xs₃ : length xs₁ Nat.< length xs₃
-    len-xs₁<len-xs₃ = Nat.s<s⁻¹ len-x₁∷xs₁<len-x₃∷xs₃ 
-    ind-hyp :  ∃[ w₅ ] (¬ w₅ ≡ []) × (xs₁ ++ w₅ ≡ xs₃) × (xs₂ ≡ w₅ ++ xs₄)
-    ind-hyp = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {xs₁} {xs₂} {xs₃} {xs₄} xs₁++xs₂≡xs₃++xs₄ len-xs₁<len-xs₃ 
-
-
-
--- this can be moved to Utils
-import Relation.Binary.Definitions
-open  Relation.Binary.Definitions using (
-  Tri ; tri< ; tri≈ ; tri> ) 
-¬m>n→n≡m⊎n>m : ∀ { n m : ℕ }
-    → ¬ (m > n)
-    → (n ≡ m) ⊎ (n > m)
-¬m>n→n≡m⊎n>m {n} {m} ¬m>n with (Nat.<-cmp m n)
-... | tri< m<n _    _    = inj₂ m<n          
-... | tri≈ _  m≡n  _     = inj₁ (sym m≡n)   
-... | tri> _   _    m>n  = Nullary.contradiction m>n ¬m>n
-
-
-
--- this can be moved to ParseTree 
-_⊢_≟_ : ∀ ( r : RE ) ( u v : U r ) → Dec ( u ≡ v )
-_⊢_≟_ ε             EmptyU        EmptyU       = yes refl -- Agda.Builtin.Bool.Bool.true Decidable.because Nullary.ofʸ refl
-_⊢_≟_ ($ c ` loc)   (LetterU .c)  (LetterU .c) = yes refl
-_⊢_≟_ (l ● r ` loc) (PairU v₁ v₂) (PairU u₁ u₂) with l ⊢ v₁ ≟ u₁ | r ⊢ v₂ ≟ u₂
-... | no ¬v₁≡u₁ | _ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₁≡u₁ (proj₁ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
-... | _         | no ¬v₂≡u₂ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₂≡u₂ (proj₂ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
-... | yes v₁≡u₁ | yes v₂≡u₂ = yes (Eq.cong₂ (λ x y → PairU {l} {r} {loc} x y)  v₁≡u₁  v₂≡u₂)
-_⊢_≟_ (l + r ` loc) (LeftU v)     (LeftU u)     with l ⊢ v ≟ u
-... | no ¬v≡u = no λ left-v≡left-u → ¬v≡u (inv-leftU v u left-v≡left-u) 
-... | yes v≡u = yes (cong LeftU v≡u )
-_⊢_≟_ (l + r ` loc) (LeftU v)     (RightU u)   = no λ () 
-_⊢_≟_ (l + r ` loc) (RightU v)    (RightU u)    with r ⊢ v ≟ u
-... | no ¬v≡u = no λ right-v≡right-u → ¬v≡u (inv-rightU v u right-v≡right-u) 
-... | yes v≡u = yes (cong RightU v≡u )
-_⊢_≟_ (l + r ` loc) (RightU v)    (LeftU u)   = no λ ()
-_⊢_≟_ (r * ε∉r ` loc) (ListU [])  (ListU [])  = yes refl
-_⊢_≟_ (r * ε∉r ` loc) (ListU (x ∷ xs)) (ListU (y ∷ ys)) with r ⊢ x ≟ y | (r * ε∉r ` loc) ⊢ ListU xs ≟ ListU ys
-... | no ¬x≡y   | _                   = no λ list-x∷xs≡list-y∷ys → ¬x≡y (proj₁ (inv-listU x xs y ys list-x∷xs≡list-y∷ys ))
-... | _         | no ¬list-xs≡list-ys = no λ list-x∷xs≡list-y∷ys → ¬list-xs≡list-ys (cong ListU (proj₂ (inv-listU x xs y ys list-x∷xs≡list-y∷ys )))
-... | yes x≡y   | yes list-xs≡list-ys = yes (Eq.cong₂ (λ z zs → ListU (z ∷ zs)) x≡y (inv-listU1 xs ys list-xs≡list-ys))
-_⊢_≟_ (r * ε∉r ` loc) (ListU (x ∷ xs)) (ListU []) = no λ () 
-_⊢_≟_ (r * ε∉r ` loc) (ListU []) (ListU (y ∷ ys))  = no λ () 
-
-
-
--- this can be moved to ParseTree 
-¬|list-u∷us|≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
-     → ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ []
-¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us} |list-u∷us|≡[] =  ([]∈⟦r⟧→¬ε∉r []∈⟦r⟧ ) ε∉r
-  where
-    |u|≡[] :  proj₁ ( flat {r} u ) ≡ []
-    |u|≡[] = ++-conicalˡ (proj₁ ( flat {r} u )) (proj₁ (flat {r * ε∉r ` loc} (ListU us))) |list-u∷us|≡[]  
-    []∈⟦r⟧ : [] ∈⟦ r ⟧ 
-    []∈⟦r⟧  rewrite (sym |u|≡[]) = proj₂ ( flat {r} u )
-  
-
-
-
+```agda
 
 ⇒→>-max : ∀ { r : RE } { v : U r } { w : List Char} 
     → w , r ⇒ v

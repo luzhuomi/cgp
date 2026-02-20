@@ -7,7 +7,7 @@ open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_
 
 
 import cgp.Utils as Utils
-open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
 
 
 import cgp.Word as Word
@@ -51,7 +51,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_ )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl)
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -62,6 +62,7 @@ open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ;
   length-++ 
+
   
   -- ; length-++-sucʳ -- this is only available after v2.3
   )
@@ -1951,21 +1952,52 @@ postulate
     → proj₁ (flat {r} v) ≡ w
 
 
-postulate
-  w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ : ∀ { A : Set } { w₁ w₂ w₃ w₄ : List A }
-    → w₁ ++ w₂ ≡ w₃ ++ w₄
-    → length w₁ Nat.< length w₃
-    ---------------------------------------------------------------- 
-    →  ∃[ w₅ ] ( ¬ w₅ ≡ [] ) × ( w₁ ++ w₅ ≡ w₃ ) × ( w₂ ≡ w₅ ++ w₄ )
 
-
-  w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ : ∀ { A : Set } { w₁ w₂ w₃ w₄ : List A }
+w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ : ∀ { w₁ w₂ w₃ w₄ : List Char }
     → w₁ ++ w₂ ≡ w₃ ++ w₄
     → length w₁ ≡ length w₃
     ---------------------------------------------------------------- 
     → (w₁ ≡ w₃) × (w₂ ≡ w₄) 
+w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {[]}        {xs₂} {[]}       {xs₄} xs₂≡xs₄               len-[]≡len-[]         = refl , xs₂≡xs₄
+w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {x₁ ∷ xs₁ } {xs₂} {x₃ ∷ xs₃} {xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ len-x₁∷xs₁≡len-x₃∷xs₃ =  Eq.cong₂ (_∷_) x₁≡x₃ (proj₁ ind-hyp) , proj₂ ind-hyp
+  where
+    x₁≡x₃ : x₁ ≡ x₃
+    x₁≡x₃ = proj₁ (∷-inj x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ ) 
+
+    xs₁++xs₂≡xs₃++xs₄ : xs₁ ++ xs₂ ≡ xs₃ ++ xs₄
+    xs₁++xs₂≡xs₃++xs₄  = proj₂ (∷-inj  {x₁} {x₃} {xs₁ ++ xs₂} {xs₃ ++ xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄)
+
+    len-xs₁≡len-xs₃ : length xs₁ ≡ length xs₃
+    len-xs₁≡len-xs₃ = suc-injective len-x₁∷xs₁≡len-x₃∷xs₃ 
+
+
+    ind-hyp : xs₁ ≡ xs₃ × xs₂ ≡ xs₄
+    ind-hyp = w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {xs₁} {xs₂} {xs₃} {xs₄} xs₁++xs₂≡xs₃++xs₄ len-xs₁≡len-xs₃  
+    
 
   
+
+  
+
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ : ∀ {w₁ w₂ w₃ w₄ : List Char}
+  → w₁ ++ w₂ ≡ w₃ ++ w₄
+  → length w₁ Nat.< length w₃
+  ---------------------------------------------------------------- 
+  → ∃[ w₅ ] (¬ w₅ ≡ []) × (w₁ ++ w₅ ≡ w₃) × (w₂ ≡ w₅ ++ w₄)
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {[]}        {xs₂}    {[]}       {xs₄} []++xs₂≡[]++xs₄         len-[]<len-[]         = Nullary.contradiction len-[]<len-[] (NatProperties.n≮n 0 )
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {[]}        {xs₂}    {x₃ ∷ xs₃} {xs₄} []++xs₂≡x₃∷xs₃++xs₄     len-[]<len-x₃∷xs₃     = (x₃ ∷ xs₃) , (λ()) , refl , []++xs₂≡x₃∷xs₃++xs₄  
+w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {x₁ ∷ xs₁}  {xs₂}    {x₃ ∷ xs₃} {xs₄} x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ len-x₁∷xs₁<len-x₃∷xs₃ =
+  proj₁ ind-hyp ,  proj₁ (proj₂ ind-hyp) , Eq.cong₂ (_∷_) x₁≡x₃  (proj₁ (proj₂ (proj₂ ind-hyp)))  , (proj₂ (proj₂ (proj₂ ind-hyp)))  
+  where
+    x₁≡x₃ : x₁ ≡ x₃
+    x₁≡x₃ = proj₁ (∷-inj x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄ ) 
+    xs₁++xs₂≡xs₃++xs₄ : xs₁ ++ xs₂ ≡ xs₃ ++ xs₄
+    xs₁++xs₂≡xs₃++xs₄  = proj₂ (∷-inj  {x₁} {x₃} {xs₁ ++ xs₂} {xs₃ ++ xs₄}  x₁∷xs₁++xs₂≡x₃∷xs₃++xs₄)
+    len-xs₁<len-xs₃ : length xs₁ Nat.< length xs₃
+    len-xs₁<len-xs₃ = Nat.s<s⁻¹ len-x₁∷xs₁<len-x₃∷xs₃ 
+    ind-hyp :  ∃[ w₅ ] (¬ w₅ ≡ []) × (xs₁ ++ w₅ ≡ xs₃) × (xs₂ ≡ w₅ ++ xs₄)
+    ind-hyp = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {xs₁} {xs₂} {xs₃} {xs₄} xs₁++xs₂≡xs₃++xs₄ len-xs₁<len-xs₃ 
+
 
 
 -- this can be moved to Utils
@@ -1985,9 +2017,13 @@ open  Relation.Binary.Definitions using (
 postulate
   _⊢_≟_ : ∀ ( r : RE ) ( u v : U (r ) ) → Dec ( u ≡ v )
 
-  ¬|list-u∷us|≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
+
+¬|list-u∷us|≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
      → ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ []
-     
+¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us} |list-u∷us|≡[] = {!!}
+  where
+    |u|≡[] : proj₁ ( flat {r} u ) ≡ []
+    |u|≡[] =  |list-u∷us|≡[] 
   
 
 
@@ -2060,7 +2096,7 @@ postulate
           anti-longest-ev-part1 : ∃[ w₅ ] ( ¬ w₅ ≡ [] ) ×
                                           ( (proj₁ (flat {r} v)) ++ w₅ ≡ (proj₁ (flat {r} u)) ) ×
                                           ( (proj₁ (flat {r * ε∉r ` loc} (ListU vs))) ≡ w₅ ++ (proj₁ (flat {r * ε∉r ` loc} (ListU us)))) 
-          anti-longest-ev-part1 rewrite sym (⇒-member w₂,r*→list-vs)  = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {Char} {proj₁ (flat {r} v)} {proj₁ (flat {r * ε∉r ` loc} (ListU vs))} {proj₁ (flat {r} u)} {proj₁ (flat {r * ε∉r ` loc} (ListU us))}  |list-v∷vs|≡|list-u∷us|   len|v|<len|u|
+          anti-longest-ev-part1 rewrite sym (⇒-member w₂,r*→list-vs)  = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {proj₁ (flat {r} v)} {proj₁ (flat {r * ε∉r ` loc} (ListU vs))} {proj₁ (flat {r} u)} {proj₁ (flat {r * ε∉r ` loc} (ListU us))}  |list-v∷vs|≡|list-u∷us|   len|v|<len|u|
           anti-longest-ev : ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) ×
                                             ( w₃ ++ w₄ ≡ proj₁ (flat {r * ε∉r ` loc} (ListU vs)) ) ×
                                             ( ( (proj₁ (flat {r} v)) ++ w₃ ) ∈⟦ r ⟧ ) ×
@@ -2099,7 +2135,7 @@ postulate
           anti-longest-ev-part1 : ∃[ w₅ ] ( ¬ w₅ ≡ [] ) ×
                                           ( (proj₁ (flat {l} v₁)) ++ w₅ ≡ (proj₁ (flat {l} u₁)) ) ×
                                           ( (proj₁ (flat {r} v₂)) ≡ w₅ ++ (proj₁ (flat {r} u₂))) 
-          anti-longest-ev-part1 rewrite sym (⇒-member w₂,r→v₂)  = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ {Char} {proj₁ (flat {l} v₁)} {proj₁ (flat {r} v₂)} {proj₁ (flat {l} u₁)} {proj₁ (flat {r} u₂)} |pair-v₁v₂|≡|pair-u₁u₂|   len|v₁|<len|u₁|
+          anti-longest-ev-part1 rewrite sym (⇒-member w₂,r→v₂)  = w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄  {proj₁ (flat {l} v₁)} {proj₁ (flat {r} v₂)} {proj₁ (flat {l} u₁)} {proj₁ (flat {r} u₂)} |pair-v₁v₂|≡|pair-u₁u₂|   len|v₁|<len|u₁|
           anti-longest-ev : ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) ×
                                             ( w₃ ++ w₄ ≡ proj₁ (flat {r} v₂) ) ×
                                             ( ( (proj₁ (flat {l} v₁)) ++ w₃ ) ∈⟦ l ⟧ ) ×

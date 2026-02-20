@@ -15,7 +15,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; inv-listU1 ) 
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; inv-listU1 ; inv-pairU ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ;
@@ -2014,17 +2014,27 @@ open  Relation.Binary.Definitions using (
 
 
 
-postulate
-  _⊢_≟_ : ∀ ( r : RE ) ( u v : U (r ) ) → Dec ( u ≡ v )
+-- postulate
+
+_⊢_≟_ : ∀ ( r : RE ) ( u v : U r ) → Dec ( u ≡ v )
+_⊢_≟_ ε             EmptyU        EmptyU       = yes refl -- Agda.Builtin.Bool.Bool.true Decidable.because Nullary.ofʸ refl
+_⊢_≟_ ($ c ` loc)   (LetterU .c)  (LetterU .c) = yes refl
+_⊢_≟_ (l ● r ` loc) (PairU v₁ v₂) (PairU u₁ u₂) with l ⊢ v₁ ≟ u₁ | r ⊢ v₂ ≟ u₂
+... | no ¬v₁≡u₁ | _ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₁≡u₁ (proj₁ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
+... | _         | no ¬v₂≡u₂ = no  λ pair-v₁v₂≡pair-u₁u₂ → ¬v₂≡u₂ (proj₂ (inv-pairU v₁ v₂ u₁ u₂ pair-v₁v₂≡pair-u₁u₂))
+... | yes v₁≡u₁ | yes v₂≡u₂ = yes (Eq.cong₂ (λ x y → PairU {l} {r} {loc} x y)  v₁≡u₁  v₂≡u₂)
+
+
 
 
 ¬|list-u∷us|≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
      → ¬ (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ []
-¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us} |list-u∷us|≡[] = {!!}
+¬|list-u∷us|≡[] {r} {ε∉r} {loc} {u} {us} |list-u∷us|≡[] =  ([]∈⟦r⟧→¬ε∉r []∈⟦r⟧ ) ε∉r
   where
-    |u|++|list-us|≡[] : proj₁ ( flat {r} u ) ++ proj₁ (flat {r * ε∉r ` loc} (ListU us))  ≡ []
-    |u|++|list-us|≡[] = |list-u∷us|≡[] --  |list-u∷us|≡[]
-    
+    |u|≡[] :  proj₁ ( flat {r} u ) ≡ []
+    |u|≡[] = ++-conicalˡ (proj₁ ( flat {r} u )) (proj₁ (flat {r * ε∉r ` loc} (ListU us))) |list-u∷us|≡[]  
+    []∈⟦r⟧ : [] ∈⟦ r ⟧ 
+    []∈⟦r⟧  rewrite (sym |u|≡[]) = proj₂ ( flat {r} u )
   
 
 

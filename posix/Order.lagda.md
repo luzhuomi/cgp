@@ -2182,7 +2182,7 @@ postulate
   where
     ∀u₁→v₁>u₁ : ( u₁ : U l ) → l ⊢ v₁ > u₁
     ∀u₁→v₁>u₁ u₁ with max-ev (PairU u₁ v₂)
-    ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂ =  {!!} 
+    ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂| =  len-> {!!} 
     |v₁|,l→v₁ :  proj₁ (flat {l} v₁) , l ⇒ v₁
     |v₁|,l→v₁ =  >-max→⇒  {l} {v₁} ∀u₁→v₁>u₁ 
 

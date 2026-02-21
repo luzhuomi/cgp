@@ -5,7 +5,7 @@ import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (∷-injective ; ++-identityʳ ; unfold-reverse ; ∷ʳ-++  )
+open Data.List.Properties using (∷-injective ; ++-identityʳ ; unfold-reverse ; ∷ʳ-++ ; ++-assoc )
 
 import Data.Char as Char
 open Char using (Char)
@@ -215,6 +215,21 @@ w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {x₁ ∷ 
     ind-hyp = w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {xs₁} {xs₂} {xs₃} {xs₄} xs₁++xs₂≡xs₃++xs₄ len-xs₁≡len-xs₃  
     
 
+
+
+len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ : ∀ { w₁ w₂ w₃ : List Char }
+    → length ( w₁ ++ w₃ ) Nat.> length (w₂ ++ w₃)
+    ---------------------------------------------------------------- 
+    → length w₁ > length w₂
+len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {[]} len-w₁>len-w₂ rewrite ++-identityʳ w₁ | ++-identityʳ w₂  = len-w₁>len-w₂
+len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {x ∷ []} len-w₁++x>len-w₂++x = {!!} 
+len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {x ∷ xs} len-w₁++x∷xs>len-w₂++x∷xs = {!!}
+  where
+    len-w₁++[x]++xs>len-w₂++[x]++xs : length ( ( w₁ ++ [ x ] ) ++ xs ) Nat.>  length ( ( w₂ ++ [ x ] ) ++ xs ) 
+    len-w₁++[x]++xs>len-w₂++[x]++xs rewrite sym (++-assoc w₁ [ x ] xs ) | sym ( ++-assoc w₂ [ x ] xs ) = len-w₁++x∷xs>len-w₂++x∷xs
+    len-w₁++[x]>len-w₂++[x] : length ( w₁ ++ [ x ] ) > length ( w₂ ++ [ x ] )
+    len-w₁++[x]>len-w₂++[x] = len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁ ++ [ x ] } {w₂ ++ [ x ] } {xs}  len-w₁++[x]++xs>len-w₂++[x]++xs
+    
   
 
   

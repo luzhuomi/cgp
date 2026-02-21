@@ -2142,6 +2142,14 @@ postulate
 >→¬< {r} {v} {u} v>u u>v = (>→¬≡ v>u) (>-anti-sym v>u u>v)
 
 
+postulate 
+  foo : ∀ { n m l : ℕ }
+    → n + l > m + l
+    ----------------
+    → n > m 
+  
+
+
 >-max→⇒ :  ∀ { r : RE } { v : U r } 
   → ( ∀ ( u : U r ) → r ⊢ v > u )
   -----------------------------------
@@ -2182,7 +2190,19 @@ postulate
   where
     ∀u₁→v₁>u₁ : ( u₁ : U l ) → l ⊢ v₁ > u₁
     ∀u₁→v₁>u₁ u₁ with max-ev (PairU u₁ v₂)
-    ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂| =  len-> {!!} 
+    ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂| =  len-> len|v₁|>len|u₁|
+      where
+        |pair-v₁v₂|≡|v₁|++|v₂| : proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ (proj₁ (flat v₁)) ++ (proj₁ (flat v₂))
+        |pair-v₁v₂|≡|v₁|++|v₂| = refl 
+        len|pair-v₁v₂|≡len|v₁|+len|v₂| : length (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))) ≡ length (proj₁ (flat v₁)) + length (proj₁ (flat v₂))
+        len|pair-v₁v₂|≡len|v₁|+len|v₂| rewrite |pair-v₁v₂|≡|v₁|++|v₂| = {!!} 
+        len|v₁|>len|u₁| : length (proj₁ (flat v₁)) > length (proj₁ (flat u₁))
+        len|v₁|>len|u₁| = {!!} 
+      {-
+        len|pair-v₁v₂|>len|pair-u₁v₂|
+        len(|v₁|++|v₂|)>len(|u₁|++|v₂|)
+        len(|v₁|) + len(|v₂|) > len(|u₁|) + len(|v₂|)
+      -}
     |v₁|,l→v₁ :  proj₁ (flat {l} v₁) , l ⇒ v₁
     |v₁|,l→v₁ =  >-max→⇒  {l} {v₁} ∀u₁→v₁>u₁ 
 

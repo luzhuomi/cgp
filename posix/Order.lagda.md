@@ -2125,7 +2125,21 @@ Lemma : the max value in the posix ordering > must be a posix parse tree.
 postulate
   intersect-memberʳ : ∀ { l r : RE } { v : U r } 
     → proj₁ (flat {r} v) ∈⟦ l ⟧
-    → ∃[ u ] proj₁ (flat {l} u) ∈⟦ l ⟧ 
+    → ∃[ u ] ( proj₁ (flat {l} u) ∈⟦ l ⟧ )  × (proj₁ (flat {r} v) ≡  proj₁ (flat {l} u)  )
+
+
+  >-anti-sym : ∀ { r : RE } { v u : U r }
+    → r ⊢ v > u
+    → r ⊢ u > v
+    ------------
+    → v ≡ u
+
+
+>→¬< : ∀ { r : RE } { v u : U r }
+  → r ⊢ v > u
+  -------------
+  → ¬ r ⊢ u > v
+>→¬< {r} {v} {u} v>u u>v = (>→¬≡ v>u) (>-anti-sym v>u u>v)
 
 
 >-max→⇒ :  ∀ { r : RE } { v : U r } 
@@ -2155,8 +2169,26 @@ postulate
     
     ¬|v|∈⟦l⟧ : ¬ proj₁ (flat {r} v) ∈⟦ l ⟧
     ¬|v|∈⟦l⟧ |v|∈⟦l⟧ with intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧
-    ... |  u , proj₁flat-u∈⟦l⟧  = {!!} 
+    ... |  u , |u|∈⟦l⟧ , |v|≡|u| = >→¬< ( max-ev (LeftU {l} {r} {loc} u) ) left-u>right-v 
+      where
+        len|v|≡len|u| : length (proj₁ (flat {r} v)) ≡ length (proj₁ (flat {l} u))
+        len|v|≡len|u| rewrite |v|≡|u| = refl 
+        len|right-v|≡len|left-u| : length (proj₁ (flat {l + r ` loc} (RightU v))) ≡ length (proj₁ (flat {l + r ` loc} (LeftU u)))
+        len|right-v|≡len|left-u| rewrite |v|≡|u| = refl 
+        left-u>right-v : l + r ` loc ⊢ LeftU {l} {r} {loc} u > RightU {l} {r} {loc} v
+        left-u>right-v = len-≡ ( sym len|right-v|≡len|left-u|) (choice-lr (≤-reflexive (len|right-v|≡len|left-u|)) )
 
+>-max→⇒ {l ● r ` loc} {PairU v₁ v₂} max-ev  = ps {proj₁ (flat v₁)} {proj₁ (flat v₂)} {(proj₁ (flat v₁)) ++ (proj₁ (flat v₂))} {l} {r} {loc} {v₁} {v₂} refl |v₁|,l→v₁ |v₂|,r→v₂ {!!}
+  where
+    ∀u₁→v₁>u₁ : ( u₁ : U l ) → l ⊢ v₁ > u₁
+    ∀u₁→v₁>u₁ u₁ with max-ev (PairU u₁ v₂)
+    ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂ =  {!!} 
+    |v₁|,l→v₁ :  proj₁ (flat {l} v₁) , l ⇒ v₁
+    |v₁|,l→v₁ =  >-max→⇒  {l} {v₁} ∀u₁→v₁>u₁ 
 
+    ∀u₂→v₂>u₂ : ( u₂ : U r ) → r ⊢ v₂ > u₂
+    ∀u₂→v₂>u₂ =  {!!} 
+    |v₂|,r→v₂ :  proj₁ (flat {r} v₂) , r ⇒ v₂
+    |v₂|,r→v₂ =  >-max→⇒  {r} {v₂} ∀u₂→v₂>u₂
 
 ```

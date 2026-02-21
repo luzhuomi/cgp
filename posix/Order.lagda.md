@@ -2230,6 +2230,15 @@ postulate
                       ( w₃ ++ w₄ ≡ proj₁ (flat v₂)) ×
                       ((proj₁ (flat {l} v₁) ++ w₃) ∈⟦ l ⟧) ×
                       (w₄ ∈⟦ r ⟧))
-    longest-ev ( w₃ , w₄ , ¬w₃≡[] , w₃++w₄≡|v₂| , |v₁|++w₃∈⟦l⟧ , w₄∈⟦r⟧) = {!!} 
+    longest-ev ( w₃ , w₄ , ¬w₃≡[] , w₃++w₄≡|v₂| , |v₁|++w₃∈⟦l⟧ , w₄∈⟦r⟧) = {!!} -- how to create a contradiction ?
+    {-
+       w₃++w₄≡|v₂| hence |v₁| ++ w₃ ++ w₄ ≡ |v₁| ++ |v₂|
+       find u₁ u₂ such that |u₁| ≡ |v₁| ++ w₃ , since |v₁|++w₃∈⟦l⟧ ;
+            |u₂| ≡ w₄.
+            Hence 
+       apply max-ev (PairU u₁ u₂)  (|u₁| ++ |u₂| ≡ |v₁| ++ |v₂|)
+       we have (PairU v₁ v₂) > (PairU u₁ u₂)
+       However, we can also show that (PairU u₁ u₂) > (PairU v₁ v₂) via seq₁ (len-> len-|u₁|>len-|v₁|) 
+    -} 
 
 ```

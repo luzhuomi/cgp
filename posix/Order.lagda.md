@@ -60,7 +60,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_ )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-<  )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -2143,16 +2143,13 @@ postulate
 >→¬< {r} {v} {u} v>u u>v = (>→¬≡ v>u) (>-anti-sym v>u u>v)
 
 
-postulate 
-  foo : ∀ { n m l : ℕ }
-    → n + l > m + l
-    ----------------
-    → n > m 
   
 
 
 >-max→⇒ :  ∀ { r : RE } { v : U r } 
-  → ( ∀ ( u : U r ) → r ⊢ v > u )
+  → ( ∀ ( u : U r )
+      → proj₁ ( flat {r} v ) ≡ proj₁ (flat {r} u )
+      →  r ⊢ v > u )
   -----------------------------------
   → proj₁ (flat {r} v) , r ⇒ v
 
@@ -2160,25 +2157,33 @@ postulate
 >-max→⇒ {$ c ` loc}   {LetterU .c}  max-ev = pc
 >-max→⇒ {l + r ` loc} {LeftU v}     max-ev = p+l |v|,l→v
   where
-    ∀u→v>u : ( u : U l ) → l ⊢ v > u
-    ∀u→v>u u with max-ev (LeftU u)
-    ... | len-> len|left-v|>len|left-u|                 = len-> len|left-v|>len|left-u|
-    ... | len-≡ len|left-v|≡len|left-u| (choice-ll v>u) = v>u 
+    ∀u→|v|≡|u|→v>u : ( u : U l ) → proj₁ (flat {l} v) ≡ proj₁ (flat {l} u)  → l ⊢ v > u
+    ∀u→|v|≡|u|→v>u u |v|≡|u| with max-ev (LeftU u) |v|≡|u|
+    ... | len-≡ len|left-v|≡len|left-u| (choice-ll v>u) = v>u
+    ... | len-> len|left-v|>len|left-u|                 = Nullary.contradiction len|left-v|>len|left-u|  (<-irrefl (sym len|left-v|≣len|left-u|))
+        where
+          len|left-v|≣len|left-u| : length (proj₁ (flat {l} v)) ≡ length (proj₁ (flat {l} u))
+          len|left-v|≣len|left-u| rewrite  |v|≡|u| = refl 
     |v|,l→v : proj₁ (flat {l} v) , l ⇒ v
-    |v|,l→v = >-max→⇒  {l} {v} ∀u→v>u
+    |v|,l→v = >-max→⇒  {l} {v} ∀u→|v|≡|u|→v>u
+
 >-max→⇒ {l + r ` loc} {RightU v}     max-ev = p+r |v|,r→v ¬|v|∈⟦l⟧ 
   where
-    ∀u→v>u : ( u : U r ) → r ⊢ v > u
-    ∀u→v>u u with max-ev (RightU u)
-    ... | len-> len|right-v|>len|right-u|                 = len-> len|right-v|>len|right-u|
-    ... | len-≡ len|right-v|≡len|right-u| (choice-rr v>u) = v>u 
+    ∀u→|v|≡|u|→v>u : ( u : U r ) →  proj₁ (flat {r} v) ≡ proj₁ (flat {r} u)  → r ⊢ v > u
+    ∀u→|v|≡|u|→v>u u |v|≡|u| with max-ev (RightU u) |v|≡|u|
+    ... | len-≡ len|right-v|≡len|right-u| (choice-rr v>u) = v>u
+    ... | len-> len|right-v|>len|right-u|                 =  Nullary.contradiction len|right-v|>len|right-u|  (<-irrefl (sym len|right-v|≣len|right-u|)) 
+        where
+          len|right-v|≣len|right-u| : length (proj₁ (flat {r} v)) ≡ length (proj₁ (flat {r} u))
+          len|right-v|≣len|right-u| rewrite  |v|≡|u| = refl 
+    
   
     |v|,r→v : proj₁ (flat {r} v) , r ⇒ v
-    |v|,r→v = >-max→⇒  {r} {v} ∀u→v>u
+    |v|,r→v = >-max→⇒  {r} {v} ∀u→|v|≡|u|→v>u 
     
     ¬|v|∈⟦l⟧ : ¬ proj₁ (flat {r} v) ∈⟦ l ⟧
     ¬|v|∈⟦l⟧ |v|∈⟦l⟧ with intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧
-    ... |  u , |u|∈⟦l⟧ , |v|≡|u| = >→¬< ( max-ev (LeftU {l} {r} {loc} u) ) left-u>right-v 
+    ... |  u , |u|∈⟦l⟧ , |v|≡|u| = >→¬< ( max-ev (LeftU {l} {r} {loc} u) |v|≡|u| ) left-u>right-v 
       where
         len|v|≡len|u| : length (proj₁ (flat {r} v)) ≡ length (proj₁ (flat {l} u))
         len|v|≡len|u| rewrite |v|≡|u| = refl 
@@ -2187,10 +2192,10 @@ postulate
         left-u>right-v : l + r ` loc ⊢ LeftU {l} {r} {loc} u > RightU {l} {r} {loc} v
         left-u>right-v = len-≡ ( sym len|right-v|≡len|left-u|) (choice-lr (≤-reflexive (len|right-v|≡len|left-u|)) )
 
->-max→⇒ {l ● r ` loc} {PairU v₁ v₂} max-ev  = ps {proj₁ (flat v₁)} {proj₁ (flat v₂)} {(proj₁ (flat v₁)) ++ (proj₁ (flat v₂))} {l} {r} {loc} {v₁} {v₂} refl |v₁|,l→v₁ |v₂|,r→v₂ {!!}
+>-max→⇒ {l ● r ` loc} {PairU v₁ v₂} max-ev  = ps {proj₁ (flat v₁)} {proj₁ (flat v₂)} {(proj₁ (flat v₁)) ++ (proj₁ (flat v₂))} {l} {r} {loc} {v₁} {v₂} refl |v₁|,l→v₁ |v₂|,r→v₂ longest-ev
   where
-    ∀u₁→v₁>u₁ : ( u₁ : U l ) → l ⊢ v₁ > u₁
-    ∀u₁→v₁>u₁ u₁ with max-ev (PairU u₁ v₂)
+    ∀u₁→|v₁|≡|u₁|→v₁>u₁ : ( u₁ : U l ) → proj₁ (flat {l} v₁) ≡ proj₁ (flat {l} u₁)  → l ⊢ v₁ > u₁
+    ∀u₁→|v₁|≡|u₁|→v₁>u₁ u₁ |v₁|≡|u₁| with max-ev (PairU u₁ v₂) (cong (λ x → x ++ (proj₁ (flat {r} v₂) )) |v₁|≡|u₁|)
     ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂| =  len-> len|v₁|>len|u₁|
       where
         len|v₁|>len|u₁| : length (proj₁ (flat v₁)) > length (proj₁ (flat u₁))
@@ -2199,16 +2204,32 @@ postulate
     ... | len-≡ len|pair-v₁v₂|≡len|pair-u₁v₂| (seq₁ v₁>u₁)  = v₁>u₁
     
     |v₁|,l→v₁ :  proj₁ (flat {l} v₁) , l ⇒ v₁
-    |v₁|,l→v₁ =  >-max→⇒  {l} {v₁} ∀u₁→v₁>u₁ 
+    |v₁|,l→v₁ =  >-max→⇒  {l} {v₁} ∀u₁→|v₁|≡|u₁|→v₁>u₁ 
 
-    ∀u₂→v₂>u₂ : ( u₂ : U r ) → r ⊢ v₂ > u₂
-    ∀u₂→v₂>u₂ u₂ with max-ev (PairU v₁ u₂)
-    ... | len-> len|pair-v₁v₂|>len|pair-v₁u₂| = len-> len|v₂|>len|u₂|
-      where 
+    ∀u₂→|v₂|≡|u₂|→v₂>u₂ : ( u₂ : U r ) → proj₁ (flat {r} v₂) ≡ proj₁ (flat {r} u₂) → r ⊢ v₂ > u₂
+    ∀u₂→|v₂|≡|u₂|→v₂>u₂ u₂ |v₂|≡|u₂|  with max-ev (PairU v₁ u₂) (cong (λ x → (proj₁ (flat {l} v₁) ++ x ) ) |v₂|≡|u₂| ) 
+    ... | len-> len|pair-v₁v₂|>len|pair-v₁u₂| = Nullary.contradiction len|v₂|>len|u₂| (<-irrefl (sym (cong length  |v₂|≡|u₂| )))
+      where
+
+        len|pair-v₁u₂|≡len|v₁|+len|u₂| :  length (proj₁ (flat {l ● r ` loc} (PairU v₁ u₂))) ≡ length (proj₁ (flat {l} v₁)) + length (proj₁ (flat {r} u₂))
+        len|pair-v₁u₂|≡len|v₁|+len|u₂| =  length-++ (proj₁ (flat {l} v₁)) 
+
+        len|pair-v₁v₂|≡len|v₁|+len|v₂| :  length (proj₁ (flat {l ● r ` loc} (PairU v₁ v₂))) ≡ length (proj₁ (flat {l} v₁)) + length (proj₁ (flat {r} v₂))
+        len|pair-v₁v₂|≡len|v₁|+len|v₂| =  length-++ (proj₁ (flat {l} v₁)) 
+
+
         len|v₂|>len|u₂| : length (proj₁ (flat v₂)) > length (proj₁ (flat u₂))
-        len|v₂|>len|u₂| = {!!} 
+        len|v₂|>len|u₂| rewrite len|pair-v₁v₂|≡len|v₁|+len|v₂| | len|pair-v₁u₂|≡len|v₁|+len|u₂|  = +-cancelˡ-< (length (proj₁ (flat {l} v₁)))  (length (proj₁ (flat {r} u₂)))  (length (proj₁ (flat {r} v₂))) len|pair-v₁v₂|>len|pair-v₁u₂| 
+    ... | len-≡ len|pair-v₁v₂|≡len|pair-v₁u₂| (seq₂ refl v₂>u₂)  = v₂>u₂ 
+    ... | len-≡ len|pair-v₁v₂|≡len|pair-v₁u₂| (seq₁ v₁>v₁) =  Nullary.contradiction refl (>→¬≡ v₁>v₁ )
 
     |v₂|,r→v₂ :  proj₁ (flat {r} v₂) , r ⇒ v₂
-    |v₂|,r→v₂ =  >-max→⇒  {r} {v₂} ∀u₂→v₂>u₂
+    |v₂|,r→v₂ =  >-max→⇒  {r} {v₂} ∀u₂→|v₂|≡|u₂|→v₂>u₂
+
+    longest-ev :  ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) ×
+                      ( w₃ ++ w₄ ≡ proj₁ (flat v₂)) ×
+                      ((proj₁ (flat {l} v₁) ++ w₃) ∈⟦ l ⟧) ×
+                      (w₄ ∈⟦ r ⟧))
+    longest-ev ( w₃ , w₄ , ¬w₃≡[] , w₃++w₄≡|v₂| , |v₁|++w₃∈⟦l⟧ , w₄∈⟦r⟧) = {!!} 
 
 ```

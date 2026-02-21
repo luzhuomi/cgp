@@ -216,14 +216,29 @@ w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ {x₁ ∷ 
     
 
 
+len-w++[x]≡len-w+1 : ∀ { w : List Char } { x : Char } 
+    → length (w ++ [ x ]) ≡ suc (length w)
+len-w++[x]≡len-w+1 {[]} {x} = refl  
+len-w++[x]≡len-w+1 { y ∷ ys } {x} =
+  begin
+    length ( ( y ∷ ys ) ++ [ x ])
+  ≡⟨⟩
+    length ( y ∷ ( ys  ++ [ x ]) )
+  ≡⟨⟩
+    suc ( length ( ys  ++ [ x ]) )
+  ≡⟨ cong suc (len-w++[x]≡len-w+1 {ys} {x})⟩
+    suc ( suc ( length ys ) )
+  ≡⟨⟩
+    suc (length ( y ∷ ys ) )
+  ∎ 
 
 len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ : ∀ { w₁ w₂ w₃ : List Char }
     → length ( w₁ ++ w₃ ) Nat.> length (w₂ ++ w₃)
     ---------------------------------------------------------------- 
     → length w₁ > length w₂
 len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {[]} len-w₁>len-w₂ rewrite ++-identityʳ w₁ | ++-identityʳ w₂  = len-w₁>len-w₂
-len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {x ∷ []} len-w₁++x>len-w₂++x = {!!} 
-len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {x ∷ xs} len-w₁++x∷xs>len-w₂++x∷xs = {!!}
+len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {x ∷ []} len-w₁++x>len-w₂++x rewrite  len-w++[x]≡len-w+1 {w₁} {x} |  len-w++[x]≡len-w+1 {w₂} {x} = Nat.s<s⁻¹  len-w₁++x>len-w₂++x 
+len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {x ∷ xs} len-w₁++x∷xs>len-w₂++x∷xs = len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ {w₁} {w₂} {x ∷ []} len-w₁++[x]>len-w₂++[x]
   where
     len-w₁++[x]++xs>len-w₂++[x]++xs : length ( ( w₁ ++ [ x ] ) ++ xs ) Nat.>  length ( ( w₂ ++ [ x ] ) ++ xs ) 
     len-w₁++[x]++xs>len-w₂++[x]++xs rewrite sym (++-assoc w₁ [ x ] xs ) | sym ( ++-assoc w₂ [ x ] xs ) = len-w₁++x∷xs>len-w₂++x∷xs

@@ -10,7 +10,8 @@ import cgp.Utils as Utils
 open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  ;
   w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ ;
   w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ ;
-  ¬m>n→n≡m⊎n>m 
+  ¬m>n→n≡m⊎n>m ;
+  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂
   {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
 
 
@@ -2192,22 +2193,21 @@ postulate
     ∀u₁→v₁>u₁ u₁ with max-ev (PairU u₁ v₂)
     ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂| =  len-> len|v₁|>len|u₁|
       where
-        |pair-v₁v₂|≡|v₁|++|v₂| : proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ (proj₁ (flat v₁)) ++ (proj₁ (flat v₂))
-        |pair-v₁v₂|≡|v₁|++|v₂| = refl 
-        len|pair-v₁v₂|≡len|v₁|+len|v₂| : length (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))) ≡ length (proj₁ (flat v₁)) + length (proj₁ (flat v₂))
-        len|pair-v₁v₂|≡len|v₁|+len|v₂| rewrite |pair-v₁v₂|≡|v₁|++|v₂| = {!!} 
         len|v₁|>len|u₁| : length (proj₁ (flat v₁)) > length (proj₁ (flat u₁))
-        len|v₁|>len|u₁| = {!!} 
-      {-
-        len|pair-v₁v₂|>len|pair-u₁v₂|
-        len(|v₁|++|v₂|)>len(|u₁|++|v₂|)
-        len(|v₁|) + len(|v₂|) > len(|u₁|) + len(|v₂|)
-      -}
+        len|v₁|>len|u₁| = len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ { (proj₁ (flat v₁)) } { (proj₁ (flat u₁)) } {  (proj₁ (flat v₂))}  len|pair-v₁v₂|>len|pair-u₁v₂|
+    ... | len-≡ len|pair-v₁v₂|≡len|pair-u₁v₂| (seq₂ v₁≡u₁ v₂>v₂ )  = Nullary.contradiction refl (>→¬≡ v₂>v₂ )
+    ... | len-≡ len|pair-v₁v₂|≡len|pair-u₁v₂| (seq₁ v₁>u₁)  = v₁>u₁
+    
     |v₁|,l→v₁ :  proj₁ (flat {l} v₁) , l ⇒ v₁
     |v₁|,l→v₁ =  >-max→⇒  {l} {v₁} ∀u₁→v₁>u₁ 
 
     ∀u₂→v₂>u₂ : ( u₂ : U r ) → r ⊢ v₂ > u₂
-    ∀u₂→v₂>u₂ =  {!!} 
+    ∀u₂→v₂>u₂ u₂ with max-ev (PairU v₁ u₂)
+    ... | len-> len|pair-v₁v₂|>len|pair-v₁u₂| = len-> len|v₂|>len|u₂|
+      where 
+        len|v₂|>len|u₂| : length (proj₁ (flat v₂)) > length (proj₁ (flat u₂))
+        len|v₂|>len|u₂| = {!!} 
+
     |v₂|,r→v₂ :  proj₁ (flat {r} v₂) , r ⇒ v₂
     |v₂|,r→v₂ =  >-max→⇒  {r} {v₂} ∀u₂→v₂>u₂
 

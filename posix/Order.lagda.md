@@ -57,10 +57,10 @@ import Data.Char as Char
 open Char using (Char )
 
 import Data.Nat as Nat
-open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_ )
+open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-<  )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯  )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -2142,11 +2142,15 @@ intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧ = u , |u|∈⟦l⟧ , sym |u|≡|v|
     → r ⊢ u > v
     ------------
     → v ≡ u
->-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-> []>[])   = Nullary.contradiction []>[] (<-irrefl refl)
+>-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-> 0>0) = Nullary.contradiction 0>0 (<-irrefl refl)
 >-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-≡ refl ())  (len-≡ refl ()) 
->-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-> [c]>[c]) = Nullary.contradiction [c]>[c] (<-irrefl refl)
+>-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-> 1>1) = Nullary.contradiction 1>1 (<-irrefl refl)
 >-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-≡ refl ())  (len-≡ refl ())
->-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} 
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-> len|pair-v₁v₂|>len|pair-u₁u₂|) (len-> len|pair-u₁u₂|>len|pair-v₁v₂|)   = Nullary.contradiction len|pair-v₁v₂|>len|pair-u₁u₂| (<⇒≯ len|pair-u₁u₂|>len|pair-v₁v₂|)
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-> len|pair-v₁v₂|>len|pair-u₁u₂|) (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| _) = Nullary.contradiction len|pair-v₁v₂|>len|pair-u₁u₂| (<-irrefl len|pair-u₁u₂|≡len|pair-v₁v₂|)
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| _) (len-> len|pair-u₁u₂|>len|pair-v₁v₂|) = Nullary.contradiction len|pair-u₁u₂|>len|pair-v₁v₂| (<-irrefl len|pair-v₁v₂|≡len|pair-u₁u₂|)
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| _) (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| _) = ? 
+
 
 >→¬< : ∀ { r : RE } { v u : U r }
   → r ⊢ v > u

@@ -21,7 +21,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LetterU ;
-  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU ; 
+  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU ; listU∘unListU ; 
   unflat∘proj₂∘flat ; flat∘unflat ;
   inv-listU ; inv-listU1 ; inv-pairU ; inv-leftU ; inv-rightU ;
   _⊢_≟_  ; ¬|list-u∷us|≡[] ) 
@@ -2382,10 +2382,15 @@ postulate
           ∎
 
         |list-v∷vs|≡|list-u∷us| : proj₁ (flat (ListU  {r} {ε∉r} {loc} (v ∷ vs))) ≡ proj₁ (flat (ListU  {r} {ε∉r} {loc} (u ∷ (unListU list-us))))
-        |list-v∷vs|≡|list-u∷us| rewrite |v|++|list-vs|≡|u|++|list-us| = {!!} 
+        |list-v∷vs|≡|list-u∷us| rewrite  |v|++|list-vs|≡|u|++|list-us| |  sym (listU∘unListU {r} {ε∉r} {loc} {unflat w₄∈⟦r*⟧})  = refl 
         list-v∷vs>list-u∷us : r * ε∉r ` loc ⊢ ListU  {r} {ε∉r} {loc} ( v ∷ vs) > ListU  {r} {ε∉r} {loc} (u ∷ (unListU list-us))
         list-v∷vs>list-u∷us = max-ev (ListU (u ∷ (unListU list-us)) ) |list-v∷vs|≡|list-u∷us|
 
         list-u∷us>list-v∷vs : r * ε∉r ` loc ⊢ ListU  {r} {ε∉r} {loc} ( u ∷ (unListU list-us)) > ListU  {r} {ε∉r} {loc} (v ∷ vs)
-        list-u∷us>list-v∷vs = {!!} 
+        list-u∷us>list-v∷vs = len-≡ (sym len-|list-v∷vs|≡len-|list-u∷us|) (star-head (len-> len-|u|>len-|v|) )
+          where
+            len-|list-v∷vs|≡len-|list-u∷us| : length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (v ∷ vs)))) ≡ length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (u ∷ (unListU list-us)))))
+            len-|list-v∷vs|≡len-|list-u∷us| rewrite (sym |list-v∷vs|≡|list-u∷us|)   = refl 
+            len-|u|>len-|v| :  length (proj₁ (flat u)) > length (proj₁ (flat v))
+            len-|u|>len-|v| rewrite |u|≡|v|++w₃ = ++-¬[]→> {Char} {proj₁ (flat v)} {w₃}  ¬w₃≡[]           
 ```

@@ -70,7 +70,7 @@ open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ 
 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ;
-  length-++ 
+  length-++ ; ++-assoc 
   -- ; length-++-sucʳ -- this is only available after v2.3
   )
 
@@ -2143,6 +2143,17 @@ postulate
 >→¬< {r} {v} {u} v>u u>v = (>→¬≡ v>u) (>-anti-sym v>u u>v)
 
 
+-- this can be moved to Utils
+++-¬[]→> : ∀ { A : Set } { xs ys : List A }
+  → ¬ ys ≡ []
+  → length (xs ++ ys) > length xs
+++-¬[]→> {A} {xs} {[]}     ¬ys≡[]  = Nullary.contradiction refl ¬ys≡[]   
+++-¬[]→> {A} {[]} {y ∷ ys} ¬yys≡[] = Nat.s≤s Nat.z≤n
+++-¬[]→> {A} {x ∷ xs } {y ∷ ys} ¬yys≡[] = Nat.s≤s ind-hyp
+  where
+    ind-hyp : length (xs ++ (y ∷ ys)) > length xs
+    ind-hyp = ++-¬[]→> {A} {xs} {y ∷ ys} ¬yys≡[]
+
   
 
 
@@ -2230,8 +2241,10 @@ postulate
                       ( w₃ ++ w₄ ≡ proj₁ (flat v₂)) ×
                       ((proj₁ (flat {l} v₁) ++ w₃) ∈⟦ l ⟧) ×
                       (w₄ ∈⟦ r ⟧))
-    longest-ev ( w₃ , w₄ , ¬w₃≡[] , w₃++w₄≡|v₂| , |v₁|++w₃∈⟦l⟧ , w₄∈⟦r⟧) = {!!} -- how to create a contradiction ?
-    {-
+    longest-ev ( w₃ , w₄ , ¬w₃≡[] , w₃++w₄≡|v₂| , |v₁|++w₃∈⟦l⟧ , w₄∈⟦r⟧) = (>→¬<  pair-v₁v₂>pair-u₁u₂) pair-u₁u₂>pair-v₁v₂ 
+
+      {-
+      the gist of the contradiction 
        w₃++w₄≡|v₂| hence |v₁| ++ w₃ ++ w₄ ≡ |v₁| ++ |v₂|
        find u₁ u₂ such that |u₁| ≡ |v₁| ++ w₃ , since |v₁|++w₃∈⟦l⟧ ;
             |u₂| ≡ w₄.
@@ -2239,6 +2252,40 @@ postulate
        apply max-ev (PairU u₁ u₂)  (|u₁| ++ |u₂| ≡ |v₁| ++ |v₂|)
        we have (PairU v₁ v₂) > (PairU u₁ u₂)
        However, we can also show that (PairU u₁ u₂) > (PairU v₁ v₂) via seq₁ (len-> len-|u₁|>len-|v₁|) 
-    -} 
+      -} 
+      where
+        u₁ : U l
+        u₁ = unflat |v₁|++w₃∈⟦l⟧
+        u₂ : U r
+        u₂ = unflat w₄∈⟦r⟧
+        |u₂|≡w₄ : proj₁ (flat {r} u₂) ≡ w₄
+        |u₂|≡w₄ rewrite flat∘unflat {r} {w₄} w₄∈⟦r⟧ = refl
+        |u₁|≡|v₁|++w₃ : proj₁ (flat {l} u₁) ≡ (proj₁ (flat {l} v₁)) ++ w₃
+        |u₁|≡|v₁|++w₃ rewrite flat∘unflat {l} {(proj₁ (flat {l} v₁)) ++ w₃}  |v₁|++w₃∈⟦l⟧ = refl 
+        |v₁|++|v₂|≡|u₁|++|u₂| : (proj₁ (flat v₁)) ++ (proj₁ (flat v₂)) ≡ (proj₁ (flat u₁)) ++ (proj₁ (flat u₂))
+        |v₁|++|v₂|≡|u₁|++|u₂| =
+          begin
+            (proj₁ (flat v₁)) ++ (proj₁ (flat v₂))
+          ≡⟨ cong ((proj₁ (flat v₁)) ++_ ) (sym w₃++w₄≡|v₂| ) ⟩
+            (proj₁ (flat v₁)) ++ (w₃ ++ w₄)
+          ≡⟨ sym (++-assoc (proj₁ (flat v₁)) w₃ w₄)  ⟩
+            ((proj₁ (flat v₁)) ++ w₃ ) ++ w₄
+          ≡⟨ cong ( _++ w₄ ) (sym |u₁|≡|v₁|++w₃)  ⟩ 
+            (proj₁ (flat u₁)) ++ w₄ 
+          ≡⟨ cong ((proj₁ (flat u₁)) ++_ ) (sym |u₂|≡w₄) ⟩ 
+            (proj₁ (flat u₁)) ++ (proj₁ (flat u₂))
+          ∎ 
+        pair-v₁v₂>pair-u₁u₂ : l ● r ` loc ⊢ PairU v₁ v₂ > PairU u₁ u₂
+        pair-v₁v₂>pair-u₁u₂ = max-ev (PairU u₁ u₂) |v₁|++|v₂|≡|u₁|++|u₂|
+
+        pair-u₁u₂>pair-v₁v₂ : l ● r ` loc ⊢ PairU u₁ u₂ > PairU v₁ v₂
+        pair-u₁u₂>pair-v₁v₂ = len-≡  len-|pair-u₁u₂|≡len-|pair-v₁v₂| (seq₁ (len-> len-|u₁|>len-|v₁| ))
+          where
+            len-|pair-u₁u₂|≡len-|pair-v₁v₂| : length (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))) ≡ length (proj₁ (flat (PairU {l} {r} {loc}  v₁ v₂)))
+            len-|pair-u₁u₂|≡len-|pair-v₁v₂| rewrite (sym |v₁|++|v₂|≡|u₁|++|u₂|) = refl
+            len-|u₁|>len-|v₁| : length (proj₁ (flat u₁)) > length (proj₁ (flat v₁))
+            len-|u₁|>len-|v₁| rewrite |u₁|≡|v₁|++w₃ = ++-¬[]→> {Char} {proj₁ (flat v₁)} {w₃} ¬w₃≡[]
+
+
 
 ```

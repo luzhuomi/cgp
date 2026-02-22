@@ -596,6 +596,8 @@ r-∃u (r * ε∉r ` loc) = ( ListU [] , parseTreeOf )
 
 
 
+
+
 -- decidability of structural equality of parse trees
 ```agda
 

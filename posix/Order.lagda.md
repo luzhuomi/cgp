@@ -21,7 +21,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LetterU ;
-  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ;
+  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU ; 
   unflat∘proj₂∘flat ; flat∘unflat ;
   inv-listU ; inv-listU1 ; inv-pairU ; inv-leftU ; inv-rightU ;
   _⊢_≟_  ; ¬|list-u∷us|≡[] ) 
@@ -356,7 +356,7 @@ data _,_⇒_ : ∀ ( w : List Char ) → ( r : RE ) → U r → Set where
     -----------------s-------------------------------------------
     → w , l ● r ` loc ⇒ PairU v₁ v₂
     
-  p[] : ∀ { r : RE } {ε∉r : ε∉ r } { loc : ℕ }
+  p[] : ∀ { r : RE } {ε∉r : ε∉ r } { loc : ℕ } -- why we need this case if ε∉r ? because w.r.t to empty word [], ListU [] is the posix parse tree.
     → [] , r * ε∉r ` loc ⇒ ListU []
     
   p* : ∀ { w₁ w₂ w : List Char } { r : RE } {ε∉r : ε∉ r } { loc : ℕ } {v : U r } { vs : List (U r) }
@@ -2156,7 +2156,7 @@ postulate
 
   
 
-
+{-# TERMINATING #-}
 >-max→⇒ :  ∀ { r : RE } { v : U r } 
   → ( ∀ ( u : U r )
       → proj₁ ( flat {r} v ) ≡ proj₁ (flat {r} u )
@@ -2166,7 +2166,7 @@ postulate
 
 >-max→⇒ {ε}           {EmptyU}      max-ev = p₁
 >-max→⇒ {$ c ` loc}   {LetterU .c}  max-ev = pc
->-max→⇒ {l + r ` loc} {LeftU v}     max-ev = p+l |v|,l→v
+>-max→⇒ {l + r ` loc} {LeftU v}     max-ev = p+l |v|,l⇒v
   where
     ∀u→|v|≡|u|→v>u : ( u : U l ) → proj₁ (flat {l} v) ≡ proj₁ (flat {l} u)  → l ⊢ v > u
     ∀u→|v|≡|u|→v>u u |v|≡|u| with max-ev (LeftU u) |v|≡|u|
@@ -2175,10 +2175,10 @@ postulate
         where
           len|left-v|≣len|left-u| : length (proj₁ (flat {l} v)) ≡ length (proj₁ (flat {l} u))
           len|left-v|≣len|left-u| rewrite  |v|≡|u| = refl 
-    |v|,l→v : proj₁ (flat {l} v) , l ⇒ v
-    |v|,l→v = >-max→⇒  {l} {v} ∀u→|v|≡|u|→v>u
+    |v|,l⇒v : proj₁ (flat {l} v) , l ⇒ v
+    |v|,l⇒v = >-max→⇒  {l} {v} ∀u→|v|≡|u|→v>u
 
->-max→⇒ {l + r ` loc} {RightU v}     max-ev = p+r |v|,r→v ¬|v|∈⟦l⟧ 
+>-max→⇒ {l + r ` loc} {RightU v}     max-ev = p+r |v|,r⇒v ¬|v|∈⟦l⟧ 
   where
     ∀u→|v|≡|u|→v>u : ( u : U r ) →  proj₁ (flat {r} v) ≡ proj₁ (flat {r} u)  → r ⊢ v > u
     ∀u→|v|≡|u|→v>u u |v|≡|u| with max-ev (RightU u) |v|≡|u|
@@ -2189,8 +2189,8 @@ postulate
           len|right-v|≣len|right-u| rewrite  |v|≡|u| = refl 
     
   
-    |v|,r→v : proj₁ (flat {r} v) , r ⇒ v
-    |v|,r→v = >-max→⇒  {r} {v} ∀u→|v|≡|u|→v>u 
+    |v|,r⇒v : proj₁ (flat {r} v) , r ⇒ v
+    |v|,r⇒v = >-max→⇒  {r} {v} ∀u→|v|≡|u|→v>u 
     
     ¬|v|∈⟦l⟧ : ¬ proj₁ (flat {r} v) ∈⟦ l ⟧
     ¬|v|∈⟦l⟧ |v|∈⟦l⟧ with intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧
@@ -2203,19 +2203,23 @@ postulate
         left-u>right-v : l + r ` loc ⊢ LeftU {l} {r} {loc} u > RightU {l} {r} {loc} v
         left-u>right-v = len-≡ ( sym len|right-v|≡len|left-u|) (choice-lr (≤-reflexive (len|right-v|≡len|left-u|)) )
 
->-max→⇒ {l ● r ` loc} {PairU v₁ v₂} max-ev  = ps {proj₁ (flat v₁)} {proj₁ (flat v₂)} {(proj₁ (flat v₁)) ++ (proj₁ (flat v₂))} {l} {r} {loc} {v₁} {v₂} refl |v₁|,l→v₁ |v₂|,r→v₂ longest-ev
+>-max→⇒ {l ● r ` loc} {PairU v₁ v₂} max-ev  = ps {proj₁ (flat v₁)} {proj₁ (flat v₂)} {(proj₁ (flat v₁)) ++ (proj₁ (flat v₂))} {l} {r} {loc} {v₁} {v₂} refl |v₁|,l⇒v₁ |v₂|,r⇒v₂ longest-ev
   where
     ∀u₁→|v₁|≡|u₁|→v₁>u₁ : ( u₁ : U l ) → proj₁ (flat {l} v₁) ≡ proj₁ (flat {l} u₁)  → l ⊢ v₁ > u₁
     ∀u₁→|v₁|≡|u₁|→v₁>u₁ u₁ |v₁|≡|u₁| with max-ev (PairU u₁ v₂) (cong (λ x → x ++ (proj₁ (flat {r} v₂) )) |v₁|≡|u₁|)
-    ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂| =  len-> len|v₁|>len|u₁|
+    ... | len-> len|pair-v₁v₂|>len|pair-u₁v₂| =  Nullary.contradiction  len|v₁|>len|u₁| (<-irrefl (sym len|v₁|≡len|u₁|))
+      -- len->  len|v₁|>len|u₁| -- why this also works? because eventually it leads to contradiciton? 
       where
+        len|v₁|≡len|u₁| : length (proj₁ (flat v₁)) ≡ length (proj₁ (flat u₁))
+        len|v₁|≡len|u₁| rewrite |v₁|≡|u₁| = refl 
         len|v₁|>len|u₁| : length (proj₁ (flat v₁)) > length (proj₁ (flat u₁))
         len|v₁|>len|u₁| = len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ { (proj₁ (flat v₁)) } { (proj₁ (flat u₁)) } {  (proj₁ (flat v₂))}  len|pair-v₁v₂|>len|pair-u₁v₂|
+        
     ... | len-≡ len|pair-v₁v₂|≡len|pair-u₁v₂| (seq₂ v₁≡u₁ v₂>v₂ )  = Nullary.contradiction refl (>→¬≡ v₂>v₂ )
     ... | len-≡ len|pair-v₁v₂|≡len|pair-u₁v₂| (seq₁ v₁>u₁)  = v₁>u₁
     
-    |v₁|,l→v₁ :  proj₁ (flat {l} v₁) , l ⇒ v₁
-    |v₁|,l→v₁ =  >-max→⇒  {l} {v₁} ∀u₁→|v₁|≡|u₁|→v₁>u₁ 
+    |v₁|,l⇒v₁ :  proj₁ (flat {l} v₁) , l ⇒ v₁
+    |v₁|,l⇒v₁ =  >-max→⇒  {l} {v₁} ∀u₁→|v₁|≡|u₁|→v₁>u₁ 
 
     ∀u₂→|v₂|≡|u₂|→v₂>u₂ : ( u₂ : U r ) → proj₁ (flat {r} v₂) ≡ proj₁ (flat {r} u₂) → r ⊢ v₂ > u₂
     ∀u₂→|v₂|≡|u₂|→v₂>u₂ u₂ |v₂|≡|u₂|  with max-ev (PairU v₁ u₂) (cong (λ x → (proj₁ (flat {l} v₁) ++ x ) ) |v₂|≡|u₂| ) 
@@ -2234,8 +2238,8 @@ postulate
     ... | len-≡ len|pair-v₁v₂|≡len|pair-v₁u₂| (seq₂ refl v₂>u₂)  = v₂>u₂ 
     ... | len-≡ len|pair-v₁v₂|≡len|pair-v₁u₂| (seq₁ v₁>v₁) =  Nullary.contradiction refl (>→¬≡ v₁>v₁ )
 
-    |v₂|,r→v₂ :  proj₁ (flat {r} v₂) , r ⇒ v₂
-    |v₂|,r→v₂ =  >-max→⇒  {r} {v₂} ∀u₂→|v₂|≡|u₂|→v₂>u₂
+    |v₂|,r⇒v₂ :  proj₁ (flat {r} v₂) , r ⇒ v₂
+    |v₂|,r⇒v₂ =  >-max→⇒  {r} {v₂} ∀u₂→|v₂|≡|u₂|→v₂>u₂
 
     longest-ev :  ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) ×
                       ( w₃ ++ w₄ ≡ proj₁ (flat v₂)) ×
@@ -2287,5 +2291,101 @@ postulate
             len-|u₁|>len-|v₁| rewrite |u₁|≡|v₁|++w₃ = ++-¬[]→> {Char} {proj₁ (flat v₁)} {w₃} ¬w₃≡[]
 
 
+>-max→⇒ {r * ε∉r ` loc} {ListU []} max-ev = p[]
+{-
+  where
+    ex : ∃[ u ] ( ParseTree.ParseTreeOf r u ) × ¬ ( proj₁ (flat {r} u)) ≡ []
+    ex with ParseTree.r-∃u r
+    ... | u , ParseTree.parseTreeOf .{r} .{u} = u , ( ParseTree.parseTreeOf {r} {u} , ¬|u|≡[])
+      where
+        ¬|u|≡[] : ¬ ( proj₁ (flat {r} u)) ≡ []
+        ¬|u|≡[] |u|≡[] = ([]∈⟦r⟧→¬ε∉r []∈⟦r⟧) ε∉r
+          where
+            []∈⟦r⟧ : [] ∈⟦ r ⟧
+            []∈⟦r⟧ rewrite (sym |u|≡[] ) =  proj₂ (flat {r} u)
+-} 
+    
+>-max→⇒ {r * ε∉r ` loc} {ListU (v ∷ vs)} max-ev =
+  p* {proj₁ (flat v)} {proj₁ (flat (ListU {r} {ε∉r} {loc} vs))} {proj₁ (flat v) ++ proj₁ (flat (ListU {r} {ε∉r} {loc} vs)) } refl |v|,r⇒v |list-vs|,r*⇒list-vs  ¬|v|≡[] longest-ev
+  where
+    ¬|v|≡[] : ¬ proj₁ (flat v) ≡ []
+    ¬|v|≡[] |v|≡[] = ([]∈⟦r⟧→¬ε∉r []∈⟦r⟧) ε∉r 
+      where
+        []∈⟦r⟧ : [] ∈⟦ r ⟧
+        []∈⟦r⟧ rewrite (sym |v|≡[] ) =  proj₂ (flat {r} v)
 
+
+    ∀u→|v|≡|u|→v>u : ( u : U r ) → proj₁ (flat {r} v) ≡ proj₁ (flat {r} u)  → r ⊢ v > u
+    ∀u→|v|≡|u|→v>u u |v|≡|u| with max-ev (ListU (u ∷ vs)) (cong (λ x → x ++ (proj₁ (flat {r * ε∉r ` loc } (ListU vs)))) |v|≡|u|)
+    ... | len-> len|list-v∷vs|>len|list-u∷vs| = Nullary.contradiction len|list-v∷vs|>len|list-u∷vs| (<-irrefl (sym len|list-v∷vs|≡len|list-u∷vs|)) 
+      where
+        |list-v∷vs|≡|list-u∷vs| : (proj₁ (flat (ListU   {r} {ε∉r} {loc}  (v ∷ vs)))) ≡ (proj₁ (flat (ListU  {r} {ε∉r} {loc} (u ∷ vs))))
+        |list-v∷vs|≡|list-u∷vs| rewrite  |v|≡|u| = refl 
+
+        len|list-v∷vs|≡len|list-u∷vs| : length (proj₁ (flat (ListU   {r} {ε∉r} {loc}  (v ∷ vs)))) ≡ length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (u ∷ vs))))
+        len|list-v∷vs|≡len|list-u∷vs| rewrite |list-v∷vs|≡|list-u∷vs|  = refl
+    ... | len-≡ len|list-v∷vs|≡len|list-u∷vs| (star-tail v≡u vs>vs) =  Nullary.contradiction refl (>→¬≡ vs>vs )
+    ... | len-≡ len|list-v∷vs|≡len|list-u∷vs| (star-head v>u) = v>u
+
+    |v|,r⇒v : proj₁ (flat {r} v) , r ⇒ v
+    |v|,r⇒v =  >-max→⇒  {r} {v} ∀u→|v|≡|u|→v>u 
+
+
+    ∀list-us→|list-vs|≡|list-us|→list-vs>list-us : ( list-us : U ( r * ε∉r ` loc ) )
+      → proj₁ (flat {r * ε∉r ` loc} (ListU vs) ) ≡ proj₁ (flat {r * ε∉r ` loc} list-us)
+      → (r * ε∉r ` loc) ⊢ (ListU vs) > list-us
+    ∀list-us→|list-vs|≡|list-us|→list-vs>list-us (ListU us) |list-vs|≡|list-us| with max-ev (ListU (v ∷ us)) (cong (λ x → (proj₁ (flat {r} v)) ++ x ) |list-vs|≡|list-us|)
+    ... | len-> len|list-v∷vs|>len|list-v∷us| = Nullary.contradiction len|list-v∷vs|>len|list-v∷us| (<-irrefl (sym len|list-v∷vs|≡len|list-v∷us|)) 
+      where
+        |list-v∷vs|≡|list-v∷us| : (proj₁ (flat (ListU   {r} {ε∉r} {loc}  (v ∷ vs)))) ≡ (proj₁ (flat (ListU  {r} {ε∉r} {loc} (v ∷ us))))
+        |list-v∷vs|≡|list-v∷us| rewrite  |list-vs|≡|list-us| = refl
+        
+        len|list-v∷vs|≡len|list-v∷us| : length (proj₁ (flat (ListU   {r} {ε∉r} {loc}  (v ∷ vs)))) ≡ length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (v ∷ us))))
+        len|list-v∷vs|≡len|list-v∷us| rewrite  |list-v∷vs|≡|list-v∷us| = refl
+    ... | len-≡ len|list-v∷vs|≡len|list-v∷us| (star-head v>v) = Nullary.contradiction refl (>→¬≡ v>v)
+    ... | len-≡ len|list-v∷vs|≡len|list-v∷us| (star-tail v≡v list-vs>list-us) = list-vs>list-us
+
+
+    |list-vs|,r*⇒list-vs : proj₁ (flat {r * ε∉r ` loc} (ListU vs)) , (r * ε∉r ` loc) ⇒ (ListU {r} {ε∉r} {loc} vs)
+    |list-vs|,r*⇒list-vs =  >-max→⇒  {r * ε∉r ` loc} {ListU vs} ∀list-us→|list-vs|≡|list-us|→list-vs>list-us
+
+    longest-ev : ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) ×
+                     ( w₃ ++ w₄ ≡ proj₁ (flat (ListU  {r} {ε∉r} {loc} vs)) ) ×
+                     ( ((proj₁ (flat {r} v)) ++ w₃) ∈⟦ r ⟧ ) ×
+                     ( w₄ ∈⟦  r * ε∉r ` loc ⟧ ) )
+    longest-ev ( w₃ , w₄ , ¬w₃≡[] , w₃++w₄≡|list-vs| , |v|++w₃∈⟦r⟧ , w₄∈⟦r*⟧ ) = (>→¬<  list-v∷vs>list-u∷us )  list-u∷us>list-v∷vs
+      where
+        u : U r
+        u = unflat |v|++w₃∈⟦r⟧
+
+        list-us : U ( r * ε∉r ` loc )
+        list-us = unflat  w₄∈⟦r*⟧
+
+        |list-us|≡w₄ : proj₁ (flat {r * ε∉r ` loc} list-us ) ≡ w₄
+        |list-us|≡w₄ rewrite flat∘unflat {r * ε∉r ` loc} {w₄}  w₄∈⟦r*⟧ = refl
+
+        |u|≡|v|++w₃ : proj₁ (flat {r} u) ≡ (proj₁ (flat {r} v)) ++ w₃
+        |u|≡|v|++w₃ rewrite flat∘unflat {r} {(proj₁ (flat {r} v)) ++ w₃}  |v|++w₃∈⟦r⟧ = refl
+
+        |v|++|list-vs|≡|u|++|list-us| : (proj₁ (flat v)) ++ (proj₁ (flat (ListU vs))) ≡ (proj₁ (flat u)) ++ (proj₁ (flat list-us))
+        |v|++|list-vs|≡|u|++|list-us| =
+          begin
+            (proj₁ (flat v)) ++ (proj₁ (flat (ListU vs)))
+          ≡⟨  cong ((proj₁ (flat v)) ++_ ) (sym w₃++w₄≡|list-vs| ) ⟩
+            (proj₁ (flat v)) ++ (w₃ ++ w₄)
+          ≡⟨ sym (++-assoc (proj₁ (flat v)) w₃ w₄)  ⟩
+            ((proj₁ (flat v)) ++ w₃) ++ w₄
+          ≡⟨ cong ( _++ w₄ ) (sym |u|≡|v|++w₃)  ⟩
+            (proj₁ (flat u)) ++ w₄
+          ≡⟨ cong ((proj₁ (flat u)) ++_ ) (sym |list-us|≡w₄) ⟩ 
+            (proj₁ (flat u)) ++ (proj₁ (flat list-us))
+          ∎
+
+        |list-v∷vs|≡|list-u∷us| : proj₁ (flat (ListU  {r} {ε∉r} {loc} (v ∷ vs))) ≡ proj₁ (flat (ListU  {r} {ε∉r} {loc} (u ∷ (unListU list-us))))
+        |list-v∷vs|≡|list-u∷us| rewrite |v|++|list-vs|≡|u|++|list-us| = {!!} 
+        list-v∷vs>list-u∷us : r * ε∉r ` loc ⊢ ListU  {r} {ε∉r} {loc} ( v ∷ vs) > ListU  {r} {ε∉r} {loc} (u ∷ (unListU list-us))
+        list-v∷vs>list-u∷us = max-ev (ListU (u ∷ (unListU list-us)) ) |list-v∷vs|≡|list-u∷us|
+
+        list-u∷us>list-v∷vs : r * ε∉r ` loc ⊢ ListU  {r} {ε∉r} {loc} ( u ∷ (unListU list-us)) > ListU  {r} {ε∉r} {loc} (v ∷ vs)
+        list-u∷us>list-v∷vs = {!!} 
 ```

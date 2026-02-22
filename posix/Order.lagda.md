@@ -2123,18 +2123,30 @@ Lemma : the max value in the posix ordering > must be a posix parse tree.
 
 ```agda
 
-postulate
-  intersect-memberʳ : ∀ { l r : RE } { v : U r } 
+intersect-memberʳ : ∀ { l r : RE } { v : U r } 
     → proj₁ (flat {r} v) ∈⟦ l ⟧
     → ∃[ u ] ( proj₁ (flat {l} u) ∈⟦ l ⟧ )  × (proj₁ (flat {r} v) ≡  proj₁ (flat {l} u)  )
+intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧ = u , |u|∈⟦l⟧ , sym |u|≡|v| 
+  where
+    u : U l
+    u = unflat |v|∈⟦l⟧
+    |u|≡|v| : proj₁ (flat u) ≡ proj₁ (flat v)
+    |u|≡|v| rewrite flat∘unflat {l} |v|∈⟦l⟧ = refl 
+    |u|∈⟦l⟧ : proj₁ (flat u) ∈⟦ l ⟧
+    |u|∈⟦l⟧ rewrite |u|≡|v| = |v|∈⟦l⟧
+  
 
 
-  >-anti-sym : ∀ { r : RE } { v u : U r }
+>-anti-sym : ∀ { r : RE } { v u : U r }
     → r ⊢ v > u
     → r ⊢ u > v
     ------------
     → v ≡ u
-
+>-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-> []>[])   = Nullary.contradiction []>[] (<-irrefl refl)
+>-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-≡ refl ())  (len-≡ refl ()) 
+>-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-> [c]>[c]) = Nullary.contradiction [c]>[c] (<-irrefl refl)
+>-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-≡ refl ())  (len-≡ refl ())
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} 
 
 >→¬< : ∀ { r : RE } { v u : U r }
   → r ⊢ v > u

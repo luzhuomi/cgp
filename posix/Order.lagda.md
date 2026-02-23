@@ -60,7 +60,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯  )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -2142,26 +2142,44 @@ intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧ = u , |u|∈⟦l⟧ , sym |u|≡|v|
     → r ⊢ u > v
     ------------
     → v ≡ u
->-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-> 0>0) = Nullary.contradiction 0>0 (<-irrefl refl)
->-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-≡ refl ())  (len-≡ refl ()) 
->-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-> 1>1) = Nullary.contradiction 1>1 (<-irrefl refl)
->-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-≡ refl ())  (len-≡ refl ())
->-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-> len|pair-v₁v₂|>len|pair-u₁u₂|) (len-> len|pair-u₁u₂|>len|pair-v₁v₂|)   = Nullary.contradiction len|pair-v₁v₂|>len|pair-u₁u₂| (<⇒≯ len|pair-u₁u₂|>len|pair-v₁v₂|)
->-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-> len|pair-v₁v₂|>len|pair-u₁u₂|) (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| _) = Nullary.contradiction len|pair-v₁v₂|>len|pair-u₁u₂| (<-irrefl len|pair-u₁u₂|≡len|pair-v₁v₂|)
->-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| _) (len-> len|pair-u₁u₂|>len|pair-v₁v₂|) = Nullary.contradiction len|pair-u₁u₂|>len|pair-v₁v₂| (<-irrefl len|pair-v₁v₂|≡len|pair-u₁u₂|)
->-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| _) (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| _) = ? 
-
 
 >→¬< : ∀ { r : RE } { v u : U r }
   → r ⊢ v > u
   -------------
   → ¬ r ⊢ u > v
+  
+>-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-> 0>0) = Nullary.contradiction 0>0 (<-irrefl refl)
+>-anti-sym  {ε}           {EmptyU}        {EmptyU}      (len-≡ refl ())  (len-≡ refl ()) 
+>-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-> 1>1) = Nullary.contradiction 1>1 (<-irrefl refl)
+>-anti-sym  {$ c ` loc}   {LetterU .c}    {LetterU .c}  (len-≡ refl ())  (len-≡ refl ())
+>-anti-sym  {r} {v}   {u} (len-> len|v|>len|u|)               (len-> len|u|>len|v|)   = Nullary.contradiction len|v|>len|u| (<⇒≯ len|u|>len|v|)
+>-anti-sym  {r} {v}   {u} (len-> len|v|>len|u|)               (len-≡ len|u|≡len|v| _) = Nullary.contradiction len|v|>len|u| (<-irrefl len|u|≡len|v|)
+>-anti-sym  {r} {v}   {u} (len-≡ len|v|≡len|u| _)             (len-> len|u|>len|v|)   = Nullary.contradiction len|u|>len|v| (<-irrefl len|v|≡len|u|)
+
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₁ v₁>u₁))        (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| (seq₁ u₁>v₁))       = Nullary.contradiction v₁>u₁ (>→¬< u₁>v₁)
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₂ v₁≡u₁ v₂>u₂))  (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| (seq₂ u₁≡v₁ u₂>v₂)) = Nullary.contradiction v₂>u₂ (>→¬< u₂>v₂)
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₂ v₁≡u₁ v₂>u₂))  (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| (seq₁ u₁>v₁))       = Nullary.contradiction (sym v₁≡u₁) (>→¬≡ u₁>v₁)
+>-anti-sym  {l ● r ` loc} {PairU v₁ v₂}   {PairU u₁ u₂} (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₁ v₁>u₁))        (len-≡ len|pair-u₁u₂|≡len|pair-v₁v₂| (seq₂ u₁≡v₁ u₂>v₂)) = Nullary.contradiction (sym u₁≡v₁) (>→¬≡ v₁>u₁)
+
+>-anti-sym  {l + r ` loc}   {LeftU v}     {LeftU u}           (len-≡ len|left-v|≡len|left-u|   (choice-ll v>u))  (len-≡ len|left-u|≡len|left-v| (choice-ll u>v)) = Nullary.contradiction v>u (>→¬< u>v)
+>-anti-sym  {l + r ` loc}   {LeftU v}     {RightU u}          (len-≡ len|left-v|≡len|right-u|  (choice-lr len|v|≥len|u|))  (len-≡ len|right-u|≡len|left-v| (choice-rl len|u|>len|v|)) = Nullary.contradiction len|v|≥len|u| (<⇒≱  len|u|>len|v|)
+>-anti-sym  {l + r ` loc}   {RightU v}    {LeftU u}           (len-≡ len|right-v|≡len|left-u|  (choice-rl len|v|>len|u|))  (len-≡ len|left-u|≡len|right-v| (choice-lr len|u|≥len|v|)) = Nullary.contradiction len|u|≥len|v| (<⇒≱  len|v|>len|u|)
+>-anti-sym  {l + r ` loc}   {RightU v}    {RightU u}          (len-≡ len|right-v|≡len|right-u|  (choice-rr v>u))  (len-≡ len|right-u|≡len|right-v| (choice-rr u>v)) = Nullary.contradiction v>u (>→¬< u>v)
+>-anti-sym  {r * ε∉r ` loc} {ListU []}    {ListU []}          (len-≡ refl ())  (len-≡ refl ())
+>-anti-sym  {r * ε∉r ` loc} {ListU (v ∷ vs)} {ListU (u ∷ us)} (len-≡ len|list-v∷vs|≡len|list-u∷us| (star-head v>u)) (len-≡ len|list-u∷us|≡len|list-v∷vs| (star-head u>v)) = Nullary.contradiction v>u (>→¬< u>v)
+>-anti-sym  {r * ε∉r ` loc} {ListU (v ∷ vs)} {ListU (u ∷ us)} (len-≡ len|list-v∷vs|≡len|list-u∷us| (star-head v>u)) (len-≡ len|list-u∷us|≡len|list-v∷vs| (star-tail u≡v _)) = Nullary.contradiction (sym u≡v) (>→¬≡ v>u)
+>-anti-sym  {r * ε∉r ` loc} {ListU (v ∷ vs)} {ListU (u ∷ us)} (len-≡ len|list-v∷vs|≡len|list-u∷us| (star-tail v≡u _)) (len-≡ len|list-u∷us|≡len|list-v∷vs| (star-head u>v)) = Nullary.contradiction (sym v≡u) (>→¬≡ u>v)
+>-anti-sym  {r * ε∉r ` loc} {ListU (v ∷ vs)} {ListU (u ∷ us)} (len-≡ len|list-v∷vs|≡len|list-u∷us| (star-tail v≡u vs>us)) (len-≡ len|list-u∷us|≡len|list-v∷vs| (star-tail u≡v us>vs)) =  Nullary.contradiction vs>us (>→¬< us>vs) 
+
+
+
 >→¬< {r} {v} {u} v>u u>v = (>→¬≡ v>u) (>-anti-sym v>u u>v)
 
 
 -- this can be moved to Utils
 ++-¬[]→> : ∀ { A : Set } { xs ys : List A }
   → ¬ ys ≡ []
+  --------------------------------
   → length (xs ++ ys) > length xs
 ++-¬[]→> {A} {xs} {[]}     ¬ys≡[]  = Nullary.contradiction refl ¬ys≡[]   
 ++-¬[]→> {A} {[]} {y ∷ ys} ¬yys≡[] = Nat.s≤s Nat.z≤n

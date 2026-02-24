@@ -314,4 +314,90 @@ map-right-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons ex>-sorted-pdis (ex>-j
            (ex>-just (right-ex-sorted pdi pdi'  pdi>pdi'))
 
 
+
+map-left-right-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char } 
+  → ( pdis  : List (PDInstance l c) )
+  → ( pdis' : List (PDInstance r c) )
+  → Ex>-sorted {l} pdis
+  → Ex>-sorted {r} pdis'
+  → Ex>-sorted {l + r ` loc } ((List.map pdinstance-left pdis) ++ (List.map pdinstance-right pdis'))
+map-left-right-ex-sorted               []              pdis'  ex>-sorted-l-[]   ex>-sorted-r-pdis' = map-right-ex-sorted pdis' ex>-sorted-r-pdis'
+map-left-right-ex-sorted {l} {r} {loc} pdis            []     ex>-sorted-l-pdis ex>-sorted-r-[] rewrite (cong (λ x → Ex>-sorted x) (++-identityʳ (List.map (pdinstance-left {l} {r} {loc}) pdis)))
+  = map-left-ex-sorted  pdis ex>-sorted-l-pdis 
+map-left-right-ex-sorted {l} {r} {loc} (pdi ∷ [])      (pdi' ∷ pdis')    ex>-sorted-l-pdis  ex>-sorted-r-pdis'
+  = ex>-cons (map-right-ex-sorted (pdi' ∷ pdis') ex>-sorted-r-pdis') (ex>-just (>-pdi (pdinstance-left pdi) (pdinstance-right pdi') ev ))
+    where
+      ev : (u₁ u₂ : U (l + r ` loc))
+        → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
+        → Recons u₁ (pdinstance-left pdi)
+        → Recons u₂ (pdinstance-right pdi')
+        → (l + r ` loc) ⊢ u₁ > u₂
+      ev (LeftU v₁) (RightU v₂) len|left-v₁|≥len|right-v₂| recons-left-u-from-pdinstance-left   recons-right-u-from-pdinstance-right with (Nat.<-cmp (length (proj₁ (flat v₁))) (length (proj₁ (flat v₂))))
+      ... | tri< len|left-v₁|<len|right-v₂| _ _ = Nullary.contradiction  len|left-v₁|≥len|right-v₂| ( <⇒≱ len|left-v₁|<len|right-v₂|)
+      ... | tri> _ _ len|left-v₁|>len|right-v₂| = len-> len|left-v₁|>len|right-v₂|
+      ... | tri≈ _ len|left-v₁|≡len|right-v₂| _  = 
+            let  recons-v₁-pdi = inv-recons-left {l} {r} {loc} v₁ pdi recons-left-u-from-pdinstance-left
+                 recons-v₂-pdi' = inv-recons-right {l} {r} {loc} v₂ pdi' recons-right-u-from-pdinstance-right
+            in len-≡ len|left-v₁|≡len|right-v₂| (choice-lr len|left-v₁|≥len|right-v₂|)
+      ev (RightU v₁) _         _ recons-right-u-from-pdinstance-left  _              = Nullary.contradiction recons-right-u-from-pdinstance-left  (¬recons-right-from-pdinstance-left v₁ pdi )
+      ev (LeftU v₁) (LeftU v₂) _ _  recons-left-u-from-pdinstance-right              = Nullary.contradiction recons-left-u-from-pdinstance-right  (¬recons-left-from-pdinstance-right v₂ pdi' ) 
+map-left-right-ex-sorted {l} {r} {loc} (pdi₁ ∷ pdi₂ ∷ pdis)   (pdi' ∷ pdis') ex>-sorted-l-pdi₁pdi₂pdis ex>-sorted-r-pdipdis' with ex>-sorted-l-pdi₁pdi₂pdis
+... | ex>-cons {l} ex>-sorted-pdi₂pdis (ex>-just (>-pdi _ _ pdi₁>pdi₂-ev) ) 
+  = ex>-cons (map-left-right-ex-sorted (pdi₂ ∷ pdis) (pdi' ∷ pdis')   ex>-sorted-pdi₂pdis  ex>-sorted-r-pdipdis' ) (ex>-just (>-pdi (pdinstance-left pdi₁) (pdinstance-left pdi₂) ev ))
+    where
+      ev : (u₁ u₂ : U (l + r ` loc))
+        → length (proj₁ (flat u₁)) ≥  length (proj₁ (flat u₂))
+        → Recons u₁ (pdinstance-left pdi₁)
+        → Recons u₂ (pdinstance-left pdi₂)
+        → (l + r ` loc) ⊢ u₁ > u₂
+      ev (LeftU v₁) (LeftU v₂) len|left-v₁|≥len|left-v₂|  recons-left-v1-from-pdinstance-left-pdi₁ recons-left-v2-from-pdinstance-left-pdi₂ with (Nat.<-cmp (length (proj₁ (flat v₁))) (length (proj₁ (flat v₂))))
+      ... | tri< len|left-v₁|<len|left-v₂| _ _ = Nullary.contradiction  len|left-v₁|≥len|left-v₂| ( <⇒≱ len|left-v₁|<len|left-v₂|)
+      ... | tri> _ _ len|left-v₁|>len|left-v₂| = len-> len|left-v₁|>len|left-v₂|
+      ... | tri≈ _ len|left-v₁|≡len|left-v₂| _  = 
+
+          let recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v1-from-pdinstance-left-pdi₁
+              recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v2-from-pdinstance-left-pdi₂
+          in len-≡ len|left-v₁|≡len|left-v₂| (choice-ll  (pdi₁>pdi₂-ev v₁ v₂ len|left-v₁|≥len|left-v₂|  recons-v₁-pdi₁ recons-v₂-pdi₂ ))
+          -- impossible cases         
+      ev (RightU v₁)  _        _  recons-right-u-from-pdinstance-left-pdi₁ _ = Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₁ ( ¬recons-right-from-pdinstance-left v₁ pdi₁ )
+      ev (LeftU v₁) (RightU v₂) _ _ recons-right-u-from-pdinstance-left-pdi₂ = Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₂ ( ¬recons-right-from-pdinstance-left v₂ pdi₂ )       
+
+
+
+star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } 
+  → (pdi₁ : PDInstance r c )
+  → (pdi₂ : PDInstance r c )
+  → r , c ⊢ pdi₁ > pdi₂ 
+  -------------------------------------------------
+  → (r * ε∉r ` loc) , c ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
+star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ ev
+  where
+    star-pdi₁ : PDInstance ( r * ε∉r ` loc ) c
+    star-pdi₁ = pdinstance-star pdi₁
+    star-pdi₂ : PDInstance ( r * ε∉r ` loc ) c    
+    star-pdi₂ = pdinstance-star pdi₂    
+ 
+    ev : ∀ ( t₁ : U  (r * ε∉r ` loc) )
+          → ( t₂ : U  (r * ε∉r ` loc) )
+          → length (proj₁ (flat t₁)) ≥  length (proj₁ (flat t₂))
+          → ( Recons t₁ star-pdi₁ )
+          → ( Recons t₂ star-pdi₂ )
+          -------------------------
+          → ( (r * ε∉r ` loc) ⊢ t₁ > t₂ )
+    ev (ListU []) _ _ recons-[]-star-pdi₁ _ = Nullary.contradiction  recons-[]-star-pdi₁ (¬recons-[]-from-pdinstance-star pdi₁)
+    ev _ (ListU []) _ _ recons-[]-star-pdi₂ = Nullary.contradiction  recons-[]-star-pdi₂ (¬recons-[]-from-pdinstance-star pdi₂)
+    ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) len|list-v₁vs₁|≥len|list-v₂vs₂| recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ with (Nat.<-cmp (length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (v₁ ∷ vs₁) )))) (length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (v₂ ∷ vs₂))))))
+    ... | tri< len|list-v₁vs₁|<len|list-v₂vs₂| _ _ =  Nullary.contradiction  len|list-v₁vs₁|≥len|list-v₂vs₂| ( <⇒≱ len|list-v₁vs₁|<len|list-v₂vs₂| ) 
+    ... | tri> _ _ len|list-v₁vs₁|>len|list-v₂vs₂| = len-> len|list-v₁vs₁|>len|list-v₂vs₂|
+    ... | tri≈ _ len|list-v₁vs₁|≡len|list-v₂vs₂|  _ = 
+      let recons-v₁-pdi₁ = inv-recons-star v₁ vs₁ pdi₁ recons-list-vvs₁-star-pdi₁ 
+          recons-v₂-pdi₂ = inv-recons-star v₂ vs₂ pdi₂ recons-list-vvs₂-star-pdi₂
+      in len-≡  len|list-v₁vs₁|≡len|list-v₂vs₂| (star-head (pdi₁>-pdi₂-ev v₁ v₂ {!!}  recons-v₁-pdi₁ recons-v₂-pdi₂))
+        -- we need  len|v₁|≥len|v₂| 
+        -- how to create a contradiction when len|v₁|<len|v₂| => v₂ > v₁, => list v₂ vs₂ > list v₁ vs₁  len|list-v₁vs₁|≤len|list-v₂vs₂|_
+        -- or it is not possible for r* to have more than 1 oplus partial derivative?
+        -- the only possible case of introducing + is r ≡ l ● s for some l where ε∈ l, l cannot 
+        --   
+
+
 ```

@@ -218,12 +218,24 @@ data Ex>-maybe : ∀ { r : RE } { c : Char } { w : List Char }  ( pdi : PDInstan
     ----------------------------------
     → Ex>-maybe {r} {c} {w} pdi (just pdi')
 
+
+data Ex>-sorted : ∀ { r : RE } { c : Char } { w : List Char } ( pdis : List (PDInstance r c) ) → Set where
+  ex>-nil  : ∀ { r : RE } { c : Char } { w : List Char } → Ex>-sorted {r} {c} {w} []
+  ex>-cons : ∀ { r : RE } { c : Char } { w : List Char } 
+    → { pdi : PDInstance r c }
+    → { pdis : List (PDInstance r c) } 
+    → Ex>-sorted  {r} {c} {w} pdis 
+    → Ex>-maybe {r} {c} {w} pdi (head pdis)
+    --------------------------------------
+    → Ex>-sorted {r} {c} {w} ( pdi ∷ pdis )
+
+
 ```
 
 
 
 
-### Lemma 38: the list of pdinstances from pdU[ r , c] is extended LNE sorted. 
+### Lemma 38: the list of pdinstances from pdU[ r , c] is extended POSIX-> sorted. 
 
 
 Let r be a non problematic regular expression.
@@ -447,14 +459,57 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
          case 1 |v₁|≡|v₂| By I.H. >-pdi
          case 2 |v₂| is a prefix of |v₁| seq₁ (len->  ... )
          case 3 |v₁| is a prefix of |v₂| we need a contradiction?
+           
            v₂ > v₁?
              the problem is the same?
                that is we should use the premise r , c ⊢ pdi₁ > pdi₂
-               to create a contradiction, but we could not. 
+               to create a contradiction, but we could not.
+
+               The issue is in the Recons definition, it is only required that there exists a suffix word w∈⟦p⟧
+                 such that (inj₁ (unflat {p₁} {w}  w∈⟦p₁⟧)) ≡ v₁
+                 (inj₂ (unflat {p₂} {w}  w∈⟦p₁⟧)) ≡ v₂
+                 
+
+data Recons : { r : RE } { c : Char } → ( u : U r ) → ( PDInstance r c )  → Set where
+  recons : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → (u : U r)
+    → ∃[ w∈⟦p⟧ ] ( (inj (unflat {p} {w}  w∈⟦p⟧)) ≡ u )    -- the completeness property.
+    → Recons {r} {c} u (pdinstance {p} {r} {c} inj sound-ev) -- <- the input PDI obj
 
          
         -}
         
 -}
+
+
+star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { w₁ w₂ w  : List Char } 
+  → w₁ ++ w₂ ≡ w 
+  → (pdi₁ : PDInstance r c )
+  → (pdi₂ : PDInstance r c )
+  → r , c , w₁ ⊢ pdi₁ > pdi₂
+  -------------------------------------------------
+  → (r * ε∉r ` loc) , c , w  ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
+star-ex-sorted {r} {ε∉r} {loc} {c} {w₁} {w₂} {w} w₁++w₂≡w pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ ev 
+  where
+    star-pdi₁ : PDInstance ( r * ε∉r ` loc ) c
+    star-pdi₁ = pdinstance-star pdi₁
+    star-pdi₂ : PDInstance ( r * ε∉r ` loc ) c    
+    star-pdi₂ = pdinstance-star pdi₂    
+
+    ev : ∀ ( t₁ : U  (r * ε∉r ` loc) )
+         → ( t₂ : U  (r * ε∉r ` loc) )
+         → proj₁ (flat t₁) ≡ c ∷ w 
+         → proj₁ (flat t₂) ≡ c ∷ w
+         → Recons t₁ star-pdi₁ 
+         → Recons t₂ star-pdi₂ 
+         -------------------------
+         → ( (r * ε∉r ` loc) ⊢ t₁ > t₂ )
+    ev (ListU []) _ |list-[]|≡c∷w _ recons-[]-star-pdi₁ _ = Nullary.contradiction (sym |list-[]|≡c∷w) ¬∷≡[]
+    ev _ (ListU []) _ |list-[]|≡c∷w _ recons-[]-star-pdi₂ = Nullary.contradiction (sym |list-[]|≡c∷w) ¬∷≡[]
+    ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) |list-v₁∷vs₁|≡c∷w |list-v₂∷vs₂|≡c∷w recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ = {!!} -- len|v₁|>len|v₂|
+          -- len|v₁|≡len|v₂|
+          -- len|v₁|<len|v₂| 
+    
 
 ```

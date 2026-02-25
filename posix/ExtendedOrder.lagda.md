@@ -147,10 +147,12 @@ We say pdi₁ is "posix" greater than pdi₂, r , c  ⊢ pdi₁ > pdi₂ iff
     then r ⊢ u₁ > u₂ ?
 
 
+.
+
 
 ```agda
-
-data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
+{-
+data _,_,⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char }
     → ( pdi₁ : PDInstance r c )
     → ( pdi₂ : PDInstance r c )
@@ -159,6 +161,19 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c ⊢ pdi₁ > pdi₂
 
+-}
+-- if we index the relation with a word, hence, we fix the suffix and the leading character c
+
+data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDInstance r c → PDInstance r c → Set where
+  >-pdi : ∀ { r : RE } { c : Char } { w : List Char } 
+    → ( pdi₁ : PDInstance r c )
+    → ( pdi₂ : PDInstance r c )
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r )
+      → proj₁ (flat u₁) ≡ c ∷ w 
+      → proj₁ (flat u₂) ≡ c ∷ w 
+      → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
+    → r , c , w  ⊢ pdi₁ > pdi₂
+
 
 ```
 
@@ -166,7 +181,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
 ### Definition 37 : (Extended) POSIX order sortedness
 
 ```agda
-
+{-
 data Ex>-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex>-nothing : ∀ { r : RE } { c : Char }
     → { pdi : PDInstance r c } 
@@ -187,7 +202,22 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) �
     → Ex>-sorted  {r} {c} pdis 
     → Ex>-maybe {r} {c} pdi (head pdis)
     --------------------------------------
-    → Ex>-sorted {r} {c} ( pdi ∷ pdis ) 
+    → Ex>-sorted {r} {c} ( pdi ∷ pdis )
+-}
+
+
+data Ex>-maybe : ∀ { r : RE } { c : Char } { w : List Char }  ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
+  ex>-nothing : ∀ { r : RE } { c : Char } { w : List Char }
+    → { pdi : PDInstance r c } 
+    ---------------------------
+    → Ex>-maybe {r} {c} {w} pdi nothing
+  ex>-just : ∀ { r : RE } { c : Char } { w : List Char }
+    → { pdi : PDInstance r c }
+    → { pdi' : PDInstance r c }
+    → r , c , w  ⊢ pdi > pdi' 
+    ----------------------------------
+    → Ex>-maybe {r} {c} {w} pdi (just pdi')
+
 ```
 
 
@@ -208,6 +238,7 @@ Then pdU[r , c] is LNE sorted.
 #### Sub Lemma 38.1 - 38.22 : Ex>-sortedness is preserved inductively over pdinstance operations.
 
 ```agda
+{-
 -------------------------------------------------------------
 -- Sub Lemma 38.1 - 38.22 BEGIN
 -------------------------------------------------------------
@@ -381,6 +412,10 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
     ev : ∀ ( t₁ : U  (r * ε∉r ` loc) )
           → ( t₂ : U  (r * ε∉r ` loc) )
           → length (proj₁ (flat t₁)) ≥  length (proj₁ (flat t₂))
+          -- w : List Char
+          -- proj₁ (flat t₁) ≡ c ∷ w 
+          -- proj₁ (flat t₂) ≡ c ∷ w
+          
           → ( Recons t₁ star-pdi₁ )
           → ( Recons t₂ star-pdi₂ )
           -------------------------
@@ -407,9 +442,19 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
             the only possible case of introducing ++ is r ≡ l ● s for some l where ε∈ l, l cannot
          hm.. seems not
 
-         attempt 3 let's index the >-pdi relation with a specific word. 
+         attempt 3 let's index the >-pdi relation with a specific word.
+
+         case 1 |v₁|≡|v₂| By I.H. >-pdi
+         case 2 |v₂| is a prefix of |v₁| seq₁ (len->  ... )
+         case 3 |v₁| is a prefix of |v₂| we need a contradiction?
+           v₂ > v₁?
+             the problem is the same?
+               that is we should use the premise r , c ⊢ pdi₁ > pdi₂
+               to create a contradiction, but we could not. 
+
+         
         -}
         
-
+-}
 
 ```

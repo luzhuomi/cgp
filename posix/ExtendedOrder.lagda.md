@@ -143,8 +143,9 @@ Let c be a letter.
 Let pdi₁ and pdi₂ be two partial derivative instances of r w.r.t c.
 
 We say pdi₁ is "posix" greater than pdi₂, r , c  ⊢ pdi₁ > pdi₂ iff
-  for all parse trees u₁ u₂  of r, u₁ is constructible from pdi₁ and u₂ is constructibled from pdi₂ 
-    then r ⊢ u₁ > u₂ 
+  for all parse trees u₁ u₂  of r, |u₁| ≥ |u₂|, u₁ is constructible from pdi₁ and u₂ is constructibled from pdi₂ 
+    then r ⊢ u₁ > u₂ ?
+
 
 
 ```agda
@@ -162,7 +163,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
 ```
 
 
-### Definition 37 : (Extended) left non-empty order (LNE) sortedness
+### Definition 37 : (Extended) POSIX order sortedness
 
 ```agda
 
@@ -393,11 +394,22 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
       let recons-v₁-pdi₁ = inv-recons-star v₁ vs₁ pdi₁ recons-list-vvs₁-star-pdi₁ 
           recons-v₂-pdi₂ = inv-recons-star v₂ vs₂ pdi₂ recons-list-vvs₂-star-pdi₂
       in len-≡  len|list-v₁vs₁|≡len|list-v₂vs₂| (star-head (pdi₁>-pdi₂-ev v₁ v₂ {!!}  recons-v₁-pdi₁ recons-v₂-pdi₂))
-        -- we need  len|v₁|≥len|v₂| 
-        -- how to create a contradiction when len|v₁|<len|v₂| => v₂ > v₁, => list v₂ vs₂ > list v₁ vs₁  len|list-v₁vs₁|≤len|list-v₂vs₂|_
-        -- or it is not possible for r* to have more than 1 oplus partial derivative?
-        -- the only possible case of introducing + is r ≡ l ● s for some l where ε∈ l, l cannot 
-        --   
+        -- we need  len|v₁|≥len|v₂|
+        {-
+        how to create a contradiction when len|v₁|<len|v₂|?
+         attempt 1: len|v₁|<len|v₂| => r ⊢ v₂ > v₁
+                                    => r* ⊢ list v₂∷vs₂ >ⁱ list v₁∷vs₁
+                                    => r* ⊢ list v₂∷vs₂ > list v₁∷vs₁
+                                    => len|v₂∷vs₂| ≥ len|v₁∷vs₁|
+                                    no contradiction found
+
+         attempt 2 or it is not possible for r* to have more than 1 oplus partial derivative? 
+            the only possible case of introducing ++ is r ≡ l ● s for some l where ε∈ l, l cannot
+         hm.. seems not
+
+         attempt 3 let's index the >-pdi relation with a specific word. 
+        -}
+        
 
 
 ```

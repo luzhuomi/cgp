@@ -249,11 +249,11 @@ pd[ l + r ` loc , c ]               = pd[ l , c ] ⊕  pd[ r , c ] ` loc
 pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
 {-# TERMINATING #-}
 -- it seems to me that the ⊕ in pdConcat cases is unnecessary.
-pdConcat ε  r  ε∈ε loc c  = pd[ r  , c ]
+pdConcat ε  r  ε∈ε loc c  = pd[ r  , c ] 
 pdConcat (l * ε∉l ` loc₂ ) r ε∈*             loc c = (List.map (λ l' → l' ● r ` loc ) pd[ l * ε∉l ` loc₂ , c ] ) ++ pd[ r , c ]
 -- we don't apply assoc rule to rewrite (l ● s ) ● r into l ● (s ● r), so that we can retain the structure left-most-longest property globally
 pdConcat (l ● s ` loc₂ )   r (ε∈ ε∈l ● ε∈s)  loc c = (List.map (λ p → p ● r ` loc ) pd[ l ● s ` loc₂ , c ]) ++ pd[ r , c ]  
-pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p ● r ` loc ) pd[ l + s ` loc₂ , c ]) ++ pd[ r , c ]
+pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p ● r ` loc ) pd[ l + s ` loc₂ , c ]) ++ pd[ r , c ] -- TODO: we need oplus here. 
 
 ```
 

@@ -749,6 +749,26 @@ What is the advantage of this reformulation?
 2. Would it make the robustness check easier? 
 
 
+#### (Pre-) Update on Feb 27 2026
+
+
+An isomorphism between the new two-level POSIX parse tree order r ⊢ v₁ > v₂ and the POSIX parse tree relation (Urban's definition  w , r ⇒ v ) is established and verified in agda. 
+
+1) => direction:
+   Let r be a non problematic regular expression, v be a parse tree of r, and { for any parse tree u of r,  |v| ≡ |u| and  r ⊢ v > u } 
+	Then |v| , r ⇒ v.
+
+
+2) <= direction. 
+   Let r be a non problematic regular expression, v be a parse tree of r, and |v| ≡ w. 
+   Let w , r ⇒ v. 
+   Let u of r such that  ¬ ( v ≡ u ), and |v| ≡ |u|.
+   Then  r ⊢ v > u.
+   
+	
+
+
+POSIX parsing implementation using PD is still in progress. 
 
 
 

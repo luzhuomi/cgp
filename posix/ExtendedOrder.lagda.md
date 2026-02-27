@@ -151,8 +151,8 @@ We say pdi₁ is "posix" greater than pdi₂, r , c  ⊢ pdi₁ > pdi₂ iff
 
 
 ```agda
-{-
-data _,_,⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
+
+data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char }
     → ( pdi₁ : PDInstance r c )
     → ( pdi₂ : PDInstance r c )
@@ -161,7 +161,7 @@ data _,_,⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstan
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c ⊢ pdi₁ > pdi₂
 
--}
+{-
 -- if we index the relation with a word, hence, we fix the suffix and the leading character c
 
 data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDInstance r c → PDInstance r c → Set where
@@ -173,7 +173,7 @@ data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDIn
       → proj₁ (flat u₂) ≡ c ∷ w 
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c , w  ⊢ pdi₁ > pdi₂
-
+-}
 
 ```
 
@@ -181,7 +181,7 @@ data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDIn
 ### Definition 37 : (Extended) POSIX order sortedness
 
 ```agda
-{-
+
 data Ex>-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex>-nothing : ∀ { r : RE } { c : Char }
     → { pdi : PDInstance r c } 
@@ -203,8 +203,8 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) �
     → Ex>-maybe {r} {c} pdi (head pdis)
     --------------------------------------
     → Ex>-sorted {r} {c} ( pdi ∷ pdis )
--}
 
+{-
 
 data Ex>-maybe : ∀ { r : RE } { c : Char } { w : List Char }  ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex>-nothing : ∀ { r : RE } { c : Char } { w : List Char }
@@ -228,7 +228,7 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } { w : List Char } ( pdis : List (P
     → Ex>-maybe {r} {c} {w} pdi (head pdis)
     --------------------------------------
     → Ex>-sorted {r} {c} {w} ( pdi ∷ pdis )
-
+-}
 
 ```
 
@@ -250,7 +250,7 @@ Then pdU[r , c] is LNE sorted.
 #### Sub Lemma 38.1 - 38.22 : Ex>-sortedness is preserved inductively over pdinstance operations.
 
 ```agda
-{-
+
 -------------------------------------------------------------
 -- Sub Lemma 38.1 - 38.22 BEGIN
 -------------------------------------------------------------
@@ -480,9 +480,9 @@ data Recons : { r : RE } { c : Char } → ( u : U r ) → ( PDInstance r c )  �
          
         -}
         
--}
 
 
+{-
 star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { w₁ w₂ w  : List Char } 
   → w₁ ++ w₂ ≡ w 
   → (pdi₁ : PDInstance r c )
@@ -510,6 +510,6 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {w₁} {w₂} {w} w₁++w₂≡w pdi₁ pd
     ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) |list-v₁∷vs₁|≡c∷w |list-v₂∷vs₂|≡c∷w recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ = {!!} -- len|v₁|>len|v₂|
           -- len|v₁|≡len|v₂|
           -- len|v₁|<len|v₂| 
-    
+-}    
 
 ```

@@ -151,7 +151,7 @@ We say pdi₁ is "posix" greater than pdi₂, r , c  ⊢ pdi₁ > pdi₂ iff
 
 
 ```agda
-
+{-
 data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char }
     → ( pdi₁ : PDInstance r c )
@@ -160,9 +160,21 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
       → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c ⊢ pdi₁ > pdi₂
+-}
 
-{-
 -- if we index the relation with a word, hence, we fix the suffix and the leading character c
+
+-- we need a weaker variant of Recons
+
+
+
+data WeakRecons : { r : RE } { c : Char } → ( w : List Char ) → ( u : U r ) → ( PDInstance r c )  → Set where -- how to put ( v : U p )?
+  wrecons : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → (u : U r)
+    → ∃[ w∈⟦p⟧ ] ( (inj (unflat {p} {w}  w∈⟦p⟧)) ≡ u )    -- the completeness property.
+    → WeakRecons {r} {c} w u (pdinstance {p} {r} {c} inj sound-ev) -- <- the input PDI obj
+
 
 data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char } { w : List Char } 
@@ -171,9 +183,9 @@ data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDIn
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r )
       → proj₁ (flat u₁) ≡ c ∷ w 
       → proj₁ (flat u₂) ≡ c ∷ w 
-      → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
+      → (WeakRecons w u₁ pdi₁ ) → (WeakRecons w u₂ pdi₂) → ( r ⊢ u₁ > u₂) ) - we need to expose pd parse trees v₁ and v₂ and v₁ > v₂ here.
     → r , c , w  ⊢ pdi₁ > pdi₂
--}
+
 
 ```
 
@@ -181,7 +193,7 @@ data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDIn
 ### Definition 37 : (Extended) POSIX order sortedness
 
 ```agda
-
+{-
 data Ex>-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex>-nothing : ∀ { r : RE } { c : Char }
     → { pdi : PDInstance r c } 
@@ -203,8 +215,8 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) �
     → Ex>-maybe {r} {c} pdi (head pdis)
     --------------------------------------
     → Ex>-sorted {r} {c} ( pdi ∷ pdis )
+-}
 
-{-
 
 data Ex>-maybe : ∀ { r : RE } { c : Char } { w : List Char }  ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex>-nothing : ∀ { r : RE } { c : Char } { w : List Char }
@@ -228,7 +240,7 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } { w : List Char } ( pdis : List (P
     → Ex>-maybe {r} {c} {w} pdi (head pdis)
     --------------------------------------
     → Ex>-sorted {r} {c} {w} ( pdi ∷ pdis )
--}
+
 
 ```
 
@@ -250,7 +262,7 @@ Then pdU[r , c] is LNE sorted.
 #### Sub Lemma 38.1 - 38.22 : Ex>-sortedness is preserved inductively over pdinstance operations.
 
 ```agda
-
+{-
 -------------------------------------------------------------
 -- Sub Lemma 38.1 - 38.22 BEGIN
 -------------------------------------------------------------
@@ -480,9 +492,9 @@ data Recons : { r : RE } { c : Char } → ( u : U r ) → ( PDInstance r c )  �
          
         -}
         
+-}
 
 
-{-
 star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { w₁ w₂ w  : List Char } 
   → w₁ ++ w₂ ≡ w 
   → (pdi₁ : PDInstance r c )
@@ -501,15 +513,18 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {w₁} {w₂} {w} w₁++w₂≡w pdi₁ pd
          → ( t₂ : U  (r * ε∉r ` loc) )
          → proj₁ (flat t₁) ≡ c ∷ w 
          → proj₁ (flat t₂) ≡ c ∷ w
-         → Recons t₁ star-pdi₁ 
-         → Recons t₂ star-pdi₂ 
+         → WeakRecons w t₁ star-pdi₁ 
+         → WeakRecons w t₂ star-pdi₂ 
          -------------------------
          → ( (r * ε∉r ` loc) ⊢ t₁ > t₂ )
     ev (ListU []) _ |list-[]|≡c∷w _ recons-[]-star-pdi₁ _ = Nullary.contradiction (sym |list-[]|≡c∷w) ¬∷≡[]
     ev _ (ListU []) _ |list-[]|≡c∷w _ recons-[]-star-pdi₂ = Nullary.contradiction (sym |list-[]|≡c∷w) ¬∷≡[]
-    ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) |list-v₁∷vs₁|≡c∷w |list-v₂∷vs₂|≡c∷w recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ = {!!} -- len|v₁|>len|v₂|
-          -- len|v₁|≡len|v₂|
-          -- len|v₁|<len|v₂| 
--}    
+    ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) |list-v₁∷vs₁|≡c∷w |list-v₂∷vs₂|≡c∷w recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ = {!!}
+          -- len|v₁|>len|v₂|, -- straight forward
+          -- len|v₁|≡len|v₂|  -- apply IH
+          -- len|v₁|<len|v₂|
+          -- how do we know that the underlying partial derivative parse trees (PairU v₁' vs₁) and (PairU v₂' vs₂) len|v₁'|≥|len|v₂'|? do we also enforce > between them? do we thread through the partial derivative parse trees
+          -- maybe we need to thread it through the >-pdi relation?
+    
 
 ```

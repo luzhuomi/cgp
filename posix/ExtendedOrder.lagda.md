@@ -152,6 +152,24 @@ We say pdi₁ is "posix" greater than pdi₂, r , c  ⊢ pdi₁ > pdi₂ iff
 
 ```agda
 {-
+trying to define a > among Recons r c, but it 
+ does not work
+data Rec> : { r : RE } { c : Char } { u₁ u₂ : U r } { p₁ p₂ : PDInstance r c }
+  → Recons u₁ p₁ → Recons u₂ p₂ → Set where
+  rec> : ∀ { r p₁ p₂ : RE } { c : Char } { w₁ w₂ : List Char } { inj1 : U p₁ → U r }
+    { inj2 : U p₂ → U r  }
+    { s-ev₁ : ∀ ( x : U p₁ ) → ( proj₁ ( flat {r} (inj1 x) ) ≡ c ∷ ( proj₁ (flat {p₁} x) )) }
+    { s-ev₂ : ∀ ( x : U p₂ ) → ( proj₁ ( flat {r} (inj2 x) ) ≡ c ∷ ( proj₁ (flat {p₂} x) )) }
+    → ( u₁ u₂ : U r )
+    → ( c-ev₁ : ∃[ w₁∈⟦p₁⟧ ] ( (inj1 (unflat {p₁} {w₁}  w₁∈⟦p₁⟧)) ≡ u₁ ) )
+    → ( c-ev₂ : ∃[ w₂∈⟦p₂⟧ ] ( (inj2 (unflat {p₂} {w₂}  w₂∈⟦p₂⟧)) ≡ u₂ ) )
+    -- but p₁ and p₂ are not the same! we can compare unflat w₁∈⟦p₁⟧ and unflat w₂∈⟦p₂⟧
+    ------------------------------------
+    → Rec> (Recons.recons {p₁} {r} {c} {w₁} {inj1} {s-ev₁} u₁ c-ev₁) (Recons.recons {p₂} {r} {c} {w₂} {inj2} {s-ev₂} u₂ c-ev₂)
+-}    
+  
+
+{-
 data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char }
     → ( pdi₁ : PDInstance r c )
@@ -183,11 +201,13 @@ data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDIn
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r )
       → proj₁ (flat u₁) ≡ c ∷ w 
       → proj₁ (flat u₂) ≡ c ∷ w 
-      → (WeakRecons w u₁ pdi₁ ) → (WeakRecons w u₂ pdi₂) → ( r ⊢ u₁ > u₂) ) - we need to expose pd parse trees v₁ and v₂ and v₁ > v₂ here.
+      → (WeakRecons w u₁ pdi₁ ) → (WeakRecons w u₂ pdi₂) → ( r ⊢ u₁ > u₂) ) -- we need to expose pd parse trees v₁ and v₂ and v₁ > v₂ here.
     → r , c , w  ⊢ pdi₁ > pdi₂
 
 
 ```
+
+
 
 
 ### Definition 37 : (Extended) POSIX order sortedness
@@ -523,8 +543,9 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {w₁} {w₂} {w} w₁++w₂≡w pdi₁ pd
           -- len|v₁|>len|v₂|, -- straight forward
           -- len|v₁|≡len|v₂|  -- apply IH
           -- len|v₁|<len|v₂|
-          -- how do we know that the underlying partial derivative parse trees (PairU v₁' vs₁) and (PairU v₂' vs₂) len|v₁'|≥|len|v₂'|? do we also enforce > between them? do we thread through the partial derivative parse trees
-          -- maybe we need to thread it through the >-pdi relation?
+          -- how do we know that the underlying partial derivative parse trees (PairU v₁' vs₁) and (PairU v₂' vs₂) len|v₁'|≥|len|v₂'|? do we also enforce > between them?
+          -- we can't, they are parse trees of two differen types, p₁ ≢ p₂
+          -- hence we can't define > among them
     
 
 ```

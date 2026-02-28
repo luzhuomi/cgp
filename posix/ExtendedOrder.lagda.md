@@ -492,7 +492,39 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
             Recons (ListU (v₂ ∷ vs₂)) (pdinstance-star pdi₂) and 
             pdi₁ > pdi₂ and 
             len|v₁|<len|v₂| ?
-         
+
+         counter example:
+           r = (a* ● (a* ● a)) *
+
+           p₁ = ( ε ● ( a* ● ( a* ● a ) ) )  from pdi₁               
+           p₂ = ( ε ● ( a* ● a ) )           from pdi₂ 
+
+            (a* ● (a* ● a)) , a ⊢ pdi₁ > pdi₂
+              evidence function
+               ∀ (u₁ u₂ : U (a* ● (a* ● a)))
+                → len|u₁|≥len|u₂|
+                → Recons u₁ pdi₁  -- injecting a back to some pd parse tree
+                → Recons u₂ pdi₂  -- injecting a back to some pd parse tree 
+                → (a* ● (a* ● a)) ⊢ u₁ > u₂
+
+            note that the v₁ and v₂ below do not meet the premise of the evidence function above. hence it does not violate the evidence for pdi₁ > pdi₂
+
+           we may find v₁' = ( Emp , ( [] , ( [] , a ) ))
+                       v₂' = ( Emp , ( [ a ] , a ) )
+                       v₁  = ( [a], ([], a ))
+                       v₂ =  ( [a], ([a], a))
+                       vs₁ = [a]
+                       vs₂ = []
+                       |v₁ ∷ vs₁| ≡ [ a , a , a ]
+                       |v₂ ∷ vs₂| ≡ [ a , a , a ]
+                       |v₁| ≡ [a , a]
+                       |v₂| ≡ [a, a, a]
+
+              hm... the premise       length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂)) is not sufficient (not strong enough) to show ⊢ u₁ > u₂, (note that from Order, we have >→len|≥| and len|>|→> but not len|≥|→>
+                        i.e. u₁ ≡ ListU v₁ ∷ vs₁ and u₂ ≡ ListU v₂ ∷ vs₂
+                        we should follow a bit of the shape of r? only for r* and r ● s?
+                    
+
 
          attempt 2 or it is not possible for r* to have more than 1 oplus partial derivative? 
             the only possible case of introducing ++ is r ≡ l ● s for some l where ε∈ l, l cannot

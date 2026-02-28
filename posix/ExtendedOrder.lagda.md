@@ -169,22 +169,27 @@ data Rec> : { r : RE } { c : Char } { u₁ u₂ : U r } { p₁ p₂ : PDInstance
 -}    
   
 
-{-
+
 data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char }
     → ( pdi₁ : PDInstance r c )
     → ( pdi₂ : PDInstance r c )
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r )
       → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
+        -- this premise is problematic?
+        -- w/o this, we can't prove left-ex-sort and right-ex-sort refer to (**)
+        -- can we still create a contradiction w/o this to prove (**)?
+        -- even if we could do it for left-ex-sort and right-ex-sort, how about star-ex-sort? 
+
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c ⊢ pdi₁ > pdi₂
--}
+
 
 -- if we index the relation with a word, hence, we fix the suffix and the leading character c
 
 -- we need a weaker variant of Recons
 
-
+{-
 
 data WeakRecons : { r : RE } { c : Char } → ( w : List Char ) → ( u : U r ) → ( PDInstance r c )  → Set where -- how to put ( v : U p )?
   wrecons : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p → U r }
@@ -204,7 +209,7 @@ data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDIn
       → (WeakRecons w u₁ pdi₁ ) → (WeakRecons w u₂ pdi₂) → ( r ⊢ u₁ > u₂) ) -- we need to expose pd parse trees v₁ and v₂ and v₁ > v₂ here.
     → r , c , w  ⊢ pdi₁ > pdi₂
 
-
+-}
 ```
 
 
@@ -213,7 +218,7 @@ data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDIn
 ### Definition 37 : (Extended) POSIX order sortedness
 
 ```agda
-{-
+
 data Ex>-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex>-nothing : ∀ { r : RE } { c : Char }
     → { pdi : PDInstance r c } 
@@ -235,8 +240,8 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) �
     → Ex>-maybe {r} {c} pdi (head pdis)
     --------------------------------------
     → Ex>-sorted {r} {c} ( pdi ∷ pdis )
--}
 
+{-
 
 data Ex>-maybe : ∀ { r : RE } { c : Char } { w : List Char }  ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex>-nothing : ∀ { r : RE } { c : Char } { w : List Char }
@@ -261,7 +266,7 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } { w : List Char } ( pdis : List (P
     --------------------------------------
     → Ex>-sorted {r} {c} {w} ( pdi ∷ pdis )
 
-
+-}
 ```
 
 
@@ -282,7 +287,7 @@ Then pdU[r , c] is LNE sorted.
 #### Sub Lemma 38.1 - 38.22 : Ex>-sortedness is preserved inductively over pdinstance operations.
 
 ```agda
-{-
+
 -------------------------------------------------------------
 -- Sub Lemma 38.1 - 38.22 BEGIN
 -------------------------------------------------------------
@@ -313,7 +318,7 @@ left-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = 
           -------------------------
           → ( (l + r ` loc) ⊢ u₁ > u₂ )
     ev (LeftU v₁) (LeftU v₂) len|left-v₁|≥len|left-v₂| recons-left-v₁-pdi-left recons-left-v₂-pdi-left with (Nat.<-cmp (length (proj₁ (flat (LeftU {l} {r} {loc} v₁)))) (length (proj₁ (flat (LeftU  {l} {r} {loc}  v₂)) )))
-    ... | tri< len|left-v₁|<len|left-v₂| _ _ = Nullary.contradiction  len|left-v₁|≥len|left-v₂| ( <⇒≱ len|left-v₁|<len|left-v₂| )
+    ... | tri< len|left-v₁|<len|left-v₂| _ _ = Nullary.contradiction  len|left-v₁|≥len|left-v₂| ( <⇒≱ len|left-v₁|<len|left-v₂| )  -- (**)
     ... | tri> _ _ len|left-v₁|>len|left-v₂| = len-> len|left-v₁|>len|left-v₂|  
     ... | tri≈ _ len|left-v₁|≡len|left-v₂| _ = 
              len-≡ len|left-v₁|≡len|left-v₂| (choice-ll (pdi₁>-pdi₂-ev v₁ v₂ (≤-reflexive ( sym len|left-v₁|≡len|left-v₂|) ) recons-v₁-pdi₁ recons-v₂-pdi₂))
@@ -348,7 +353,7 @@ right-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) =
           -------------------------
           → ( (l + r ` loc) ⊢ u₁ > u₂ )
     ev (RightU v₁) (RightU v₂)  len|right-v₁|≥len|right-v₂|  recons-right-v₁-pdi-right recons-right-v₂-pdi-right with (Nat.<-cmp (length (proj₁ (flat (RightU {l} {r} {loc} v₁)))) (length (proj₁ (flat (RightU  {l} {r} {loc}  v₂)) )))
-    ... | tri< len|right-v₁|<len|right-v₂| _ _ = Nullary.contradiction  len|right-v₁|≥len|right-v₂| ( <⇒≱ len|right-v₁|<len|right-v₂| )
+    ... | tri< len|right-v₁|<len|right-v₂| _ _ = Nullary.contradiction  len|right-v₁|≥len|right-v₂| ( <⇒≱ len|right-v₁|<len|right-v₂| )  -- (**) 
     ... | tri> _ _ len|right-v₁|>len|right-v₂| = len-> len|right-v₁|>len|right-v₂|  
     ... | tri≈ _ len|right-v₁|≡len|right-v₂| _ =
       len-≡ len|right-v₁|≡len|right-v₂| (choice-rr (pdi₁>-pdi₂-ev v₁ v₂  (≤-reflexive ( sym len|right-v₁|≡len|right-v₂|) ) recons-v₁-pdi₁ recons-v₂-pdi₂))
@@ -454,16 +459,16 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
     star-pdi₂ = pdinstance-star pdi₂    
  
     ev : ∀ ( t₁ : U  (r * ε∉r ` loc) )
-          → ( t₂ : U  (r * ε∉r ` loc) )
-          → length (proj₁ (flat t₁)) ≥  length (proj₁ (flat t₂))
-          -- w : List Char
-          -- proj₁ (flat t₁) ≡ c ∷ w 
-          -- proj₁ (flat t₂) ≡ c ∷ w
+         → ( t₂ : U  (r * ε∉r ` loc) )
+         → length (proj₁ (flat t₁)) ≥  length (proj₁ (flat t₂))
+         -- w : List Char
+         -- proj₁ (flat t₁) ≡ c ∷ w 
+         -- proj₁ (flat t₂) ≡ c ∷ w
           
-          → ( Recons t₁ star-pdi₁ )
-          → ( Recons t₂ star-pdi₂ )
-          -------------------------
-          → ( (r * ε∉r ` loc) ⊢ t₁ > t₂ )
+         → ( Recons t₁ star-pdi₁ )
+         → ( Recons t₂ star-pdi₂ )
+         -------------------------
+         → ( (r * ε∉r ` loc) ⊢ t₁ > t₂ )
     ev (ListU []) _ _ recons-[]-star-pdi₁ _ = Nullary.contradiction  recons-[]-star-pdi₁ (¬recons-[]-from-pdinstance-star pdi₁)
     ev _ (ListU []) _ _ recons-[]-star-pdi₂ = Nullary.contradiction  recons-[]-star-pdi₂ (¬recons-[]-from-pdinstance-star pdi₂)
     ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) len|list-v₁vs₁|≥len|list-v₂vs₂| recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ with (Nat.<-cmp (length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (v₁ ∷ vs₁) )))) (length (proj₁ (flat (ListU  {r} {ε∉r} {loc} (v₂ ∷ vs₂))))))
@@ -481,6 +486,13 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
                                     => r* ⊢ list v₂∷vs₂ > list v₁∷vs₁
                                     => len|v₂∷vs₂| ≥ len|v₁∷vs₁|
                                     no contradiction found
+
+         can we find a counter example such that
+            Recons (ListU (v₁ ∷ vs₁)) (pdinstance-star pdi₁) and 
+            Recons (ListU (v₂ ∷ vs₂)) (pdinstance-star pdi₂) and 
+            pdi₁ > pdi₂ and 
+            len|v₁|<len|v₂| ?
+         
 
          attempt 2 or it is not possible for r* to have more than 1 oplus partial derivative? 
             the only possible case of introducing ++ is r ≡ l ● s for some l where ε∈ l, l cannot
@@ -512,7 +524,7 @@ data Recons : { r : RE } { c : Char } → ( u : U r ) → ( PDInstance r c )  �
          
         -}
         
--}
+{-
 
 
 star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { w₁ w₂ w  : List Char } 
@@ -547,5 +559,6 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {w₁} {w₂} {w} w₁++w₂≡w pdi₁ pd
           -- we can't, they are parse trees of two differen types, p₁ ≢ p₂
           -- hence we can't define > among them
     
+-}
 
 ```

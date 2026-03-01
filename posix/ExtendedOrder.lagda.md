@@ -185,6 +185,13 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
     → r , c ⊢ pdi₁ > pdi₂
 
 
+data _,_⊢_>>_ : ∀ ( r : RE ) → ( c : Char ) → PDInstance r c → PDInstance r c → Set where
+  >>-pdi-r* : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+    → ( pdi₁ : PDInstance (r * ε∉r ` loc) c )
+    → ( pdi₂ : PDInstance (r * ε∉r ` loc) c )
+    → ( ∀ (u₁ : U ( r * ε∉r ` loc) ) → ( u₂ : U (r * ε∉r ` loc) )
+      → length 
+
 -- if we index the relation with a word, hence, we fix the suffix and the leading character c
 
 -- we need a weaker variant of Recons
@@ -507,7 +514,7 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
                 → Recons u₂ pdi₂  -- injecting a back to some pd parse tree 
                 → (a* ● (a* ● a)) ⊢ u₁ > u₂
 
-            note that the v₁ and v₂ below do not meet the premise of the evidence function above. hence it does not violate the evidence for pdi₁ > pdi₂
+            note that the v₁ and v₂ below do not meet the premise of the evidence function above. hence it does not violate the evidence for pdi₁ > pdi₂    
 
            we may find v₁' = ( Emp , ( [] , ( [] , a ) ))
                        v₂' = ( Emp , ( [ a ] , a ) )
@@ -520,10 +527,15 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
                        |v₁| ≡ [a , a]
                        |v₂| ≡ [a, a, a]
 
-              hm... the premise       length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂)) is not sufficient (not strong enough) to show ⊢ u₁ > u₂, (note that from Order, we have >→len|≥| and len|>|→> but not len|≥|→>
+              hm... the premise       length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂)) is not sufficient (not strong enough) to show ⊢ u₁ > u₂, (note that from posix/Order.lagda.md, we have shown that >→len|≥| and len|>|→> but not len|≥|→>
                         i.e. u₁ ≡ ListU v₁ ∷ vs₁ and u₂ ≡ ListU v₂ ∷ vs₂
                         we should follow a bit of the shape of r? only for r* and r ● s?
                     
+                        one possiblity is to type index the _,_⊢_>_ relation
+
+                        with different sub cases of r. HOwever, that would requires use to
+                          pattern match pdi₁ > pdi₂ into sub cases.
+
 
 
          attempt 2 or it is not possible for r* to have more than 1 oplus partial derivative? 

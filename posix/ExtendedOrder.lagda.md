@@ -190,7 +190,8 @@ data _,_⊢_>>_ : ∀ ( r : RE ) → ( c : Char ) → PDInstance r c → PDInsta
     → ( pdi₁ : PDInstance (r * ε∉r ` loc) c )
     → ( pdi₂ : PDInstance (r * ε∉r ` loc) c )
     → ( ∀ (u₁ : U ( r * ε∉r ` loc) ) → ( u₂ : U (r * ε∉r ` loc) )
-      → length 
+      → length (proj₁ (flat u₁)) ≥ length
+        -- how to get the heads and tails? 
 
 -- if we index the relation with a word, hence, we fix the suffix and the leading character c
 

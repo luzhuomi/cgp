@@ -176,7 +176,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
     → ( pdi₂ : PDInstance r c )
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r )
       → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
-        -- this premise is problematic?
+        -- this premise is problematic? it weakens the >-pdi relation compared to the greedy and lne order 
         -- w/o this, we can't prove left-ex-sort and right-ex-sort refer to (**)
         -- can we still create a contradiction w/o this to prove (**)?
         -- even if we could do it for left-ex-sort and right-ex-sort, how about star-ex-sort? 
@@ -184,7 +184,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c ⊢ pdi₁ > pdi₂
 
-
+{-
 data _,_⊢_>>_ : ∀ ( r : RE ) → ( c : Char ) → PDInstance r c → PDInstance r c → Set where
   >>-pdi-r* : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
     → ( pdi₁ : PDInstance (r * ε∉r ` loc) c )
@@ -192,7 +192,7 @@ data _,_⊢_>>_ : ∀ ( r : RE ) → ( c : Char ) → PDInstance r c → PDInsta
     → ( ∀ (u₁ : U ( r * ε∉r ` loc) ) → ( u₂ : U (r * ε∉r ` loc) )
       → length (proj₁ (flat u₁)) ≥ length
         -- how to get the heads and tails? 
-
+-} 
 -- if we index the relation with a word, hence, we fix the suffix and the leading character c
 
 -- we need a weaker variant of Recons
@@ -504,29 +504,37 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
          counter example:
            r = (a* ● (a* ● a)) *
 
-           p₁ = ( ε ● ( a* ● ( a* ● a ) ) )  from pdi₁               
+           p₁ = ( ε ● ( a* ● ( a* ● a ) ) )   from pdi₁               
            p₂ = ( ε ● ( a* ● a ) )           from pdi₂ 
 
+           our goal is to show pdinstance-star pdi₁ > pdinstance-star pdi₂
+           
+           from the premise
             (a* ● (a* ● a)) , a ⊢ pdi₁ > pdi₂
               evidence function
-               ∀ (u₁ u₂ : U (a* ● (a* ● a)))
-                → len|u₁|≥len|u₂|
-                → Recons u₁ pdi₁  -- injecting a back to some pd parse tree
-                → Recons u₂ pdi₂  -- injecting a back to some pd parse tree 
-                → (a* ● (a* ● a)) ⊢ u₁ > u₂
+               ∀ (v₁ v₂ : U (a* ● (a* ● a)))
+                → len|v₁|≥len|v₂|
+                → Recons v₁ pdi₁  -- injecting a back to some pd parse tree
+                → Recons v₂ pdi₂  -- injecting a back to some pd parse tree 
+                → (a* ● (a* ● a)) ⊢ v₁ > v₂
 
-            note that the v₁ and v₂ below do not meet the premise of the evidence function above. hence it does not violate the evidence for pdi₁ > pdi₂    
+              note that the v₁ and v₂ below do not meet the premise of the evidence function above. hence it does not violate the evidence for pdi₁ > pdi₂    
 
-           we may find v₁' = ( Emp , ( [] , ( [] , a ) ))
-                       v₂' = ( Emp , ( [ a ] , a ) )
-                       v₁  = ( [a], ([], a ))
-                       v₂ =  ( [a], ([a], a))
+            we may find v₁' = ( Emp , ( [] , ( [] , a ) ))
+                        v₂' = ( Emp , ( [ a ] , a ) )
+
+                        
+                        v₁  = ( [a], ([], a ))
+                        v₂ =  ( [a], ([a], a))
+                        len|v₁|≥len|v₂|
+
                        vs₁ = [a]
                        vs₂ = []
-                       |v₁ ∷ vs₁| ≡ [ a , a , a ]
-                       |v₂ ∷ vs₂| ≡ [ a , a , a ]
+                       |u₁| = |v₁ ∷ vs₁| ≡ [ a , a , a ]
+                       |u₂| = |v₂ ∷ vs₂| ≡ [ a , a , a ]
                        |v₁| ≡ [a , a]
                        |v₂| ≡ [a, a, a]
+                      
 
               hm... the premise       length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂)) is not sufficient (not strong enough) to show ⊢ u₁ > u₂, (note that from posix/Order.lagda.md, we have shown that >→len|≥| and len|>|→> but not len|≥|→>
                         i.e. u₁ ≡ ListU v₁ ∷ vs₁ and u₂ ≡ ListU v₂ ∷ vs₂

@@ -526,17 +526,36 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
                         
                         v₁  = ( [a], ([], a ))
                         v₂ =  ( [a], ([a], a))
-                        len|v₁|≥len|v₂|
 
-                       vs₁ = [a]
-                       vs₂ = []
-                       |u₁| = |v₁ ∷ vs₁| ≡ [ a , a , a ]
-                       |u₂| = |v₂ ∷ vs₂| ≡ [ a , a , a ]
-                       |v₁| ≡ [a , a]
-                       |v₂| ≡ [a, a, a]
-                      
+                        vs₁ = [a]
+                        vs₂ = []
 
-              hm... the premise       length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂)) is not sufficient (not strong enough) to show ⊢ u₁ > u₂, (note that from posix/Order.lagda.md, we have shown that >→len|≥| and len|>|→> but not len|≥|→>
+                        v₁ ∷ vs₁ has type U (a* ● (a* ● a)) *
+                        v₂ ∷ vs₂ has type U (a* ● (a* ● a)) *
+                        
+                        |u₁| = |v₁ ∷ vs₁| ≡ [ a , a , a ]
+                        |u₂| = |v₂ ∷ vs₂| ≡ [ a , a , a ]
+                        |v₁| ≡ [a , a]
+                        |v₂| ≡ [a, a, a]
+
+                        we don't have |v₁|≥|v₂| 
+
+                        the question is ... how can v₁ ∷ vs₁ and v₂ ∷ vs₂ be constructed from
+                        pdinstance-star pdi₁ and pdinstance-star pdi₂?
+
+                         v₁'vs₁ = Pair ( Emp , ( [] , ( [] , a ) )) vs₁
+                         v₂'vs₂ = Pair ( Emp , ( [ a ] , a ) ) vs₂
+
+                         the partial derivative in  pdinstance-star pdi₁ is p₁ ● r
+                         and the parital derivative in pdinstance-star pdi₂ is p₂ ●r
+
+                         pdinstances are unique prior ε ● r ≡ r simplification.
+                         lne and greedy partial derivative construction gives us the
+                         condition, that the > is preserved across pdinstances in ordered.
+                         this is not the case in the current POSIX attempt.
+                         
+                        ### these are craps
+                        hm... the premise       length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂)) is not sufficient (not strong enough) to show ⊢ u₁ > u₂, (note that from posix/Order.lagda.md, we have shown that >→len|≥| and len|>|→> but not len|≥|→>
                         i.e. u₁ ≡ ListU v₁ ∷ vs₁ and u₂ ≡ ListU v₂ ∷ vs₂
                         we should follow a bit of the shape of r? only for r* and r ● s?
                     
@@ -544,7 +563,7 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
 
                         with different sub cases of r. HOwever, that would requires use to
                           pattern match pdi₁ > pdi₂ into sub cases.
-
+                        ### these are craps :END 
 
 
          attempt 2 or it is not possible for r* to have more than 1 oplus partial derivative? 

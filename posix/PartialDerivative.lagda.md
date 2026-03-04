@@ -207,6 +207,9 @@ just
 
 In this variant, we do not replace the ++ in the r₁ ● r₂ case by ⊕, we only apply ⊕ to the +  case.
 
+NOTE: this variant does not give us posix, refer to ExampleParseAll.ex_ps below and also the star-ex-sorted in ExtendedOrder.lagda.md
+
+
 pd(r₁ + r₂ , ℓ ) = pd( r₁ , ℓ ) ⊕ pd( r₂ , ℓ  )
 
 pd[ r , a ] = [ r' ● r | r' ∈ pd[ ( a + b) + a ● b, a ] ]
@@ -1070,7 +1073,22 @@ module ExampleParseAll where
           r = ( a●b+a ● a+baa ` 18 ) ● c+ac ` 19
       in r
 
-  ex_qs = parseAll[ posix-test-r₂ , 'a' ∷ 'b' ∷ 'a' ∷ 'a' ∷ 'c' ∷ [] ] 
+  ex_qs = parseAll[ posix-test-r₂ , 'a' ∷ 'b' ∷ 'a' ∷ 'a' ∷ 'c' ∷ [] ]
+
+  -- problematic example 
+  posix-test-r₃ : RE
+  posix-test-r₃ =
+    let a₁ = $ 'a' ` 1
+        a*₂ = a₁ * ε∉$ ` 2
+        a₃ = $ 'a' ` 3
+        a*₄ = a₃ * ε∉$ ` 4
+        a₅ = $ 'a' ` 5
+        a*●a₆ = a*₄ ● a₅ ` 6
+        a*●a*●a₇ = a*₂ ● a*●a₆ ` 7
+        r = a*●a*●a₇ * ε∉snd (ε∉snd ε∉$) ` 8
+    in r
+  ex_ps = parseAll[ posix-test-r₃ , 'a' ∷ 'a' ∷ 'a' ∷ [] ]
+  
 ```
 
 Evaluating ExampleParseAll.ex_us
@@ -1148,7 +1166,26 @@ PairU (PairU (LeftU (PairU (LetterU 'a') (LetterU 'b')))   (LeftU (LetterU 'a'))
 PairU (PairU (RightU (LetterU 'a'))                        (RightU (PairU (LetterU 'b') (PairU (LetterU 'a') (LetterU 'a')))))   (LeftU (LetterU 'c'))
 ∷ []
 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+evaluating ExampleParseAll.ex_ps yields -- not posix
+
+ListU (PairU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))  (PairU (ListU []) (LetterU 'a'))     ∷ [])
+∷
+ListU (PairU (ListU (LetterU 'a' ∷ []))  (PairU (ListU (LetterU 'a' ∷ [])) (LetterU 'a'))   ∷ [])
+∷
+ListU (PairU (ListU (LetterU 'a' ∷ []))  (PairU (ListU []) (LetterU 'a'))                    ∷ PairU (ListU []) (PairU (ListU []) (LetterU 'a')) ∷ [])
+∷
+ListU (PairU (ListU []) (PairU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])) (LetterU 'a'))      ∷ [])
+∷
+ListU (PairU (ListU []) (PairU (ListU (LetterU 'a' ∷ [])) (LetterU 'a'))                     ∷ PairU (ListU []) (PairU (ListU []) (LetterU 'a')) ∷ [])
+∷
+ListU (PairU (ListU []) (PairU (ListU []) (LetterU 'a'))                                     ∷ PairU (ListU (LetterU 'a' ∷ [])) (PairU (ListU []) (LetterU 'a')) ∷  [])
+∷
+ListU (PairU (ListU []) (PairU (ListU []) (LetterU 'a'))                                     ∷  PairU (ListU []) (PairU (ListU (LetterU 'a' ∷ [])) (LetterU 'a')) ∷  [])
+∷
+ListU (PairU (ListU []) (PairU (ListU []) (LetterU 'a'))                                     ∷  PairU (ListU []) (PairU (ListU []) (LetterU 'a')) ∷ PairU (ListU []) (PairU (ListU []) (LetterU 'a')) ∷ [])
+∷ []
 
 ### Lemma 25 : buildU is sound
 Let r be a non problemantic regular expression.

@@ -50,7 +50,7 @@ open Recons using ( Recons ; recons ;
 
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using (
-  pdU[_,_] ; pdUConcat ;
+  pdU[_,_] ; -- pdUConcat ;
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; 
   parseAll[_,_] ; buildU ;
@@ -634,3 +634,26 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {w₁} {w₂} {w} w₁++w₂≡w pdi₁ pd
 -}
 
 ```
+
+```agda
+private 
+  variable
+    ℓ : Agda.Primitive.Level
+    
+data NilSingleton { A : Set ℓ } : List A → Set ℓ where
+  isNil :  NilSingleton []
+  isSingleton :  ( x : A ) → NilSingleton  (x ∷ []) 
+
+
+-- pdi*-nilOrSingleton : ∀ { r : RE } { w : List Char }
+--   → length 
+
+
+concatMap-buildU-sorted : ∀ { r : RE } { w : List Char }
+  → ( pdis : List (PDInstance* r w ) )
+  → All *>-Inc pdis
+  → >-sorted {r} (concatMap buildU pdis)
+concatMap-buildU-sorted =  {!!}  
+
+```
+

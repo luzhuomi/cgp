@@ -45,7 +45,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 
 
 import cgp.posix.PartialDerivative as PartialDerivative
-open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
+open PartialDerivative using ( pdU[_,_] ; -- pdUConcat ;
   pdUMany[_,_]; pdUMany-aux ;
   pdinstance-oplus ; fuse ; mkfuseInj ;
   advance-pdi*-with-c
@@ -1714,10 +1714,10 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc {r} {c}) pdU[ r , c ]
 
-
+{-
 pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → All (>-Inc {l ● r ` loc } {c}) (pdUConcat l r ε∈l loc c)
-
+-}
 
 pdU->-inc {ε} {c} = []
 pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
@@ -1747,11 +1747,27 @@ pdU->-inc {l ● r ` loc} {c} with ε∈? l
     ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
     ind-hyp-l = pdU->-inc {l} {c}
     
-pdU->-inc {l ● r ` loc} {c}  | yes ε∈l = pdUConcat->-inc   
+pdU->-inc {l ● r ` loc} {c}  | yes ε∈l =
+          all->-inc-oplus-map-fst-concatmap-snd
+  where
+
+    ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
+    ind-hyp-l = pdU->-inc {l} {c}     
+
+    ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
+    ind-hyp-r = pdU->-inc {r} {c}
+
+    all->-inc-oplus-map-fst-concatmap-snd : All >-Inc (pdinstance-oplus (List.map pdinstance-fst pdU[ l , c ]) 
+                                            (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]))
+    all->-inc-oplus-map-fst-concatmap-snd =
+      >-inc-pdinstance-oplus-+● {l} {r} {ε∈l} {loc} {c}
+                                pdU[ l , c ] 
+                                pdU[ r , c ]
+                                ind-hyp-l 
+                                ind-hyp-r 
 
 
-
-
+{-
 {-# TERMINATING #-}
 pdUConcat->-inc {ε} {r} {ε∈ε} {loc} {c} = all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd 
   where
@@ -1820,7 +1836,7 @@ pdUConcat->-inc { l + s ` loc₂ } {r} {ε∈l+s} {loc} {c} =  all->-inc-oplus-m
                                 pdU[ r , c ]
                                 all->-inc-oplus-map-left-pdu-l-c-map-right-pdu-r-c
                                 ind-hyp-r 
-
+-}
 ```
 
 

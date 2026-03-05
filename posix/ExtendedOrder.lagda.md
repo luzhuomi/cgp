@@ -51,7 +51,7 @@ open Recons using ( Recons ; recons ;
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; -- pdUConcat ;
-  pdinstance-oplus ; fuse ; 
+  pdinstance-oplus ; fuse ; mkfuseInj ;
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; 
   parseAll[_,_] ; buildU ;
@@ -815,7 +815,7 @@ data Hidden : ∀ { r : RE } { c : Char } → RE →  PDInstance r c → Set whe
   hide : ∀ { p r : RE } { c : Char } 
     → ( inj : U p → U r ) -- ^ the injection function 
     → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  -- s^ soundnes evidence
-    → Hidden p (pdinstance {p} {r} {c} inj s-ev)
+    → Hidden {r} {c} p (pdinstance {p} {r} {c} inj s-ev)
 
 -- a list of pdinstance is weak singleton iff all of them are hiding the same pd.
 data WeakSingleton : ∀ { r : RE } { c : Char } → List (PDInstance r c) → Set where
@@ -834,14 +834,21 @@ oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
   → WeakSingleton (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
 oplus-WeakSingleton {r} {loc} {c} []             pdis₂ _  weaksingleton-pdis₂ = weaksingleton-pdis₂
 oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) []    weaksingleton-pdi₁pdis₁ _ = weaksingleton-pdi₁pdis₁
-oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)
-  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ ))
-  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₁-pdi₂ ∷ hide-p₁-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
+oplus-WeakSingleton {r} {loc} {c} (pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} {r} {c} in₂ s-ev₂) ∷ pdis₂)
+  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁@(hide {p₁} {r} {c} .(in₁) .(s-ev₁)) ∷ hide-p₁-pdis₁ ))
+  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂@(hide {p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
     where
-      prf : ∃[ p ] All (Hidden p) (concatMap (λ pdiˡ₁ → 
+      inj : U (p₁ + p₂ ` loc ) → U r
+      inj = mkfuseInj in₁ in₂
+      sound-ev : (u : U (p₁ + p₂ ` loc)) 
+                 → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+      sound-ev (LeftU v₁) = s-ev₁ v₁
+      sound-ev (RightU v₂) = s-ev₂ v₂
+    
+      prf : ∃[ p ] All (Hidden {r} {c} p) (concatMap (λ pdiˡ₁ → 
                                                 (fuse pdiˡ₁ pdi₂) ∷  (List.map (fuse pdiˡ₁) pdis₂) )
-                                  (pdi₁ ∷ pdis₁))
-      prf = (p₁ + p₂ ` loc)  , {!!} ∷ {!!}                                     
+                                             (pdi₁ ∷ pdis₁))
+      prf = (p₁ + p₂ ` loc)  , ( (hide inj sound-ev) ∷ {!!} )
   
 
 pdU-WeakSingleton : ∀ { r : RE } { c : Char }

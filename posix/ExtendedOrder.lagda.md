@@ -845,7 +845,8 @@ pdU-WeakSingleton {$ c ` loc} {c₁} with c Char.≟ c₁
                                  c₁ ∷ []
                                ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
                                  c₁ ∷ (proj₁ (flat EmptyU))
-                               ∎) 
+                               ∎)
+                               
                                           
 
 ```

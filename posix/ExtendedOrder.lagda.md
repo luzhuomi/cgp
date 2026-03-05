@@ -51,7 +51,7 @@ open Recons using ( Recons ; recons ;
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; -- pdUConcat ;
-  pdinstance-oplus ; 
+  pdinstance-oplus ; fuse ; 
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; 
   parseAll[_,_] ; buildU ;
@@ -825,6 +825,25 @@ data WeakSingleton : ∀ { r : RE } { c : Char } → List (PDInstance r c) → S
     
 
 
+oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
+  → ( pdis₁ : List (PDInstance r c ) )
+  → ( pdis₂ : List (PDInstance r c ) )
+  → WeakSingleton pdis₁
+  → WeakSingleton pdis₂
+  --------------------------------------------------------------
+  → WeakSingleton (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
+oplus-WeakSingleton {r} {loc} {c} []             pdis₂ _  weaksingleton-pdis₂ = weaksingleton-pdis₂
+oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) []    weaksingleton-pdi₁pdis₁ _ = weaksingleton-pdi₁pdis₁
+oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)
+  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ ))
+  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₁-pdi₂ ∷ hide-p₁-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
+    where
+      prf : ∃[ p ] All (Hidden p) (concatMap (λ pdiˡ₁ → 
+                                                (fuse pdiˡ₁ pdi₂) ∷  (List.map (fuse pdiˡ₁) pdis₂) )
+                                  (pdi₁ ∷ pdis₁))
+      prf = (p₁ + p₂ ` loc)  , {!!} ∷ {!!}                                     
+  
+
 pdU-WeakSingleton : ∀ { r : RE } { c : Char }
   → WeakSingleton pdU[ r  , c ]
 pdU-WeakSingleton {ε} {c} = weakSingleton pdU[ ε , c ] (ε , [])
@@ -846,7 +865,13 @@ pdU-WeakSingleton {$ c ` loc} {c₁} with c Char.≟ c₁
                                ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
                                  c₁ ∷ (proj₁ (flat EmptyU))
                                ∎)
-                               
+pdU-WeakSingleton {l + r ` loc} {c} = {!!} 
+  where
+    ind-hyp-l : WeakSingleton pdU[ l , c ]
+    ind-hyp-l = pdU-WeakSingleton {l} {c}
+    ind-hyp-r : WeakSingleton pdU[ r , c ]
+    ind-hyp-r = pdU-WeakSingleton {r} {c}
+    
                                           
 
 ```

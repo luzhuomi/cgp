@@ -170,10 +170,11 @@ data Rec> : { r : RE } { c : Char } { u₁ u₂ : U r } { p₁ p₂ : PDInstance
 -}    
   
 
+-- what if in addition, we know that p from pdi₁ and pdi₂ are identitcal? weak-singleton
 
 data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char }
-    → ( pdi₁ : PDInstance r c )
+    → ( pdi₁ : PDInstance r c ) 
     → ( pdi₂ : PDInstance r c )
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r )
       → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
@@ -645,6 +646,14 @@ data NilSingleton { A : Set ℓ } : List A → Set ℓ where
   isNil :  NilSingleton []
   isSingleton :  ( x : A ) → NilSingleton  (x ∷ [])
 
+
+map-NilOrSingleton : ∀ { A B : Set } { f : A → B } { xs : List A }
+  → NilSingleton xs
+  ------------------------------
+  → NilSingleton (List.map f xs)
+map-NilOrSingleton {A} {B} {f} {[]} isNil = isNil
+map-NilOrSingleton {A} {B} {f} {x ∷ []} (isSingleton .(x)) = isSingleton (f x) 
+
 oplus-NilOrSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
   → ( pdis₁ : List (PDInstance r c ) )
   → ( pdis₂ : List (PDInstance r c ) )
@@ -652,6 +661,48 @@ oplus-NilOrSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
   → NilSingleton pdis₂
   --------------------------------------------------------------
   → NilSingleton (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
+oplus-NilOrSingleton {r} {loc} {c} [] pdis₂ isNil nilsingleton-pdis₂          = nilsingleton-pdis₂
+oplus-NilOrSingleton {r} {loc} {c} (pdi₁ ∷ []) [] (isSingleton .(pdi₁)) isNil = isSingleton pdi₁
+oplus-NilOrSingleton {r} {loc} {c} (pdi₁ ∷ []) (pdi₂ ∷ []) (isSingleton .(pdi₁)) (isSingleton .(pdi₂)) = isSingleton (PartialDerivative.fuse pdi₁ pdi₂) 
+
+
+pdinstance-snd-NilOrSingleton : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( es-flat-[]-es : ∃[ e ] (Flat-[] l e ) )
+  → ( pdis : List (PDInstance r c ) )
+  → NilSingleton pdis
+  --------------------------------------------------------------
+  → NilSingleton (pdinstance-snd {l} {r} {loc} {c} es-flat-[]-es pdis)
+pdinstance-snd-NilOrSingleton = {!!}   
+  
+
+
+concatmap-pdinstance-snd-NilOrSingleton : { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c  : Char }
+  → ( pdis : List (PDInstance r c ) )
+  → NilSingleton pdis
+  ----------------------------------------------------------------------
+  → NilSingleton (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
+concatmap-pdinstance-snd-NilOrSingleton {l} {r} {ε∈l} {loc} {c} [] isNil   rewrite PosixOrder.concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} =  isNil
+concatmap-pdinstance-snd-NilOrSingleton {l} {r} {ε∈l} {loc} {c} (pdi ∷ []) (isSingleton .(pdi)) = sub e-flat-es
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    e-flat-es :  List ( ∃[ e ] (Flat-[] l e) )
+    e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+    sub : (xs :  List ( ∃[ e ] (Flat-[] l e) )) →  NilSingleton (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x (pdi ∷ [])) xs)
+    sub [] = isNil 
+    sub (x ∷ xs) = {!!}  -- mkAllEmptyU is not singleton? hence  (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis) is not singleton
+    -- can we nail down a counter example ?
+
+    -- since Singleton is not guanranteed by pdU operations.
+    -- we define a weaker property.
+    -- all the partial derivative descendants in posix PDU must be sharing the same p, the partial derivative expression is the same.
+
+
+
+    
+
 
 pdU-NilOrSingleton : ∀ { r : RE } { c : Char }
   → NilSingleton pdU[ r  , c ]
@@ -669,16 +720,27 @@ pdU-NilOrSingleton {$ c ` loc} {c₁} with c Char.≟ c₁
                                                     ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
                                                      c₁ ∷ (proj₁ (flat EmptyU))
                                                     ∎) )
-pdU-NilOrSingleton {l + r ` loc} {c} = {!!}                                                                                                         
-pdU-NilOrSingleton {l ● r ` loc} {c} = {!!}                                                     
+pdU-NilOrSingleton {l + r ` loc} {c} = oplus-NilOrSingleton (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ r , c ]) (map-NilOrSingleton ind-hyp-l) (map-NilOrSingleton ind-hyp-r)
+  where
+    ind-hyp-l :  NilSingleton pdU[ l  , c ]
+    ind-hyp-l = pdU-NilOrSingleton {l} {c}
+    ind-hyp-r :  NilSingleton pdU[ r  , c ]
+    ind-hyp-r = pdU-NilOrSingleton {r} {c}    
+    
+pdU-NilOrSingleton {l ● r ` loc} {c} with ε∈? l
+... | no ¬ε∈l = map-NilOrSingleton (pdU-NilOrSingleton {l} {c})
+... | yes ε∈l = oplus-NilOrSingleton (List.map pdinstance-fst pdU[ l , c ]) ( concatmap-pdinstance-snd {l} {r} {ε∈l}   {loc} {c} pdU[ r , c ] ) (map-NilOrSingleton ind-hyp-l) (concatmap-pdinstance-snd-NilOrSingleton pdU[ r , c ] ind-hyp-r) 
+  where
+    ind-hyp-l :  NilSingleton pdU[ l  , c ]
+    ind-hyp-l = pdU-NilOrSingleton {l} {c}
+    ind-hyp-r :  NilSingleton pdU[ r  , c ]
+    ind-hyp-r = pdU-NilOrSingleton {r} {c}
+pdU-NilOrSingleton {r * ε∉r ` loc} {c} = map-NilOrSingleton ind-hyp-r
+  where 
+    ind-hyp-r :  NilSingleton pdU[ r  , c ]
+    ind-hyp-r = pdU-NilOrSingleton {r} {c}
 
 
-{-
-advance-pdi*-with-c-NilOrSingleton : ∀ { r : RE } { pref : List Char } { c : Char }
-  → (pdi : PDInstance* r pref)
-  → NilSingleton (advance-pdi*-with-c {r} {pref} {c} pdi)
-advance-pdi*-with-c-NilOrSingleton = {!!}
--}
 
 
 concatmap-advance-pdi*-with-c-NilOrSingleton : ∀ { r : RE } { pref : List Char } { c : Char }

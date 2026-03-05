@@ -638,6 +638,8 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {w₁} {w₂} {w} w₁++w₂≡w pdi₁ pd
 ```
 
 ```agda
+-- singleton definition not working 
+{-
 private 
   variable
     ℓ : Agda.Primitive.Level
@@ -645,6 +647,8 @@ private
 data NilSingleton { A : Set ℓ } : List A → Set ℓ where
   isNil :  NilSingleton []
   isSingleton :  ( x : A ) → NilSingleton  (x ∷ [])
+
+  
 
 
 map-NilOrSingleton : ∀ { A B : Set } { f : A → B } { xs : List A }
@@ -801,6 +805,48 @@ concatMap-buildU-sorted {r} {w} ((pdi@(pdinstance* {p} {r} inj s-ev)) ∷ []) (i
 parseAll-is-posix-sorted : ∀ { r : RE } { w : List Char }
   →  >-sorted {r} (parseAll[ r , w ])
 parseAll-is-posix-sorted {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUMany-NilOrSingleton pdUMany-*>-inc 
+
+-}
+
+
+
+-- a relation shoow a partial derivative instance is "hiding" a partial derivative p
+data Hidden : ∀ { r : RE } { c : Char } → RE →  PDInstance r c → Set where
+  hide : ∀ { p r : RE } { c : Char } 
+    → ( inj : U p → U r ) -- ^ the injection function 
+    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  -- s^ soundnes evidence
+    → Hidden p (pdinstance {p} {r} {c} inj s-ev)
+
+-- a list of pdinstance is weak singleton iff all of them are hiding the same pd.
+data WeakSingleton : ∀ { r : RE } { c : Char } → List (PDInstance r c) → Set where
+  weakSingleton : ∀ { r : RE } { c : Char } (pdis : List (PDInstance r c ) )
+    → ∃[ p ] (All (Hidden p) pdis)
+    → WeakSingleton {r} {c} pdis 
+    
+
+
+pdU-WeakSingleton : ∀ { r : RE } { c : Char }
+  → WeakSingleton pdU[ r  , c ]
+pdU-WeakSingleton {ε} {c} = weakSingleton pdU[ ε , c ] (ε , [])
+pdU-WeakSingleton {$ c ` loc} {c₁} with c Char.≟ c₁
+... | no ¬c≡c₁ = weakSingleton [] (ε , [])
+... | yes c≡c₁ rewrite c≡c₁ = weakSingleton (( pdinstance {ε} {$ c₁ ` loc} {c₁} inj s-ev ) ∷ [] ) 
+                               (ε , 
+                                hide inj s-ev                                   
+                                ∷ [])
+                   where
+                     inj : U ε → U ($ c₁ ` loc)
+                     inj =  (λ u → LetterU c₁)
+                     s-ev : ∀ ( u : U ε ) → ( proj₁ ( flat {$ c₁ ` loc} (inj u) ) ≡ c₁ ∷ ( proj₁ (flat {ε} u) ))  
+                     s-ev = (λ EmptyU →                 -- ^ soundness ev
+                               begin
+                                 [ c₁ ]
+                               ≡⟨⟩
+                                 c₁ ∷ []
+                               ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                                 c₁ ∷ (proj₁ (flat EmptyU))
+                               ∎) 
+                                          
 
 ```
 

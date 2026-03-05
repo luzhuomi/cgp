@@ -51,6 +51,7 @@ open Recons using ( Recons ; recons ;
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; -- pdUConcat ;
+  pdinstance-oplus ; 
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; 
   parseAll[_,_] ; buildU ;
@@ -642,18 +643,102 @@ private
     
 data NilSingleton { A : Set ℓ } : List A → Set ℓ where
   isNil :  NilSingleton []
-  isSingleton :  ( x : A ) → NilSingleton  (x ∷ []) 
+  isSingleton :  ( x : A ) → NilSingleton  (x ∷ [])
+
+oplus-NilOrSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
+  → ( pdis₁ : List (PDInstance r c ) )
+  → ( pdis₂ : List (PDInstance r c ) )
+  → NilSingleton pdis₁
+  → NilSingleton pdis₂
+  --------------------------------------------------------------
+  → NilSingleton (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
+
+pdU-NilOrSingleton : ∀ { r : RE } { c : Char }
+  → NilSingleton pdU[ r  , c ]
+pdU-NilOrSingleton {ε} {c} = isNil
+pdU-NilOrSingleton {$ c ` loc} {c₁} with c Char.≟ c₁
+... | no ¬c≡c₁ = isNil
+... | yes c≡c₁ rewrite c≡c₁ = isSingleton
+                              ( pdinstance {ε} {$ c₁ ` loc} {c₁} -- copied from PartialDerivative 
+                                                 (λ u → LetterU {loc} c₁)
+                                                 (λ EmptyU →                 -- ^ soundness ev
+                                                   begin
+                                                     [ c₁ ]
+                                                    ≡⟨⟩
+                                                     c₁ ∷ []
+                                                    ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                                                     c₁ ∷ (proj₁ (flat EmptyU))
+                                                    ∎) )
+pdU-NilOrSingleton {l + r ` loc} {c} = {!!}                                                                                                         
+pdU-NilOrSingleton {l ● r ` loc} {c} = {!!}                                                     
 
 
--- pdi*-nilOrSingleton : ∀ { r : RE } { w : List Char }
---   → length 
+{-
+advance-pdi*-with-c-NilOrSingleton : ∀ { r : RE } { pref : List Char } { c : Char }
+  → (pdi : PDInstance* r pref)
+  → NilSingleton (advance-pdi*-with-c {r} {pref} {c} pdi)
+advance-pdi*-with-c-NilOrSingleton = {!!}
+-}
+
+
+concatmap-advance-pdi*-with-c-NilOrSingleton : ∀ { r : RE } { pref : List Char } { c : Char }
+  → (pdis : List (PDInstance* r pref))
+  → NilSingleton pdis
+  --------------------------------------
+  → NilSingleton (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+concatmap-advance-pdi*-with-c-NilOrSingleton {r} {pref} {c} [] isNil = isNil
+concatmap-advance-pdi*-with-c-NilOrSingleton {r} {pref} {c} (pdi@(pdinstance* {p} {r} {w} inj s-ev) ∷ []) (isSingleton .(pdi)) with pdU[ p , c ] | pdU-NilOrSingleton {p} {c} 
+... | []         | isNil = isNil
+... | qdi ∷ []  | isSingleton .(qdi) =  isSingleton (compose-pdi-with inj s-ev qdi)
+  
+
+pdUMany-aux-NilOrSingleton : ∀ { r : RE } { pref : List Char }
+  → ( c : Char)
+  → ( cs : List Char )
+  → ( pdis : List (PDInstance*  r pref ) )
+  → NilSingleton pdis
+  -----------------------------------------
+  → NilSingleton (pdUMany-aux (c ∷ cs) pdis)
+pdUMany-aux-NilOrSingleton {r} {pref} c [] pdis nilorsingleton-pdis rewrite (++-identityʳ (pref ∷ʳ c) ) =  concatmap-advance-pdi*-with-c-NilOrSingleton pdis nilorsingleton-pdis
+pdUMany-aux-NilOrSingleton {r} {pref} c (d ∷ cs) pdis nilorsingleton-pdis = pdUMany-aux-NilOrSingleton {r} {pref ∷ʳ c} d cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) ( concatmap-advance-pdi*-with-c-NilOrSingleton pdis nilorsingleton-pdis ) 
+
+pdUMany-NilOrSingleton : ∀ { r : RE } { w : List Char }
+  → NilSingleton (pdUMany[ r , w ])
+pdUMany-NilOrSingleton {r} {[]} = isSingleton
+                                    (pdinstance* PartialDerivative.injId PartialDerivative.injId-sound)
+pdUMany-NilOrSingleton {r} {c ∷ cs}  =  pdUMany-aux-NilOrSingleton {r} {[]} c cs  [ ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (isSingleton (pdinstance* (λ u → u) (λ u → refl)))    
+
+
+map-inj-sorted : ∀ { p r : RE } 
+  → ( us : List ( U p ) )
+  → ( inj : U p → U r )
+  → ( (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ )
+  → >-sorted {p} us
+  ---------------------------------
+  → >-sorted {r} (List.map inj us)
+map-inj-sorted {p} {r} [] inj >-inc-ev >-nil = >-nil
+map-inj-sorted {p} {r} (u ∷ []) inj >-inc-ev (>-cons >-nil >-nothing)  = >-cons >-nil >-nothing
+map-inj-sorted {p} {r} (u₁ ∷ (u₂ ∷  us)) inj >-inc-ev (>-cons u₂us-sorted (>-just u₁>u₂) )  = >-cons ind-hyp (>-just (>-inc-ev u₁ u₂ u₁>u₂))
+  where
+    ind-hyp : >-sorted {r} (List.map inj (u₂ ∷ us))
+    ind-hyp = map-inj-sorted {p} {r} (u₂ ∷ us) inj >-inc-ev u₂us-sorted 
+
 
 
 concatMap-buildU-sorted : ∀ { r : RE } { w : List Char }
   → ( pdis : List (PDInstance* r w ) )
+  → NilSingleton pdis
   → All *>-Inc pdis
   → >-sorted {r} (concatMap buildU pdis)
-concatMap-buildU-sorted =  {!!}  
+concatMap-buildU-sorted {r} {w} [] isNil [] =  >-nil
+concatMap-buildU-sorted {r} {w} ((pdi@(pdinstance* {p} {r} inj s-ev)) ∷ []) (isSingleton .(pdi)) ((*>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) ∷ [])  with ε∈? p
+... | no _ = >-nil
+... | yes  ε∈p rewrite (++-identityʳ (List.map inj (mkAllEmptyU ε∈p))) =  map-inj-sorted (mkAllEmptyU ε∈p) inj u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ (mkAllEmptyU-sorted ε∈p)
+
+
+parseAll-is-posix-sorted : ∀ { r : RE } { w : List Char }
+  →  >-sorted {r} (parseAll[ r , w ])
+parseAll-is-posix-sorted {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUMany-NilOrSingleton pdUMany-*>-inc 
 
 ```
 

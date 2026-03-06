@@ -764,7 +764,7 @@ An isomorphism between the new two-level POSIX parse tree order r ⊢ v₁ > v�
    Let w , r ⇒ v. 
    Let u of r such that  ¬ ( v ≡ u ), and |v| ≡ |u|.
    Then  r ⊢ v > u.
-   
+    
 	
 #### Update on 6 March 2026 
 POSIX parsing implementation using PD is still in progress. 

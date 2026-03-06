@@ -824,6 +824,13 @@ data WeakSingleton : ∀ { r : RE } { c : Char } → List (PDInstance r c) → S
     → WeakSingleton {r} {c} pdis 
     
 
+map-WeakSingleton : ∀ { l r : RE } { c : Char} { f : PDInstance l c  → PDInstance r c } { pdis : List (PDInstance l c) }
+  → WeakSingleton pdis
+  ------------------------------
+  → WeakSingleton (List.map f pdis)
+map-WeakSingleton {l} {r} {c} {f} {[]} (weakSingleton [] ( p , [] ) ) =  weakSingleton (List.map f []) (p , []) 
+map-WeakSingleton {l} {r} {c} {f} {pdi ∷ pdis} (weakSingleton (.(pdi) ∷ .(pdis)) ( p , hide-p-pdi ∷ hide-p-pdis ))  =  weakSingleton (List.map f (pdi ∷ pdis)) (p , {!!} ∷ {!!}) 
+
 
 oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
   → ( pdis₁ : List (PDInstance r c ) )
@@ -834,21 +841,35 @@ oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
   → WeakSingleton (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
 oplus-WeakSingleton {r} {loc} {c} []             pdis₂ _  weaksingleton-pdis₂ = weaksingleton-pdis₂
 oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) []    weaksingleton-pdi₁pdis₁ _ = weaksingleton-pdi₁pdis₁
-oplus-WeakSingleton {r} {loc} {c} (pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} {r} {c} in₂ s-ev₂) ∷ pdis₂)
-  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁@(hide .{p₁} {r} {c} .(in₁) .(s-ev₁)) ∷ hide-p₁-pdis₁ ))
-  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂@(hide .{p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
+oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)
+  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ ))
+  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
     where
-      inj : U (p₁ + p₂ ` loc ) → U r
-      inj = mkfuseInj in₁ in₂
-      sound-ev : (u : U (p₁ + p₂ ` loc)) 
-                 → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-      sound-ev = mkfuseInjSoundEv in₁ in₂ s-ev₁ s-ev₂
-    
       prf : ∃[ p ] All (Hidden {r} {c} p) (concatMap (λ pdiˡ₁ → 
                                                 (fuse pdiˡ₁ pdi₂) ∷  (List.map (fuse pdiˡ₁) pdis₂) )
                                              (pdi₁ ∷ pdis₁))
-      prf = (p₁ + p₂ ` loc)  , ( (hide inj sound-ev) ∷ {!!} )
-  
+      prf = (p₁ + p₂ ` loc) , sub-prf (pdi₁ ∷ pdis₁) ( hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ )
+        where
+          sub-prf : ∀ ( pdis₁' : List (PDInstance r c ) )
+            → All (Hidden {r} {c} p₁) pdis₁'
+            → All (Hidden {r} {c} (p₁ + p₂ ` loc)) (concatMap (λ pdiˡ₁ → 
+                                                (List.map (fuse {r} {loc} {c}  pdiˡ₁) (pdi₂ ∷ pdis₂) )) pdis₁')
+          sub-prf [] []  = [] 
+          sub-prf ( pdi₁' ∷ pdis₁') ( hide-p₁-pdi₁' ∷ hide-p₁-pdis₁' ) =  all-concat ( sub-sub-prf pdi₁' (pdi₂ ∷  pdis₂) hide-p₁-pdi₁' (hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ) )  (sub-prf pdis₁'  hide-p₁-pdis₁')  
+            where
+              sub-sub-prf : (pdi : PDInstance r c)
+                → ( pdis₂' : List (PDInstance r c ) )
+                → Hidden {r} {c} p₁ pdi 
+                → All (Hidden {r} {c} p₂) pdis₂'
+                → All (Hidden {r} {c} (p₁ + p₂ ` loc)) (List.map (fuse  {r} {loc} {c} pdi) (pdis₂'))
+              sub-sub-prf (pdinstance in₁ s-ev₁)  [] hide-p₁-pdi₁ [] = []
+              sub-sub-prf pdi@(pdinstance in₁ s-ev₁) ((pdinstance in₂ s-ev₂) ∷ pdis₂')  hide-p₁-pdi@(hide .{p₁} {r} {c} .(in₁) .(s-ev₁)) (hide-p₂-pdi₂'@(hide .{p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂') = (hide inj sound-ev) ∷ sub-sub-prf pdi pdis₂' hide-p₁-pdi hide-p₂-pdis₂' 
+                where
+                  inj : U (p₁ + p₂ ` loc ) → U r
+                  inj = mkfuseInj in₁ in₂
+                  sound-ev : (u : U (p₁ + p₂ ` loc)) → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+                  sound-ev = mkfuseInjSoundEv in₁ in₂ s-ev₁ s-ev₂
+
 
 pdU-WeakSingleton : ∀ { r : RE } { c : Char }
   → WeakSingleton pdU[ r  , c ]

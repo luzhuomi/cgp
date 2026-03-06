@@ -51,7 +51,7 @@ open Recons using ( Recons ; recons ;
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; -- pdUConcat ;
-  pdinstance-oplus ; fuse ; mkfuseInj ;
+  pdinstance-oplus ; fuse ; mkfuseInj ; mkfuseInjSoundEv ; 
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; 
   parseAll[_,_] ; buildU ;
@@ -835,15 +835,14 @@ oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
 oplus-WeakSingleton {r} {loc} {c} []             pdis₂ _  weaksingleton-pdis₂ = weaksingleton-pdis₂
 oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) []    weaksingleton-pdi₁pdis₁ _ = weaksingleton-pdi₁pdis₁
 oplus-WeakSingleton {r} {loc} {c} (pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} {r} {c} in₂ s-ev₂) ∷ pdis₂)
-  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁@(hide {p₁} {r} {c} .(in₁) .(s-ev₁)) ∷ hide-p₁-pdis₁ ))
-  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂@(hide {p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
+  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁@(hide .{p₁} {r} {c} .(in₁) .(s-ev₁)) ∷ hide-p₁-pdis₁ ))
+  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂@(hide .{p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
     where
       inj : U (p₁ + p₂ ` loc ) → U r
       inj = mkfuseInj in₁ in₂
       sound-ev : (u : U (p₁ + p₂ ` loc)) 
                  → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-      sound-ev (LeftU v₁) = s-ev₁ v₁
-      sound-ev (RightU v₂) = s-ev₂ v₂
+      sound-ev = mkfuseInjSoundEv in₁ in₂ s-ev₁ s-ev₂
     
       prf : ∃[ p ] All (Hidden {r} {c} p) (concatMap (λ pdiˡ₁ → 
                                                 (fuse pdiˡ₁ pdi₂) ∷  (List.map (fuse pdiˡ₁) pdis₂) )

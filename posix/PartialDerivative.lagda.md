@@ -329,7 +329,16 @@ mkfuseInj : ∀ { pˡ pʳ r : RE } { loc : ℕ }
 mkfuseInj {pˡ} {pʳ} {r} {loc} inj-l inj-r (LeftU v₁) = inj-l v₁
 mkfuseInj {pˡ} {pʳ} {r} {loc} inj-l inj-r (RightU v₂) = inj-r v₂
 
-
+mkfuseInjSoundEv : ∀ { pˡ pʳ r : RE } { loc : ℕ } { c : Char } 
+  → ( inj-l : U pˡ → U r )
+  → ( inj-r : U pʳ → U r )
+  → ( s-ev-l : (u : U pˡ) → proj₁ (flat (inj-l u)) ≡ c ∷ proj₁ (flat u ))
+  → ( s-ev-r : (u : U pʳ) → proj₁ (flat (inj-r u)) ≡ c ∷ proj₁ (flat u ))  
+  -----------------------------------
+  → (u : U (pˡ + pʳ ` loc))
+  →  proj₁ (flat ((mkfuseInj  inj-l inj-r)  u))  ≡ c ∷ proj₁ (flat u)
+mkfuseInjSoundEv inj-l inj-r s-ev-l s-ev-r (LeftU v₁) = s-ev-l v₁
+mkfuseInjSoundEv inj-l inj-r s-ev-l s-ev-r (RightU v₂) = s-ev-r v₂  
 
 fuse : ∀ { r : RE } { loc : ℕ } { c : Char } 
   → PDInstance r c
@@ -344,8 +353,9 @@ fuse {r} {loc} {c} (pdinstance {pˡ} {r} {_} inj-l s-ev-l) (pdinstance {pʳ} {r}
        -- inj (RightU v₂) = inj-r v₂ 
        sound-ev : (u : U (pˡ + pʳ ` loc)) 
                    → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-       sound-ev (LeftU v₁) = s-ev-l v₁
-       sound-ev (RightU v₂) = s-ev-r v₂
+       -- sound-ev (LeftU v₁) = s-ev-l v₁
+       -- sound-ev (RightU v₂) = s-ev-r v₂
+       sound-ev = mkfuseInjSoundEv inj-l inj-r s-ev-l s-ev-r  
 
 
 pdinstance-oplus : ∀ { r : RE } { loc : ℕ } { c : Char }

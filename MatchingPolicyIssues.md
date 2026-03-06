@@ -749,7 +749,7 @@ What is the advantage of this reformulation?
 2. Would it make the robustness check easier? 
 
 
-#### (Pre-) Update on Feb 27 2026
+#### Update on Feb 27 2026
 
 
 An isomorphism between the new two-level POSIX parse tree order r ⊢ v₁ > v₂ and the POSIX parse tree relation (Urban's definition  w , r ⇒ v ) is established and verified in agda. 
@@ -766,9 +766,32 @@ An isomorphism between the new two-level POSIX parse tree order r ⊢ v₁ > v�
    Then  r ⊢ v > u.
    
 	
-
-
+#### Update on 6 March 2026 
 POSIX parsing implementation using PD is still in progress. 
+
+What we know so far.
+
+1. we need to use ⊕ to implement  ∪ in all locations and a nil or singleton list [ ] to implement  { }.
+i.e. 
+pd[ ε , c ]    = []
+pd[ $ c ` loc  , c' ] with c Char.≟ c'
+...                      | yes refl = [ ε ] 
+...                      | no  _    = [] 
+pd[ l ● r ` loc , c ] with ε∈? l
+...                      | yes ε∈l  = (List.map (λ p → p ● r ` loc ) pd[ l , c ]) ⊕  pd[ r , c ] ` loc
+...                      | no ¬ε∈l  = List.map (λ l' → l' ● r ` loc ) pd[ l , c ]
+pd[ l + r ` loc , c ]               = pd[ l , c ] ⊕  pd[ r , c ] ` loc 
+pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
+
+   1.1 kenny tried to relax it by keeping the ++ in concat  l ● r cases, the result is not posix ordered, counter examples were identified, (posix-notworking/PartialDerivative.lagda.md ExampleParseAll.ex_ps) 
+	   r = (a* ● (a* ● a )) * 
+	   w = aaa
+   1.2 constructing the partial deriative with injection, the list of partial derivative is weak singleton,
+	   i.e. all the instances share the same partial derivative, but injections are different. e.g.
+	   r = (ε + ε) ● a , w = a
+	   the list of partial deriative, [ε], but we need two different injection functions, 
+	   (\y -> Pair (Left Empty) y ) . (\x -> a) and 
+	   (\y -> Pair (Rightt Empty) y ) . (\x -> a)
 
 
 

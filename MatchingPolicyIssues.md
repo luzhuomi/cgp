@@ -790,8 +790,8 @@ pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` lo
 	   i.e. all the instances share the same partial derivative, but injections are different. e.g.
 	   r = (ε + ε) ● a , w = a
 	   the list of partial deriative, [ε], but we need two different injection functions, 
-	   (\y -> Pair (Left Empty) y ) . (\x -> a) and 
-	   (\y -> Pair (Rightt Empty) y ) . (\x -> a)
+	   (λ y → Pair (Left Empty) y ) ∘ (λ x → a) and 
+	   (λ y → Pair (Right Empty) y ) ∘ (λ x → a)
 
 
 

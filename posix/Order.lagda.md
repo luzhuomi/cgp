@@ -47,7 +47,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 import cgp.posix.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; -- pdUConcat ;
   pdUMany[_,_]; pdUMany-aux ;
-  pdinstance-oplus ; fuse ; mkfuseInj ;
+  pdinstance-oplus ; fuse ; mkfuseInj ;  mkfuseInjSoundEv ; 
   advance-pdi*-with-c
   )
 
@@ -1298,8 +1298,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
     sound-ev : (u : U (pˡ + pʳ ` loc)) 
                → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-    sound-ev (LeftU v₁) = s-ev-l v₁
-    sound-ev (RightU v₂) = s-ev-r v₂
+    -- sound-ev (LeftU v₁) = s-ev-l v₁
+    -- sound-ev (RightU v₂) = s-ev-r v₂
+    sound-ev =  mkfuseInjSoundEv (LeftU ∘ inj-l)  (RightU ∘ inj-r)  s-ev-l s-ev-r
 
 
     len-|inj-u|≡len-|u|+1 : (u : U (pˡ + pʳ ` loc )) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
@@ -1498,9 +1499,9 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
 
     sound-ev : (u :  U ( (pˡ ● r ` loc ) + pʳ ` loc) )  
                → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-    sound-ev (LeftU v₁) = sound-injfst-inj-l v₁
-    sound-ev (RightU v₂) = s-ev-injsnd-r v₂
-
+    -- sound-ev (LeftU v₁) = sound-injfst-inj-l v₁
+    -- sound-ev (RightU v₂) = s-ev-injsnd-r v₂
+    sound-ev =  mkfuseInjSoundEv  injFst inj-snd-r  sound-injfst-inj-l  s-ev-injsnd-r 
 
 
 

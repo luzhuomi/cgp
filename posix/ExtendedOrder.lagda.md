@@ -823,14 +823,24 @@ data WeakSingleton : ∀ { r : RE } { c : Char } → List (PDInstance r c) → S
     → ∃[ p ] (All (Hidden p) pdis)
     → WeakSingleton {r} {c} pdis 
     
-
+{-
 map-WeakSingleton : ∀ { l r : RE } { c : Char} { f : PDInstance l c  → PDInstance r c } { pdis : List (PDInstance l c) }
   → WeakSingleton pdis
   ------------------------------
   → WeakSingleton (List.map f pdis)
 map-WeakSingleton {l} {r} {c} {f} {[]} (weakSingleton [] ( p , [] ) ) =  weakSingleton (List.map f []) (p , []) 
 map-WeakSingleton {l} {r} {c} {f} {pdi ∷ pdis} (weakSingleton (.(pdi) ∷ .(pdis)) ( p , hide-p-pdi ∷ hide-p-pdis ))  =  weakSingleton (List.map f (pdi ∷ pdis)) (p , {!!} ∷ {!!}) 
+-} 
 
+map-left-WeakSingleton : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance l c) }
+  → WeakSingleton pdis
+  --------------------------------------------------
+  → WeakSingleton (List.map (pdinstance-left {l} {r} {loc} {c}) pdis)
+map-left-WeakSingleton {l} {r} {loc} {c} {[]} (weakSingleton [] ( p , [] ) ) =  weakSingleton (List.map pdinstance-left []) (p , [])
+map-left-WeakSingleton {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ pdis }  (weakSingleton  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {l} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
+  with map-left-WeakSingleton  {l} {r} {loc} {c} {pdis} (weakSingleton pdis ( p , hide-p-pdis ))
+... | (weakSingleton qdis ( q , hide-q-qdis ) ) = weakSingleton (pdinstance (λ u → LeftU (inj u)) s-ev ∷
+                                                                  List.map pdinstance-left pdis) (q , {!!} ∷ hide-q-qdis) 
 
 oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
   → ( pdis₁ : List (PDInstance r c ) )
@@ -892,7 +902,7 @@ pdU-WeakSingleton {$ c ` loc} {c₁} with c Char.≟ c₁
                                ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
                                  c₁ ∷ (proj₁ (flat EmptyU))
                                ∎)
-pdU-WeakSingleton {l + r ` loc} {c} = {!!} 
+pdU-WeakSingleton {l + r ` loc} {c} = oplus-WeakSingleton (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ r , c ]) {!!} {!!}
   where
     ind-hyp-l : WeakSingleton pdU[ l , c ]
     ind-hyp-l = pdU-WeakSingleton {l} {c}

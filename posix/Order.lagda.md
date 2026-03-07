@@ -11,7 +11,7 @@ open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  ;
   w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ ;
   w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ ;
   ¬m>n→n≡m⊎n>m ;
-  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂
+  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ ; concatmap-λx→[]-xs≡[] 
   {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
 
 
@@ -39,7 +39,8 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
   concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
   pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ;
-  compose-pdi-with 
+  compose-pdi-with ;
+  concatmap-pdinstance-snd-[]≡[] 
   ) 
 
 
@@ -1375,7 +1376,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 -- oplus >-inc for (l + s) ● r case
 
-  
+
+{-
 -- this should be moved to PDInstance
 concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ []
@@ -1396,7 +1398,7 @@ concatmap-λx→[]-xs≡[] : ∀ { A : Set } { B : Set} ( xs : List A )
   → (concatMap (λ x → [] {A = B} ) xs   ) ≡ []
 concatmap-λx→[]-xs≡[] {A} {B} [] = refl
 concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs 
-
+-}
 
 -- similar to flat-[], a parse tree PairU x y is Flat-[]-fst iff the first component x is flattened to [] 
 data Flat-[]-Fst : (l r : RE) ( loc : ℕ ) → ( u : U ( l ● r ` loc ) ) → Set where

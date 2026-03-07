@@ -129,6 +129,26 @@ mkinjFst : ∀ {l' l r : RE } { loc : ℕ }
   → U (l ● r  ` loc )
 mkinjFst {l'} {l} {r} {loc}  f (PairU {l'} {r} {loc} u v) = PairU {l} {r} {loc} (f u) v 
 
+
+mkinjFstSoundEv : ∀ { p l r : RE } { loc : ℕ } { c : Char } 
+  → ( inj : U p → U l )
+  → ( s-ev-inj : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u) )
+  -----------------------------------------------------------------
+  → ( u : U ( p ● r ` loc ))
+  → proj₁ (flat ((mkinjFst inj) u)) ≡ c ∷ proj₁ (flat u)
+mkinjFstSoundEv {p} {l} {r} {loc} {c}  inj s-ev-inj (PairU {p} {r} {loc} u v) =
+               begin
+                 proj₁ (flat (PairU {l} {r} {loc} (inj u) v))
+               ≡⟨⟩
+                 (proj₁ (flat (inj u))) ++ (proj₁ (flat v))
+               ≡⟨ cong (λ x → ( x ++ (proj₁ (flat v)))) (s-ev-inj u) ⟩
+                 (c ∷ (proj₁ (flat u))) ++ (proj₁ (flat v))
+               ≡⟨⟩
+                 c ∷ (proj₁ (flat (PairU {p} {r} {loc} u v)))
+               ∎
+                 
+  
+
 pdinstance-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → PDInstance l c → PDInstance (l ● r ` loc) c
 pdinstance-fst {l} {r} {loc} {c} (pdinstance {l'} {l} {c} f s-ev) = 
                    pdinstance { l' ● r ` loc }
@@ -141,6 +161,8 @@ pdinstance-fst {l} {r} {loc} {c} (pdinstance {l'} {l} {c} f s-ev) =
              -- injFst (PairU {l'} {r} {loc} u v) = PairU {l} {r} {loc} (f u) v -- lifted out as mkinjFst for provability
              injFst = mkinjFst f
              sound-ev2 : ∀ ( u : U ( l' ● r ` loc) ) → (proj₁ (flat { l ● r ` loc } (injFst u )) ≡ c ∷ (proj₁ (flat { l' ● r ` loc } u)))
+             sound-ev2 = mkinjFstSoundEv f s-ev
+             {-
              sound-ev2 (PairU {l'} {r} {loc} u v) =
                begin
                  proj₁ (flat (PairU {l} {r} {loc} (f u) v))
@@ -151,6 +173,7 @@ pdinstance-fst {l} {r} {loc} {c} (pdinstance {l'} {l} {c} f s-ev) =
                ≡⟨⟩
                  c ∷ (proj₁ (flat (PairU {l'} {r} {loc} u v)))
                ∎
+             -} 
 -- pdinstance-fst and its sub function end
 ------------------------------------------------------------------------------------
 
@@ -345,5 +368,22 @@ concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc :
   → concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ []
 concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = {!!}   
 -}  
+
+
+concatmap-pdinstance-snd-[]≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+    → concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [] ≡ []
+concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = sub e-flat-es 
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    e-flat-es :  List ( ∃[ e ] (Flat-[] l e) )
+    e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+    sub : (xs :  List ( ∃[ e ] (Flat-[] l e) )) → concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x []) xs ≡ []
+    sub [] = refl
+    sub (x ∷ xs) = sub xs
+
+
 
 ```

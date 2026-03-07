@@ -286,6 +286,15 @@ open  Relation.Binary.Definitions using (
 ```
 
 
+```agda
+concatmap-λx→[]-xs≡[] : ∀ { A : Set } { B : Set} ( xs : List A )
+  → (concatMap (λ x → [] {A = B} ) xs   ) ≡ []
+concatmap-λx→[]-xs≡[] {A} {B} [] = refl
+concatmap-λx→[]-xs≡[] {A} {B} (x ∷ xs) = concatmap-λx→[]-xs≡[] xs 
+
+```
+
+
 -- aux lemma
 -- _≢_ : ∀ {A : Set} → A → A → Set
 -- x ≢ y  =  ¬ (x ≡ y)

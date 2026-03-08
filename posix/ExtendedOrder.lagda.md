@@ -66,7 +66,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   _⊢_>ⁱ_ ; seq₁ ; seq₂ ;
   choice-ll ; choice-rr ;
   choice-lr ;
-  choice-rl ; star-head ; star-cons-nil ;
+  choice-rl ; star-head ; star-cons-nil ; star-tail ; 
   >-sorted ; >-nil ; >-cons ; concat-sorted ; 
   mkAllEmptyU-sorted ;
   >-maybe ; >-nothing ; >-just ; 
@@ -172,6 +172,7 @@ data Rec> : { r : RE } { c : Char } { u₁ u₂ : U r } { p₁ p₂ : PDInstance
 
 -- what if in addition, we know that p from pdi₁ and pdi₂ are identitcal? weak-singleton
 
+{-
 data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r : RE } { c : Char }
     → ( pdi₁ : PDInstance r c ) 
@@ -185,7 +186,19 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
 
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c ⊢ pdi₁ > pdi₂
+-}
 
+data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
+  >-pdi : ∀ { r p : RE } { c : Char }
+    → ( injection₁ : U p → U r )
+    → ( s-ev₁ : ∀ ( u : U p ) → (proj₁ ( flat {r} (injection₁ u)) ≡ c ∷ (proj₁ (flat {p} u))) )
+    → ( injection₂ : U p → U r )
+    → ( s-ev₂ : ∀ ( u : U p ) → (proj₁ ( flat {r} (injection₂ u)) ≡ c ∷ (proj₁ (flat {p} u))) )
+    → ( ∀ ( v₁ : U p )
+        → ( v₂ : U p ) 
+        → p ⊢ v₁ > v₂
+        → r ⊢ injection₁ v₁ > injection₂ v₂ )
+   → r , c ⊢ (pdinstance {p} {r} {c} injection₁ s-ev₁) > (pdinstance {p} {r} {c} injection₂ s-ev₂)
 {-
 data _,_⊢_>>_ : ∀ ( r : RE ) → ( c : Char ) → PDInstance r c → PDInstance r c → Set where
   >>-pdi-r* : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
@@ -313,70 +326,77 @@ left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char }
   → l , c ⊢ pdi₁ > pdi₂ 
   -------------------------------------------------
   → (l + r ` loc) , c ⊢ pdinstance-left pdi₁ > pdinstance-left pdi₂
-left-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi left-pdi₁ left-pdi₂ ev
+left-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
+  (>-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ ) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf
   where
-    left-pdi₁ : PDInstance ( l + r ` loc ) c
-    left-pdi₁ = pdinstance-left pdi₁
-    left-pdi₂ : PDInstance ( l + r ` loc ) c    
-    left-pdi₂ = pdinstance-left pdi₂    
- 
-    ev : ∀ ( u₁ : U  (l + r ` loc) )
-          → ( u₂ : U  (l + r ` loc) )
-          → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
-          → ( Recons u₁ left-pdi₁ )
-          → ( Recons u₂ left-pdi₂ )
+    inject₁ : U p → U ( l + r ` loc )
+    inject₁ v = LeftU (in₁ v)
+    inject₂ : U p → U ( l + r ` loc )    
+    inject₂ v = LeftU (in₂ v)    
+
+    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+    len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+
+    prf : ∀ ( v₁ : U p)
+          → ( v₂ : U p) 
+          →  p ⊢ v₁ > v₂ 
           -------------------------
-          → ( (l + r ` loc) ⊢ u₁ > u₂ )
-    ev (LeftU v₁) (LeftU v₂) len|left-v₁|≥len|left-v₂| recons-left-v₁-pdi-left recons-left-v₂-pdi-left with (Nat.<-cmp (length (proj₁ (flat (LeftU {l} {r} {loc} v₁)))) (length (proj₁ (flat (LeftU  {l} {r} {loc}  v₂)) )))
-    ... | tri< len|left-v₁|<len|left-v₂| _ _ = Nullary.contradiction  len|left-v₁|≥len|left-v₂| ( <⇒≱ len|left-v₁|<len|left-v₂| )  -- (**)
-    ... | tri> _ _ len|left-v₁|>len|left-v₂| = len-> len|left-v₁|>len|left-v₂|  
-    ... | tri≈ _ len|left-v₁|≡len|left-v₂| _ = 
-             len-≡ len|left-v₁|≡len|left-v₂| (choice-ll (pdi₁>-pdi₂-ev v₁ v₂ (≤-reflexive ( sym len|left-v₁|≡len|left-v₂|) ) recons-v₁-pdi₁ recons-v₂-pdi₂))
-          where
-            recons-v₁-pdi₁ : Recons v₁ pdi₁
-            recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v₁-pdi-left
-            recons-v₂-pdi₂ : Recons v₂ pdi₂            
-            recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v₂-pdi-left
-    ev (RightU v₁)  _        _  recons-right-v₁-pdi-left _  =  Nullary.contradiction recons-right-v₁-pdi-left (¬recons-right-from-pdinstance-left v₁ pdi₁ ) -- impossible cases
-    ev (LeftU _)   (RightU v₂) _  _ recons-right-v₂-pdi-left =   Nullary.contradiction recons-right-v₂-pdi-left (¬recons-right-from-pdinstance-left v₂ pdi₂  )
+          →  (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+    prf v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len-|left-in₁-v₁|>len-|left-in₂-v₂|
+      where
+        len-|left-in₁-v₁|>len-|left-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.>
+                                              length (proj₁ (flat (inject₂ v₂)))
+                                               
+        len-|left-in₁-v₁|>len-|left-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+    prf v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) =  len-≡ len-|left-in₁-v₁|≡len-|left-in₂-v₂| (choice-ll (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂)))
+      where
+        len-|left-in₁-v₁|≡len-|left-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ 
+                                               length (proj₁ (flat (inject₂ v₂)))
+        len-|left-in₁-v₁|≡len-|left-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl
 
 
 
 right-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
-  → (pdi₁ : PDInstance r c )
+  → (pdi₁  : PDInstance r c )
   → (pdi₂ : PDInstance r c )
   → r , c ⊢ pdi₁ > pdi₂ 
   -------------------------------------------------
   → (l + r ` loc) , c ⊢ pdinstance-right pdi₁ > pdinstance-right pdi₂
-right-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi right-pdi₁ right-pdi₂ ev
+right-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
+  (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ ) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf
   where
-    right-pdi₁ : PDInstance ( l + r ` loc ) c
-    right-pdi₁ = pdinstance-right pdi₁
-    right-pdi₂ : PDInstance ( l + r ` loc ) c    
-    right-pdi₂ = pdinstance-right pdi₂    
- 
-    ev : ∀ ( u₁ : U  (l + r ` loc) )
-          → ( u₂ : U  (l + r ` loc) )
-          → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
-          → ( Recons u₁ right-pdi₁ )
-          → ( Recons u₂ right-pdi₂ )
+    inject₁ : U p → U ( l + r ` loc )
+    inject₁ v = RightU (in₁ v)
+    inject₂ : U p → U ( l + r ` loc )    
+    inject₂ v = RightU (in₂ v)    
+
+    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+    len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+
+    prf : ∀ ( v₁ : U p)
+          → ( v₂ : U p) 
+          →  p ⊢ v₁ > v₂ 
           -------------------------
-          → ( (l + r ` loc) ⊢ u₁ > u₂ )
-    ev (RightU v₁) (RightU v₂)  len|right-v₁|≥len|right-v₂|  recons-right-v₁-pdi-right recons-right-v₂-pdi-right with (Nat.<-cmp (length (proj₁ (flat (RightU {l} {r} {loc} v₁)))) (length (proj₁ (flat (RightU  {l} {r} {loc}  v₂)) )))
-    ... | tri< len|right-v₁|<len|right-v₂| _ _ = Nullary.contradiction  len|right-v₁|≥len|right-v₂| ( <⇒≱ len|right-v₁|<len|right-v₂| )  -- (**) 
-    ... | tri> _ _ len|right-v₁|>len|right-v₂| = len-> len|right-v₁|>len|right-v₂|  
-    ... | tri≈ _ len|right-v₁|≡len|right-v₂| _ =
-      len-≡ len|right-v₁|≡len|right-v₂| (choice-rr (pdi₁>-pdi₂-ev v₁ v₂  (≤-reflexive ( sym len|right-v₁|≡len|right-v₂|) ) recons-v₁-pdi₁ recons-v₂-pdi₂))
-          where
-            recons-v₁-pdi₁ : Recons v₁ pdi₁
-            recons-v₁-pdi₁ = inv-recons-right {l} {r} {loc} v₁  pdi₁  recons-right-v₁-pdi-right  
-            recons-v₂-pdi₂ : Recons v₂ pdi₂            
-            recons-v₂-pdi₂ = inv-recons-right {l} {r} {loc} v₂  pdi₂  recons-right-v₂-pdi-right 
-
-       
-    ev (LeftU v₁)  _          _   recons-left-v₁-pdi-right _  =  Nullary.contradiction recons-left-v₁-pdi-right (¬recons-left-from-pdinstance-right v₁ pdi₁ ) -- impossible cases
-    ev (RightU _)  (LeftU v₂) _  _  recons-left-v₂-pdi-right =   Nullary.contradiction recons-left-v₂-pdi-right (¬recons-left-from-pdinstance-right v₂ pdi₂  )
-
+          →  (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+    prf v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len-|right-in₁-v₁|>len-|right-in₂-v₂|
+      where
+        len-|right-in₁-v₁|>len-|right-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.>
+                                              length (proj₁ (flat (inject₂ v₂)))
+                                               
+        len-|right-in₁-v₁|>len-|right-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+    prf v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) =  len-≡ len-|right-in₁-v₁|≡len-|right-in₂-v₂| (choice-rr (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂)))
+      where
+        len-|right-in₁-v₁|≡len-|right-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ 
+                                               length (proj₁ (flat (inject₂ v₂)))
+        len-|right-in₁-v₁|≡len-|right-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl                                        
 
 
 map-left-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
@@ -392,6 +412,9 @@ map-left-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons  ex>-sorted-pdis (ex>-j
            (ex>-just (left-ex-sorted pdi pdi'  pdi>pdi'))
 
 
+
+-- it seems that we dont need this lemma since all the left and right pdis are combined with oplus 
+{- 
 map-right-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
   → Ex>-sorted {r} pdis
@@ -404,8 +427,6 @@ map-right-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons ex>-sorted-pdis (ex>-j
            (map-right-ex-sorted (pdi' ∷ pdis) ex>-sorted-pdis)
            (ex>-just (right-ex-sorted pdi pdi'  pdi>pdi'))
 
-
-
 map-left-right-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char } 
   → ( pdis  : List (PDInstance l c) )
   → ( pdis' : List (PDInstance r c) )
@@ -414,46 +435,63 @@ map-left-right-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → Ex>-sorted {l + r ` loc } ((List.map pdinstance-left pdis) ++ (List.map pdinstance-right pdis'))
 map-left-right-ex-sorted               []              pdis'  ex>-sorted-l-[]   ex>-sorted-r-pdis' = map-right-ex-sorted pdis' ex>-sorted-r-pdis'
 map-left-right-ex-sorted {l} {r} {loc} pdis            []     ex>-sorted-l-pdis ex>-sorted-r-[] rewrite (cong (λ x → Ex>-sorted x) (++-identityʳ (List.map (pdinstance-left {l} {r} {loc}) pdis)))
-  = map-left-ex-sorted  pdis ex>-sorted-l-pdis 
-map-left-right-ex-sorted {l} {r} {loc} (pdi ∷ [])      (pdi' ∷ pdis')    ex>-sorted-l-pdis  ex>-sorted-r-pdis'
-  = ex>-cons (map-right-ex-sorted (pdi' ∷ pdis') ex>-sorted-r-pdis') (ex>-just (>-pdi (pdinstance-left pdi) (pdinstance-right pdi') ev ))
+  = map-left-ex-sorted  pdis ex>-sorted-l-pdis
+map-left-right-ex-sorted {l} {r} {loc} (pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ [])     (pdi'@(pdinstance {p'} {r} .{c} inj' s-ev') ∷ pdis')   ex>-sorted-l-pdis  ex>-sorted-r-pdis'
+  = ex>-cons (map-right-ex-sorted (pdi' ∷ pdis') ex>-sorted-r-pdis') (ex>-just {!!} )
+  where
+    prf : (l + r ` loc) , c ⊢ pdinstance-left pdi >  pdinstance-right pdi'
+    prf = >-pdi {l + r ` loc} { p + p' ` loc } {c} ? ? ? ? ? --  requires both side share the same p .
+-}     
+
+
+star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } 
+  → (pdi₁ : PDInstance r c )
+  → (pdi₂ : PDInstance r c )
+  → r , c ⊢ pdi₁ > pdi₂ 
+  -------------------------------------------------
+  → (r * ε∉r ` loc) , c ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
+star-ex-sorted {r} {ε∉r} {loc} {c}  (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
+    (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ ) = >-pdi {r * ε∉r ` loc} {p ● (r * ε∉r ` loc) ` loc } {c} (mkinjList in₁) (mkinjListSoundEv in₁ s-ev₁) (mkinjList in₂) (mkinjListSoundEv in₂ s-ev₂) prf
     where
-      ev : (u₁ u₂ : U (l + r ` loc))
-        → length (proj₁ (flat u₁)) ≥ length (proj₁ (flat u₂))
-        → Recons u₁ (pdinstance-left pdi)
-        → Recons u₂ (pdinstance-right pdi')
-        → (l + r ` loc) ⊢ u₁ > u₂
-      ev (LeftU v₁) (RightU v₂) len|left-v₁|≥len|right-v₂| recons-left-u-from-pdinstance-left   recons-right-u-from-pdinstance-right with (Nat.<-cmp (length (proj₁ (flat v₁))) (length (proj₁ (flat v₂))))
-      ... | tri< len|left-v₁|<len|right-v₂| _ _ = Nullary.contradiction  len|left-v₁|≥len|right-v₂| ( <⇒≱ len|left-v₁|<len|right-v₂|)
-      ... | tri> _ _ len|left-v₁|>len|right-v₂| = len-> len|left-v₁|>len|right-v₂|
-      ... | tri≈ _ len|left-v₁|≡len|right-v₂| _  = 
-            let  recons-v₁-pdi = inv-recons-left {l} {r} {loc} v₁ pdi recons-left-u-from-pdinstance-left
-                 recons-v₂-pdi' = inv-recons-right {l} {r} {loc} v₂ pdi' recons-right-u-from-pdinstance-right
-            in len-≡ len|left-v₁|≡len|right-v₂| (choice-lr len|left-v₁|≥len|right-v₂|)
-      ev (RightU v₁) _         _ recons-right-u-from-pdinstance-left  _              = Nullary.contradiction recons-right-u-from-pdinstance-left  (¬recons-right-from-pdinstance-left v₁ pdi )
-      ev (LeftU v₁) (LeftU v₂) _ _  recons-left-u-from-pdinstance-right              = Nullary.contradiction recons-left-u-from-pdinstance-right  (¬recons-left-from-pdinstance-right v₂ pdi' ) 
-map-left-right-ex-sorted {l} {r} {loc} (pdi₁ ∷ pdi₂ ∷ pdis)   (pdi' ∷ pdis') ex>-sorted-l-pdi₁pdi₂pdis ex>-sorted-r-pdipdis' with ex>-sorted-l-pdi₁pdi₂pdis
-... | ex>-cons {l} ex>-sorted-pdi₂pdis (ex>-just (>-pdi _ _ pdi₁>pdi₂-ev) ) 
-  = ex>-cons (map-left-right-ex-sorted (pdi₂ ∷ pdis) (pdi' ∷ pdis')   ex>-sorted-pdi₂pdis  ex>-sorted-r-pdipdis' ) (ex>-just (>-pdi (pdinstance-left pdi₁) (pdinstance-left pdi₂) ev ))
-    where
-      ev : (u₁ u₂ : U (l + r ` loc))
-        → length (proj₁ (flat u₁)) ≥  length (proj₁ (flat u₂))
-        → Recons u₁ (pdinstance-left pdi₁)
-        → Recons u₂ (pdinstance-left pdi₂)
-        → (l + r ` loc) ⊢ u₁ > u₂
-      ev (LeftU v₁) (LeftU v₂) len|left-v₁|≥len|left-v₂|  recons-left-v1-from-pdinstance-left-pdi₁ recons-left-v2-from-pdinstance-left-pdi₂ with (Nat.<-cmp (length (proj₁ (flat v₁))) (length (proj₁ (flat v₂))))
-      ... | tri< len|left-v₁|<len|left-v₂| _ _ = Nullary.contradiction  len|left-v₁|≥len|left-v₂| ( <⇒≱ len|left-v₁|<len|left-v₂|)
-      ... | tri> _ _ len|left-v₁|>len|left-v₂| = len-> len|left-v₁|>len|left-v₂|
-      ... | tri≈ _ len|left-v₁|≡len|left-v₂| _  = 
+      inject₁ : U ( p ● (r * ε∉r ` loc) ` loc )  → U ( r * ε∉r ` loc )
+      inject₁ = mkinjList {p} {r} {ε∉r} {loc} in₁ 
+      inject₂ : U ( p ● (r * ε∉r ` loc) ` loc )  → U ( r * ε∉r ` loc )
+      inject₂ = mkinjList {p} {r} {ε∉r} {loc} in₂  
 
-          let recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v1-from-pdinstance-left-pdi₁
-              recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v2-from-pdinstance-left-pdi₂
-          in len-≡ len|left-v₁|≡len|left-v₂| (choice-ll  (pdi₁>pdi₂-ev v₁ v₂ len|left-v₁|≥len|left-v₂|  recons-v₁-pdi₁ recons-v₂-pdi₂ ))
-          -- impossible cases         
-      ev (RightU v₁)  _        _  recons-right-u-from-pdinstance-left-pdi₁ _ = Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₁ ( ¬recons-right-from-pdinstance-left v₁ pdi₁ )
-      ev (LeftU v₁) (RightU v₂) _ _ recons-right-u-from-pdinstance-left-pdi₂ = Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₂ ( ¬recons-right-from-pdinstance-left v₂ pdi₂ )       
+      sound-ev₁ : ∀ ( u : U ( p ● (r * ε∉r ` loc) ` loc )) → proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u)
+      sound-ev₁ = mkinjListSoundEv {p} {r} {ε∉r} {loc} {c} in₁ s-ev₁ 
+
+      sound-ev₂ : ∀ ( u : U ( p ● (r * ε∉r ` loc) ` loc )) → proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u)
+      sound-ev₂ = mkinjListSoundEv {p} {r} {ε∉r} {loc} {c} in₂ s-ev₂ 
+
+      len-|inject₁-u|≡len-|u|+1 : (u : U ( p ● (r * ε∉r ` loc) ` loc ) ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+      len-|inject₁-u|≡len-|u|+1 u rewrite (sound-ev₁ u) = refl 
+    
+      len-|inject₂-u|≡len-|u|+1 : (u : U ( p ● (r * ε∉r ` loc) ` loc ) ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+      len-|inject₂-u|≡len-|u|+1 u rewrite (sound-ev₂ u) = refl 
 
 
+      prf : (v₁ v₂ : U (p ● r * ε∉r ` loc ` loc)) →
+            (p ● r * ε∉r ` loc ` loc) ⊢ v₁ > v₂ →
+            (r * ε∉r ` loc) ⊢ mkinjList in₁ v₁ > mkinjList in₂ v₂
+      prf (PairU v₁ v₂) (PairU u₁ u₂) (len-> len|pair-v₁v₂|>len|pair-u₁u₂|) = len-> len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂|
+        where
+          len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))
+                           Nat.> length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
+          len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) = Nat.s≤s len|pair-v₁v₂|>len|pair-u₁u₂| 
+      prf (PairU v₁ v₂) (PairU u₁ u₂) (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₁ v₁>u₁)) = len-≡ len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| {!star-head ? !} 
+        where
+          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))
+                           ≡ length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
+          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) | len|pair-v₁v₂|≡len|pair-u₁u₂| = refl 
+      prf (PairU v₁ v₂) (PairU u₁ u₂) (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₂ v₁≡u₁ v₂>u₂)) = len-≡ len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| {!star-tail ? ? !} 
+        where
+          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))
+                           ≡ length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
+          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) | len|pair-v₁v₂|≡len|pair-u₁u₂| = refl 
+
+          
+{-
 
 star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } 
   → (pdi₁ : PDInstance r c )
@@ -488,6 +526,7 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
       let recons-v₁-pdi₁ = inv-recons-star v₁ vs₁ pdi₁ recons-list-vvs₁-star-pdi₁ 
           recons-v₂-pdi₂ = inv-recons-star v₂ vs₂ pdi₂ recons-list-vvs₂-star-pdi₂
       in len-≡  len|list-v₁vs₁|≡len|list-v₂vs₂| (star-head (pdi₁>-pdi₂-ev v₁ v₂ {!!}  recons-v₁-pdi₁ recons-v₂-pdi₂))
+-}       
         -- we need  len|v₁|≥len|v₂|
         {-
         how to create a contradiction when len|v₁|<len|v₂|?
@@ -833,8 +872,7 @@ map-left-hidden⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDIns
 map-left-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {[]}
   (hide .{p} .{l} .{c} .(inj) .(s-ev)) [] = hide (λ u → LeftU (inj u)) s-ev ∷ []
 map-left-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{l} .{c} inj' s-ev') ∷ pdis} 
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → LeftU (inj u)) s-ev ∷
-                                                                                                      map-left-hidden⁺ (hide inj' s-ev') all-hide-p-pdis 
+  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → LeftU (inj u)) s-ev ∷ map-left-hidden⁺ (hide inj' s-ev') all-hide-p-pdis 
 
 map-left-WeakSingleton : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance l c) }
   → WeakSingleton pdis

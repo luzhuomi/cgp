@@ -30,9 +30,9 @@ open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ; 
   pdinstance-left ; pdinstance-right ;
-  pdinstance-star ; mkinjList ;
+  pdinstance-star ; mkinjList ; mkinjListSoundEv ; 
   pdinstance-fst ; mkinjFst   ; mkinjFstSoundEv ; 
-  pdinstance-snd ; mk-snd-pdi ; mkinjSnd ; 
+  pdinstance-snd ; mk-snd-pdi ; mkinjSnd ; mkinjSndSoundEv ; 
   concatmap-pdinstance-snd ; zip-es-flat-[]-es  ;
   pdinstance-assoc; inv-assoc ;
   compose-pdi-with   ; concatmap-pdinstance-snd-[]≡[]
@@ -888,6 +888,14 @@ map-fst-WeakSingleton {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) �
   = weakSingleton (List.map pdinstance-fst (pdinstance inj s-ev ∷ pdis)) ( (p ● r ` loc) , map-fst-hidden⁺ (hide inj s-ev) hide-p-pdis ) 
 
 
+cong-mk-snd-pdi-hidden : ∀ { l r p : RE } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
+  → ( pdi : PDInstance r c ) 
+  → Hidden {r} {c} p pdi
+  → Hidden {l ● r ` loc} {c} p (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi)
+cong-mk-snd-pdi-hidden {l} {r} {p} {loc} {c} ( e , (flat-[] .(e) proj₁∘flate≡[]) ) (pdinstance .{p} .{r} .{c} inj s-ev) (hide inj s-ev)
+  = hide (mkinjSnd inj e) (mkinjSndSoundEv {p} {l} {r} {loc} {c} inj s-ev e (flat-[] e proj₁∘flate≡[]))
+                          
 concatmap-snd-hidden⁺ :  ∀ { l r p : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdi : PDInstance r c } { pdis : List (PDInstance r c) }
   → Hidden {r} {c} p pdi
   → All (Hidden {r} {c} p) pdis
@@ -898,11 +906,9 @@ concatmap-snd-hidden⁺ :  ∀ { l r p : RE } { ε∈l : ε∈ l } { loc : ℕ }
   -- posix has a very unique extended ordering
   -- it is like staircase, a list of pdis with the same partial derivative,
   -- the until a concat case... change to another partial derivative which should be following > order.  let me think about how to write it down as data type in agda.
-  -- update: it is ok, because (pˡ ● r) the fst'ed pd and pʳ the snd'ed pd, will be combined by oplus and become (pˡ ● r) + pʳ  
-concatmap-snd-hidden⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]}
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) []  rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = {!!} 
-concatmap-snd-hidden⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis}  
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = prf e-flat-es 
+  -- update: it is ok, because (pˡ ● r) the fst'ed pd and pʳ the snd'ed pd, will be combined by oplus and become (pˡ ● r) + pʳ
+concatmap-snd-hidden⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdis}  
+  (hide .{p} .{r} .{c} .(inj) .(s-ev)) all-hide-p-pdis = prf e-flat-es 
   where
     es : List (U l)
     es = mkAllEmptyU {l} ε∈l
@@ -910,9 +916,9 @@ concatmap-snd-hidden⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r
     flat-[]-es = mkAllEmptyU-sound {l} ε∈l
     e-flat-es :  List ( ∃[ e ] (Flat-[] l e) )
     e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
-    prf : (xs :  List ( ∃[ e ] (Flat-[] l e) )) → All (Hidden p) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x ((pdinstance {p} {r} {c} inj s-ev) ∷ (pdinstance {p} {r} {c} inj' s-ev') ∷ pdis)) xs)
+    prf : (xs :  List ( ∃[ e ] (Flat-[] l e) )) → All (Hidden p) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x ((pdinstance {p} {r} {c} inj s-ev) ∷ pdis)) xs)
     prf [] = []
-    prf ( x ∷ xs ) = all-concat (sub-prf x ((pdinstance inj s-ev) ∷ (pdinstance inj' s-ev') ∷ pdis) (hide inj s-ev ∷ hide inj' s-ev' ∷ all-hide-p-pdis))  (prf xs)
+    prf ( x ∷ xs ) = all-concat (sub-prf x ((pdinstance inj s-ev) ∷ pdis) (hide inj s-ev ∷ all-hide-p-pdis))  (prf xs)
       where
         sub-prf :
           ( e-flat-[]-e  :  ( ∃[ e ] (Flat-[] l e) ) )
@@ -920,8 +926,10 @@ concatmap-snd-hidden⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r
           → All (Hidden p ) qdis 
           → All (Hidden p ) (List.map (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e ) qdis)
         sub-prf _ [] []  = []
-        sub-prf e-flat-[]-e ( qdi@(pdinstance {p} {r} {c}  inj s-ev) ∷ qdis ) ((hide .{p} .{r} .{c} .(inj) .(s-ev)) ∷ all-hide-p-qdis ) = {!hide ? ?!} ∷ sub-prf e-flat-[]-e   qdis all-hide-p-qdis 
-    
+        sub-prf (e , flat-[]-e) ( qdi@(pdinstance {- {p} {r} {c} -} inj s-ev) ∷ qdis ) ((hide .{p} .{r} .{c} .(inj) .(s-ev)) ∷ all-hide-p-qdis ) = 
+          cong-mk-snd-pdi-hidden {l} {r} {p} {loc} {c} (e , flat-[]-e) qdi (hide inj s-ev)
+          ∷ sub-prf (e , flat-[]-e)   qdis all-hide-p-qdis 
+            
 concatmap-snd-WeakSingleton : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
   → WeakSingleton pdis
   ---------------------------------------------------------------
@@ -932,6 +940,24 @@ concatmap-snd-WeakSingleton {l} {r} {ε∈l} {loc} {c} {pdi@(pdinstance {p} {r} 
 
 
 
+map-star-hidden⁺ :  ∀ { r p  : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } {pdi : PDInstance r c } { pdis : List (PDInstance r c) }
+  → Hidden {r} {c} p pdi
+  → All (Hidden {r} {c} p) pdis
+  --------------------------------
+  → All (Hidden {r * ε∉r ` loc} {c} ( p ● (r * ε∉r ` loc) ` loc )) (List.map pdinstance-star ( pdi ∷ pdis ))
+map-star-hidden⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]} -- TODO:  can we combine these two cases?
+  (hide .{p} .{r} .{c} .(inj) .(s-ev)) [] = hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ []
+map-star-hidden⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis}
+   (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis )  =
+     hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ map-star-hidden⁺ (hide inj' s-ev') all-hide-p-pdis 
+
+map-star-WeakSingleton : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
+  → WeakSingleton pdis
+  ----------------------------------------------------------------
+  → WeakSingleton (List.map (pdinstance-star {r} {ε∉r} {loc}) pdis)
+map-star-WeakSingleton {r} {ε∉r} {loc} {c} {[]} (weakSingleton [] ( p , [] ))  = weakSingleton (List.map pdinstance-star []) (r , [])
+map-star-WeakSingleton {r} {ε∉r} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis} (weakSingleton  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
+  = weakSingleton (List.map (pdinstance-star {r} {ε∉r} {loc}) (pdi ∷ pdis)) (  ( p ● (r * ε∉r ` loc) ` loc ) , map-star-hidden⁺ hide-p-pdi hide-p-pdis  )
 
 oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
   → ( pdis₁ : List (PDInstance r c ) )
@@ -1010,7 +1036,7 @@ pdU-WeakSingleton {l ● r ` loc} {c} with ε∈? l
     ind-hyp-l = pdU-WeakSingleton {l} {c}
     ind-hyp-r : WeakSingleton pdU[ r , c ]
     ind-hyp-r = pdU-WeakSingleton {r} {c}
-pdU-WeakSingleton {r * ε∉r ` loc} {c} = {!!} 
+pdU-WeakSingleton {r * ε∉r ` loc} {c} = map-star-WeakSingleton  ind-hyp-r 
   where                                        
     ind-hyp-r : WeakSingleton pdU[ r , c ]
     ind-hyp-r = pdU-WeakSingleton {r} {c}

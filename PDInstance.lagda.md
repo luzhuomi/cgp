@@ -87,24 +87,43 @@ pdinstance-left  {l} {r} {loc} {c} (pdinstance {p} {l} {c} f s-ev) = (pdinstance
 -- injection builder for list ; (lifted up from pdinstance-star's where clause to expose to the any-recons-star proof
 
 
-mkinjList : ∀ {r' r : RE} { nε : ε∉ r } { loc : ℕ }
+mkinjList : ∀ {r' r : RE} { nε : ε∉ r } { loc : ℕ } -- r' is the pd 
    → ( f : U r' → U r )
    → U (r' ● (r * nε ` loc ) ` loc )
    → U ( r * nε ` loc )
-mkinjList {r'} {r} {nε} {loc} f  (PairU v (ListU vs)) = ListU ( (f v) ∷ vs) 
+mkinjList {r'} {r} {nε} {loc} f  (PairU v (ListU vs)) = ListU ( (f v) ∷ vs)
 
-pdinstance-star : ∀ { r : RE }  { nε : ε∉ r } { loc : ℕ } { c : Char} →  PDInstance r c → PDInstance ( r * nε ` loc ) c
-pdinstance-star {r} {nε} {loc} {c} (pdinstance {r'} {r} {c} f s-ev) =
-                         pdinstance { r' ● (r * nε ` loc) ` loc }
-                                { r * nε ` loc }
+
+mkinjListSoundEv : ∀ { p r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } 
+  → ( inj : U p → U r )
+  → ( inj-s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u) )
+  ----------------------------------------------------------------------
+  → ( u : U ( p ● ( r * ε∉r ` loc ) ` loc ) )
+  → proj₁ (flat (mkinjList inj u ) ) ≡ c ∷ proj₁ (flat u)
+mkinjListSoundEv {p} {r} {ε∉r} {loc} {c} inj inj-s-ev (PairU v (ListU vs)) =
+                    begin
+                      proj₁ (flat (ListU (inj v ∷ vs )))
+                    ≡⟨⟩
+                      proj₁ (flat (inj v)) ++ proj₁ (flat (ListU vs))
+                    ≡⟨ cong (λ x → x ++ proj₁ (flat (ListU vs)) ) (inj-s-ev v) ⟩
+                      ( c ∷ proj₁ (flat v) ) ++ (proj₁ (flat (ListU vs)))
+                    ∎ 
+  
+
+pdinstance-star : ∀ { r : RE }  { ε∉r : ε∉ r } { loc : ℕ } { c : Char} →  PDInstance r c → PDInstance ( r * ε∉r ` loc ) c
+pdinstance-star {r} {ε∉r} {loc} {c} (pdinstance {r'} {r} {c} f s-ev) =
+                         pdinstance { r' ● (r * ε∉r ` loc) ` loc }
+                                { r * ε∉r ` loc }
                                 {c}
                                 injList
                                 sound-ev
                 where
-                  injList : U (r' ● (r * nε ` loc ) ` loc ) → U ( r * nε ` loc )
+                  injList : U (r' ● (r * ε∉r ` loc ) ` loc ) → U ( r * ε∉r ` loc )
                   -- injList (PairU v (ListU vs)) = ListU ( (f v) ∷ vs) -- being lifted out as mkinjList for provability
                   injList = mkinjList f 
-                  sound-ev : ∀ ( u : U (r' ● (r * nε ` loc ) ` loc ) ) → ( proj₁ (flat { r * nε ` loc } (injList u)) ≡ (c ∷ (proj₁ (flat { r' ● (r * nε ` loc ) ` loc } u ))))
+                  sound-ev : ∀ ( u : U (r' ● (r * ε∉r ` loc ) ` loc ) ) → ( proj₁ (flat { r * ε∉r ` loc } (injList u)) ≡ (c ∷ (proj₁ (flat { r' ● (r * ε∉r ` loc ) ` loc } u ))))
+                  sound-ev = mkinjListSoundEv {r'} {r} {ε∉r} {loc} {c} f s-ev
+                  {-
                   sound-ev (PairU v (ListU vs)) =
                     begin
                       proj₁ (flat (ListU (f v ∷ vs )))
@@ -112,7 +131,7 @@ pdinstance-star {r} {nε} {loc} {c} (pdinstance {r'} {r} {c} f s-ev) =
                       proj₁ (flat (f v)) ++ proj₁ (flat (ListU vs))
                     ≡⟨ cong (λ x → x ++ proj₁ (flat (ListU vs)) ) (s-ev v) ⟩
                       ( c ∷ proj₁ (flat v) ) ++ (proj₁ (flat (ListU vs)))
-                    ∎ 
+                    ∎ -} 
 
 
 -- pdinstance-star and its sub function end
@@ -123,7 +142,7 @@ pdinstance-star {r} {nε} {loc} {c} (pdinstance {r'} {r} {c} f s-ev) =
 -- pdinstance-fst and its sub function
 -- injection builder for pair with the first being injected ; (lifted up from pdinstance-fst's where clause to expose to the ≤-mono-map-fst proof
 
-mkinjFst : ∀ {l' l r : RE } { loc : ℕ } 
+mkinjFst : ∀ {l' l r : RE } { loc : ℕ } -- l' is the pd
   → (f : U l' → U l )
   → U (l' ● r ` loc )
   → U (l ● r  ` loc )
@@ -181,19 +200,40 @@ pdinstance-fst {l} {r} {loc} {c} (pdinstance {l'} {l} {c} f s-ev) =
 -- pdinstance-snd and its sub functions
 
 
-mkinjSnd  : ∀ {l r r' : RE } { loc : ℕ }
+mkinjSnd  : ∀ {l r r' : RE } { loc : ℕ } -- r' is the pd
           →  (f : U r' → U r)
           →  U l 
           →  U r'
           →  U (l ● r ` loc )
 mkinjSnd {l} {r} {r'} {loc} f v u = PairU {l} {r} {loc} v (f u)
 
+mkinjSndSoundEv : ∀ { p l r : RE } { loc : ℕ } { c : Char } 
+  → ( inj : U p → U r )
+  → ( s-ev-inj : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u ) )
+  → ( e : U l )
+  → ( Flat-[] l e )
+  → ( u : U p )
+  → proj₁ (flat ((mkinjSnd {l} {r} {p} {loc} inj e) u)) ≡ c ∷ proj₁ (flat u )
+mkinjSndSoundEv {p} {l} {r} {loc} {c}  inj s-ev-inj e (flat-[] .(e) proj₁∘flate≡[] ) u
+  = 
+                           begin
+                             proj₁ (flat (PairU {l} {r} {loc} e (inj u)))
+                           ≡⟨⟩
+                             (proj₁ (flat e)) ++ (proj₁ (flat (inj u)))
+                           ≡⟨ cong (λ x → ( x ++  (proj₁ (flat (inj u))))) proj₁∘flate≡[] ⟩  --  e must be an empty; we do have flat v ≡ [] from mkAllEmptyU-sound
+                             [] ++ (proj₁ (flat (inj u)))
+                           ≡⟨⟩
+                             proj₁ (flat (inj u))
+                           ≡⟨ s-ev-inj u ⟩
+                             c ∷ (proj₁ (flat u))
+                           ∎
+
 
 mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
            → ∃[ e ] Flat-[] l e
            → PDInstance r c 
            → PDInstance ( l ● r ` loc ) c
-mk-snd-pdi {l} {r} {loc} {c} (e , (flat-[] e' proj₁∘flate≡[] )) (pdinstance {p} {r} {c}  inj s-ev) = pdinstance {p} { l ● r ` loc } {c} -- e' is e
+mk-snd-pdi {l} {r} {loc} {c} (e , (flat-[] .(e) proj₁∘flate≡[] )) (pdinstance {p} {r} {c}  inj s-ev) = pdinstance {p} { l ● r ` loc } {c} 
                         -- (λ u → PairU {l} {r} {loc} e (inj u) )
                         -- injSnd
                         (mkinjSnd {l} {r} {p} {loc} inj e)
@@ -202,12 +242,14 @@ mk-snd-pdi {l} {r} {loc} {c} (e , (flat-[] e' proj₁∘flate≡[] )) (pdinstanc
                      injSnd :  U p → U (l ● r ` loc)
                      injSnd =                     
                         (mkinjSnd {l} {r} {p} {loc} inj e)
-                     injSnd-s-ev =
+                     injSnd-s-ev = mkinjSndSoundEv {p} {l} {r} {loc} {c} inj s-ev e (flat-[] e  proj₁∘flate≡[])
+                     {-
+                      =
                        (λ u → 
                            begin
                              proj₁ (flat (PairU {l} {r} {loc} e (inj u)))
                            ≡⟨⟩
-                             (proj₁ (flat e')) ++ (proj₁ (flat (inj u)))
+                             (proj₁ (flat e)) ++ (proj₁ (flat (inj u)))
                            ≡⟨ cong (λ x → ( x ++  (proj₁ (flat (inj u))))) proj₁∘flate≡[] ⟩  --  e must be an empty; we do have flat v ≡ [] from mkAllEmptyU-sound
                              [] ++ (proj₁ (flat (inj u)))
                            ≡⟨⟩
@@ -216,7 +258,7 @@ mk-snd-pdi {l} {r} {loc} {c} (e , (flat-[] e' proj₁∘flate≡[] )) (pdinstanc
                              c ∷ (proj₁ (flat u))
                            ∎
                         )
-
+                     -} 
 
 
 pdinstance-snd : ∀ { l r : RE } { loc : ℕ } { c : Char } → ∃[ e ] (Flat-[] l e ) → List (PDInstance r c )  →  List (PDInstance (l ● r ` loc) c)

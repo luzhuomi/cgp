@@ -479,11 +479,16 @@ star-ex-sorted {r} {ε∉r} {loc} {c}  (pdinstance {p} .{r} .{c} in₁ s-ev₁) 
           len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))
                            Nat.> length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
           len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) = Nat.s≤s len|pair-v₁v₂|>len|pair-u₁u₂| 
-      prf (PairU v₁ v₂) (PairU u₁ u₂) (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₁ v₁>u₁)) = len-≡ len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| {!star-head ? !} 
+      prf (PairU v₁ v₂) (PairU u₁ u₂) (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₁ v₁>u₁)) with inject₁ (PairU {p} {r * ε∉r ` loc} v₁ v₂) in eq₁ | inject₂ (PairU {p} {r * ε∉r ` loc}  u₁ u₂) in eq₂ 
+      ... | ListU {r} {ε∉r} {loc} (v ∷ vs)   | ListU {r} {ε∉r} {loc} (u ∷ us)  = len-≡ len-|v∷vs|≡len-|u∷us| (star-head {!!} ) -- len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| {!star-head ? !} -- without the with clause, we can't see the (star-head ? ), why? 
+      
         where
-          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))
-                           ≡ length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
-          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) | len|pair-v₁v₂|≡len|pair-u₁u₂| = refl 
+          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| :  length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂)))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
+          -- len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| :  length (proj₁ (flat (inject₁ (PairU v₁ v₂)))) ≡ length (proj₁ (flat (inject₂ (PairU u₁ u₂))))
+          len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) | len|pair-v₁v₂|≡len|pair-u₁u₂| = refl
+          len-|v∷vs|≡len-|u∷us| :  length (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs)))) ≡ length (proj₁ (flat (ListU {r} {ε∉r} {loc}  (u ∷ us))))
+          len-|v∷vs|≡len-|u∷us| rewrite sym eq₁ | sym eq₂ =  {!!} -- len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| -- {!!} 
+
       prf (PairU v₁ v₂) (PairU u₁ u₂) (len-≡ len|pair-v₁v₂|≡len|pair-u₁u₂| (seq₂ v₁≡u₁ v₂>u₂)) = len-≡ len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| {!star-tail ? ? !} 
         where
           len-|star-in₁-pair-v₁v₂|≡len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))

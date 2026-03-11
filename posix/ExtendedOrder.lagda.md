@@ -328,7 +328,7 @@ left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char }
   -------------------------------------------------
   → (l + r ` loc) , c ⊢ pdinstance-left pdi₁ > pdinstance-left pdi₂
 left-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
-  (>-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ {!!} 
+  (>-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂ 
   where
     inject₁ : U p → U ( l + r ` loc )
     inject₁ v = LeftU (in₁ v)
@@ -581,6 +581,18 @@ fst-ex-sorted {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdins
                                                
         len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v u) | len-|inject₂-u|≡len-|u|+1 (PairU v u)  = refl 
         
+
+
+map-fst-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char }
+                    → ( pdis : List (PDInstance l c) )
+                    → Ex>-sorted {l} pdis
+                    → Ex>-sorted {l ● r ` loc } (List.map pdinstance-fst pdis)
+map-fst-ex-sorted {l} {r} {loc} {c} [] ex>-nil = ex>-nil
+map-fst-ex-sorted {l} {r} {loc} {c} (pdi ∷ [])              (ex>-cons ex>-nil ex>-nothing ) =
+  ex>-cons  ex>-nil ex>-nothing 
+map-fst-ex-sorted {l} {r} {loc} {c} (pdi₁  ∷ pdi₂ ∷ pdis ) (ex>-cons pdi₂pdis-sorted@(ex>-cons pdis-sorted pdi₂>head-pdis)  (ex>-just pdi₁>pdi₂ )) =
+  ex>-cons (map-fst-ex-sorted {l} {r} {loc} {c}  (pdi₂ ∷  pdis) pdi₂pdis-sorted) (ex>-just (fst-ex-sorted {l} {r} pdi₁ pdi₂ pdi₁>pdi₂ ))
+
 
 ```
 

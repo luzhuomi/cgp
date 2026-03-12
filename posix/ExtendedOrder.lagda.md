@@ -135,6 +135,241 @@ open import Function using (_∘_ ; flip)
 ```
 
 
+```agda
+-- a relation shoow a partial derivative instance is "hiding" a partial derivative p
+data Inhabit : ∀ { r : RE } { c : Char } → RE →  PDInstance r c → Set where
+  hide : ∀ { p r : RE } { c : Char } 
+    → ( inj : U p → U r ) -- ^ the injection function 
+    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  -- s^ soundnes evidence
+    → Inhabit {r} {c} p (pdinstance {p} {r} {c} inj s-ev)
+
+-- a list of pdinstance is homogenous iff all of them are hiding the same pd.
+data Homogenous : ∀ { r : RE } { c : Char } → List (PDInstance r c) → Set where
+  homogenous : ∀ { r : RE } { c : Char } (pdis : List (PDInstance r c ) )
+    → ∃[ p ] (All (Inhabit p) pdis)
+    → Homogenous {r} {c} pdis 
+    
+
+
+map-left-inhabit⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance l c } { pdis : List (PDInstance l c) }
+  → Inhabit {l} {c} p pdi
+  → All (Inhabit {l} {c}  p) pdis
+  -------------------------------------------
+  → All (Inhabit {l + r ` loc} {c}  p) (List.map pdinstance-left (pdi ∷ pdis))
+map-left-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {[]}
+  (hide .{p} .{l} .{c} .(inj) .(s-ev)) [] = hide (λ u → LeftU (inj u)) s-ev ∷ []
+map-left-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{l} .{c} inj' s-ev') ∷ pdis} 
+  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → LeftU (inj u)) s-ev ∷ map-left-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
+
+map-left-Homogenous : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance l c) }
+  → Homogenous pdis
+  --------------------------------------------------
+  → Homogenous (List.map (pdinstance-left {l} {r} {loc} {c}) pdis)
+map-left-Homogenous {l} {r} {loc} {c} {[]} (homogenous [] ( p , [] ) ) =  homogenous (List.map pdinstance-left []) (p , [])
+map-left-Homogenous {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ pdis }  (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {l} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
+  = homogenous (pdinstance {p} {l + r ` loc} {c} (λ u → LeftU (inj u)) s-ev ∷  List.map pdinstance-left pdis) (p , map-left-inhabit⁺ {l} {r} {p} {loc} {c} {pdi} {pdis}  hide-p-pdi  hide-p-pdis  ) 
+
+
+map-right-inhabit⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance r c } { pdis : List (PDInstance r c) }
+  → Inhabit {r} {c} p pdi
+  → All (Inhabit {r} {c} p) pdis
+  -------------------------------------------
+  → All (Inhabit {l + r ` loc} {c}  p) (List.map pdinstance-right (pdi ∷ pdis))
+map-right-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]}
+  (hide .{p} .{r} .{c} .(inj) .(s-ev)) [] = hide (λ u → RightU (inj u)) s-ev ∷ []
+map-right-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis} 
+  (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → RightU (inj u)) s-ev ∷
+                                                                                                      map-right-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
+
+map-right-Homogenous : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
+  → Homogenous pdis
+  --------------------------------------------------
+  → Homogenous (List.map (pdinstance-right {l} {r} {loc} {c}) pdis)
+map-right-Homogenous {l} {r} {loc} {c} {[]} (homogenous [] ( p , [] ) ) =  homogenous (List.map pdinstance-right []) (p , [])
+map-right-Homogenous {l} {r} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis }  (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
+  = homogenous (pdinstance {p} {l + r ` loc} {c} (λ u → RightU (inj u)) s-ev ∷  List.map pdinstance-right pdis) (p , map-right-inhabit⁺ {l} {r} {p} {loc} {c} {pdi} {pdis}  hide-p-pdi  hide-p-pdis  )
+
+
+
+map-fst-inhabit⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance l c } { pdis : List (PDInstance l c) }
+  → Inhabit {l} {c} p pdi
+  → All (Inhabit {l} {c} p) pdis
+  -------------------------------------------------
+  → All (Inhabit {l ● r ` loc} {c} ( p ● r ` loc) ) (List.map pdinstance-fst (pdi ∷ pdis))
+map-fst-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {[]}
+  (hide .{p} .{l} .{c} .(inj) .(s-ev)) [] = hide (mkinjFst inj) (mkinjFstSoundEv inj s-ev)   ∷ []
+map-fst-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{l} .{c} inj' s-ev') ∷ pdis}
+  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (mkinjFst inj)
+                                                                                                      (mkinjFstSoundEv inj s-ev)  
+                                                                                                      ∷ map-fst-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
+      
+
+map-fst-Homogenous : ∀ { l r : RE } { loc : ℕ } { c : Char } { pdis : List (PDInstance l c)  }
+  → Homogenous pdis
+  --------------------------------------------------
+  → Homogenous (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+map-fst-Homogenous {l} {r} {loc} {c} {[]} (homogenous [] ( p , [] )) = homogenous (List.map pdinstance-fst []) (l , [])
+map-fst-Homogenous {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ pdis }  (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {l} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
+  = homogenous (List.map pdinstance-fst (pdinstance inj s-ev ∷ pdis)) ( (p ● r ` loc) , map-fst-inhabit⁺ (hide inj s-ev) hide-p-pdis ) 
+
+
+cong-mk-snd-pdi-inhabit : ∀ { l r p : RE } { loc : ℕ } { c : Char }
+  → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
+  → ( pdi : PDInstance r c ) 
+  → Inhabit {r} {c} p pdi
+  → Inhabit {l ● r ` loc} {c} p (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi)
+cong-mk-snd-pdi-inhabit {l} {r} {p} {loc} {c} ( e , (flat-[] .(e) proj₁∘flate≡[]) ) (pdinstance .{p} .{r} .{c} inj s-ev) (hide inj s-ev)
+  = hide (mkinjSnd inj e) (mkinjSndSoundEv {p} {l} {r} {loc} {c} inj s-ev e (flat-[] e proj₁∘flate≡[]))
+                          
+concatmap-snd-inhabit⁺ :  ∀ { l r p : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdi : PDInstance r c } { pdis : List (PDInstance r c) }
+  → Inhabit {r} {c} p pdi
+  → All (Inhabit {r} {c} p) pdis
+  --------------------------------------------
+  → All (Inhabit {l ● r ` loc} {c} p) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (pdi ∷ pdis))
+  -- hm... p is the partial derivative here. not p ● r !!!
+  -- so it is not weaksingleton or homomorphic..
+  -- posix has a very unique extended ordering
+  -- it is like staircase, a list of pdis with the same partial derivative,
+  -- the until a concat case... change to another partial derivative which should be following > order.  let me think about how to write it down as data type in agda.
+  -- update: it is ok, because (pˡ ● r) the fst'ed pd and pʳ the snd'ed pd, will be combined by oplus and become (pˡ ● r) + pʳ
+concatmap-snd-inhabit⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdis}  
+  (hide .{p} .{r} .{c} .(inj) .(s-ev)) all-hide-p-pdis = prf e-flat-es 
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    e-flat-es :  List ( ∃[ e ] (Flat-[] l e) )
+    e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+    prf : (xs :  List ( ∃[ e ] (Flat-[] l e) )) → All (Inhabit p) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x ((pdinstance {p} {r} {c} inj s-ev) ∷ pdis)) xs)
+    prf [] = []
+    prf ( x ∷ xs ) = all-concat (sub-prf x ((pdinstance inj s-ev) ∷ pdis) (hide inj s-ev ∷ all-hide-p-pdis))  (prf xs)
+      where
+        sub-prf :
+          ( e-flat-[]-e  :  ( ∃[ e ] (Flat-[] l e) ) )
+          → ( qdis : List (PDInstance r c) )
+          → All (Inhabit p ) qdis 
+          → All (Inhabit p ) (List.map (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e ) qdis)
+        sub-prf _ [] []  = []
+        sub-prf (e , flat-[]-e) ( qdi@(pdinstance {- {p} {r} {c} -} inj s-ev) ∷ qdis ) ((hide .{p} .{r} .{c} .(inj) .(s-ev)) ∷ all-hide-p-qdis ) = 
+          cong-mk-snd-pdi-inhabit {l} {r} {p} {loc} {c} (e , flat-[]-e) qdi (hide inj s-ev)
+          ∷ sub-prf (e , flat-[]-e)   qdis all-hide-p-qdis 
+            
+concatmap-snd-Homogenous : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
+  → Homogenous pdis
+  ---------------------------------------------------------------
+  → Homogenous (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
+concatmap-snd-Homogenous {l} {r} {ε∈l} {loc} {c} {[]} (homogenous [] ( p , [] )) rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = homogenous [] (p , [])
+concatmap-snd-Homogenous {l} {r} {ε∈l} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis } (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
+  = homogenous (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (pdi ∷  pdis)) ( p , concatmap-snd-inhabit⁺ (hide inj s-ev) hide-p-pdis )
+
+
+
+map-star-inhabit⁺ :  ∀ { r p  : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } {pdi : PDInstance r c } { pdis : List (PDInstance r c) }
+  → Inhabit {r} {c} p pdi
+  → All (Inhabit {r} {c} p) pdis
+  --------------------------------
+  → All (Inhabit {r * ε∉r ` loc} {c} ( p ● (r * ε∉r ` loc) ` loc )) (List.map pdinstance-star ( pdi ∷ pdis ))
+map-star-inhabit⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]} -- TODO:  can we combine these two cases?
+  (hide .{p} .{r} .{c} .(inj) .(s-ev)) [] = hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ []
+map-star-inhabit⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis}
+   (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis )  =
+     hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ map-star-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
+
+map-star-Homogenous : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
+  → Homogenous pdis
+  ----------------------------------------------------------------
+  → Homogenous (List.map (pdinstance-star {r} {ε∉r} {loc}) pdis)
+map-star-Homogenous {r} {ε∉r} {loc} {c} {[]} (homogenous [] ( p , [] ))  = homogenous (List.map pdinstance-star []) (r , [])
+map-star-Homogenous {r} {ε∉r} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis} (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
+  = homogenous (List.map (pdinstance-star {r} {ε∉r} {loc}) (pdi ∷ pdis)) (  ( p ● (r * ε∉r ` loc) ` loc ) , map-star-inhabit⁺ hide-p-pdi hide-p-pdis  )
+
+oplus-Homogenous : ∀ { r : RE } { loc : ℕ } { c : Char }
+  → ( pdis₁ : List (PDInstance r c ) )
+  → ( pdis₂ : List (PDInstance r c ) )
+  → Homogenous pdis₁
+  → Homogenous pdis₂
+  --------------------------------------------------------------
+  → Homogenous (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
+oplus-Homogenous {r} {loc} {c} []             pdis₂ _  weaksingleton-pdis₂ = weaksingleton-pdis₂
+oplus-Homogenous {r} {loc} {c} (pdi₁ ∷ pdis₁) []    weaksingleton-pdi₁pdis₁ _ = weaksingleton-pdi₁pdis₁
+oplus-Homogenous {r} {loc} {c} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)
+  (homogenous (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ ))
+  (homogenous (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ))  = homogenous (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
+    where
+      prf : ∃[ p ] All (Inhabit {r} {c} p) (concatMap (λ pdiˡ₁ → 
+                                                (fuse pdiˡ₁ pdi₂) ∷  (List.map (fuse pdiˡ₁) pdis₂) )
+                                             (pdi₁ ∷ pdis₁))
+      prf = (p₁ + p₂ ` loc) , sub-prf (pdi₁ ∷ pdis₁) ( hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ )
+        where
+          sub-prf : ∀ ( pdis₁' : List (PDInstance r c ) )
+            → All (Inhabit {r} {c} p₁) pdis₁'
+            → All (Inhabit {r} {c} (p₁ + p₂ ` loc)) (concatMap (λ pdiˡ₁ → 
+                                                (List.map (fuse {r} {loc} {c}  pdiˡ₁) (pdi₂ ∷ pdis₂) )) pdis₁')
+          sub-prf [] []  = [] 
+          sub-prf ( pdi₁' ∷ pdis₁') ( hide-p₁-pdi₁' ∷ hide-p₁-pdis₁' ) =  all-concat ( sub-sub-prf pdi₁' (pdi₂ ∷  pdis₂) hide-p₁-pdi₁' (hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ) )  (sub-prf pdis₁'  hide-p₁-pdis₁')  
+            where
+              sub-sub-prf : (pdi : PDInstance r c)
+                → ( pdis₂' : List (PDInstance r c ) )
+                → Inhabit {r} {c} p₁ pdi 
+                → All (Inhabit {r} {c} p₂) pdis₂'
+                → All (Inhabit {r} {c} (p₁ + p₂ ` loc)) (List.map (fuse  {r} {loc} {c} pdi) (pdis₂'))
+              sub-sub-prf (pdinstance in₁ s-ev₁)  [] hide-p₁-pdi₁ [] = []
+              sub-sub-prf pdi@(pdinstance in₁ s-ev₁) ((pdinstance in₂ s-ev₂) ∷ pdis₂')  hide-p₁-pdi@(hide .{p₁} {r} {c} .(in₁) .(s-ev₁)) (hide-p₂-pdi₂'@(hide .{p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂') = (hide inj sound-ev) ∷ sub-sub-prf pdi pdis₂' hide-p₁-pdi hide-p₂-pdis₂' 
+                where
+                  inj : U (p₁ + p₂ ` loc ) → U r
+                  inj = mkfuseInj in₁ in₂
+                  sound-ev : (u : U (p₁ + p₂ ` loc)) → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
+                  sound-ev = mkfuseInjSoundEv in₁ in₂ s-ev₁ s-ev₂
+
+
+pdU-Homogenous : ∀ { r : RE } { c : Char }
+  → Homogenous pdU[ r  , c ]
+pdU-Homogenous {ε} {c} = homogenous pdU[ ε , c ] (ε , [])
+pdU-Homogenous {$ c ` loc} {c₁} with c Char.≟ c₁
+... | no ¬c≡c₁ = homogenous [] (ε , [])
+... | yes c≡c₁ rewrite c≡c₁ = homogenous (( pdinstance {ε} {$ c₁ ` loc} {c₁} inj s-ev ) ∷ [] ) 
+                               (ε , 
+                                hide inj s-ev                                   
+                                ∷ [])
+                   where
+                     inj : U ε → U ($ c₁ ` loc)
+                     inj =  (λ u → LetterU c₁)
+                     s-ev : ∀ ( u : U ε ) → ( proj₁ ( flat {$ c₁ ` loc} (inj u) ) ≡ c₁ ∷ ( proj₁ (flat {ε} u) ))  
+                     s-ev = (λ EmptyU →                 -- ^ soundness ev
+                               begin
+                                 [ c₁ ]
+                               ≡⟨⟩
+                                 c₁ ∷ []
+                               ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                                 c₁ ∷ (proj₁ (flat EmptyU))
+                               ∎)
+pdU-Homogenous {l + r ` loc} {c} = oplus-Homogenous (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ r , c ]) (map-left-Homogenous ind-hyp-l) (map-right-Homogenous ind-hyp-r)
+  where
+    ind-hyp-l : Homogenous pdU[ l , c ]
+    ind-hyp-l = pdU-Homogenous {l} {c}
+    ind-hyp-r : Homogenous pdU[ r , c ]
+    ind-hyp-r = pdU-Homogenous {r} {c}
+pdU-Homogenous {l ● r ` loc} {c} with ε∈? l
+... | no ¬ε∈l = map-fst-Homogenous ind-hyp-l
+  where
+    ind-hyp-l : Homogenous pdU[ l , c ]
+    ind-hyp-l = pdU-Homogenous {l} {c}
+... | yes ε∈l = oplus-Homogenous (List.map pdinstance-fst pdU[ l , c ]) (concatmap-pdinstance-snd pdU[ r , c ]) ( map-fst-Homogenous ind-hyp-l) (concatmap-snd-Homogenous ind-hyp-r) 
+  where 
+    ind-hyp-l : Homogenous pdU[ l , c ]
+    ind-hyp-l = pdU-Homogenous {l} {c}
+    ind-hyp-r : Homogenous pdU[ r , c ]
+    ind-hyp-r = pdU-Homogenous {r} {c}
+pdU-Homogenous {r * ε∉r ` loc} {c} = map-star-Homogenous  ind-hyp-r 
+  where                                        
+    ind-hyp-r : Homogenous pdU[ r , c ]
+    ind-hyp-r = pdU-Homogenous {r} {c}
+
+
+```
+
+
 ### Definition 36 : (Extended) POSIX ordering among PDInstances 
 
 Let r be a non problematic regular expression.
@@ -200,40 +435,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
         → r ⊢ injection₁ v₁ > injection₂ v₂ )
     → ( ∀ ( v : U p ) → r ⊢ injection₁ v > injection₂ v )  -- ? strict inc? 
    → r , c ⊢ (pdinstance {p} {r} {c} injection₁ s-ev₁) > (pdinstance {p} {r} {c} injection₂ s-ev₂)
-{-
-data _,_⊢_>>_ : ∀ ( r : RE ) → ( c : Char ) → PDInstance r c → PDInstance r c → Set where
-  >>-pdi-r* : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
-    → ( pdi₁ : PDInstance (r * ε∉r ` loc) c )
-    → ( pdi₂ : PDInstance (r * ε∉r ` loc) c )
-    → ( ∀ (u₁ : U ( r * ε∉r ` loc) ) → ( u₂ : U (r * ε∉r ` loc) )
-      → length (proj₁ (flat u₁)) ≥ length
-        -- how to get the heads and tails? 
--} 
--- if we index the relation with a word, hence, we fix the suffix and the leading character c
 
--- we need a weaker variant of Recons
-
-{-
-
-data WeakRecons : { r : RE } { c : Char } → ( w : List Char ) → ( u : U r ) → ( PDInstance r c )  → Set where -- how to put ( v : U p )?
-  wrecons : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p → U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → (u : U r)
-    → ∃[ w∈⟦p⟧ ] ( (inj (unflat {p} {w}  w∈⟦p⟧)) ≡ u )    -- the completeness property.
-    → WeakRecons {r} {c} w u (pdinstance {p} {r} {c} inj sound-ev) -- <- the input PDI obj
-
-
-data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) →  (w : List Char ) → PDInstance r c → PDInstance r c → Set where
-  >-pdi : ∀ { r : RE } { c : Char } { w : List Char } 
-    → ( pdi₁ : PDInstance r c )
-    → ( pdi₂ : PDInstance r c )
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r )
-      → proj₁ (flat u₁) ≡ c ∷ w 
-      → proj₁ (flat u₂) ≡ c ∷ w 
-      → (WeakRecons w u₁ pdi₁ ) → (WeakRecons w u₂ pdi₂) → ( r ⊢ u₁ > u₂) ) -- we need to expose pd parse trees v₁ and v₂ and v₁ > v₂ here.
-    → r , c , w  ⊢ pdi₁ > pdi₂
-
--}
 ```
 
 
@@ -424,8 +626,6 @@ map-left-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons  ex>-sorted-pdis (ex>-j
 
 
 
--- it seems that we dont need this lemma since all the left and right pdis are combined with oplus 
-{- 
 map-right-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
   → Ex>-sorted {r} pdis
@@ -437,6 +637,9 @@ map-right-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons ex>-sorted-pdis (ex>-j
   = ex>-cons 
            (map-right-ex-sorted (pdi' ∷ pdis) ex>-sorted-pdis)
            (ex>-just (right-ex-sorted pdi pdi'  pdi>pdi'))
+
+-- it seems that we dont need this lemma since all the left and right pdis are combined with oplus 
+{- 
 
 map-left-right-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char } 
   → ( pdis  : List (PDInstance l c) )
@@ -683,7 +886,7 @@ concat-ex-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex>-cons
 -- concatmap-pdinstance-snd-ex>-sorted and its sub lemma
 --------------------------------------------------------------------------------------------------
 
-
+-- do we need this ? 
 
 pdinstance-snd-fst-all->concatmap-pdinstance-snd : ∀ { l r : RE } {ε∈l : ε∈ l } { loc : ℕ } { c : Char }
     → ( e  : U l )
@@ -693,27 +896,178 @@ pdinstance-snd-fst-all->concatmap-pdinstance-snd : ∀ { l r : RE } {ε∈l : ε
     → ( e>-head-es : >-maybe e (head es))
     → ( es->-sorted : >-sorted es ) 
     → ( pdis : List (PDInstance r c ) )
+    → Homogenous pdis  -- we need this premise to ensure all pdis sharing the same p
     -----------------------------------------------------------------
     → All (λ pdi₁ → Ex>-maybe {l ● r ` loc } pdi₁ (head (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))))
        (List.map (mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e)) pdis)
-pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e (flat-[] e proj₁flat-e≡[]) [] [] >-nothing ex->-nil pdis = prf  (List.map (mk-snd-pdi (e , flat-[] e proj₁flat-e≡[])) pdis)
+pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e (flat-[] e proj₁flat-e≡[]) [] [] >-nothing ex->-nil pdis _ = prf  (List.map (mk-snd-pdi (e , flat-[] e proj₁flat-e≡[])) pdis)
   where
     prf : (pdis : List (PDInstance (l ● r ` loc) c) )
           → All  (λ pdi₁ → Ex>-maybe pdi₁ nothing) pdis
     prf [] = []
     prf (pdi ∷ pdis) = ex>-nothing ∷ prf pdis
-pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁ flat-[]-e₁  (e₂ ∷ es) (flat-[]-e₂ ∷ flat-[]-es) (>-just e₁>e₂) e₂es->sorted [] = [] 
-pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁ (flat-[] e₁ proj₁flate₁≡[])  (e₂ ∷ es) ((flat-[] e₂ proj₁flate₂≡[]) ∷ flat-[]-es) (>-just e₁>e₂) e₂es->sorted (pdi ∷ pdis) =  prf (pdi ∷ pdis) 
+pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁ flat-[]-e₁                   (e₂ ∷ es) (flat-[]-e₂ ∷ flat-[]-es)                  (>-just e₁>e₂) e₂es->sorted [] _ = [] 
+pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁ (flat-[] e₁ proj₁flate₁≡[])  (e₂ ∷ es) ((flat-[] e₂ proj₁flate₂≡[]) ∷ flat-[]-es) (>-just e₁>e₂) e₂es->sorted
+  (pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis) (homogenous ( .(pdi) ∷ .(pdis) ) ( .(p) , ( hide .{p} .{r} .{c} .(inj) .(s-ev) ) ∷ hide-p-pdis))    =  sub (pdi ∷ pdis) (( hide {p} {r} {c} inj s-ev ) ∷ hide-p-pdis)
   where 
-    prf : ( pdis' : List (PDInstance r c) )
+    sub : ( pdis' : List (PDInstance r c) )
+          → All (Inhabit p) pdis' 
           →  All (λ pdi₁ → Ex>-maybe pdi₁
                     (head
                       (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x (pdi ∷ pdis))
                                  ((e₂ , (flat-[] e₂ proj₁flate₂≡[])) ∷ zip-es-flat-[]-es {l} {ε∈l}  es flat-[]-es))))
                     (List.map (mk-snd-pdi (e₁ , (flat-[] e₁ proj₁flate₁≡[]))) pdis')
-    prf [] = []
-    prf (pdi'@(pdinstance {p} {r} {c}  inj' s-ev') ∷ pdis' ) =
-      ex>-just {!!}  ∷ prf pdis' 
+    sub [] []  = []
+    sub (pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis' ) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷  hide-p-pdis')  = -- we can't enforce p' is p
+      ex>-just (>-pdi inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂ )
+        ∷ sub pdis'   hide-p-pdis'
+      where
+        inject₁ : U p → U (l ● r ` loc )
+        inject₁ = mkinjSnd inj' e₁
+        sound-ev₁ : ( u : U p ) → proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u )
+        sound-ev₁ = mkinjSndSoundEv {p} {l} {r} {loc} {c}  inj' s-ev' e₁ (flat-[] e₁ proj₁flate₁≡[])
+        inject₂ : U p → U (l ● r ` loc )
+        inject₂ = mkinjSnd inj e₂ 
+        sound-ev₂ : ( u : U p ) → proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u )
+        sound-ev₂ = mkinjSndSoundEv {p} {l} {r} {loc} {c}  inj s-ev e₂ (flat-[] e₂ proj₁flate₂≡[])
+
+        len-|inject₁-u|≡len-|u|+1 : (u : U  p ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|inject₁-u|≡len-|u|+1 u rewrite (sound-ev₁ u) = refl 
+    
+        len-|inject₂-u|≡len-|u|+1 : (u : U  p ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|inject₂-u|≡len-|u|+1 u rewrite (sound-ev₂ u) = refl 
+
+        prf₁ : (v₁ v₂ : U p)
+             → p ⊢ v₁ > v₂
+             → (l ● r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+        prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂|
+          where
+            len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+            len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+        prf₁ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ e₁>e₂)
+          where
+            len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
+            len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂|  = refl 
+            
+        prf₂ : (v : U p) → (l ● r ` loc) ⊢ inject₁ v > inject₂ v
+        prf₂ v = len-≡ len|inject₁v|≡len|inject₂v| (seq₁ e₁>e₂)  
+          where
+            len|inject₁v|≡len|inject₂v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
+            len|inject₁v|≡len|inject₂v| rewrite len-|inject₁-u|≡len-|u|+1 v |  len-|inject₂-u|≡len-|u|+1 v   = refl 
+
+
+concatmap-pdinstance-snd-ex>-sorted-sub : ∀ { l r : RE } {ε∈l : ε∈ l } {loc : ℕ } { c : Char }
+                                     → ( es : List (U l) )
+                                     → ( flat-[]-es : All ( Flat-[] l ) es ) 
+                                     → ( ex->-sorted : >-sorted es ) 
+                                     → ( pdis : List (PDInstance r c ) )
+                                     → Ex>-sorted {r} pdis
+                                     → Homogenous pdis  -- we need this premise to ensure all pdis sharing the same p
+                                     ----------------------------------------------------------------
+                                     → Ex>-sorted {l ● r ` loc} (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
+concatmap-pdinstance-snd-ex>-sorted-sub {l} {r} {ε∈l} {loc} {c} []       []                        >-nil                          _    _               _ = ex>-nil
+concatmap-pdinstance-snd-ex>-sorted-sub {l} {r} {ε∈l} {loc} {c} (e ∷ es) (flat-[]-e ∷ flat-[]-es)  (>-cons es->-sorted e>head-es) pdis pdis-ex>-sorted pdis-homo =
+  concat-ex-sorted
+    (List.map (mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e)) pdis)                                          -- ^ curr batch
+    (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es)) -- ^ next bacth
+    curr-sorted
+    next-sorted
+    (pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  e flat-[]-e es flat-[]-es e>head-es es->-sorted pdis pdis-homo ) 
+  where
+    curr-sorted : Ex>-sorted {l ● r ` loc} (List.map (mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e)) pdis)
+    curr-sorted = pdinstance-snd-ex>-sorted {l} {r} {loc} {c} (e , flat-[]-e) pdis pdis-ex>-sorted
+    next-sorted : Ex>-sorted {l ● r ` loc} (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
+    next-sorted = concatmap-pdinstance-snd-ex>-sorted-sub {l} {r} {ε∈l} {loc} {c} es flat-[]-es es->-sorted pdis pdis-ex>-sorted pdis-homo
+
+-- pdinstances generated by concatmap-pdinstance-snd must be ex sorted. 
+concatmap-pdinstance-snd-ex>-sorted : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+                                     → ( pdis : List (PDInstance r c ) )
+                                     → Ex>-sorted {r} pdis
+                                     → Homogenous pdis  -- we need this premise to ensure all pdis sharing the same p                                     
+                                     → Ex>-sorted {l ● r ` loc } (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
+concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c} pdis ex>-sorted-pdis pdis-homo = concatmap-pdinstance-snd-ex>-sorted-sub {l} {r}  {ε∈l} {loc} {c}  es flat-[]-es es->-sorted pdis ex>-sorted-pdis pdis-homo 
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    es->-sorted : >-sorted es
+    es->-sorted = mkAllEmptyU-sorted {l} ε∈l 
+    
+---------------------------------------------------------------------------------------------------
+-- concatmap-pdinstance-snd-ex>-sorted and its sub lemma END 
+--------------------------------------------------------------------------------------------------
+
+
+
+oplus-ex-sorted : ∀ { r : RE } {loc : ℕ } { c : Char }
+    → ( pdis₁ : List ( PDInstance r c ))
+    → ( pdis₂ : List ( PDInstance r c ))
+    → Ex>-sorted { r } pdis₁
+    → Ex>-sorted { r } pdis₂
+    -------------------------------------------------------
+    → Ex>-sorted { r } (pdinstance-oplus {r} {loc} {c}  pdis₁ pdis₂)
+oplus-ex-sorted {r} {loc} {c} []             pdis₂          ex>-nil                                     ex>-sorted-pdis₂  = ex>-sorted-pdis₂
+oplus-ex-sorted {r} {loc} {c} (pdi₁ ∷ pdis₁) []             ex>-sorted-pdi₁pdis₁                        ex>-nil           = ex>-sorted-pdi₁pdis₁
+oplus-ex-sorted {r} {loc} {c} (pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂) (ex>-cons ex>-sorted-pdis₁ pdi₁>head-pdis₁) (ex>-cons ex>-sorted-pdis₂ pdi₂>head-pdis₂) =
+  ex>-cons {r} {c} {fuse (pdinstance in₁ s-ev₁) (pdinstance in₂ s-ev₂)} {List.map (fuse (pdinstance in₁ s-ev₁)) pdis₂ ++
+                                                                          List.foldr _++_ []
+                                                                          (List.map
+                                                                           (λ pdiˡ₁ → List.map (fuse pdiˡ₁) (pdinstance in₂ s-ev₂ ∷ pdis₂))
+                                                                           pdis₁)} {!!} {!!}
+  -- where
+  --  ind-hyp = 
+
+
+
+-- main lemma: 
+pdU-sorted : ∀ { r : RE } { c : Char }
+  → Ex>-sorted {r} {c} pdU[ r , c ]
+pdU-sorted {ε} {c} = ex>-nil
+pdU-sorted {$ c ` loc } {c'} with c Char.≟ c'
+...                           | no _ = ex>-nil 
+...                           | yes refl = ex>-cons ex>-nil ex>-nothing 
+  where
+    -- duplicated from PartialDerivativeParseTree
+    pdi : PDInstance ($ c ` loc) c
+    pdi = pdinstance {ε} {$ c ` loc} {c}
+                     (λ u → LetterU {loc} c)
+                          (λ EmptyU →                 -- ^ soudness ev
+                             begin
+                               [ c ]
+                             ≡⟨⟩
+                               c ∷ []
+                             ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                               c ∷ (proj₁ (flat EmptyU))
+                             ∎)
+                             
+pdU-sorted {l + r ` loc } {c} =  oplus-ex-sorted {l + r ` loc} {loc} {c} (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ r , c ]) (map-left-ex-sorted pdU[ l , c ] ind-hyp-l) (map-right-ex-sorted pdU[ r , c ] ind-hyp-r) 
+  where
+    ind-hyp-l : Ex>-sorted pdU[ l , c ]
+    ind-hyp-l = pdU-sorted {l} {c}
+    ind-hyp-r : Ex>-sorted pdU[ r , c ]
+    ind-hyp-r = pdU-sorted {r} {c}
+pdU-sorted {l * ε∉l ` loc } {c} =  map-star-ex-sorted pdU[ l , c ] ind-hyp-l
+  where 
+    ind-hyp-l : Ex>-sorted pdU[ l , c ]
+    ind-hyp-l = pdU-sorted {l} {c}
+
+pdU-sorted {l ● r ` loc } {c} with ε∈? l
+...  | no ¬ε∈l = map-fst-ex-sorted {l} {r} {loc} {c}  pdU[ l , c ] ind-hyp-l
+  where
+    ind-hyp-l : Ex>-sorted pdU[ l , c ]
+    ind-hyp-l = pdU-sorted {l} {c}
+...  | yes ε∈l =  oplus-ex-sorted {l ● r ` loc} {loc} {c} (List.map pdinstance-fst pdU[ l , c ]) (concatmap-pdinstance-snd pdU[ r , c ]) (map-fst-ex-sorted {l} {r} {loc} {c} pdU[ l , c ] ind-hyp-l) (concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c} pdU[ r , c ] ind-hyp-r homo-r) 
+  where
+    ind-hyp-l : Ex>-sorted pdU[ l , c ]
+    ind-hyp-l = pdU-sorted {l} {c}
+    ind-hyp-r : Ex>-sorted pdU[ r , c ]
+    ind-hyp-r = pdU-sorted {r} {c}
+    homo-r : Homogenous pdU[ r , c ]
+    homo-r = pdU-Homogenous {r} {c} 
+
+
+
 
 ```
 
@@ -890,235 +1244,6 @@ parseAll-is-posix-sorted {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUM
 
 
 
--- a relation shoow a partial derivative instance is "hiding" a partial derivative p
-data Hidden : ∀ { r : RE } { c : Char } → RE →  PDInstance r c → Set where
-  hide : ∀ { p r : RE } { c : Char } 
-    → ( inj : U p → U r ) -- ^ the injection function 
-    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  -- s^ soundnes evidence
-    → Hidden {r} {c} p (pdinstance {p} {r} {c} inj s-ev)
-
--- a list of pdinstance is weak singleton iff all of them are hiding the same pd.
-data WeakSingleton : ∀ { r : RE } { c : Char } → List (PDInstance r c) → Set where
-  weakSingleton : ∀ { r : RE } { c : Char } (pdis : List (PDInstance r c ) )
-    → ∃[ p ] (All (Hidden p) pdis)
-    → WeakSingleton {r} {c} pdis 
-    
-
-
-map-left-hidden⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance l c } { pdis : List (PDInstance l c) }
-  → Hidden {l} {c} p pdi
-  → All (Hidden {l} {c}  p) pdis
-  -------------------------------------------
-  → All (Hidden {l + r ` loc} {c}  p) (List.map pdinstance-left (pdi ∷ pdis))
-map-left-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {[]}
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) [] = hide (λ u → LeftU (inj u)) s-ev ∷ []
-map-left-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{l} .{c} inj' s-ev') ∷ pdis} 
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → LeftU (inj u)) s-ev ∷ map-left-hidden⁺ (hide inj' s-ev') all-hide-p-pdis 
-
-map-left-WeakSingleton : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance l c) }
-  → WeakSingleton pdis
-  --------------------------------------------------
-  → WeakSingleton (List.map (pdinstance-left {l} {r} {loc} {c}) pdis)
-map-left-WeakSingleton {l} {r} {loc} {c} {[]} (weakSingleton [] ( p , [] ) ) =  weakSingleton (List.map pdinstance-left []) (p , [])
-map-left-WeakSingleton {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ pdis }  (weakSingleton  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {l} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = weakSingleton (pdinstance {p} {l + r ` loc} {c} (λ u → LeftU (inj u)) s-ev ∷  List.map pdinstance-left pdis) (p , map-left-hidden⁺ {l} {r} {p} {loc} {c} {pdi} {pdis}  hide-p-pdi  hide-p-pdis  ) 
-
-
-map-right-hidden⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance r c } { pdis : List (PDInstance r c) }
-  → Hidden {r} {c} p pdi
-  → All (Hidden {r} {c} p) pdis
-  -------------------------------------------
-  → All (Hidden {l + r ` loc} {c}  p) (List.map pdinstance-right (pdi ∷ pdis))
-map-right-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]}
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) [] = hide (λ u → RightU (inj u)) s-ev ∷ []
-map-right-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis} 
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → RightU (inj u)) s-ev ∷
-                                                                                                      map-right-hidden⁺ (hide inj' s-ev') all-hide-p-pdis 
-
-map-right-WeakSingleton : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
-  → WeakSingleton pdis
-  --------------------------------------------------
-  → WeakSingleton (List.map (pdinstance-right {l} {r} {loc} {c}) pdis)
-map-right-WeakSingleton {l} {r} {loc} {c} {[]} (weakSingleton [] ( p , [] ) ) =  weakSingleton (List.map pdinstance-right []) (p , [])
-map-right-WeakSingleton {l} {r} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis }  (weakSingleton  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = weakSingleton (pdinstance {p} {l + r ` loc} {c} (λ u → RightU (inj u)) s-ev ∷  List.map pdinstance-right pdis) (p , map-right-hidden⁺ {l} {r} {p} {loc} {c} {pdi} {pdis}  hide-p-pdi  hide-p-pdis  )
-
-
-
-map-fst-hidden⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance l c } { pdis : List (PDInstance l c) }
-  → Hidden {l} {c} p pdi
-  → All (Hidden {l} {c} p) pdis
-  -------------------------------------------------
-  → All (Hidden {l ● r ` loc} {c} ( p ● r ` loc) ) (List.map pdinstance-fst (pdi ∷ pdis))
-map-fst-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {[]}
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) [] = hide (mkinjFst inj) (mkinjFstSoundEv inj s-ev)   ∷ []
-map-fst-hidden⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{l} .{c} inj' s-ev') ∷ pdis}
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (mkinjFst inj)
-                                                                                                      (mkinjFstSoundEv inj s-ev)  
-                                                                                                      ∷ map-fst-hidden⁺ (hide inj' s-ev') all-hide-p-pdis 
-      
-
-map-fst-WeakSingleton : ∀ { l r : RE } { loc : ℕ } { c : Char } { pdis : List (PDInstance l c)  }
-  → WeakSingleton pdis
-  --------------------------------------------------
-  → WeakSingleton (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
-map-fst-WeakSingleton {l} {r} {loc} {c} {[]} (weakSingleton [] ( p , [] )) = weakSingleton (List.map pdinstance-fst []) (l , [])
-map-fst-WeakSingleton {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ pdis }  (weakSingleton  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {l} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = weakSingleton (List.map pdinstance-fst (pdinstance inj s-ev ∷ pdis)) ( (p ● r ` loc) , map-fst-hidden⁺ (hide inj s-ev) hide-p-pdis ) 
-
-
-cong-mk-snd-pdi-hidden : ∀ { l r p : RE } { loc : ℕ } { c : Char }
-  → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
-  → ( pdi : PDInstance r c ) 
-  → Hidden {r} {c} p pdi
-  → Hidden {l ● r ` loc} {c} p (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi)
-cong-mk-snd-pdi-hidden {l} {r} {p} {loc} {c} ( e , (flat-[] .(e) proj₁∘flate≡[]) ) (pdinstance .{p} .{r} .{c} inj s-ev) (hide inj s-ev)
-  = hide (mkinjSnd inj e) (mkinjSndSoundEv {p} {l} {r} {loc} {c} inj s-ev e (flat-[] e proj₁∘flate≡[]))
-                          
-concatmap-snd-hidden⁺ :  ∀ { l r p : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdi : PDInstance r c } { pdis : List (PDInstance r c) }
-  → Hidden {r} {c} p pdi
-  → All (Hidden {r} {c} p) pdis
-  --------------------------------------------
-  → All (Hidden {l ● r ` loc} {c} p) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (pdi ∷ pdis))
-  -- hm... p is the partial derivative here. not p ● r !!!
-  -- so it is not weaksingleton or homomorphic..
-  -- posix has a very unique extended ordering
-  -- it is like staircase, a list of pdis with the same partial derivative,
-  -- the until a concat case... change to another partial derivative which should be following > order.  let me think about how to write it down as data type in agda.
-  -- update: it is ok, because (pˡ ● r) the fst'ed pd and pʳ the snd'ed pd, will be combined by oplus and become (pˡ ● r) + pʳ
-concatmap-snd-hidden⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdis}  
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) all-hide-p-pdis = prf e-flat-es 
-  where
-    es : List (U l)
-    es = mkAllEmptyU {l} ε∈l
-    flat-[]-es : All (Flat-[] l) es
-    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
-    e-flat-es :  List ( ∃[ e ] (Flat-[] l e) )
-    e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
-    prf : (xs :  List ( ∃[ e ] (Flat-[] l e) )) → All (Hidden p) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x ((pdinstance {p} {r} {c} inj s-ev) ∷ pdis)) xs)
-    prf [] = []
-    prf ( x ∷ xs ) = all-concat (sub-prf x ((pdinstance inj s-ev) ∷ pdis) (hide inj s-ev ∷ all-hide-p-pdis))  (prf xs)
-      where
-        sub-prf :
-          ( e-flat-[]-e  :  ( ∃[ e ] (Flat-[] l e) ) )
-          → ( qdis : List (PDInstance r c) )
-          → All (Hidden p ) qdis 
-          → All (Hidden p ) (List.map (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e ) qdis)
-        sub-prf _ [] []  = []
-        sub-prf (e , flat-[]-e) ( qdi@(pdinstance {- {p} {r} {c} -} inj s-ev) ∷ qdis ) ((hide .{p} .{r} .{c} .(inj) .(s-ev)) ∷ all-hide-p-qdis ) = 
-          cong-mk-snd-pdi-hidden {l} {r} {p} {loc} {c} (e , flat-[]-e) qdi (hide inj s-ev)
-          ∷ sub-prf (e , flat-[]-e)   qdis all-hide-p-qdis 
-            
-concatmap-snd-WeakSingleton : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
-  → WeakSingleton pdis
-  ---------------------------------------------------------------
-  → WeakSingleton (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
-concatmap-snd-WeakSingleton {l} {r} {ε∈l} {loc} {c} {[]} (weakSingleton [] ( p , [] )) rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = weakSingleton [] (p , [])
-concatmap-snd-WeakSingleton {l} {r} {ε∈l} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis } (weakSingleton  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = weakSingleton (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (pdi ∷  pdis)) ( p , concatmap-snd-hidden⁺ (hide inj s-ev) hide-p-pdis )
-
-
-
-map-star-hidden⁺ :  ∀ { r p  : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } {pdi : PDInstance r c } { pdis : List (PDInstance r c) }
-  → Hidden {r} {c} p pdi
-  → All (Hidden {r} {c} p) pdis
-  --------------------------------
-  → All (Hidden {r * ε∉r ` loc} {c} ( p ● (r * ε∉r ` loc) ` loc )) (List.map pdinstance-star ( pdi ∷ pdis ))
-map-star-hidden⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]} -- TODO:  can we combine these two cases?
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) [] = hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ []
-map-star-hidden⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis}
-   (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis )  =
-     hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ map-star-hidden⁺ (hide inj' s-ev') all-hide-p-pdis 
-
-map-star-WeakSingleton : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
-  → WeakSingleton pdis
-  ----------------------------------------------------------------
-  → WeakSingleton (List.map (pdinstance-star {r} {ε∉r} {loc}) pdis)
-map-star-WeakSingleton {r} {ε∉r} {loc} {c} {[]} (weakSingleton [] ( p , [] ))  = weakSingleton (List.map pdinstance-star []) (r , [])
-map-star-WeakSingleton {r} {ε∉r} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis} (weakSingleton  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = weakSingleton (List.map (pdinstance-star {r} {ε∉r} {loc}) (pdi ∷ pdis)) (  ( p ● (r * ε∉r ` loc) ` loc ) , map-star-hidden⁺ hide-p-pdi hide-p-pdis  )
-
-oplus-WeakSingleton : ∀ { r : RE } { loc : ℕ } { c : Char }
-  → ( pdis₁ : List (PDInstance r c ) )
-  → ( pdis₂ : List (PDInstance r c ) )
-  → WeakSingleton pdis₁
-  → WeakSingleton pdis₂
-  --------------------------------------------------------------
-  → WeakSingleton (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
-oplus-WeakSingleton {r} {loc} {c} []             pdis₂ _  weaksingleton-pdis₂ = weaksingleton-pdis₂
-oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) []    weaksingleton-pdi₁pdis₁ _ = weaksingleton-pdi₁pdis₁
-oplus-WeakSingleton {r} {loc} {c} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)
-  (weakSingleton (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ ))
-  (weakSingleton (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ))  = weakSingleton (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
-    where
-      prf : ∃[ p ] All (Hidden {r} {c} p) (concatMap (λ pdiˡ₁ → 
-                                                (fuse pdiˡ₁ pdi₂) ∷  (List.map (fuse pdiˡ₁) pdis₂) )
-                                             (pdi₁ ∷ pdis₁))
-      prf = (p₁ + p₂ ` loc) , sub-prf (pdi₁ ∷ pdis₁) ( hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ )
-        where
-          sub-prf : ∀ ( pdis₁' : List (PDInstance r c ) )
-            → All (Hidden {r} {c} p₁) pdis₁'
-            → All (Hidden {r} {c} (p₁ + p₂ ` loc)) (concatMap (λ pdiˡ₁ → 
-                                                (List.map (fuse {r} {loc} {c}  pdiˡ₁) (pdi₂ ∷ pdis₂) )) pdis₁')
-          sub-prf [] []  = [] 
-          sub-prf ( pdi₁' ∷ pdis₁') ( hide-p₁-pdi₁' ∷ hide-p₁-pdis₁' ) =  all-concat ( sub-sub-prf pdi₁' (pdi₂ ∷  pdis₂) hide-p₁-pdi₁' (hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ) )  (sub-prf pdis₁'  hide-p₁-pdis₁')  
-            where
-              sub-sub-prf : (pdi : PDInstance r c)
-                → ( pdis₂' : List (PDInstance r c ) )
-                → Hidden {r} {c} p₁ pdi 
-                → All (Hidden {r} {c} p₂) pdis₂'
-                → All (Hidden {r} {c} (p₁ + p₂ ` loc)) (List.map (fuse  {r} {loc} {c} pdi) (pdis₂'))
-              sub-sub-prf (pdinstance in₁ s-ev₁)  [] hide-p₁-pdi₁ [] = []
-              sub-sub-prf pdi@(pdinstance in₁ s-ev₁) ((pdinstance in₂ s-ev₂) ∷ pdis₂')  hide-p₁-pdi@(hide .{p₁} {r} {c} .(in₁) .(s-ev₁)) (hide-p₂-pdi₂'@(hide .{p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂') = (hide inj sound-ev) ∷ sub-sub-prf pdi pdis₂' hide-p₁-pdi hide-p₂-pdis₂' 
-                where
-                  inj : U (p₁ + p₂ ` loc ) → U r
-                  inj = mkfuseInj in₁ in₂
-                  sound-ev : (u : U (p₁ + p₂ ` loc)) → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-                  sound-ev = mkfuseInjSoundEv in₁ in₂ s-ev₁ s-ev₂
-
-
-pdU-WeakSingleton : ∀ { r : RE } { c : Char }
-  → WeakSingleton pdU[ r  , c ]
-pdU-WeakSingleton {ε} {c} = weakSingleton pdU[ ε , c ] (ε , [])
-pdU-WeakSingleton {$ c ` loc} {c₁} with c Char.≟ c₁
-... | no ¬c≡c₁ = weakSingleton [] (ε , [])
-... | yes c≡c₁ rewrite c≡c₁ = weakSingleton (( pdinstance {ε} {$ c₁ ` loc} {c₁} inj s-ev ) ∷ [] ) 
-                               (ε , 
-                                hide inj s-ev                                   
-                                ∷ [])
-                   where
-                     inj : U ε → U ($ c₁ ` loc)
-                     inj =  (λ u → LetterU c₁)
-                     s-ev : ∀ ( u : U ε ) → ( proj₁ ( flat {$ c₁ ` loc} (inj u) ) ≡ c₁ ∷ ( proj₁ (flat {ε} u) ))  
-                     s-ev = (λ EmptyU →                 -- ^ soundness ev
-                               begin
-                                 [ c₁ ]
-                               ≡⟨⟩
-                                 c₁ ∷ []
-                               ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
-                                 c₁ ∷ (proj₁ (flat EmptyU))
-                               ∎)
-pdU-WeakSingleton {l + r ` loc} {c} = oplus-WeakSingleton (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ r , c ]) (map-left-WeakSingleton ind-hyp-l) (map-right-WeakSingleton ind-hyp-r)
-  where
-    ind-hyp-l : WeakSingleton pdU[ l , c ]
-    ind-hyp-l = pdU-WeakSingleton {l} {c}
-    ind-hyp-r : WeakSingleton pdU[ r , c ]
-    ind-hyp-r = pdU-WeakSingleton {r} {c}
-pdU-WeakSingleton {l ● r ` loc} {c} with ε∈? l
-... | no ¬ε∈l = map-fst-WeakSingleton ind-hyp-l
-  where
-    ind-hyp-l : WeakSingleton pdU[ l , c ]
-    ind-hyp-l = pdU-WeakSingleton {l} {c}
-... | yes ε∈l = oplus-WeakSingleton (List.map pdinstance-fst pdU[ l , c ]) (concatmap-pdinstance-snd pdU[ r , c ]) ( map-fst-WeakSingleton ind-hyp-l) (concatmap-snd-WeakSingleton ind-hyp-r) 
-  where 
-    ind-hyp-l : WeakSingleton pdU[ l , c ]
-    ind-hyp-l = pdU-WeakSingleton {l} {c}
-    ind-hyp-r : WeakSingleton pdU[ r , c ]
-    ind-hyp-r = pdU-WeakSingleton {r} {c}
-pdU-WeakSingleton {r * ε∉r ` loc} {c} = map-star-WeakSingleton  ind-hyp-r 
-  where                                        
-    ind-hyp-r : WeakSingleton pdU[ r , c ]
-    ind-hyp-r = pdU-WeakSingleton {r} {c}
 
 ```
 

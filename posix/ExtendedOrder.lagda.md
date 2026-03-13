@@ -562,7 +562,7 @@ left-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdins
     prf₂ : ∀ ( v : U p )
       → ( (l + r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ (inject₁ v ≡ inject₂ v)
     prf₂ v with v→in₁v≥in₂v v 
-    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|left-in₁-v|≡len-|left-in₂-v| ? ) -- (choice-ll (v→in₁v>in₂v v)) 
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|left-in₁-v|≡len-|left-in₂-v| (choice-ll in₁v>in₂v) ) 
       where
         len-|left-in₁-v|≡len-|left-in₂-v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
         len-|left-in₁-v|≡len-|left-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
@@ -574,7 +574,7 @@ right-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char }
   -------------------------------------------------
   → (l + r ` loc) , c ⊢ pdinstance-right pdi₁ > pdinstance-right pdi₂
 right-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
-  (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v ) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂
+  (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂
   where
     inject₁ : U p → U ( l + r ` loc )
     inject₁ v = RightU (in₁ v)
@@ -606,8 +606,9 @@ right-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdin
         len-|right-in₁-v₁|≡len-|right-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl                                        
 
     prf₂ : ∀ ( v : U p )
-      → (l + r ` loc) ⊢ inject₁ v > inject₂ v
-    prf₂ v = len-≡ len-|right-in₁-v|≡len-|right-in₂-v| (choice-rr (v→in₁v>in₂v v)) 
+      → ( (l + r ` loc) ⊢ inject₁ v > inject₂ v)  ⊎ (inject₁ v ≡ inject₂ v)
+    prf₂ v with v→in₁v≥in₂v v
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|right-in₁-v|≡len-|right-in₂-v| (choice-rr in₁v>in₂v ) )
       where
         len-|right-in₁-v|≡len-|right-in₂-v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
         len-|right-in₁-v|≡len-|right-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
@@ -666,7 +667,7 @@ star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char }
   -------------------------------------------------
   → (r * ε∉r ` loc) , c ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
 star-ex-sorted {r} {ε∉r} {loc} {c}  (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
-    (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v) = >-pdi {r * ε∉r ` loc} {p ● (r * ε∉r ` loc) ` loc } {c} (mkinjList in₁) (mkinjListSoundEv in₁ s-ev₁) (mkinjList in₂) (mkinjListSoundEv in₂ s-ev₂) prf₁ prf₂ 
+    (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v) = >-pdi {r * ε∉r ` loc} {p ● (r * ε∉r ` loc) ` loc } {c} (mkinjList in₁) (mkinjListSoundEv in₁ s-ev₁) (mkinjList in₂) (mkinjListSoundEv in₂ s-ev₂) prf₁ prf₂ 
     where
       inject₁ : U ( p ● (r * ε∉r ` loc) ` loc )  → U ( r * ε∉r ` loc )
       inject₁ = mkinjList {p} {r} {ε∉r} {loc} in₁ 
@@ -701,16 +702,18 @@ star-ex-sorted {r} {ε∉r} {loc} {c}  (pdinstance {p} .{r} .{c} in₁ s-ev₁) 
           len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
           
 
-      prf₁ (PairU v (ListU vs)) (PairU u (ListU us)) (len-≡ len|pair-vvs|≡len|pair-uus| (seq₂ v≡u vs>us)) = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-head in₁v>in₂u  ) 
+      prf₁ (PairU v (ListU vs)) (PairU u (ListU us)) (len-≡ len|pair-vvs|≡len|pair-uus| (seq₂ v≡u vs>us)) with  v→in₁v≥in₂v u
+      ... | inj₁ in₁u>in₂u = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-head in₁v>in₂u  ) 
         where
           len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  u (ListU us)))))
           len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
           in₁v>in₂u  : r ⊢ in₁ v > in₂ u
-          in₁v>in₂u rewrite v≡u =  v→in₁v>in₂v u
+          in₁v>in₂u rewrite v≡u = in₁u>in₂u 
 
       prf₂ : (v : U (p ● r * ε∉r ` loc ` loc)) →
-        (r * ε∉r ` loc) ⊢ mkinjList in₁ v > mkinjList in₂ v
-      prf₂ (PairU v (ListU vs)) = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| (star-head (v→in₁v>in₂v v)) 
+        ( (r * ε∉r ` loc) ⊢ mkinjList in₁ v > mkinjList in₂ v )  ⊎  ( mkinjList in₁ v ≡  mkinjList in₂ v  )
+      prf₂ (PairU v (ListU vs)) with v→in₁v≥in₂v v
+      ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| (star-head in₁v>in₂v) )
         where
           len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs)))))
           len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU v (ListU vs))  = refl
@@ -736,7 +739,7 @@ fst-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char }
   -------------------------------------------------
   → (l ● r ` loc) , c ⊢ pdinstance-fst pdi₁ > pdinstance-fst pdi₂
 fst-ex-sorted {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
-  (>-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v) = >-pdi {l ● r ` loc } { p ● r ` loc } {c} inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂
+  (>-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v) = >-pdi {l ● r ` loc } { p ● r ` loc } {c} inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂
   where 
     inject₁ : U (p ● r ` loc ) → U ( l ● r ` loc )
     inject₁ v = mkinjFst in₁ v
@@ -770,16 +773,19 @@ fst-ex-sorted {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdins
         len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
                                                
         len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
-    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-≡ len|pair-v₁u₁|≡len|pair-v₂u₂| (seq₂ v₁≡v₂ u₁>u₂)) =  len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₁ in₁v>in₂u )
+    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-≡ len|pair-v₁u₁|≡len|pair-v₂u₂| (seq₂ v₁≡v₂ u₁>u₂)) with v→in₁v≥in₂v v₂
+    ... | inj₁ in₁v₂>in₂v₂ =  len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₁ in₁v>in₂u )
       where
         len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
                                                
         len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
         in₁v>in₂u  : l ⊢ in₁ v₁ > in₂ v₂
-        in₁v>in₂u rewrite v₁≡v₂ =  v→in₁v>in₂v v₂
+        in₁v>in₂u rewrite v₁≡v₂ =  in₁v₂>in₂v₂  
 
-    prf₂ :  (v : U (p ● r ` loc)) → (l ● r ` loc) ⊢ inject₁ v > inject₂ v
-    prf₂ (PairU v u)  = len-≡ len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| (seq₁ (v→in₁v>in₂v v))
+    prf₂ :  (v : U (p ● r ` loc)) 
+      → ( (l ● r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ ( inject₁ v ≡ inject₂ v )
+    prf₂ (PairU v u) with v→in₁v≥in₂v v
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| (seq₁ in₁v>in₂v ))
       where
         len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v u)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v u))))
                                                
@@ -815,7 +821,7 @@ pdinstance-snd-ex>-sorted {l} {r} {loc} {c} (e ,  flat-[]-e ) []            ex>-
 pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e ) (pdi ∷ [] ) (ex>-cons ex>-nil ex>-nothing)              = ex>-cons ex>-nil ex>-nothing
 
 pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , (flat-[] {l} .(e) proj₁flate≡[])) (pdi₁@(pdinstance {p} .{r} .{c} in₁ s-ev₁)  ∷ pdi₂@(pdinstance .{p} .{r} .{c} in₂ s-ev₂) ∷ pdis )
-  (ex>-cons pdi₂pdis-ex>-sorted (ex>-just (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) u₁→u₂→u₁>u₂→in₁u₁>in₂u₂ u→in₁u>in₂u)))  =
+  (ex>-cons pdi₂pdis-ex>-sorted (ex>-just (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) u₁→u₂→u₁>u₂→in₁u₁>in₂u₂ u→in₁u≥in₂u)))  =
      ex>-cons (pdinstance-snd-ex>-sorted (e , (flat-[] {l} e proj₁flate≡[])) (pdi₂ ∷ pdis) pdi₂pdis-ex>-sorted)
                (ex>-just (>-pdi {l ● r ` loc} {p} {c} inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂   ))
      where
@@ -855,8 +861,10 @@ pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , (flat-[] {l} .(e) proj₁flate
            len|pair-e-in₁v₁|≡len|pair-e-in₂v₂| : length (proj₁ (flat (PairU {l} {r} {loc} e (in₁ v₁))))
                                                  ≡ length (proj₁ (flat (PairU {l} {r} {loc} e (in₂ v₂))))
            len|pair-e-in₁v₁|≡len|pair-e-in₂v₂| rewrite  proj₁flate≡[] |  len-|in₁-u|≡len-|u|+1 v₁ |  len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl                                       
-       prf₂ : (v : U p) → (l ● r ` loc) ⊢ inject₁ v > inject₂ v
-       prf₂ v = len-≡ len|pair-e-in₁v|≡len|pair-e-in₂v| (seq₂ refl (u→in₁u>in₂u v))
+       prf₂ : (v : U p)
+         →  ( (l ● r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ (inject₁ v ≡ inject₂ v) 
+       prf₂ v with u→in₁u≥in₂u v
+       ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len|pair-e-in₁v|≡len|pair-e-in₂v| (seq₂ refl in₁v>in₂v))
          where 
            len|pair-e-in₁v|≡len|pair-e-in₂v| : length (proj₁ (flat (PairU {l} {r} {loc} e (in₁ v))))
                                                  ≡ length (proj₁ (flat (PairU {l} {r} {loc} e (in₂ v))))
@@ -950,8 +958,8 @@ pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁
             len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
             len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂|  = refl 
             
-        prf₂ : (v : U p) → (l ● r ` loc) ⊢ inject₁ v > inject₂ v
-        prf₂ v = len-≡ len|inject₁v|≡len|inject₂v| (seq₁ e₁>e₂)  
+        prf₂ : (v : U p) → ( (l ● r ` loc) ⊢  inject₁ v > inject₂ v) ⊎ (inject₁ v ≡ inject₂ v) 
+        prf₂ v = inj₁ (len-≡ len|inject₁v|≡len|inject₂v| (seq₁ e₁>e₂))
           where
             len|inject₁v|≡len|inject₂v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
             len|inject₁v|≡len|inject₂v| rewrite len-|inject₁-u|≡len-|u|+1 v |  len-|inject₂-u|≡len-|u|+1 v   = refl 
@@ -1019,9 +1027,10 @@ map-fuse-sorted {r} {loc} {c} pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) (
        → All (Inhabit p₂) qdis
        → Ex>-maybe (fuse {r} {loc} {c}  (pdinstance in₁ s-ev₁) qdi) (head (List.map (fuse {r} {loc} {c}  (pdinstance in₁ s-ev₁)) qdis)) 
     sub qdi@(pdinstance {p₂} .{r} .{c} inj s-ev) [] ex>-nothing _ _   = ex>-nothing
-    sub qdi@(pdinstance .{p₂} .{r} .{c} inj s-ev) ((pdinstance .{p₂} .{r} .{c} inj' s-ev') ∷ qdis) (ex>-just qdi>qdi')
-      (hide .{p₂} .{r} {c}  .(inj) .(s-ev))
-      ((hide .{p₂} .{r} {c}  .(inj') .(s-ev')) ∷ hide-p₂-qids )= ex>-just (>-pdi inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂)
+    sub qdi@(pdinstance .{p₂} .{r} .{c} inj s-ev) ((pdinstance .{p₂} .{r} .{c} inj' s-ev') ∷ qdis) (ex>-just (>-pdi .(inj) .(s-ev) .(inj') .(s-ev') v₁→v₂→v₁>v₂→injv₁>inj'v₂ v→injv≥inj'v   )) -- (ex>-just qdi>qdi' )
+      -- qdi>qdi' : r , c ⊢ pdinstance inj s-ev > pdinstance inj' s-ev'
+      (hide .{p₂} .{r} .{c}  .(inj) .(s-ev)) 
+      ((hide .{p₂} .{r} .{c}  .(inj') .(s-ev')) ∷ hide-p₂-qids )= ex>-just (>-pdi inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂)
       where
         inject₁ : U (p₁ + p₂ ` loc) → U r 
         inject₁ = mkfuseInj in₁ inj
@@ -1040,18 +1049,24 @@ map-fuse-sorted {r} {loc} {c} pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) (
 
         prf₁ : (v₁ v₂ : U (p₁ + p₂ ` loc))
           → (p₁ + p₂ ` loc) ⊢ v₁ > v₂
-          → r ⊢ inject₁ v₁ > inject₂ v₂
+          →  r ⊢ inject₁ v₁ > inject₂ v₂ 
         prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂|
           where
             len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
             len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
             
-        prf₁ v₁@(LeftU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-ll u₁>u₂)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| {!!}
+        prf₁ v₁@(LeftU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-ll u₁>u₂)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| inject₁leftu₁>inject₂leftu₂
           where 
             len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
-            len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl 
-        prf₂ : (v : U (p₁ + p₂ ` loc)) → r ⊢ inject₁ v > inject₂ v
-        prf₂ v@(RightU u) = len-≡ len|inject₁v|≡len|inject₂v| (  {!!} ) 
+            len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl
+            in₁u₁>in₁u₂ : r ⊢ in₁ u₁ > in₁ u₂
+            in₁u₁>in₁u₂ = {!!}
+            inject₁leftu₁≡
+            inject₁leftu₁>inject₂leftu₂ : r ⊢ inject₁ (LeftU u₁) >ⁱ inject₂ (LeftU u₂)
+            inject₁leftu₁>inject₂leftu₂ = {!!} 
+        prf₂ : (v : U (p₁ + p₂ ` loc))
+          → ( r ⊢ inject₁ v > inject₂ v ) ⊎ (inject₁ v ≡ inject₂ v )
+        prf₂ v@(RightU u) = inj₁ (len-≡ len|inject₁v|≡len|inject₂v| (  {!!} ) )
           -- why choice-r here does not work? because it is not a r + s type in the end, it is r!
           -- we need >-pdi between  inject1 is in1 + inj, inject2 is in1 + inj'
           -- inject₁ (RightU u) --> inj u
@@ -1059,7 +1074,7 @@ map-fuse-sorted {r} {loc} {c} pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) (
           where 
             len|inject₁v|≡len|inject₂v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
             len|inject₁v|≡len|inject₂v| rewrite len-|inject₁-u|≡len-|u|+1 v |  len-|inject₂-u|≡len-|u|+1 v = refl 
-        prf₂ v@(LeftU u) = len-≡ len|inject₁v|≡len|inject₂v| {!choice-ll ? !}
+        prf₂ v@(LeftU u) = inj₂ refl 
           -- why choice-ll here does not work? because it is not a r + s type in the end, it is r!
           -- we need >-pdi between  inject1 is in1 + inj, inject2 is in1 + inj'
           -- inject₁ (LeftU u) --> in₁ u

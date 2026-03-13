@@ -433,7 +433,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
         → ( v₂ : U p ) 
         → p ⊢ v₁ > v₂ -- or v₁ ≡ v₂ then via >-inc pdi₁ and >-trans we got the same 
         → r ⊢ injection₁ v₁ > injection₂ v₂ )
-    → ( ∀ ( v : U p ) → r ⊢ injection₁ v > injection₂ v )  -- ? strict inc? 
+    → ( ∀ ( v : U p ) → ( r ⊢ injection₁ v > injection₂ v ) ⊎ (injection₁ v ≡ injection₂ v ) ) -- ? strict inc? 
    → r , c ⊢ (pdinstance {p} {r} {c} injection₁ s-ev₁) > (pdinstance {p} {r} {c} injection₂ s-ev₂)
 
 ```
@@ -530,7 +530,7 @@ left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char }
   -------------------------------------------------
   → (l + r ` loc) , c ⊢ pdinstance-left pdi₁ > pdinstance-left pdi₂
 left-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
-  (>-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂ 
+  (>-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) = >-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂
   where
     inject₁ : U p → U ( l + r ` loc )
     inject₁ v = LeftU (in₁ v)
@@ -560,8 +560,9 @@ left-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdins
         len-|left-in₁-v₁|≡len-|left-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl
         
     prf₂ : ∀ ( v : U p )
-      → (l + r ` loc) ⊢ inject₁ v > inject₂ v
-    prf₂ v = len-≡ len-|left-in₁-v|≡len-|left-in₂-v| (choice-ll (v→in₁v>in₂v v)) 
+      → ( (l + r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ (inject₁ v ≡ inject₂ v)
+    prf₂ v with v→in₁v≥in₂v v 
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|left-in₁-v|≡len-|left-in₂-v| ? ) -- (choice-ll (v→in₁v>in₂v v)) 
       where
         len-|left-in₁-v|≡len-|left-in₂-v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
         len-|left-in₁-v|≡len-|left-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
@@ -1050,7 +1051,19 @@ map-fuse-sorted {r} {loc} {c} pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) (
             len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
             len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl 
         prf₂ : (v : U (p₁ + p₂ ` loc)) → r ⊢ inject₁ v > inject₂ v
-        prf₂ v@(LeftU u) = len-≡ len|inject₁v|≡len|inject₂v| {!!}  -- why choice-ll here does not work? we need >-pdi between  
+        prf₂ v@(RightU u) = len-≡ len|inject₁v|≡len|inject₂v| (  {!!} ) 
+          -- why choice-r here does not work? because it is not a r + s type in the end, it is r!
+          -- we need >-pdi between  inject1 is in1 + inj, inject2 is in1 + inj'
+          -- inject₁ (RightU u) --> inj u
+          -- inject₂ (RightU u) --> inj' u  we need qdi > qdi' 
+          where 
+            len|inject₁v|≡len|inject₂v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
+            len|inject₁v|≡len|inject₂v| rewrite len-|inject₁-u|≡len-|u|+1 v |  len-|inject₂-u|≡len-|u|+1 v = refl 
+        prf₂ v@(LeftU u) = len-≡ len|inject₁v|≡len|inject₂v| {!choice-ll ? !}
+          -- why choice-ll here does not work? because it is not a r + s type in the end, it is r!
+          -- we need >-pdi between  inject1 is in1 + inj, inject2 is in1 + inj'
+          -- inject₁ (LeftU u) --> in₁ u
+          -- inject₂ (LeftU u) --> in₁ u  should be ≡ !
           where 
             len|inject₁v|≡len|inject₂v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
             len|inject₁v|≡len|inject₂v| rewrite len-|inject₁-u|≡len-|u|+1 v |  len-|inject₂-u|≡len-|u|+1 v = refl 

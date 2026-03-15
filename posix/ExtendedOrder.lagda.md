@@ -70,7 +70,8 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   >-sorted ; >-nil ; >-cons ; concat-sorted ; 
   mkAllEmptyU-sorted ;
   >-maybe ; >-nothing ; >-just ;
-  >-Inc ; >-inc ; 
+  >-Inc ; >-inc ;
+  pdU->-inc ; 
   >-trans ; *>-Inc ; *>-inc ;
   concatmap-advance-pdi*-with-c-*>inc ;
   pdUMany-*>-inc )   
@@ -1026,72 +1027,8 @@ concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c} pdis ex>-sorted-p
 -- concatmap-pdinstance-snd-ex>-sorted and its sub lemma END 
 --------------------------------------------------------------------------------------------------
 
--- too general not working START 
->-inc-fuse : ∀ { r : RE } { loc : ℕ } { c : Char }
-  → ( pdi : PDInstance r c )
-  → ( pdi' : PDInstance r c )
-  → >-Inc pdi
-  → >-Inc pdi'
-  ------------------------------------------------
-  → >-Inc (fuse {r} {loc} {c} pdi pdi')
->-inc-fuse {r} {loc} {c} (pdinstance {p} {r} {c} inj s-ev) (pdinstance {p'} {r} {c} inj' s-ev') (>-inc v₁→v₂→v₁>v₂→injv₁>injv₂) (>-inc v₁→v₂→v₁>v₂→inj'v₁>inj'v₂) = >-inc prf
-  where 
-    inject : U (p + p' ` loc) → U r 
-    inject = mkfuseInj inj inj'
-    sound-ev : ( u :  U (p + p' ` loc) )  → proj₁ (flat (inject u)) ≡ c ∷ proj₁ (flat u )
-    sound-ev = mkfuseInjSoundEv {p} {p'} {r} {loc} {c}  inj inj' s-ev s-ev'
-
-
-    len-|inj-u|≡len-|u|+1 : (u : U p ) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inj-u|≡len-|u|+1 u rewrite (s-ev u) = refl 
-
-    len-|inj'-u|≡len-|u|+1 : (u : U p' ) → length (proj₁ (flat (inj' u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inj'-u|≡len-|u|+1 u rewrite (s-ev' u) = refl 
-
-    len-|inject-u|≡len-|u|+1 : (u : U (p + p' ` loc) ) → length (proj₁ (flat (inject u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inject-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
-
-    prf : (u₁ u₂ : U (p + p' ` loc))
-        → (p + p' ` loc) ⊢ u₁ > u₂
-        → r ⊢ inject u₁ > inject u₂
-    prf u₁ u₂ (len-> len|u₁|>len|u₂|) = len-> len|injectu₁|>len|injectu₂|
-      where
-        len|injectu₁|>len|injectu₂| : length (proj₁ (flat (inject u₁))) Nat.> length (proj₁ (flat (inject u₂)))
-        len|injectu₁|>len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ = Nat.s≤s len|u₁|>len|u₂|
-    prf u₁@(LeftU v₁) u₂@(LeftU v₂) (len-≡ len|u₁|≡len|u₂| (choice-ll v₁>v₂))
-      with v₁→v₂→v₁>v₂→injv₁>injv₂ v₁ v₂ v₁>v₂
-    ... | len-> len|injv₁|>len|injv₂| = Nullary.contradiction len|injv₁|>len|injv₂| (<-irrefl (sym len|injv₁|≡len|injv₂| ) )
-      where
-        len|injv₁|≡len|injv₂| : length (proj₁ (flat (inj v₁))) ≡ length (proj₁ (flat (inj v₂)))
-        len|injv₁|≡len|injv₂| rewrite len-|inj-u|≡len-|u|+1 v₁ | len-|inj-u|≡len-|u|+1 v₂ | len|u₁|≡len|u₂| = refl 
-    ... | len-≡ len|v₁|≡len|v₂| v₎>ⁱv₂ =  len-≡ len|injectu₁|≡len|injectu₂| v₎>ⁱv₂
-      where 
-        len|injectu₁|≡len|injectu₂| : length (proj₁ (flat (inject u₁))) ≡ length (proj₁ (flat (inject u₂)))
-        len|injectu₁|≡len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ | len|u₁|≡len|u₂| = refl 
-    prf u₁@(RightU v₁) u₂@(RightU v₂) (len-≡ len|u₁|≡len|u₂| (choice-rr v₁>v₂))
-      with v₁→v₂→v₁>v₂→inj'v₁>inj'v₂ v₁ v₂ v₁>v₂
-    ... | len-> len|inj'v₁|>len|inj'v₂| = Nullary.contradiction len|inj'v₁|>len|inj'v₂| (<-irrefl (sym len|inj'v₁|≡len|inj'v₂| ) )
-      where
-        len|inj'v₁|≡len|inj'v₂| : length (proj₁ (flat (inj' v₁))) ≡ length (proj₁ (flat (inj' v₂)))
-        len|inj'v₁|≡len|inj'v₂| rewrite len-|inj'-u|≡len-|u|+1 v₁ | len-|inj'-u|≡len-|u|+1 v₂ | len|u₁|≡len|u₂| = refl 
-    ... | len-≡ len|v₁|≡len|v₂| v₎>ⁱv₂ =  len-≡ len|injectu₁|≡len|injectu₂| v₎>ⁱv₂
-      where 
-        len|injectu₁|≡len|injectu₂| : length (proj₁ (flat (inject u₁))) ≡ length (proj₁ (flat (inject u₂)))
-        len|injectu₁|≡len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ | len|u₁|≡len|u₂| = refl
-
-    prf u₁@(LeftU v₁) u₂@(RightU v₂) (len-≡ len|u₁|≡len|u₂| (choice-lr len|v₁|≥len|v₂|)) = len-≡ len|injectu₁|≡len|injectu₂|  {!!}
-      -- it seems we can't get this sub case proven until we concretize r to be l + r or l ● r.
-      -- b/c inject (LeftU v₁) --> inj v₁
-      --     inject (RightU v₂) --> inj' v₂
-      --     we know  len|v₁|≡len|v₂|, but we can't argue inj v₁ > inj' v₂ unless inj is LeftU and inj' is RightU or inj is λ x → PairU (f x) u and inj' is λ x → PairU empty (g x)
-      --                     
-      where 
-        len|injectu₁|≡len|injectu₂| : length (proj₁ (flat (inject u₁))) ≡ length (proj₁ (flat (inject u₂)))
-        len|injectu₁|≡len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ | len|u₁|≡len|u₂| = refl
-
-
-
-
+-- too general not working START
+{-
 map-fuse-sorted :  ∀ { r : RE } {loc : ℕ } { c : Char }
   → ( pdi₁ : PDInstance r c )
   → ( pdis₂ : List (PDInstance r c ))
@@ -1248,7 +1185,7 @@ oplus-ex-sorted {r} {loc} {c} (pdi₁@(pdinstance {p₁} {r} {c} in₁ s-ev₁) 
     oplus-ex-sorted-sub (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) (ex>-cons ex>-sorted-pdisˡ pdiˡ>head-pdisˡ) (ex>-cons ex>-sorted-pdisʳ pdiˡ>head-pdisʳ) = ex>-cons {!!} {!!} -- hide-p₂-pdis₂ 
 
 -- too general not working end      
-
+-} 
 
 
 map-fuse-+-sorted :  ∀ { l r : RE } {loc : ℕ } { c : Char }
@@ -1315,6 +1252,7 @@ map-fuse-+-sorted {l} {r} {loc} {c} pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev
             len|inju|≡len|inj'u| : length (proj₁ (flat (inj u))) ≡ length (proj₁ (flat (inj' u)))
             len|inju|≡len|inj'u| rewrite len-|inj-u|≡len-|u|+1 u |  len-|inj'-u|≡len-|u|+1 u = refl                     
         ... | inj₂ inju≡inj'u = inj₂ (cong RightU inju≡inj'u ) 
+        prf₂ v@(LeftU u) = inj₂ refl 
 
         prf₁ : (v₁ v₂ : U (p₁ + p₂ ` loc))
           → (p₁ + p₂ ` loc) ⊢ v₁ > v₂
@@ -1334,6 +1272,19 @@ map-fuse-+-sorted {l} {r} {loc} {c} pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev
             inject₁leftu₁>inject₂leftu₂ : l + r ` loc  ⊢ inject₁ (LeftU u₁) >ⁱ inject₂ (LeftU u₂)
             inject₁leftu₁>inject₂leftu₂ rewrite inject₁leftu₁≡leftin₁u₁ | inject₂leftu₂≡leftin₁u₂  = choice-ll  (v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ u₁ u₂ u₁>u₂)  
         
+
+        prf₁ v₁@(RightU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rr u₁>u₂)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| inject₁rightu₁>inject₂rightu₂
+          where 
+            len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
+            len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl
+            
+            inject₁rightu₁≡rightinju₁ : inject₁ (RightU u₁) ≡ RightU (inj u₁)
+            inject₁rightu₁≡rightinju₁ = refl 
+            inject₂rightu₂≡rightinj'u₂ : inject₂ (RightU u₂) ≡ RightU (inj' u₂)
+            inject₂rightu₂≡rightinj'u₂ = refl 
+            inject₁rightu₁>inject₂rightu₂ : l + r ` loc  ⊢ inject₁ (RightU u₁) >ⁱ inject₂ (RightU u₂)
+            inject₁rightu₁>inject₂rightu₂ rewrite inject₁rightu₁≡rightinju₁ | inject₂rightu₂≡rightinj'u₂  = choice-rr  (v₁→v₂→v₁>v₂→injv₁>inj'v₂ u₁ u₂ u₁>u₂) 
+
 
         prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) =  inject₁left-u₁>inject₂right-u₂
           -- from prf₂ we have inject₁ (LeftU u₁) ≥ inject₂ (LeftU u₁)
@@ -1356,30 +1307,105 @@ map-fuse-+-sorted {l} {r} {loc} {c} pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev
             ... | inj₂ inject₁-left-u₁≡inject₂left-u₁ rewrite inject₁-left-u₁≡inject₂left-u₁ =  inject₂left-u₁>inject₂right-u₂
             ... | inj₁ inject₁-left-u₁>inject₂left-u₁ = >-trans inject₁-left-u₁>inject₂left-u₁ inject₂left-u₁>inject₂right-u₂
 
+        prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
+
+
+            
+
+
 
 oplus-+-ex-sorted : ∀ { l r : RE } {loc : ℕ } { c : Char }
     → ( pdis₁ : List ( PDInstance l c ))
     → ( pdis₂ : List ( PDInstance r c ))
     → Ex>-sorted { l } pdis₁
-    → Ex>-sorted { r } pdis₂ 
+    → Ex>-sorted { r } pdis₂
+    → All >-Inc pdis₁
+    → All >-Inc pdis₂
+    → Homogenous pdis₂ 
     -------------------------------------------------------
     → Ex>-sorted { l + r ` loc } (pdinstance-oplus {l + r ` loc } {loc} {c}  (List.map pdinstance-left pdis₁) (List.map pdinstance-right pdis₂))
-oplus-+-ex-sorted {l} {r} {loc} {c} []             pdis₂          ex>-nil                                     ex>-sorted-pdis₂  = map-right-ex-sorted  pdis₂ ex>-sorted-pdis₂  
-oplus-+-ex-sorted {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) []             ex>-sorted-pdi₁pdis₁                        ex>-nil           = map-left-ex-sorted (pdi₁ ∷ pdis₁)  ex>-sorted-pdi₁pdis₁ 
-oplus-+-ex-sorted {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂) (ex>-cons ex>-sorted-pdis₁ pdi₁>head-pdis₁) (ex>-cons ex>-sorted-pdis₂ pdi₂>head-pdis₂) = oplus-+-ex-sorted-sub (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex>-cons ex>-sorted-pdis₁ pdi₁>head-pdis₁) (ex>-cons ex>-sorted-pdis₂ pdi₂>head-pdis₂)
+oplus-+-ex-sorted {l} {r} {loc} {c} []             pdis₂          ex>-nil                                     ex>-sorted-pdis₂ _ _ _  = map-right-ex-sorted  pdis₂ ex>-sorted-pdis₂  
+oplus-+-ex-sorted {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) []             ex>-sorted-pdi₁pdis₁                        ex>-nil          _ _ _  = map-left-ex-sorted (pdi₁ ∷ pdis₁)  ex>-sorted-pdi₁pdis₁ 
+oplus-+-ex-sorted {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂) (ex>-cons ex>-sorted-pdis₁ pdi₁>head-pdis₁) (ex>-cons ex>-sorted-pdis₂ pdi₂>head-pdis₂)
+   (>-inc-pdi₁ ∷ >-inc-pdis₁ ) (>-inc-pdi₂ ∷ >-inc-pdis₂ ) (homogenous {r} {c} (.(pdi₂) ∷ .(pdis₂)) ( .(p₂) , (hide-p₂-pdi₂@(hide .{p₂} .{r} .{c} .(in₂) .(s-ev₂))  ∷ hide-p₂-pdis₂)) )
+   = oplus-+-ex-sorted-sub (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex>-cons ex>-sorted-pdis₁ pdi₁>head-pdis₁) (ex>-cons ex>-sorted-pdis₂ pdi₂>head-pdis₂) (>-inc-pdi₁ ∷ >-inc-pdis₁) (>-inc-pdi₂ ∷ >-inc-pdis₂) (hide in₂ s-ev₂ ∷ hide-p₂-pdis₂) 
   where
     oplus-+-ex-sorted-sub :
         ( pdisˡ : List ( PDInstance l c ))
       → ( pdisʳ : List ( PDInstance r c ))
       → Ex>-sorted { l } pdisˡ 
       → Ex>-sorted { r } pdisʳ
+      → All >-Inc pdisˡ
+      → All >-Inc pdisʳ
+      → All (Inhabit p₂) pdisʳ 
       → Ex>-sorted { l + r ` loc } ( concatMap (λ pdi → List.map (fuse {l + r ` loc} {loc} {c}  pdi)  (List.map pdinstance-right pdisʳ)) (List.map pdinstance-left pdisˡ) )
-    oplus-+-ex-sorted-sub []             psʳ          ex>-nil               _ = ex>-nil
-    oplus-+-ex-sorted-sub (pˡ ∷ psˡ)     []           ex>-sorted-pdiˡ∷pdisˡ ex>-nil  rewrite Utils.concatmap-λx→[]-xs≡[] { PDInstance ( l + r ` loc ) c} { PDInstance ( l + r ` loc ) c} (List.map pdinstance-left (pˡ ∷ psˡ))   = ex>-nil
-    oplus-+-ex-sorted-sub (pˡ ∷ [])      (pʳ ∷ psʳ)   (ex>-cons ex>-nil ex>-nothing)        (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ) = {!!}     
-    oplus-+-ex-sorted-sub (pˡ ∷ psˡ)     (pʳ ∷ psʳ)   (ex>-cons ex>-sorted-psˡ pˡ>head-psˡ) (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ) =  ex>-cons {!!} {!!}  
+    oplus-+-ex-sorted-sub []             psʳ          ex>-nil               _ _ _ _ = ex>-nil
+    oplus-+-ex-sorted-sub (pˡ ∷ psˡ)     []           ex>-sorted-pdiˡ∷pdisˡ ex>-nil _ _ _ rewrite Utils.concatmap-λx→[]-xs≡[] { PDInstance ( l + r ` loc ) c} { PDInstance ( l + r ` loc ) c} (List.map pdinstance-left (pˡ ∷ psˡ))   = ex>-nil
+    oplus-+-ex-sorted-sub (pˡ ∷ [])      (pʳ ∷ psʳ)   (ex>-cons ex>-nil ex>-nothing)        (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  (>-inc-pˡ ∷ [] )  (>-inc-pʳ ∷ >-inc-psʳ ) (hide-p₂-pʳ@(hide .{p₂} .{r} .{c} in₂ s-ev₂)  ∷ hide-p₂-psʳ)
+      rewrite ++-identityʳ (List.map (fuse {l + r ` loc } {loc} {c} (pdinstance-left pˡ)) (List.map pdinstance-right (pʳ ∷  psʳ)))  =  
+       map-fuse-+-sorted  pˡ (pʳ ∷ psʳ) (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  >-inc-pˡ (>-inc-pʳ ∷ >-inc-psʳ) (homogenous (pdinstance in₂ s-ev₂ ∷ psʳ)  (p₂ , hide in₂ s-ev₂ ∷ hide-p₂-psʳ))
     
+    oplus-+-ex-sorted-sub (pˡ@(pdinstance  {p₁} {l} {c} inj s-ev) ∷ psˡ)     (pʳ ∷ psʳ)   (ex>-cons ex>-sorted-psˡ pˡ>head-psˡ) (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  (>-inc-pˡ ∷ >-inc-psˡ )  (>-inc-pʳ ∷ >-inc-psʳ ) (hide-p₂-pʳ@(hide .{p₂} .{r} .{c} in₂ s-ev₂)  ∷ hide-p₂-psʳ) =  concat-ex-sorted ( List.map (fuse (pdinstance-left pˡ)) (List.map pdinstance-right (pʳ ∷  psʳ)))
+                          (concatMap (λ pdi → List.map (fuse pdi) (List.map pdinstance-right (pʳ ∷ psʳ))) ( List.map pdinstance-left psˡ))
+                          ( map-fuse-+-sorted  pˡ (pʳ ∷ psʳ)  (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  >-inc-pˡ (>-inc-pʳ ∷ >-inc-psʳ) (homogenous (pdinstance in₂ s-ev₂ ∷ psʳ)  (p₂ , hide in₂ s-ev₂ ∷ hide-p₂-psʳ)) )
+                          ((oplus-+-ex-sorted-sub psˡ (pʳ ∷ psʳ)  ex>-sorted-psˡ (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ) >-inc-psˡ (>-inc-pʳ ∷ >-inc-psʳ ) ( hide-p₂-pʳ ∷ hide-p₂-psʳ)))
+                          (prf (pʳ ∷ psʳ)) 
+                          where
+                            {- prf : All (λ pdi₃ → Ex>-maybe pdi₃ (head (concatMap
+                                               (λ pdi →
+                                                 List.map (fuse {l + r ` loc} {loc} {c} pdi) (List.map pdinstance-right (pʳ ∷ psʳ)))
+                                                 (List.map pdinstance-left psˡ))))
+                                      (List.map (fuse {l + r ` loc} {loc} {c} (pdinstance-left pˡ))  (List.map pdinstance-right (pʳ ∷ psʳ)))
+                            prf = {!!}  -}
+                            prf : ( qs : List (PDInstance r c ) )
+                              → All (λ pdi₃ → Ex>-maybe pdi₃ (head (concatMap
+                                               (λ pdi →
+                                                 List.map (fuse {l + r ` loc} {loc} {c} pdi) (List.map pdinstance-right (pʳ ∷ psʳ)))
+                                                 (List.map pdinstance-left psˡ))))
+                                      (List.map (fuse {l + r ` loc} {loc} {c} (pdinstance-left pˡ))  (List.map pdinstance-right qs))
+                            prf [] = []
+                            prf (q@(pdinstance {p₂} {r} {c} inj' s-ev') ∷ qs ) = sub-prf  ∷ prf qs
+                              where
+                                inject : U (p₁ + p₂ ` loc ) → U (l + r ` loc)
+                                inject = mkfuseInj (LeftU ∘ inj) (RightU ∘ inj')
+                                soundEv : ( u : U (p₁ + p₂ ` loc ) ) → proj₁ (flat (inject u)) ≡ c ∷ (proj₁ (flat u ))
+                                soundEv = mkfuseInjSoundEv {p₁}  {p₂} {l + r ` loc} {loc} {c}  (LeftU ∘ inj) (RightU ∘ inj') s-ev s-ev'
+                                sub-prf :  Ex>-maybe
+                                        (pdinstance inject soundEv)
+                                        (head
+                                          (concatMap
+                                            (λ pdi →
+                                            fuse  {l + r ` loc} {loc} {c} pdi (pdinstance (λ v → RightU (in₂ v)) s-ev₂) ∷
+                                            List.map (fuse  {l + r ` loc} {loc} {c} pdi) (List.map pdinstance-right psʳ))
+                                          (List.map pdinstance-left psˡ)))
+                                sub-prf = {!ex>-just ? ? !} -- psˡ  must be x ∷ xs since we have covered the pˡ ∷ [] case. 
+{-
+Goal: All
+      (λ pdi₃ →
+         Ex>-maybe pdi₃
+         (head
+          (concatMap
+           (λ pdi →
+              List.map (fuse pdi) (List.map pdinstance-right (pʳ ∷ psʳ)))
+           (List.map pdinstance-left psˡ))))
+      (List.map (fuse (pdinstance-left pˡ))
+       (List.map pdinstance-right (pʳ ∷ psʳ)))
 
+All
+      (λ pdi₃ →
+         Ex>-maybe pdi₃
+         (head
+          (concatMap
+           (λ pdi →
+              fuse pdi (pdinstance (λ v → RightU (in₂ v)) s-ev₂) ∷
+              List.map (fuse pdi) (List.map pdinstance-right psʳ))
+           (List.map pdinstance-left psˡ))))
+      (fuse (pdinstance-left pˡ)
+       (pdinstance (λ v → RightU (in₂ v)) s-ev₂)
+       ∷
+       List.map (fuse (pdinstance-left pˡ))
+       (List.map pdinstance-right psʳ))
+-}
 
 
 -- main lemma: 
@@ -1404,7 +1430,7 @@ pdU-sorted {$ c ` loc } {c'} with c Char.≟ c'
                              ∎)
                              
 pdU-sorted {l + r ` loc } {c} =  -- oplus-ex-sorted {l + r ` loc} {loc} {c} (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ r , c ]) (map-left-ex-sorted pdU[ l , c ] ind-hyp-l) (map-right-ex-sorted pdU[ r , c ] ind-hyp-r) 
-  oplus-+-ex-sorted {l} {r} {loc} {c}  pdU[ l , c ] pdU[ r , c ] ind-hyp-l ind-hyp-r
+  oplus-+-ex-sorted {l} {r} {loc} {c}  pdU[ l , c ] pdU[ r , c ] ind-hyp-l ind-hyp-r (pdU->-inc {l} {c}) (pdU->-inc {r} {c} ) (pdU-Homogenous {r} {c}) 
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
@@ -1420,7 +1446,7 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
-...  | yes ε∈l =  oplus-ex-sorted {l ● r ` loc} {loc} {c} (List.map pdinstance-fst pdU[ l , c ]) (concatmap-pdinstance-snd pdU[ r , c ]) (map-fst-ex-sorted {l} {r} {loc} {c} pdU[ l , c ] ind-hyp-l) (concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c} pdU[ r , c ] ind-hyp-r homo-r) 
+...  | yes ε∈l =  {!!} -- oplus-ex-sorted {l ● r ` loc} {loc} {c} (List.map pdinstance-fst pdU[ l , c ]) (concatmap-pdinstance-snd pdU[ r , c ]) (map-fst-ex-sorted {l} {r} {loc} {c} pdU[ l , c ] ind-hyp-l) (concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c} pdU[ r , c ] ind-hyp-r homo-r) 
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}

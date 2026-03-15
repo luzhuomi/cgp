@@ -1702,6 +1702,88 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
         rest =  >-inc-pdinstance-oplus-sub psˡ (pʳ ∷ psʳ) all->-inc-psˡ  (>-inc-pʳ ∷ all->-inc-psʳ)
 
 
+{-
+Here is the reason why 
+>-inc-pdinstance-oplus has to be "specalized" into
+
+>-inc-pdinstance-oplus-+ and 
+>-inc-pdinstance-oplus-+●
+
+same reason for
+>-inc-fuse must be specialized into
+>-inc-fuse-left-right and  >-inc-fuse-fst-pdi-flat-[]-fst-pdi
+
+
+Consider
+
+>-inc-fuse : ∀ { r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance r c )
+  → ( pdi' : PDInstance r c )
+  → >-Inc pdi
+  → >-Inc pdi'
+  ------------------------------------------------
+  → >-Inc (fuse {r} {loc} {c} pdi pdi')
+>-inc-fuse {r} {loc} {c} (pdinstance {p} {r} {c} inj s-ev) (pdinstance {p'} {r} {c} inj' s-ev') (>-inc v₁→v₂→v₁>v₂→injv₁>injv₂) (>-inc v₁→v₂→v₁>v₂→inj'v₁>inj'v₂) = >-inc prf
+  where 
+    inject : U (p + p' ` loc) → U r 
+    inject = mkfuseInj inj inj'
+    sound-ev : ( u :  U (p + p' ` loc) )  → proj₁ (flat (inject u)) ≡ c ∷ proj₁ (flat u )
+    sound-ev = mkfuseInjSoundEv {p} {p'} {r} {loc} {c}  inj inj' s-ev s-ev'
+
+
+    len-|inj-u|≡len-|u|+1 : (u : U p ) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj-u|≡len-|u|+1 u rewrite (s-ev u) = refl 
+
+    len-|inj'-u|≡len-|u|+1 : (u : U p' ) → length (proj₁ (flat (inj' u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inj'-u|≡len-|u|+1 u rewrite (s-ev' u) = refl 
+
+    len-|inject-u|≡len-|u|+1 : (u : U (p + p' ` loc) ) → length (proj₁ (flat (inject u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inject-u|≡len-|u|+1 u rewrite (sound-ev u) = refl 
+
+    prf : (u₁ u₂ : U (p + p' ` loc))
+        → (p + p' ` loc) ⊢ u₁ > u₂
+        → r ⊢ inject u₁ > inject u₂
+    prf u₁ u₂ (len-> len|u₁|>len|u₂|) = len-> len|injectu₁|>len|injectu₂|
+      where
+        len|injectu₁|>len|injectu₂| : length (proj₁ (flat (inject u₁))) Nat.> length (proj₁ (flat (inject u₂)))
+        len|injectu₁|>len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ = Nat.s≤s len|u₁|>len|u₂|
+    prf u₁@(LeftU v₁) u₂@(LeftU v₂) (len-≡ len|u₁|≡len|u₂| (choice-ll v₁>v₂))
+      with v₁→v₂→v₁>v₂→injv₁>injv₂ v₁ v₂ v₁>v₂
+    ... | len-> len|injv₁|>len|injv₂| = Nullary.contradiction len|injv₁|>len|injv₂| (<-irrefl (sym len|injv₁|≡len|injv₂| ) )
+      where
+        len|injv₁|≡len|injv₂| : length (proj₁ (flat (inj v₁))) ≡ length (proj₁ (flat (inj v₂)))
+        len|injv₁|≡len|injv₂| rewrite len-|inj-u|≡len-|u|+1 v₁ | len-|inj-u|≡len-|u|+1 v₂ | len|u₁|≡len|u₂| = refl 
+    ... | len-≡ len|v₁|≡len|v₂| v₎>ⁱv₂ =  len-≡ len|injectu₁|≡len|injectu₂| v₎>ⁱv₂
+      where 
+        len|injectu₁|≡len|injectu₂| : length (proj₁ (flat (inject u₁))) ≡ length (proj₁ (flat (inject u₂)))
+        len|injectu₁|≡len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ | len|u₁|≡len|u₂| = refl 
+    prf u₁@(RightU v₁) u₂@(RightU v₂) (len-≡ len|u₁|≡len|u₂| (choice-rr v₁>v₂))
+      with v₁→v₂→v₁>v₂→inj'v₁>inj'v₂ v₁ v₂ v₁>v₂
+    ... | len-> len|inj'v₁|>len|inj'v₂| = Nullary.contradiction len|inj'v₁|>len|inj'v₂| (<-irrefl (sym len|inj'v₁|≡len|inj'v₂| ) )
+      where
+        len|inj'v₁|≡len|inj'v₂| : length (proj₁ (flat (inj' v₁))) ≡ length (proj₁ (flat (inj' v₂)))
+        len|inj'v₁|≡len|inj'v₂| rewrite len-|inj'-u|≡len-|u|+1 v₁ | len-|inj'-u|≡len-|u|+1 v₂ | len|u₁|≡len|u₂| = refl 
+    ... | len-≡ len|v₁|≡len|v₂| v₎>ⁱv₂ =  len-≡ len|injectu₁|≡len|injectu₂| v₎>ⁱv₂
+      where 
+        len|injectu₁|≡len|injectu₂| : length (proj₁ (flat (inject u₁))) ≡ length (proj₁ (flat (inject u₂)))
+        len|injectu₁|≡len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ | len|u₁|≡len|u₂| = refl
+
+    prf u₁@(LeftU v₁) u₂@(RightU v₂) (len-≡ len|u₁|≡len|u₂| (choice-lr len|v₁|≥len|v₂|)) = len-≡ len|injectu₁|≡len|injectu₂|  {!!}
+      -- it seems we can't get this sub case proven until we concretize r to be l + r or l ● r.
+      -- b/c inject (LeftU v₁) --> inj v₁
+      --     inject (RightU v₂) --> inj' v₂
+      --     we know  len|v₁|≡len|v₂|, but we can't argue inj v₁ > inj' v₂ unless inj is LeftU and inj' is RightU or inj is λ x → PairU (f x) u and inj' is λ x → PairU empty (g x)
+      --                     
+      where 
+        len|injectu₁|≡len|injectu₂| : length (proj₁ (flat (inject u₁))) ≡ length (proj₁ (flat (inject u₂)))
+        len|injectu₁|≡len|injectu₂| rewrite len-|inject-u|≡len-|u|+1 u₁ | len-|inject-u|≡len-|u|+1 u₂ | len|u₁|≡len|u₂| = refl
+
+
+We cannot get the prf (LeftU v₁) (RightU v₂) case proven, refer to the inline comments above.
+
+-}
+
+
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
 ----------------------------------------------------------------------------

@@ -806,3 +806,134 @@ Is Glushkov Greedy or LNE, some paper said PD NFA is a quotient of Glushkov? wha
 
 
 ### Rust runtime comparison
+
+
+
+#### Update on 20 March 2026
+
+
+Here is the issue:
+
+##### How we proved the correctness of partial derivatives parsing algorithm is greedy (or left non empty, lne)
+
+consider the Antimirov's pd algo with injection function for parse tree , (which gives us left non empty matching)
+
+pdU[ _ , _ ] : RE  → Char → [ (RE , RE → RE) ]
+pdU[ ε , c ] = []
+pdU[ l , l' ] = if l == l'
+  then [ ( ε , λ x → Letter c ) ]
+  else []
+pdU[ r ● t , l  ] = if ε∈ r
+  then [ ( p ● t , mkinjFst inj ) | ( p , inj ) ∈ pdU[ r , l ] ] ++ [ ( p, mkinjSnd e inj) | e ∈ mkEmpty r , (p , inj) ∈ pdU[ t , l ]]
+  else [ ( p ● t , mkinjFst inj ) | ( p , inj ) ∈ pdU[ r , l ] ]
+pdU[ r + t , l ] = [ ( p , mkinjLeft inj ) | (p , inj) ∈ pdU[ r , l ] ]
+                ++ [ ( p , mkinjRight inj) | (p , inj) ∈ pdU[ t , l ] ]
+pdU[ r * , l ] =
+  [ ( p ● r*  , mkinjStar inj ) | (p , inj) ∈ pdU[ r , l ] ]
+
+
+where
+
+mkinjFst inj   = λ (Pair x y ) → Pair (inj x) y 
+mkinjSnd e inj = λ y → Pair e ( inj y )
+mkinjLeft inj  = λ x → Left (inj x)
+mkinjRight inj = λ y → Right (inj y)
+mkinjStar inj  = λ (Pair v (List vs)) → List ((inj v) ∷ vs)
+
+
+we omitted mkEmpty : RE → [ U ] for breivity
+
+
+
+Using Agda, we have verified the above algorithm is giving us LNE order, which is proven using two sub lemmas.
+
+
+Defn: (Strict increment)
+Let r and p be non problematic regular expressions.
+Let inj be an injection function from parse trees of p to ( parse trees of) r.
+We say inj is strict incremeantal, written as ">-inc r p inj"
+ iff
+  ∀ u, v  parse trees of p.  p ⊢ u > v ==> r ⊢ inj u > inj v
+
+
+Lemma: (All injection functions from pdU are strict incremental)
+Let r be a non problematic regular expression. Let c be a character.
+Let ( p , inj ) ∈ pdU [ r , c ].
+Then >-inc r p inj.
+
+Proven in lne/Order.lagda.md (similarly greedy/Order.lagda.md)
+
+
+Defn: (Extended order among injection)
+Let r , p₁ , p₂  be non problematic regular expression. such that p₁ and p₂ partial derivatives of r w.r.t to character c. 
+Let inj₁ and inj₂ be injection functions from p₁ to r and p₂ to r respectively.
+We say (p₁, inj₁) >ᵣᶜ (p₂ , inj₂ )
+  iff ∀ u₁ and u₂ as parse tree of r. 
+      ∃ v₁ a parse tree of p₁, v₂ a parse tree of p₂
+        such that inj₁ v₁ = u₁ and inj₂ v₂ = u₂
+      Then r ⊢ inj₁ v₁ > inj₂ v₂
+
+
+Lemma: (All partial dervative and injection functions are ordered according to the extended order)
+
+Let pds = pdU[ r , c ]
+Then pds is sorted according to the extended order.
+
+Proven in lne/ExtendedOrder.lagda.md  (similarly greedy/ExtendedOrder.lagda.md)
+
+
+Ultimately, these lemmas (plus the extended results to partial derivative descendants) give us the result that the parse trees produced by the parseAll functions are sorted according to >.
+
+
+
+##### Now we consider the Posix ordrer.
+
+
+Main idea we use ⊕ operator to combine partial derivatives into derivative.
+
+
+pd[ ε , l ] = []
+pd[ l , l' ] = if l == l'
+  then [ ( ε , λ e → Letter l )]
+  else []
+pd[ r + t , l ] = [ ( p , mkinjLeft inj ) | ( p , inj ) ∈ pd[ r , l ] ] ⊕ [ ( p , mkinjRight inj ) | ( p , inj ) ∈ pd[ t , l ] ]
+pd[ r ● t , l ] = if ε∈ r
+  then [ ( p , mkinjFst inj) | (p , inj ) ∈ pdU[ r , l ] ] ⊕ [ ( p , mkinjSnd e inj) | e ∈ mkEmpty r ,   ( p , inj ) ∈ pdU[ t , l ] ]
+  else [ ( p , mkinjFst inj) | (p , inj ) ∈ pdU[ r , l ] ]
+pd[ r * , l ] =
+  [ ( p ● r * , mkinjStar inj ) | (p , inj) ∈ pdU[ r , l ] ]
+
+where
+
+[] ⊕ ys = ys
+xs ⊕ [] = xs
+xs ⊕ ys =
+  [ ((p + p') , λ { Left x → inj x ; Right y → inj' y } ) | (p , inj ) ∈ xs , (p' , inj' ) ∈ ys ]
+
+
+
+Lemma:
+We find that the posix adaptation of pdU[ r , l ] is still strict incremental.
+
+
+Lemma:
+In addition, we also verified that all the pds from posix pdU[ r , l ] is homogenous, i.e. all the p are identical.
+
+
+
+The extended ordering among injection needs to be altered.
+Defn: (Extended ordering among injection)
+Let r , p be non problematic regular expressions, such that p is a derivative of r w.r.t character c. 
+Let inj₁ and inj₂ be injection functions from p to r.
+We say (p, inj₁) >ᵣᶜ (p , inj₂ )
+  iff
+    ∀ v₁ v₂ parse trees of p, such that p ⊢ v₁ > v₂
+    Then r ⊢ inj₁ v₁ > inj₂ v₂
+
+
+Conjecture
+We want to show that pds = pdU[ r , c ] are ordered according to >ᵣᶜ.
+
+However this conjecture is not valid. >ᵣᶜ is a partial order, not a total order.
+
+Counter example below.

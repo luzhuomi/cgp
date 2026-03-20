@@ -424,7 +424,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
       → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
     → r , c ⊢ pdi₁ > pdi₂
 -}
--- does that means that they are actually the same injection?? no...
+-- does that mean that they are actually the same injection?? no...
 data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r p : RE } { c : Char }
     → ( injection₁ : U p → U r )
@@ -1345,7 +1345,7 @@ oplus-+-ex-sorted {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-
       rewrite ++-identityʳ (List.map (fuse {l + r ` loc } {loc} {c} (pdinstance-left pˡ)) (List.map pdinstance-right (pʳ ∷  psʳ)))  =  
        map-fuse-+-sorted  pˡ (pʳ ∷ psʳ) (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  >-inc-pˡ (>-inc-pʳ ∷ >-inc-psʳ) (homogenous (pdinstance in₂ s-ev₂ ∷ psʳ)  (p₂ , hide in₂ s-ev₂ ∷ hide-p₂-psʳ))
     
-    oplus-+-ex-sorted-sub (pˡ@(pdinstance  {p₁} {l} {c} inj s-ev) ∷ psˡ)     (pʳ ∷ psʳ)   (ex>-cons ex>-sorted-psˡ pˡ>head-psˡ) (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  (>-inc-pˡ ∷ >-inc-psˡ )  (>-inc-pʳ ∷ >-inc-psʳ ) (hide-p₂-pʳ@(hide .{p₂} .{r} .{c} in₂ s-ev₂)  ∷ hide-p₂-psʳ) =  concat-ex-sorted ( List.map (fuse (pdinstance-left pˡ)) (List.map pdinstance-right (pʳ ∷  psʳ)))
+    oplus-+-ex-sorted-sub (pˡ@(pdinstance  {p₁} .{l} .{c} inj s-ev) ∷ psˡ)     (pʳ ∷ psʳ)   (ex>-cons ex>-sorted-psˡ pˡ>head-psˡ) (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  (>-inc-pˡ ∷ >-inc-psˡ )  (>-inc-pʳ ∷ >-inc-psʳ ) (hide-p₂-pʳ@(hide .{p₂} .{r} .{c} in₂ s-ev₂)  ∷ hide-p₂-psʳ) =  concat-ex-sorted ( List.map (fuse (pdinstance-left pˡ)) (List.map pdinstance-right (pʳ ∷  psʳ)))
                           (concatMap (λ pdi → List.map (fuse pdi) (List.map pdinstance-right (pʳ ∷ psʳ))) ( List.map pdinstance-left psˡ))
                           ( map-fuse-+-sorted  pˡ (pʳ ∷ psʳ)  (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ)  >-inc-pˡ (>-inc-pʳ ∷ >-inc-psʳ) (homogenous (pdinstance in₂ s-ev₂ ∷ psʳ)  (p₂ , hide in₂ s-ev₂ ∷ hide-p₂-psʳ)) )
                           ((oplus-+-ex-sorted-sub psˡ (pʳ ∷ psʳ)  ex>-sorted-psˡ (ex>-cons ex>-sorted-psʳ pʳ>head-psʳ) >-inc-psˡ (>-inc-pʳ ∷ >-inc-psʳ ) ( hide-p₂-pʳ ∷ hide-p₂-psʳ)))
@@ -1378,7 +1378,43 @@ oplus-+-ex-sorted {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-
                                             fuse  {l + r ` loc} {loc} {c} pdi (pdinstance (λ v → RightU (in₂ v)) s-ev₂) ∷
                                             List.map (fuse  {l + r ` loc} {loc} {c} pdi) (List.map pdinstance-right psʳ))
                                           (List.map pdinstance-left psˡ)))
-                                sub-prf = {!ex>-just ? ? !} -- psˡ  must be x ∷ xs since we have covered the pˡ ∷ [] case. 
+                                sub-prf = {!ex>-just ? ? !} -- psˡ  must be x ∷ xs since we have covered the pˡ ∷ [] case.
+                                -- hm. something wrong?
+                                {-
+                                in₁ ,  in₁' : U p₁ → U l
+                                in₂ ,  in₂' : U p₂ → U r
+
+                                >-pdi in₁ in₁'
+                                >-pdi in₂ in₂'          -- ∀ u₁ u₂ : U p₂
+                                                         → p₂ ⊢ u₁ > u₂
+                                                         → r ⊢ in₂ u₁ > in₂' u₂ (A)
+                                
+                                
+                                 oplus (map left [ in₁, in₁' ]) (map right [ in₂ , in₂' ])
+                                 --> [ fuse (LeftU . in₁) (RightU . in₂) , fuse (LeftU . in₁ ) (RightU . in₂' )
+                                       , fuse (LeftU . in₁') (RightU . in₂) , fuse (LeftU . in₁' ) (RightU . in₂' ) ]
+                                but (fuse (LeftU . in₁ ) (RightU . in₂' ))   >-pdi  (fuse (LeftU . in₁') (RightU . in₂))  holds?
+                                if so, we would have
+                                ∀ v₁ v₂ : (p₁ + p₂ )
+                                  → p₁ + p₂  ⊢ v₁ > v₂
+                                  → l  + r   ⊢ (fuse (LeftU . in₁ ) (RightU . in₂' )) v₁ > (fuse (LeftU . in₁' ) (RightU . in₂ )) v₂
+
+                                an instance
+                                  let v₁ = RightU u₁,
+                                  let v₂ = RightU u₂,
+                                  len |v₁| == len |v₂| 
+                                  such that v₁ > v₂
+                                  ---> choice-rr u₁ > u₂
+                                  ---> u₁ > u₂
+                                we should have 
+                                     RightU . in₂'  u₁ > RightU . in₂ u₂
+                                      iff
+                                      choice-ll (in₂'  u₁) > (in₂ u₂) (B)
+                                 we can't prove (B) given (A)
+
+                                It means that >-pdi is not total, but partial.
+
+                                -} 
 {-
 Goal: All
       (λ pdi₃ →
@@ -1636,3 +1672,10 @@ parseAll-is-posix-sorted {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUM
 
 ```
 
+
+
+
+
+
+
+  

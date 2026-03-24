@@ -886,7 +886,7 @@ Ultimately, these lemmas (plus the extended results to partial derivative descen
 
 
 
-##### Now we consider the Posix ordrer.
+##### Now we consider the Posix order.
 
 
 Main idea we use ⊕ operator to combine partial derivatives into derivative.
@@ -937,3 +937,6 @@ We want to show that pds = pdU[ r , c ] are ordered according to >ᵣᶜ.
 However this conjecture is not valid. >ᵣᶜ is a partial order, not a total order.
 
 Counter example below.
+
+
+Let r = 

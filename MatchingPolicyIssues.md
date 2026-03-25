@@ -938,5 +938,61 @@ However this conjecture is not valid. >ᵣᶜ is a partial order, not a total or
 
 Counter example below.
 
+Let r = ( (ε + ε ) ● a) +  ( (ε + ε) ● a ) 
 
-Let r = 
+pdU[ r , a ] = ps ⊕ qs
+  where
+    ps = [ ( p, mkinjLeft inj) | ( p , inj) ∈ pdU[ ( ε + ε ) ● r , a ] ] -- (1)
+    qs = [ ( q, mkinjLeft inj) | ( q , inj) ∈ pdU[ ( ε + ε ) ● r , a ] ] -- (2)
+
+
+then the sub call (1)
+
+pdU [ ( ε + ε ) ● r , a ] =
+  [ ( ε , λ x → (Left Empty , Letter a) )      -- inj₁₁
+  , ( ε , λ y → (Right Empty , Letter a) ) ]   -- inj₁₂
+
+
+and the sub call (2)
+
+pdU [ ( ε + ε ) ● r , a ] =
+  [ ( ε , λ x → (Left Empty , Letter a) )      -- inj₂₁
+  , ( ε , λ y → (Right Empty , Letter a) ) ]   -- inj₂₂
+
+
+Substituting the above into ps and qs
+
+ps = [ ( ε, λ x → Left (Left Empty , Letter a))
+     , ( ε, λ y → Left (Right Empty , Letter a ))
+     ]
+
+
+qs = [ ( ε, λ x → Right (Left Empty , Letter a))
+     , ( ε, λ y → Right (Right Empty , Letter a ))
+     ]
+
+
+Finally
+
+ps ⊕ qs = [ ( ε + ε , λ { Left e → Left (Left Empty , Letter a )
+                         ; Right e → Right (Left Empty , Letter a ) } )  -- inj₁
+           , ( ε + ε , λ { Left e → Left (Left Empty, Letter a )
+                         ; Right e → Right (Right Empty, Letter a ) } )  -- inj₂
+           , ( ε + ε , λ { Left e → Left (Right Empty, Letter a )
+                         ; Right e → Right (Left Empty, Letter a ) } )   -- inj₃
+           , ( ε + ε , λ { Left e → Left (Right Empty, Letter a )
+                         ; Right e → Right (Right Empty, Letter a ) } )  -- inj₄ 
+           ]
+
+based on our definition of >ᵣᶜ
+
+inj₁ >ᵣᶜ inj₂
+inj₁ >ᵣᶜ inj₃
+inj₃ >ᵣᶜ inj₄
+
+but we have neither inj₂ >ᵣᶜ  inj₃ nor inj₃ >ᵣᶜ inj₂ 
+
+Proposition
+We want to show that pds = pdU[ r , c ] forms a complete lattice with the left most injection function is the meet, the right most is the join. 
+
+

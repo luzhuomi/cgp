@@ -425,6 +425,7 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
     → r , c ⊢ pdi₁ > pdi₂
 -}
 -- does that mean that they are actually the same injection?? no...
+-- this order is partial, not total. 
 data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   >-pdi : ∀ { r p : RE } { c : Char }
     → ( injection₁ : U p → U r )
@@ -500,19 +501,19 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } { w : List Char } ( pdis : List (P
 
 
 
-### Lemma 38: the list of pdinstances from pdU[ r , c] is extended POSIX-> sorted. 
+### Lemma 38: the list of pdinstances from pdU[ r , c] is a complete lattice over the partial order r , c ⊢_>_  
 
 
 Let r be a non problematic regular expression.
 
 Let c be a letter.
 
-Then pdU[r , c] is LNE sorted. 
+Then pdU[r , c] is complete lattice. 
 
 
 
 
-#### Sub Lemma 38.1 - 38.22 : Ex>-sortedness is preserved inductively over pdinstance operations.
+#### Sub Lemma 38.1 - 38.22 : r , c ⊢ _>_ order is preserved inductively over pdinstance operations.
 
 ```agda
 
@@ -618,6 +619,7 @@ right-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdin
         len-|right-in₁-v|≡len-|right-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
 
 
+-- do we need this?
 map-left-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance l c ) )
   → Ex>-sorted {l} pdis
@@ -1312,6 +1314,9 @@ map-fuse-+-sorted {l} {r} {loc} {c} pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev
 
             
 
+-- everything up to this point seems ok, the following are not becoz r,c ⊢ _ > _ is not total.
+
+
 
 
 oplus-+-ex-sorted : ∀ { l r : RE } {loc : ℕ } { c : Char }
@@ -1491,6 +1496,51 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
     homo-r : Homogenous pdU[ r , c ]
     homo-r = pdU-Homogenous {r} {c} 
 
+
+
+-- though we conjecture that it is a complete lattice, we only show it is a semi-join lattice.
+data Ex>-semilattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
+  ex-empty : ∀ { r : RE } { c : Char } → Ex>-semilattice {r} {c} []
+  ex-singleton : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r  c ) → Ex>-semilattice {r} {c} ( pdi  ∷ [])
+  ex-join : ∀ { r : RE } { c : Char }
+    → ( pdi : PDInstance r c )
+    → ( pdi' : PDInstance r c )
+    → ( pdis' : List (PDInstance r c ) )
+    → ( Ex>-semilattice {r} {c} (pdi' ∷ pdis') )
+    →  r , c ⊢ pdi > pdi'
+    -----------------------------------------
+    → Ex>-semilattice {r} {c} ( pdi ∷ pdi' ∷ pdis') 
+
+
+map-left-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
+  → ( pdis : List (PDInstance l c ) )
+  → Ex>-semilattice {l} {c} pdis
+  → Ex>-semilattice {l + r ` loc } {c} (List.map pdinstance-left pdis)
+map-left-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
+map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ [] )        (ex-singleton .(pdi) )                              = ex-singleton (pdinstance-left pdi)
+map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ (pdi' ∷ [] ) )  (ex-join {l} {c} .(pdi) .(pdi') [] x  pdi>pdi') = ex-join (pdinstance-left pdi) (pdinstance-left pdi') [] (map-left-ex-semilattice (pdi' ∷ []) x) (left-ex-sorted pdi pdi' pdi>pdi')
+map-left-ex-semilattice {l} {R} {loc} {c} ( pdi ∷ (
+
+
+map-right-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
+  → ( pdis : List (PDInstance r c ) )
+  → Ex>-semilattice {r} {c} pdis
+  → Ex>-semilattice {l + r ` loc } {c} (List.map pdinstance-right pdis)
+map-right-ex-semilattice = {!!}   
+
+
+oplus-+-ex-semilattice : ∀ { l r : RE } {loc : ℕ } { c : Char }
+    → ( pdis₁ : List ( PDInstance l c ))
+    → ( pdis₂ : List ( PDInstance r c ))
+    → Ex>-semilattice { l } {c} pdis₁
+    → Ex>-semilattice { r } {c} pdis₂
+    → All >-Inc pdis₁
+    → All >-Inc pdis₂
+    → Homogenous pdis₂
+    ---------------------------------------
+    → Ex>-semilattice  { l + r ` loc } (pdinstance-oplus {l + r ` loc } {loc} {c}  (List.map pdinstance-left pdis₁) (List.map pdinstance-right pdis₂))
+oplus-+-ex-semilattice {l} {r} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₂ = map-right-ex-semilattice pdis₂ ex-semi 
+oplus-+-ex-semilattice {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₂ = map-left-ex-semilattice (pdi₁ ∷ pdis₁) ex-semi
 
 
 

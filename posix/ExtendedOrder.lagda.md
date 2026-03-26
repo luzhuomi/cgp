@@ -633,7 +633,7 @@ map-left-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons  ex>-sorted-pdis (ex>-j
            (ex>-just (left-ex-sorted pdi pdi'  pdi>pdi'))
 
 
-
+-- do we need this?
 map-right-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
   → Ex>-sorted {r} pdis
@@ -732,6 +732,7 @@ star-ex-sorted {r} {ε∉r} {loc} {c}  (pdinstance {p} .{r} .{c} in₁ s-ev₁) 
           len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU v (ListU vs))  = refl
           
 
+-- do we need this ? 
 map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
                      → ( pdis : List (PDInstance r c) )
                      → Ex>-sorted {r} pdis
@@ -1518,15 +1519,34 @@ map-left-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char }
   → Ex>-semilattice {l + r ` loc } {c} (List.map pdinstance-left pdis)
 map-left-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
 map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ [] )        (ex-singleton .(pdi) )                              = ex-singleton (pdinstance-left pdi)
-map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ (pdi' ∷ [] ) )  (ex-join {l} {c} .(pdi) .(pdi') [] x  pdi>pdi') = ex-join (pdinstance-left pdi) (pdinstance-left pdi') [] (map-left-ex-semilattice (pdi' ∷ []) x) (left-ex-sorted pdi pdi' pdi>pdi')
-map-left-ex-semilattice {l} {R} {loc} {c} ( pdi ∷ (
+map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ (pdi' ∷ [] ) )    (ex-join {l} {c} .(pdi) .(pdi') []       semi-pdi'∷[]  pdi>pdi') = ex-join (pdinstance-left pdi) (pdinstance-left pdi') [] (map-left-ex-semilattice (pdi' ∷ []) semi-pdi'∷[]) (left-ex-sorted pdi pdi' pdi>pdi')
+map-left-ex-semilattice {l} {R} {loc} {c} ( pdi ∷ (pdi' ∷ pdis' ))  (ex-join {l} {c} .(pdi) .(pdi') .(pdis') semi-pdi'∷pdis' pdi>pdi') = ex-join (pdinstance-left pdi) (pdinstance-left pdi') (List.map pdinstance-left pdis') (map-left-ex-semilattice (pdi' ∷ pdis') semi-pdi'∷pdis') (left-ex-sorted pdi pdi' pdi>pdi') 
 
 
 map-right-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
   → Ex>-semilattice {r} {c} pdis
   → Ex>-semilattice {l + r ` loc } {c} (List.map pdinstance-right pdis)
-map-right-ex-semilattice = {!!}   
+map-right-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
+map-right-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ [] )        (ex-singleton .(pdi) )                              = ex-singleton (pdinstance-right pdi)
+map-right-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ (pdi' ∷ [] ) )    (ex-join {r} {c} .(pdi) .(pdi') []       semi-pdi'∷[]  pdi>pdi') = ex-join (pdinstance-right pdi) (pdinstance-right pdi') [] (map-right-ex-semilattice (pdi' ∷ []) semi-pdi'∷[]) (right-ex-sorted pdi pdi' pdi>pdi')
+map-right-ex-semilattice {l} {R} {loc} {c} ( pdi ∷ (pdi' ∷ pdis' ))  (ex-join {r} {c} .(pdi) .(pdi') .(pdis') semi-pdi'∷pdis' pdi>pdi') = ex-join (pdinstance-right pdi) (pdinstance-right pdi') (List.map pdinstance-right pdis') (map-right-ex-semilattice (pdi' ∷ pdis') semi-pdi'∷pdis') (right-ex-sorted pdi pdi' pdi>pdi') 
+
+
+
+concat-ex-semilattice : ∀ { r : RE } { c }
+    → ( pdis₁ : List ( PDInstance r c ))
+    → ( pdis₂ : List ( PDInstance r c ))
+    → Ex>-semilattice { r } pdis₁
+    → Ex>-semilattice { r } pdis₂
+    → All (λ pdi₁ → Ex>-maybe  {r} pdi₁ (head pdis₂)) pdis₁
+    -------------------------------------------------------
+    → Ex>-semilattice { r } (pdis₁ ++ pdis₂)
+concat-ex-semilattice []           pdis₂ ex-empty      ex-semi-pdis₂ [] =  ex-semi-pdis₂
+concat-ex-semilattice pdis₁        []    ex-semi-pdis₁ ex-empty _ rewrite (++-identityʳ pdis₁) = ex-semi-pdis₁
+concat-ex-semilattice (pdi₁ ∷ [] )   (pdi₂ ∷ pdis₂)           (ex-singleton .(pdi₁))  ex-semi-pdi₂pdis₂  (ex>-just pdi₁>pdi₂  ∷ [])      = ex-join pdi₁ pdi₂ pdis₂ ex-semi-pdi₂pdis₂  pdi₁>pdi₂
+concat-ex-semilattice (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂)   (ex-join .(pdi₁) .(pdi₁') pdis₁ semi-pdis₁ pdi₁>pdi₁')  ex-semi-pdi₂pdis₂  (ex>-just pdi₁>pdi₁' sorted-pdis₁) = ? 
+
 
 
 oplus-+-ex-semilattice : ∀ { l r : RE } {loc : ℕ } { c : Char }
@@ -1541,6 +1561,23 @@ oplus-+-ex-semilattice : ∀ { l r : RE } {loc : ℕ } { c : Char }
     → Ex>-semilattice  { l + r ` loc } (pdinstance-oplus {l + r ` loc } {loc} {c}  (List.map pdinstance-left pdis₁) (List.map pdinstance-right pdis₂))
 oplus-+-ex-semilattice {l} {r} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₂ = map-right-ex-semilattice pdis₂ ex-semi 
 oplus-+-ex-semilattice {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₂ = map-left-ex-semilattice (pdi₁ ∷ pdis₁) ex-semi
+oplus-+-ex-semilattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂)
+                                                           ex-semi-pdi₁∷pdis₁  ex-semi-pdi₂∷pdis₂
+                                                           (>-inc-pdi₁ ∷ >-inc-pdis₁ ) (>-inc-pdi₂ ∷ >-inc-pdis₂ ) (homogenous {r} {c} (.(pdi₂) ∷ .(pdis₂)) ( .(p₂) , (hide-p₂-pdi₂@(hide .{p₂} .{r} .{c} .(in₂) .(s-ev₂))  ∷ hide-p₂-pdis₂)) ) = oplus-+-ex-semilattice-sub (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂ ) ex-semi-pdi₁∷pdis₁ ex-semi-pdi₂∷pdis₂ (>-inc-pdi₁ ∷ >-inc-pdis₁) (>-inc-pdi₂ ∷ >-inc-pdis₂) (hide in₂ s-ev₂ ∷ hide-p₂-pdis₂)  
+  where
+    oplus-+-ex-semilattice-sub : ( pdisˡ : List ( PDInstance l c ))
+      → ( pdisʳ : List ( PDInstance r c ))
+      → Ex>-semilattice {l} {c} pdisˡ 
+      → Ex>-semilattice {r} {c} pdisʳ
+      → All >-Inc pdisˡ
+      → All >-Inc pdisʳ
+      → All (Inhabit p₂) pdisʳ 
+      → Ex>-semilattice { l + r ` loc } ( concatMap (λ pdi → List.map (fuse {l + r ` loc} {loc} {c}  pdi)  (List.map pdinstance-right pdisʳ)) (List.map pdinstance-left pdisˡ) )
+    oplus-+-ex-semilattice-sub []          psʳ        ex>-empty _ _ _ _ = ex-empty
+    oplus-+-ex-semilattice-sub (pˡ ∷ psˡ)  []         ex-semi-pˡ∷psˡ ex>-empty _ _ _ rewrite Utils.concatmap-λx→[]-xs≡[] { PDInstance ( l + r ` loc ) c} { PDInstance ( l + r ` loc ) c} (List.map pdinstance-left (pˡ ∷ psˡ))  = ex-empty
+    oplus-+-ex-semilattice-sub (pˡ ∷ [])   (pʳ ∷ psʳ) (ex-singleton .(pˡ)) ex-semi-pʳ∷psʳ (>-inc-pˡ ∷ [] )  (>-inc-pʳ ∷ >-inc-psʳ ) (hide-p₂-pʳ@(hide .{p₂} .{r} .{c} in₂ s-ev₂)  ∷ hide-p₂-psʳ)
+      rewrite ++-identityʳ (List.map (fuse {l + r ` loc } {loc} {c} (pdinstance-left pˡ)) (List.map pdinstance-right (pʳ ∷  psʳ)))  =  {!!} 
+
 
 
 

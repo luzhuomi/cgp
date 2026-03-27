@@ -849,7 +849,7 @@ Using Agda, we have verified the above algorithm is giving us LNE order, which i
 
 
 Defn: (Strict increment)
-Let r and p be non problematic regular expressions.
+Let r and p be non problematic regular expressions.  p is a partial derivative of r w.r.t c.
 Let inj be an injection function from parse trees of p to ( parse trees of) r.
 We say inj is strict incremeantal, written as ">-inc r p inj"
  iff
@@ -872,7 +872,9 @@ We say (p₁, inj₁) >ᵣᶜ (p₂ , inj₂ )
       ∃ v₁ a parse tree of p₁, v₂ a parse tree of p₂
         such that inj₁ v₁ = u₁ and inj₂ v₂ = u₂
       Then r ⊢ inj₁ v₁ > inj₂ v₂
-
+	       (in other words, ) r ⊢ u1 > u2
+		   
+How Frisch proved it?
 
 Lemma: (All partial dervative and injection functions are ordered according to the extended order)
 
@@ -943,19 +945,19 @@ Let r = ( (ε + ε ) ● a) +  ( (ε + ε) ● a )
 pdU[ r , a ] = ps ⊕ qs
   where
     ps = [ ( p, mkinjLeft inj) | ( p , inj) ∈ pdU[ ( ε + ε ) ● r , a ] ] -- (1)
-    qs = [ ( q, mkinjLeft inj) | ( q , inj) ∈ pdU[ ( ε + ε ) ● r , a ] ] -- (2)
+    qs = [ ( q, mkinjRight inj) | ( q , inj) ∈ pdU[ ( ε + ε ) ● r , a ] ] -- (2)
 
 
 then the sub call (1)
 
-pdU [ ( ε + ε ) ● r , a ] =
+pdU [ ( ε + ε ) ● a , a ] =
   [ ( ε , λ x → (Left Empty , Letter a) )      -- inj₁₁
   , ( ε , λ y → (Right Empty , Letter a) ) ]   -- inj₁₂
 
 
 and the sub call (2)
 
-pdU [ ( ε + ε ) ● r , a ] =
+pdU [ ( ε + ε ) ● a , a ] =
   [ ( ε , λ x → (Left Empty , Letter a) )      -- inj₂₁
   , ( ε , λ y → (Right Empty , Letter a) ) ]   -- inj₂₂
 

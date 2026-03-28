@@ -1527,13 +1527,90 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
 
 -} 
 
-ex>-trans : ∀ { r : RE } { c : Char } { pd₁ pd₂ pd₃ : PDInstance r c  }
+-- transitivity
+ex>-trans : ∀ { r p : RE } { c : Char } { pd₁ pd₂ pd₃ : PDInstance r c  }
+  { i₁ : Inhabit {r} {c} p pd₁ } 
+  { i₂ : Inhabit {r} {c} p pd₂ } 
+  { i₃ : Inhabit {r} {c} p pd₃ }
   → r , c ⊢ pd₁ > pd₂
   → r , c ⊢ pd₂ > pd₃
   -------------------
   → r , c ⊢ pd₁ > pd₃
+ex>-trans {r} {p} {c}
+          {pdinstance in₁ s-ev₁} {pdinstance in₂ s-ev₂} {pdinstance in₃ s-ev₃}
+          {hide .(in₁) .(s-ev₁)}
+          {hide .(in₂) .(s-ev₂)}
+          {hide .(in₃) .(s-ev₃)}
+          (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v⊎in₁v≡in₂v )
+          (>-pdi .{r} .{p} .{c} .(in₂) .(s-ev₂) .(in₃) .(s-ev₃) v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v→in₂v>in₃v⊎in₂v≡in₃v ) =
+          >-pdi {r} {p} {c} in₁ s-ev₁ in₃ s-ev₃ prf₁ prf₂
+          where
+            prf₂ :  (v : U p) → r ⊢ in₁ v > in₃ v ⊎ in₁ v ≡ in₃ v
+            prf₂ v with v→in₁v>in₂v⊎in₁v≡in₂v v  | v→in₂v>in₃v⊎in₂v≡in₃v v 
+            ... | inj₁ in₁v>in₂v₁ | inj₁ in₂v₁>in₃v₁ = inj₁ (>-trans in₁v>in₂v₁ in₂v₁>in₃v₁)
+            ... | inj₁ in₁v>in₂v₁ | inj₂ in₂v₁≡in₃v₁ rewrite sym in₂v₁≡in₃v₁ = inj₁ in₁v>in₂v₁
+            ... | inj₂ in₁v≡in₂v₁ | inj₂ in₂v₁≡in₃v₁ rewrite sym in₂v₁≡in₃v₁ = inj₂ in₁v≡in₂v₁
+            ... | inj₂ in₁v≡in₂v₁ | inj₁ in₂v₁>in₃v₁ rewrite in₁v≡in₂v₁ = inj₁ in₂v₁>in₃v₁ 
+            prf₁ : (v₁ v₃ : U p) → p ⊢ v₁ > v₃ → r ⊢ in₁ v₁ > in₃ v₃
+            prf₁ v₁ v₃ v₁>v₃ with v→in₁v>in₂v⊎in₁v≡in₂v v₁
+            ... | inj₁ in₁v₁>in₂v₁ = >-trans in₁v₁>in₂v₁ (v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v₁ v₃ v₁>v₃)
+            ... | inj₂ in₁v₁≡in₂v₁ rewrite  in₁v₁≡in₂v₁ = v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v₁ v₃ v₁>v₃ 
 
 
+-- irrefl
+ex>→¬≡ : ∀ { r p : RE } { c : Char } { pd₁ pd₂ : PDInstance r c  }
+  { i₁ : Inhabit {r} {c} p pd₁ } 
+  { i₂ : Inhabit {r} {c} p pd₂ }
+  → r , c ⊢ pd₁ > pd₂
+  --------------------------
+  → ¬ pd₁ ≡ pd₂
+ex>→¬≡ {r} {p} {c}
+       {pdinstance in₁ s-ev₁} {pdinstance in₂ s-ev₂} 
+       {hide .(in₁) .(s-ev₁)}
+       {hide .(in₂) .(s-ev₂)}
+       (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂⊎in₁v≡in₂v ) pd₁≡pd₂ rewrite pd₁≡pd₂ = {!!}  -- can't get a contradiction
+
+-- maybe > is ≥ ?
+
+-- antisymmetry
+ex>-anti : ∀ { r p : RE } { c : Char } { pd₁ pd₂ : PDInstance r c  }
+  { i₁ : Inhabit {r} {c} p pd₁ } 
+  { i₂ : Inhabit {r} {c} p pd₂ }
+  → r , c ⊢ pd₁ > pd₂
+  → r , c ⊢ pd₂ > pd₁
+  -----------------------------------
+  → pd₁ ≡ pd₂ 
+ex>-anti  {r} {p} {c}
+       {pdinstance in₁ s-ev₁} {pdinstance in₂ s-ev₂} 
+       {hide .(in₁) .(s-ev₁)}
+       {hide .(in₂) .(s-ev₂)}
+       (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂⊎in₁v≡in₂v )
+       (>-pdi .{r} .{p} .{c} .(in₂) .(s-ev₂) .(in₁) .(s-ev₁) v₁→v₂→v₁>v₂→in₂v₁>in₁v₂ v→in₂v>in₁⊎in₂v≡in₁v ) = {!!} -- Eq.cong₂ (λ x y → pdinstance {r} {p} {c}  x y ) in₁≡in₂ {!!} -- can't get it to work, x y are not independent. y (sound-ev) is depending on x (the inj)
+         where
+           in₁≡in₂ : in₁ ≡ in₂
+           in₁≡in₂ = {!!}
+           
+           -- s-ev₁≡s-ev₂ : s-ev₁ ≡ s-ev₂
+           -- s-ev₁≡s-ev₂ = ? 
+-- 2nd attempt        
+ex>-anti' : ∀ { r p : RE } { c : Char } { in₁ in₂ : U p → U r }
+  { s-ev₁ : ( u : U p ) → ( proj₁ ( flat {r} (in₁ u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) }  -- soundness evidence for in₁
+  { s-ev₂ : ( u : U p ) → ( proj₁ ( flat {r} (in₂ u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) }  -- soundness evidence for in\_@
+  → r , c ⊢ pdinstance in₁ s-ev₁ > pdinstance in₂ s-ev₂ 
+  → r , c ⊢ pdinstance in₂ s-ev₂ > pdinstance in₁ s-ev₁
+  -------------------------------------------------------
+  → ( u : U p ) → in₁ u ≡ in₂ u
+ex>-anti'  {r} {p} {c} {in₁} {in₂}  { s-ev₁ } { s-ev₂ }
+           (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v⊎in₁v≡in₂v )
+           (>-pdi .{r} .{p} .{c} .(in₂) .(s-ev₂) .(in₁) .(s-ev₁) v₁→v₂→v₁>v₂→in₂v₁>in₁v₂ v→in₂v>in₁v⊎in₂v≡in₁v ) v
+           with v→in₁v>in₂v⊎in₁v≡in₂v v |  v→in₂v>in₁v⊎in₂v≡in₁v v
+... | inj₁ in₁v>in₂v | inj₁ in₂v>in₁v =  {!!}
+... | inj₁ in₁v>in₂v | inj₂ in₂v≡in₁v = Nullary.contradiction (sym in₂v≡in₁v) (PosixOrder.>→¬≡ in₁v>in₂v)
+... | inj₂ in₁v≡in₂v | inj₁ in₂v>in₁v = Nullary.contradiction (sym in₁v≡in₂v) (PosixOrder.>→¬≡ in₂v>in₁v)
+... | inj₂ in₁v≡in₂v | inj₂ in₂v≡in₁v = in₁v≡in₂v 
+  
+  
+  
 
 -- though we conjecture that it is a complete lattice, we only show it is a semi-join lattice.
 data Ex>-semilattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where

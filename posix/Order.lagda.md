@@ -565,7 +565,7 @@ but in FLOPS 2014 paper, we assume ● is always right associative.
 
 
 
-Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
+Lemma (irreflexive): r ⊢ u₁ > u₂ implies ¬ u₁ ≡ u₂
 
 
 ```agda
@@ -626,6 +626,29 @@ Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
 
 ```
+
+
+
+TODO: to show > is a total, we need to prove trichotomy forall u v : U r,
+we have either u ≡ v or r ⊢ u > v or r ⊢ v > u
+
+but we don't need this result for now.
+
+Lemma (asymmetry) :
+
+```agda
+>-asym : ∀ { r : RE } { u v : U r }
+  →  r ⊢ u > v
+  -----------------------
+  → ¬ ( r ⊢ v > u )
+>-asym { r } { u } { v } (len-> len|u|>|len|v|) (len-> len|v|>|len|u|) = NatProperties.<-asym  len|u|>|len|v| len|v|>|len|u| 
+>-asym { r } { u } { v } (len-> len|u|>|len|v|) (len-≡ len|v|≡|len|u| v>ⁱu) = <-irrefl (len|v|≡|len|u|)  len|u|>|len|v| 
+
+
+
+```
+
+Trichotomy should follows from asym
 
 
 

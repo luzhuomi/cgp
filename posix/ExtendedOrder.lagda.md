@@ -1604,7 +1604,7 @@ ex>-anti'  {r} {p} {c} {in₁} {in₂}  { s-ev₁ } { s-ev₂ }
            (>-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v⊎in₁v≡in₂v )
            (>-pdi .{r} .{p} .{c} .(in₂) .(s-ev₂) .(in₁) .(s-ev₁) v₁→v₂→v₁>v₂→in₂v₁>in₁v₂ v→in₂v>in₁v⊎in₂v≡in₁v ) v
            with v→in₁v>in₂v⊎in₁v≡in₂v v |  v→in₂v>in₁v⊎in₂v≡in₁v v
-... | inj₁ in₁v>in₂v | inj₁ in₂v>in₁v =  {!!}
+... | inj₁ in₁v>in₂v | inj₁ in₂v>in₁v =  {!!} -- we need PosixOrder.>-asym 
 ... | inj₁ in₁v>in₂v | inj₂ in₂v≡in₁v = Nullary.contradiction (sym in₂v≡in₁v) (PosixOrder.>→¬≡ in₁v>in₂v)
 ... | inj₂ in₁v≡in₂v | inj₁ in₂v>in₁v = Nullary.contradiction (sym in₁v≡in₂v) (PosixOrder.>→¬≡ in₂v>in₁v)
 ... | inj₂ in₁v≡in₂v | inj₂ in₂v≡in₁v = in₁v≡in₂v 

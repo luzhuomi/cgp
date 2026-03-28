@@ -642,13 +642,19 @@ Lemma (asymmetry) :
   -----------------------
   → ¬ ( r ⊢ v > u )
 >-asym { r } { u } { v } (len-> len|u|>|len|v|) (len-> len|v|>|len|u|) = NatProperties.<-asym  len|u|>|len|v| len|v|>|len|u| 
->-asym { r } { u } { v } (len-> len|u|>|len|v|) (len-≡ len|v|≡|len|u| v>ⁱu) = <-irrefl (len|v|≡|len|u|)  len|u|>|len|v| 
+>-asym { r } { u } { v } (len-> len|u|>|len|v|) (len-≡ len|v|≡|len|u| v>ⁱu) = <-irrefl (len|v|≡|len|u|)  len|u|>|len|v|
+>-asym { r } { u } { v } (len-≡ len|u|≡|len|v| u>ⁱv) (len-> len|v|>|len|u|) = <-irrefl (len|u|≡|len|v|)  len|v|>|len|u| 
 
-
-
+>-asym { ε } { EmptyU } { EmptyU } (len-≡ refl ())
+>-asym { $ c ` loc } { LetterU _ } { LetterU _ } (len-≡ refl ())
+>-asym { l + r ` loc } { LeftU u } { LeftU v } (len-≡ len|left-u|≡len|left-v| (choice-ll u>v)) (len-≡ len|left-v|≡len|left-u| (choice-ll v>u)) =  >-asym u>v v>u 
+>-asym { l + r ` loc } { RightU u } { RightU v } (len-≡ len|right-u|≡len|right-v| (choice-rr u>v)) (len-≡ len|right-v|≡len|right-u| (choice-rr v>u)) = >-asym u>v v>u
+>-asym { l + r ` loc } { LeftU u } { RightU v }  (len-≡ len|left-u|≡len|right-v| (choice-lr len|u|≥len|v| )) (len-≡ len|right-v|≡len|left-u| (choice-rl len|v|>len|u|)) = <-irrefl (sym len|right-v|≡len|left-u|) len|v|>len|u|    -- this case is not needed after the cleanup
+>-asym { l + r ` loc } { RightU u } { LeftU v }  (len-≡ len|right-u|≡len|left-v| (choice-rl len|u|>len|v| )) (len-≡ len|left-v|≡len|right-u| (choice-lr len|v|≥len|u|)) = <-irrefl (sym len|right-u|≡len|left-v|) len|u|>len|v| -- this case is not needed after the cleanup
+>-asym { l ● r ` loc } 
 ```
 
-Trichotomy should follows from asym
+Trichotomy should follows from asymmetricity
 
 
 

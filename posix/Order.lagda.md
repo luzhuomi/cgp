@@ -651,7 +651,15 @@ Lemma (asymmetry) :
 >-asym { l + r ` loc } { RightU u } { RightU v } (len-≡ len|right-u|≡len|right-v| (choice-rr u>v)) (len-≡ len|right-v|≡len|right-u| (choice-rr v>u)) = >-asym u>v v>u
 >-asym { l + r ` loc } { LeftU u } { RightU v }  (len-≡ len|left-u|≡len|right-v| (choice-lr len|u|≥len|v| )) (len-≡ len|right-v|≡len|left-u| (choice-rl len|v|>len|u|)) = <-irrefl (sym len|right-v|≡len|left-u|) len|v|>len|u|    -- this case is not needed after the cleanup
 >-asym { l + r ` loc } { RightU u } { LeftU v }  (len-≡ len|right-u|≡len|left-v| (choice-rl len|u|>len|v| )) (len-≡ len|left-v|≡len|right-u| (choice-lr len|v|≥len|u|)) = <-irrefl (sym len|right-u|≡len|left-v|) len|u|>len|v| -- this case is not needed after the cleanup
->-asym { l ● r ` loc } 
+>-asym { l ● r ` loc } { PairU u₁ u₂ } { PairU v₁ v₂ } (len-≡ len|pairu₁u₂|≡len|pairv₁v₂| (seq₁ u₁>v₁))  (len-≡ len|pairv₁v₂|≡len|pairu₁u₂| (seq₁ v₁>u₁)) = >-asym u₁>v₁ v₁>u₁
+>-asym { l ● r ` loc } { PairU u₁ u₂ } { PairU v₁ v₂ } (len-≡ len|pairu₁u₂|≡len|pairv₁v₂| (seq₁ u₁>v₁))  (len-≡ len|pairv₁v₂|≡len|pairu₁u₂| (seq₂ v₁≡u₁ v₂>u₂)) = >→¬≡ u₁>v₁ (sym v₁≡u₁)
+>-asym { l ● r ` loc } { PairU u₁ u₂ } { PairU v₁ v₂ } (len-≡ len|pairu₁u₂|≡len|pairv₁v₂| (seq₂ u₁≡v₁ u₂>v₂))  (len-≡ len|pairv₁v₂|≡len|pairu₁u₂| (seq₁ v₁>u₁)) =  >→¬≡ v₁>u₁ (sym u₁≡v₁)
+>-asym { l ● r ` loc } { PairU u₁ u₂ } { PairU v₁ v₂ } (len-≡ len|pairu₁u₂|≡len|pairv₁v₂| (seq₂ u₁≡v₁ u₂>v₂))  (len-≡ len|pairv₁v₂|≡len|pairu₁u₂| (seq₂ v₁≡u₁ v₂>u₂)) =  >-asym u₂>v₂ v₂>u₂
+
+>-asym { r * ε∉r ` loc } { ListU (u ∷ us) } { ListU (v ∷ vs) } (len-≡ len|listuus|≡len|listvvs| (star-head u>v))  (len-≡ len|listvvs|≡len|listuus| (star-head v>u)) = >-asym u>v v>u
+>-asym { r * ε∉r ` loc } { ListU (u ∷ us) } { ListU (v ∷ vs) } (len-≡ len|listuus|≡len|listvvs| (star-head u>v))  (len-≡ len|listvvs|≡len|listuus| (star-tail v≡u vs>us)) = >→¬≡ u>v (sym v≡u)
+>-asym { r * ε∉r ` loc } { ListU (u ∷ us) } { ListU (v ∷ vs) } (len-≡ len|listuus|≡len|listvvs| (star-tail u≡v us>vs))  (len-≡ len|listvvs|≡len|listuus| (star-head v>u)) =  >→¬≡ v>u (sym u≡v)
+>-asym { r * ε∉r ` loc } { ListU (u ∷ us) } { ListU (v ∷ vs) } (len-≡ len|listuus|≡len|listvvs| (star-tail u≡v us>vs))  (len-≡ len|listvvs|≡len|listuus| (star-tail v≡u vs>us)) =  >-asym us>vs vs>us 
 ```
 
 Trichotomy should follows from asymmetricity

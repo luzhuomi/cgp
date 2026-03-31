@@ -1536,8 +1536,8 @@ in-≡→pd-≡ {$ c ` loc} {ε} {c'}  {in₁} {in₂} {s-ev₁} {s-ev₂} u→i
       begin
         pdinstance in₁ s-ev₁
       ≡⟨ cong (λ x → (pdinstance x s-ev₁) ) in₁≡in₂ ⟩
-        pdinstance in₂ s-ev₁
-      ≡⟨⟩ 
+   --     pdinstance in₂ s-ev₁
+   --   ≡⟨⟩ 
         pdinstance in₂ s-ev₂        
       ∎
       where

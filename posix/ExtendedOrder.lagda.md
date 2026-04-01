@@ -1598,9 +1598,9 @@ ex>-anti  {r} {p} {c}
                 a
               / | \ 
              a' b  x
-           /  ×   ×  \ 
-          b'    x'   y 
-            \   |  /
+            | ×   × | 
+            b'  x'  y 
+             \  |  /
                 y' 
 -}
 data Ex>-semilattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
@@ -1612,7 +1612,11 @@ data Ex>-semilattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c
   ex-join : ∀ { r : RE } { c : Char }
     → ( pdi : PDInstance r c )
     → ( pdis : List (PDInstance r c ) )
-    → ( Ex>-semilattice {r} {c} pdis )
+    -- → ( Ex>-semilattice {r} {c} pdis ) -- no we don't have this.
+    -- to make the data inductive, we need to define two kinds of lattice combination above
+    -- 1) linear-sum == append  (two sub lists can be of diffrent lengths, but in our case, the should be same.)
+    --   for linear sum == the first sub lattice's meet > the 2nd sub lattice's join. 
+    -- 2) prod == oplus  (two sub lists must have the same length.)
     →  All ( λ x → r , c ⊢ pdi > x ) pdis 
     -----------------------------------------
     → Ex>-semilattice {r} {c} ( pdi ∷ pdis) 
@@ -1633,20 +1637,27 @@ map-left-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char }
 map-left-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
 map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {l} {c} .(pdi) .(pdis) semi-pdis all-pdi>pdis) = ex-join (pdinstance-left pdi) (List.map pdinstance-left pdis) (map-left-ex-semilattice pdis semi-pdis)  (map-left-all-ex-> pdi pdis all-pdi>pdis) 
 
-{-
+
+map-right-all-ex-> : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance r c )
+  → ( pdis : List (PDInstance r c ) )
+  → All ( λ x → r , c ⊢ pdi > x ) pdis
+  --------------------------------------
+  → All ( λ x → (l + r ` loc) , c ⊢ pdinstance-right {l} {r} {loc} pdi > x ) (List.map pdinstance-right pdis)
+map-right-all-ex-> pdi [] [] = []
+map-right-all-ex-> pdi (p ∷ ps) (pdi>p ∷ all-pdi>ps) = right-ex-sorted pdi p pdi>p ∷ (map-right-all-ex-> pdi ps all-pdi>ps)
+
 map-right-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
   → Ex>-semilattice {r} {c} pdis
   → Ex>-semilattice {l + r ` loc } {c} (List.map pdinstance-right pdis)
 map-right-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
-map-right-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ [] )        (ex-singleton .(pdi) )                              = ex-singleton (pdinstance-right pdi)
-map-right-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ (pdi' ∷ [] ) )    (ex-join {r} {c} .(pdi) .(pdi') []       semi-pdi'∷[]  pdi>pdi') = ex-join (pdinstance-right pdi) (pdinstance-right pdi') [] (map-right-ex-semilattice (pdi' ∷ []) semi-pdi'∷[]) (right-ex-sorted pdi pdi' pdi>pdi')
-map-right-ex-semilattice {l} {R} {loc} {c} ( pdi ∷ (pdi' ∷ pdis' ))  (ex-join {r} {c} .(pdi) .(pdi') .(pdis') semi-pdi'∷pdis' pdi>pdi') = ex-join (pdinstance-right pdi) (pdinstance-right pdi') (List.map pdinstance-right pdis') (map-right-ex-semilattice (pdi' ∷ pdis') semi-pdi'∷pdis') (right-ex-sorted pdi pdi' pdi>pdi') 
+map-right-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) semi-pdis all-pdi>pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis) (map-right-ex-semilattice pdis semi-pdis)  (map-right-all-ex-> pdi pdis all-pdi>pdis) 
 
 
 -- concatenation of two ex lub bounded lists of pdis are lub bounded
 -- if the lub of the first list exists then it is > than the 2nd list's lub if it exists
-
+{-
 concat-ex-semilattice : ∀ { r : RE } { c }
     → ( pdis₁ : List ( PDInstance r c ))
     → ( pdis₂ : List ( PDInstance r c ))
@@ -1657,11 +1668,8 @@ concat-ex-semilattice : ∀ { r : RE } { c }
     → Ex>-semilattice { r } {c } (pdis₁ ++ pdis₂)
 concat-ex-semilattice []           pdis₂ ex-empty      ex-semi-pdis₂ _  =  ex-semi-pdis₂
 concat-ex-semilattice pdis₁        []    ex-semi-pdis₁ ex-empty _ rewrite (++-identityʳ pdis₁) = ex-semi-pdis₁
-concat-ex-semilattice (pdi₁ ∷ [] )   (pdi₂ ∷ pdis₂)           (ex-singleton .(pdi₁))  ex-semi-pdi₂pdis₂  (ex>-just₂  pdi₁>pdi₂)      = ex-join pdi₁ pdi₂ pdis₂ ex-semi-pdi₂pdis₂  pdi₁>pdi₂
-concat-ex-semilattice (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂)   (ex-join .(pdi₁) .(pdi₁') pdis₁ semi-pdis₁ pdi₁>pdi₁')  ex-semi-pdi₂pdis₂  (ex>-just₂ pdi₁>pdi₂) = ex-join pdi₁ pdi₁' (pdis₁ ++ pdi₂ ∷ pdis₂)
-                                                                                                                                                                              (concat-ex-semilattice (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) semi-pdis₁
-                                                                                                                                                                               ex-semi-pdi₂pdis₂ {!!} )
-                                                                                                                                                                              pdi₁>pdi₁' 
+concat-ex-semilattice (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂)   (ex-join .(pdi₁) (.(pdi₁') ∷ .(pdis₁)) (ex-join semi-pdis₁ all-pdi₁>pdis₁)  ex-semi-pdi₂pdis₂  (ex>-just₂ pdi₁>pdi₂) = ex-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)
+                                                                                                                                                                              (concat-ex-semilattice pdis₁ (pdi₂ ∷ pdis₂) semi-pdis₁ ex-semi-pdi₂pdis₂ {!!}) {!!} 
 -} 
 
 {-

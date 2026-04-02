@@ -1479,6 +1479,7 @@ ex≥-trans {r} {p} {c}
             ... | inj₂ in₁v₁≡in₂v₁ rewrite  in₁v₁≡in₂v₁ = v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v₁ v₃ v₁>v₃ 
 
 
+{-
 -- irrefl
 ex≥→¬≡ : ∀ { r p : RE } { c : Char } { pd₁ pd₂ : PDInstance r c  }
   { i₁ : Inhabit {r} {c} p pd₁ } 
@@ -1491,7 +1492,7 @@ ex≥→¬≡ {r} {p} {c}
        {hide .(in₁) .(s-ev₁)}
        {hide .(in₂) .(s-ev₂)}
        (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂⊎in₁v≡in₂v ) pd₁≡pd₂ rewrite pd₁≡pd₂ = {!!}  -- can't get a contradiction
-
+-} 
 -- if irrefl does not hold 
 -- maybe > is ≥ ?
 
@@ -1606,23 +1607,22 @@ ex≥-anti  {r} {p} {c}
              \  |  /
                 y' 
 -}
-data Ex≥-semilattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
-  ex-empty : ∀ { r : RE } { c : Char } → Ex≥-semilattice {r} {c} []
-  -- shouldn't this be just two cases?
-  -- we also need _,_ ⊢ _≥_ to be transitive 
-  -- ex-join : pdi ≥ all pdis
-  -- ex-singleton : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r  c ) → Ex≥-semilattice {r} {c} ( pdi  ∷ [])
-  ex-join : ∀ { r : RE } { c : Char }
-    → ( pdi : PDInstance r c )
+data Ex≥-lattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
+  ex-empty : ∀ { r : RE } { c : Char } → Ex≥-lattice {r} {c} []
+  ex-singleton : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r  c ) → Ex≥-lattice {r} {c} ( pdi  ∷ [])
+  ex-topbot : ∀ { r : RE } { c : Char }
+    → ( top : PDInstance r c )
     → ( pdis : List (PDInstance r c ) )
+    → ( bot : PDInstance r c )
     -- → ( Ex≥-semilattice {r} {c} pdis ) -- no we don't have this.
     -- to make the data inductive, we need to define two kinds of lattice combination above
     -- 1) linear-sum == append  (two sub lists can be of diffrent lengths, but in our case, the should be same.)
     --   for linear sum == the first sub lattice's meet ≥ the 2nd sub lattice's join. 
     -- 2) prod == oplus  (two sub lists must have the same length.)
-    →  All ( λ x → r , c ⊢ pdi ≥ x ) pdis 
+    →  All ( λ x → r , c ⊢ top ≥ x ) (top ∷ pdis ∷ʳ bot)  -- top is the join
+    →  All ( λ x → r , c ⊢ x ≥ bot ) (top ∷ pdis ∷ʳ bot)  -- bot is the meet
     -----------------------------------------
-    → Ex≥-semilattice {r} {c} ( pdi ∷ pdis) 
+    → Ex≥-lattice {r} {c} (top ∷ pdis ∷ʳ bot)
 
 map-left-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
@@ -1633,13 +1633,14 @@ map-left-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
 map-left-all-ex-≥ pdi [] [] = []
 map-left-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = left-ex-sorted pdi p pdi≥p ∷ (map-left-all-ex-≥ pdi ps all-pdi≥ps)
 
+{-
 map-left-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance l c ) )
   → Ex≥-semilattice {l} {c} pdis
   → Ex≥-semilattice {l + r ` loc } {c} (List.map pdinstance-left pdis)
 map-left-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
 map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {l} {c} .(pdi) .(pdis) semi-pdis all-pdi≥pdis) = ex-join (pdinstance-left pdi) (List.map pdinstance-left pdis) (map-left-ex-semilattice pdis semi-pdis)  (map-left-all-ex-≥ pdi pdis all-pdi≥pdis) 
-
+-}
 
 map-right-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
@@ -1650,13 +1651,14 @@ map-right-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
 map-right-all-ex-≥ pdi [] [] = []
 map-right-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = right-ex-sorted pdi p pdi≥p ∷ (map-right-all-ex-≥ pdi ps all-pdi≥ps)
 
+{-
 map-right-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
   → Ex≥-semilattice {r} {c} pdis
   → Ex≥-semilattice {l + r ` loc } {c} (List.map pdinstance-right pdis)
 map-right-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
 map-right-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) semi-pdis all-pdi≥pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis) (map-right-ex-semilattice pdis semi-pdis)  (map-right-all-ex-≥ pdi pdis all-pdi≥pdis) 
-
+-} 
 
 -- concatenation of two ex lub bounded lists of pdis are lub bounded
 -- if the lub of the first list exists then it is ≥ than the 2nd list's lub if it exists

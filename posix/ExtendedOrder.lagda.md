@@ -1618,8 +1618,10 @@ data Ex≥-semilattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r
     -- → ( Ex≥-semilattice {r} {c} pdis ) -- no we don't have this.
     -- to make the data inductive, we need to define two kinds of lattice combination above
     -- 1) linear-sum == append  (two sub lists can be of diffrent lengths, but in our case, the should be same.)
-    --   for linear sum == the first sub lattice's meet ≥ the 2nd sub lattice's join. 
+    --   for linear sum == the first sub lattice's meet ≥ the 2nd sub lattice's join.
+    --  when do we need linearly sum?
     -- 2) prod == oplus  (two sub lists must have the same length.)
+    -- 
     →  All ( λ x → r , c ⊢ pdi ≥ x ) pdis 
     -----------------------------------------
     → Ex≥-semilattice {r} {c} ( pdi ∷ pdis) 

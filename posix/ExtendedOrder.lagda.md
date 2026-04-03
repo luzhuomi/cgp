@@ -1709,21 +1709,30 @@ map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-
           (pdinstance-right (pdinstance in₂ s-ev₂)))
           (List.map (fuse {l + r ` loc } {loc } (pdinstance-left (pdinstance in₁ s-ev₁)))
             (List.map pdinstance-right [])) []
-map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdi₂' ∷ pdis₂ ) (ex-join .{r} .{c} .(pdi₂) ( .(pdi₂') ∷ .(pdis₂)) (pdi₂>pdi₂' ∷ all-pdi₂>pdis₂) ) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) (>-inc-pdi₂@(>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ∷ >-inc-pdi₂'@(>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ∷ >-inc-pdis₂ ) (homogenous ( .(pdi₂) ∷ .(pdi₂') ∷ .(pdis₂) ) ( .(p₂) , (hide .{p₂} .{r} .{c} in₂ s-ev₂) ∷ hide-p₂-pdi₂' ∷ hide-p₂-pdis₂) )  =
+map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁)
+                                      (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdi₂' ∷ pdis₂ )
+                                      (ex-join .{r} .{c} .(pdi₂) ( .(pdi₂') ∷ .(pdis₂)) (pdi₂>pdi₂' ∷ all-pdi₂>pdis₂) )
+                                      (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ )
+                                      (>-inc-pdi₂@(>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ∷ >-inc-pdi₂' ∷ >-inc-pdis₂ )
+                                      (homogenous ( .(pdi₂) ∷ .(pdi₂') ∷ .(pdis₂) ) ( .(p₂) , (hide .{p₂} .{r} .{c} in₂ s-ev₂) ∷ hide-p₂-pdi₂' ∷ hide-p₂-pdis₂) )  =
   ex-join
     (fuse (pdinstance-left (pdinstance in₁ s-ev₁))
           (pdinstance-right (pdinstance in₂ s-ev₂)))
           (List.map (fuse (pdinstance-left (pdinstance in₁ s-ev₁))) (List.map pdinstance-right (pdi₂' ∷ pdis₂))) (prf (pdi₂' ∷ pdis₂)
-                                                                                                                   (hide-p₂-pdi₂' ∷ hide-p₂-pdis₂))
+                                                                                                                      (hide-p₂-pdi₂' ∷ hide-p₂-pdis₂) (>-inc-pdi₂' ∷ >-inc-pdis₂)  (pdi₂>pdi₂' ∷ all-pdi₂>pdis₂) )
   where
     prf : ( qdis : List ( PDInstance r c ) )
          → All (Inhabit {r} {c} p₂) qdis
+         → All >-Inc qdis 
+         → All (λ qdi → r , c ⊢ (pdinstance in₂ s-ev₂) ≥ qdi ) qdis
          → All (λ qdi → ( l + r ` loc ) , c ⊢ (fuse {l + r ` loc } {loc} (pdinstance-left (pdinstance in₁ s-ev₁))
-                                                 (pdinstance-right (pdinstance in₂ s-ev₂))) ≥ qdi )
+                                                                         (pdinstance-right (pdinstance in₂ s-ev₂))) ≥ qdi )
               (List.map (fuse { l + r ` loc } {loc}  (pdinstance-left (pdinstance in₁ s-ev₁)))
                                                       (List.map pdinstance-right qdis))
-    prf [] [] = []
-    prf ( qdi@(pdinstance in₂' s-ev₂') ∷ qdis) ((hide {p₂} .{r} .{c} .(in₂') .(s-ev₂')) ∷ hide-p₂-qdis) =  {!!} ∷ prf qdis hide-p₂-qdis
+    prf [] [] [] [] = []
+    prf ( qdi@(pdinstance in₂' s-ev₂') ∷ qdis)  ((hide {p₂} .{r} .{c} .(in₂') .(s-ev₂')) ∷ hide-p₂-qdis)
+        ( (>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂)  ∷ >-inc-qdis )
+        ( (≥-pdi .(in₂) .(s-ev₂) .(in₂') .(s-ev₂') v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ v→in₂v≥in₂'v ) ∷ all-pdi₂≥qdis) =  sub ∷ prf qdis hide-p₂-qdis >-inc-qdis  all-pdi₂≥qdis 
       where
       sub : (l + r ` loc) , c ⊢
         fuse {l + r ` loc}  {loc} {c} (pdinstance-left (pdinstance in₁ s-ev₁)) (pdinstance-right (pdinstance in₂ s-ev₂))  ≥
@@ -1770,7 +1779,6 @@ map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-
           prf₂ v@(LeftU u) = inj₂ refl 
 
 
-
           prf₁ : (v₁ v₂ : U (p₁ + p₂ ` loc))
             → (p₁ + p₂ ` loc) ⊢ v₁ > v₂
             → (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
@@ -1815,7 +1823,7 @@ map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-
               inject₁left-u₁≥inject₂left-u₁ = prf₂ (LeftU u₁)
               >-inc-fuse-in₁-in₂' : >-Inc (pdinstance {p₁ + p₂ ` loc} {l + r ` loc } {c} inject₂ sound-ev₂)
               >-inc-fuse-in₁-in₂' = 
-                PosixOrder.>-inc-fuse-left-right pdi₁ pdi₂' (PosixOrder.>-inc-left {l} {r} {loc} {c} (pdinstance in₁ s-ev₁) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)) (PosixOrder.>-inc-right {l} {r} {loc} {c} (pdinstance in₂' s-ev₂') (>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ) 
+                PosixOrder.>-inc-fuse-left-right pdi₁ qdi (PosixOrder.>-inc-left {l} {r} {loc} {c} (pdinstance in₁ s-ev₁) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)) (PosixOrder.>-inc-right {l} {r} {loc} {c} (pdinstance in₂' s-ev₂') (>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ) 
               inject₂left-u₁>inject₂right-u₂ : l + r ` loc  ⊢ inject₂ (LeftU u₁) > inject₂ (RightU u₂)
               inject₂left-u₁>inject₂right-u₂ with >-inc-fuse-in₁-in₂'
               ... | >-inc v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂  = v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) 
@@ -1824,18 +1832,8 @@ map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-
               ... | inj₂ inject₁-left-u₁≡inject₂left-u₁ rewrite inject₁-left-u₁≡inject₂left-u₁ =  inject₂left-u₁>inject₂right-u₂
               ... | inj₁ inject₁-left-u₁>inject₂left-u₁ = >-trans inject₁-left-u₁>inject₂left-u₁ inject₂left-u₁>inject₂right-u₂
 
-          prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )      
-{-
-Goal: All
-      (_,_⊢_≥_ (l + r ` loc) c
-       (pdinstance
-        (cgp.posix.PartialDerivative.inj (λ u → LeftU (in₁ u)) s-ev₁
-         (λ v → RightU (in₂ v)) s-ev₂)
-        (cgp.posix.PartialDerivative.sound-ev (λ u → LeftU (in₁ u)) s-ev₁
-         (λ v → RightU (in₂ v)) s-ev₂)))
-      (List.map (fuse (pdinstance (λ u → LeftU (in₁ u)) s-ev₁))
-       (List.map pdinstance-right pdis₂))
--}
+          prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
+
    {-            
 map-fuse-+-semilattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁)  
                                           (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdi₂'@(pdinstance {p₂} .{r} .{c} in₂' s-ev₂') ∷  pdis₂)

@@ -998,3 +998,40 @@ Proposition
 We want to show that pds = pdU[ r , c ] forms a complete lattice with the left most injection function is the meet, the right most is the join. 
 
 
+buildU ( p , inj ) = if ε∈p then map inj (mkAllEmptyU ε∈p) 
+                     else [] 
+
+
+parseAllU r [a] = concatMap buildU pdU[ r . a ] 
+                = concatMap buildU [ ( ε + ε ,  inj₁ )  , ( ε + ε,  inj₂ ) , ( ε + ε , inj₃ ) , ( ε + ε.  inj₄)  ]  -- (1) 
+
+  since mkAllEmptyU (ε + ε) = [ Left Empty , Right Empty ] 
+
+            (1) = (map inj₁ [ Left Empty , Right Empty ] ) ++ 
+			      (map inj₂ [ Left Empty , Right Empty ] ) ++ 
+			      (map inj₃ [ Left Empty , Right Empty ] ) ++ 
+			      (map  inj₄ [ Left Empty , Right Empty ] ) 
+	            = [ Left (Left Empty , Letter a )  -- (same; top)
+				  , Right (Left Empty , Letter a ) 
+				  , Left (Left Empty, Letter a )   -- (same; top)
+				  , Right (Right Empty, Letter a ) 
+				  , Left (Right Empty, Letter a ) 
+				  , Right (Left Empty, Letter a )
+				  , Left (Right Empty, Letter a )
+				  , Right (Right Empty, Letter a ) ]
+
+what about ?
+parseAllU r [a] = app buildU pdU[ r . a ] 
+                = concatMap ( \e -> map (\f -> f e ) [  inj₁ , inj₂ , inj₃ , inj₄ ]  ) ( mkAllEmpty ε + ε ) 
+				= [ inj1 (Left Empty) , inj2 (Left Empty) , inj3 (Left Empty), inj4 (Left Empty)
+				  , inj1 (Right Empty) , inj2 (Right Empty) , inj3 (Right Empty), inj4 (Right Empty) ]
+
+                = [ Left (Left Empty , Letter a )  -- (same; top)
+				  , Left (Left Empty, Letter a )   -- (same; top)
+				  , Left (Right Empty, Letter a ) 
+				  , Left (Right Empty, Letter a )
+				  , Right (Left Empty , Letter a ) 
+				  , Right (Right Empty, Letter a )  -- not sorted
+				  , Right (Left Empty, Letter a )   -- not sorted
+				  , Right (Right Empty, Letter a ) ]
+				 

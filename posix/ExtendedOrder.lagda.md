@@ -1479,6 +1479,7 @@ ex≥-trans {r} {p} {c}
             ... | inj₂ in₁v₁≡in₂v₁ rewrite  in₁v₁≡in₂v₁ = v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v₁ v₃ v₁>v₃ 
 
 
+{-
 -- irrefl
 ex≥→¬≡ : ∀ { r p : RE } { c : Char } { pd₁ pd₂ : PDInstance r c  }
   { i₁ : Inhabit {r} {c} p pd₁ } 
@@ -1491,7 +1492,7 @@ ex≥→¬≡ {r} {p} {c}
        {hide .(in₁) .(s-ev₁)}
        {hide .(in₂) .(s-ev₂)}
        (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂⊎in₁v≡in₂v ) pd₁≡pd₂ rewrite pd₁≡pd₂ = {!!}  -- can't get a contradiction
-
+-} 
 -- if irrefl does not hold 
 -- maybe > is ≥ ?
 
@@ -1606,25 +1607,27 @@ ex≥-anti  {r} {p} {c}
              \  |  /
                 y' 
 -}
-data Ex≥-semilattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
-  ex-empty : ∀ { r : RE } { c : Char } → Ex≥-semilattice {r} {c} []
-  -- shouldn't this be just two cases?
-  -- we also need _,_ ⊢ _≥_ to be transitive 
-  -- ex-join : pdi ≥ all pdis
-  -- ex-singleton : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r  c ) → Ex≥-semilattice {r} {c} ( pdi  ∷ [])
+data Ex≥-lattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
+  ex-empty : ∀ { r : RE } { c : Char } → Ex≥-lattice {r} {c} []
+  -- we don't need singleton 
+  -- ex-singleton : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r  c ) → Ex≥-lattice {r} {c} ( pdi  ∷ [])
   ex-join : ∀ { r : RE } { c : Char }
-    → ( pdi : PDInstance r c )
+    → ( top : PDInstance r c )
     → ( pdis : List (PDInstance r c ) )
+    →  All ( λ x → r , c ⊢ top ≥ x ) pdis   -- top is the join
+    -----------------------------------------
+    → Ex≥-lattice {r} {c} (top ∷ pdis )
+    -- → ( bot : PDInstance r c ) -- don't care about meet for now
     -- → ( Ex≥-semilattice {r} {c} pdis ) -- no we don't have this.
     -- to make the data inductive, we need to define two kinds of lattice combination above
     -- 1) linear-sum == append  (two sub lists can be of diffrent lengths, but in our case, the should be same.)
     --   for linear sum == the first sub lattice's meet ≥ the 2nd sub lattice's join.
     --  when do we need linearly sum?
     -- 2) prod == oplus  (two sub lists must have the same length.)
-    -- 
-    →  All ( λ x → r , c ⊢ pdi ≥ x ) pdis 
+    -- →  All ( λ x → r , c ⊢ top ≥ x ) (top ∷ pdis ∷ʳ bot)  -- top is the join
+    -- →  All ( λ x → r , c ⊢ x ≥ bot ) (top ∷ pdis ∷ʳ bot)  -- bot is the meet
     -----------------------------------------
-    → Ex≥-semilattice {r} {c} ( pdi ∷ pdis) 
+    -- → Ex≥-lattice {r} {c} (top ∷ pdis ∷ʳ bot)
 
 map-left-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
@@ -1637,11 +1640,10 @@ map-left-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = left-ex-sorted p
 
 map-left-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance l c ) )
-  → Ex≥-semilattice {l} {c} pdis
-  → Ex≥-semilattice {l + r ` loc } {c} (List.map pdinstance-left pdis)
+  → Ex≥-lattice {l} {c} pdis
+  → Ex≥-lattice {l + r ` loc } {c} (List.map pdinstance-left pdis)
 map-left-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
-map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {l} {c} .(pdi) .(pdis) semi-pdis all-pdi≥pdis) = ex-join (pdinstance-left pdi) (List.map pdinstance-left pdis) (map-left-ex-semilattice pdis semi-pdis)  (map-left-all-ex-≥ pdi pdis all-pdi≥pdis) 
-
+map-left-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {l} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-left pdi) (List.map pdinstance-left pdis) (map-left-all-ex-≥ pdi pdis all-pdi≥pdis) 
 
 map-right-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
@@ -1652,46 +1654,189 @@ map-right-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
 map-right-all-ex-≥ pdi [] [] = []
 map-right-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = right-ex-sorted pdi p pdi≥p ∷ (map-right-all-ex-≥ pdi ps all-pdi≥ps)
 
-map-right-ex-semilattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
-  → ( pdis : List (PDInstance r c ) )
-  → Ex≥-semilattice {r} {c} pdis
-  → Ex≥-semilattice {l + r ` loc } {c} (List.map pdinstance-right pdis)
-map-right-ex-semilattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
-map-right-ex-semilattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) semi-pdis all-pdi≥pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis) (map-right-ex-semilattice pdis semi-pdis)  (map-right-all-ex-≥ pdi pdis all-pdi≥pdis) 
 
+map-right-ex-lattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
+  → ( pdis : List (PDInstance r c ) )
+  → Ex≥-lattice {r} {c} pdis
+  → Ex≥-lattice {l + r ` loc } {c} (List.map pdinstance-right pdis)
+map-right-ex-lattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
+map-right-ex-lattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis)  (map-right-all-ex-≥ pdi pdis all-pdi≥pdis) 
+
+map-ex≥-trans : ∀ { r p : RE } { c : Char } { pd₁ pd₂ : PDInstance r c  } { pds₃ : List (PDInstance r c) }
+  { i₁ : Inhabit {r} {c} p pd₁ } 
+  { i₂ : Inhabit {r} {c} p pd₂ } 
+  { is₃ : All (Inhabit {r} {c} p) pds₃ }
+  → r , c ⊢ pd₁ ≥ pd₂
+  → All (λ pd₃ →  r , c ⊢ pd₂ ≥ pd₃ ) pds₃ 
+  ----------------------------------------------
+  → All (λ pd₃ →  r , c ⊢ pd₁ ≥ pd₃ ) pds₃ 
+map-ex≥-trans {r} {p} {c} {pd₁} {pd₂} {[]} {i₁} {i₂} {[]} pd₁≥pd₂ [] = []   
+map-ex≥-trans {r} {p} {c} {pd₁} {pd₂} {(pd₃ ∷ pds₃)} {i₁} {i₂} {(i₃ ∷ is₃)} pd₁≥pd₂ (pd₂≥pd₃ ∷ all-pd₂≥pds₃) =
+  ex≥-trans {r} {p} {c} {pd₁} {pd₂} {pd₃} {i₁} {i₂} {i₃} pd₁≥pd₂ pd₂≥pd₃ ∷ map-ex≥-trans  {r} {p} {c} {pd₁} {pd₂} {pds₃} {i₁} {i₂} {is₃} pd₁≥pd₂ all-pd₂≥pds₃ 
 
 -- concatenation of two ex lub bounded lists of pdis are lub bounded
 -- if the lub of the first list exists then it is ≥ than the 2nd list's lub if it exists
-{-
-concat-ex-semilattice : ∀ { r : RE } { c }
+concat-ex-lattice : ∀ { r p : RE } { c }
     → ( pdis₁ : List ( PDInstance r c ))
     → ( pdis₂ : List ( PDInstance r c ))
-    → Ex≥-semilattice { r } { c } pdis₁
-    → Ex≥-semilattice { r } { c } pdis₂
+    → Ex≥-lattice { r } { c } pdis₁
+    → Ex≥-lattice { r } { c } pdis₂
+    → All (Inhabit {r} {c} p) pdis₁
+    → All (Inhabit {r} {c} p) pdis₂    
     → Ex≥-maybe₂ {r} {c} (head pdis₁) (head pdis₂)
     -------------------------------------------------------
-    → Ex≥-semilattice { r } {c } (pdis₁ ++ pdis₂)
-concat-ex-semilattice []           pdis₂ ex-empty      ex-semi-pdis₂ _  =  ex-semi-pdis₂
-concat-ex-semilattice pdis₁        []    ex-semi-pdis₁ ex-empty _ rewrite (++-identityʳ pdis₁) = ex-semi-pdis₁
-concat-ex-semilattice (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂)   (ex-join .(pdi₁) (.(pdi₁') ∷ .(pdis₁)) (ex-join semi-pdis₁ all-pdi₁≥pdis₁)  ex-semi-pdi₂pdis₂  (ex≥-just₂ pdi₁≥pdi₂) = ex-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)
-                                                                                                                                                                              (concat-ex-semilattice pdis₁ (pdi₂ ∷ pdis₂) semi-pdis₁ ex-semi-pdi₂pdis₂ {!!}) {!!} 
--} 
+    → Ex≥-lattice { r } {c } (pdis₁ ++ pdis₂)
+concat-ex-lattice []           pdis₂ ex-empty      ex-semi-pdis₂ _ _ _  =  ex-semi-pdis₂
+concat-ex-lattice pdis₁        []    ex-semi-pdis₁ ex-empty _ _ _ rewrite (++-identityʳ pdis₁) = ex-semi-pdis₁
+concat-ex-lattice {r} {p} {c} (pdi₁ ∷ pdis₁)  (pdi₂ ∷ pdis₂)  (ex-join .(pdi₁) .(pdis₁) all-pdi₁≥pdis₁ ) (ex-join .(pdi₂) .(pdis₂) all-pdi₂≥pdis₂ ) (i₁ ∷ is₁) (i₂ ∷ is₂) (ex≥-just₂ pdi₁≥pdi₂) 
+  = ex-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)
+    (all-concat all-pdi₁≥pdis₁ (pdi₁≥pdi₂ ∷ map-ex≥-trans {r} {p} {c} {pdi₁} {pdi₂} {pdis₂} {i₁} {i₂} {is₂} pdi₁≥pdi₂ all-pdi₂≥pdis₂ ) )  -- we need to apply ex≥-trans to all pdis₂
 
-{-
-map-fuse-+-semilattice :  ∀ { l r : RE } {loc : ℕ } { c : Char }
+
+map-fuse-+-lattice :  ∀ { l r : RE } {loc : ℕ } { c : Char }
   → ( pdi₁ : PDInstance l c )
   → ( pdis₂ : List (PDInstance r c ))
-  → Ex≥-semilattice { r } {c}  pdis₂
-  → ≥-Inc pdi₁
-  → All ≥-Inc pdis₂ 
+  → Ex≥-lattice { r } {c}  pdis₂
+  → >-Inc pdi₁
+  → All >-Inc pdis₂ 
   → Homogenous pdis₂
   ------------------------------------------------------------
-  → Ex≥-semilattice { l + r ` loc } (List.map (fuse {l + r ` loc} {loc} {c} (pdinstance-left pdi₁)) (List.map pdinstance-right pdis₂))
-map-fuse-+-semilattice {l} {r} {loc} {c}  pdi₁ [] ex-empty _ _ _ = ex-empty
-map-fuse-+-semilattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ [] ) (ex-singleton .(pdi₂)) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) (>-inc-pdi₂@(>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ∷ []) homo-pdi₂∷[] =
-  ex-singleton
+  → Ex≥-lattice { l + r ` loc } (List.map (fuse {l + r ` loc} {loc} {c} (pdinstance-left pdi₁)) (List.map pdinstance-right pdis₂))
+map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁ [] ex-empty _ _ _ = ex-empty 
+map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ [] ) (ex-join .{r} .{c} .(pdi₂) [] [] ) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) (>-inc-pdi₂@(>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ∷ []) homo-pdi₂∷[] =
+  ex-join
     (fuse (pdinstance-left (pdinstance in₁ s-ev₁))
           (pdinstance-right (pdinstance in₂ s-ev₂)))
+          (List.map (fuse {l + r ` loc } {loc } (pdinstance-left (pdinstance in₁ s-ev₁)))
+            (List.map pdinstance-right [])) []
+map-fuse-+-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdi₂' ∷ pdis₂ ) (ex-join .{r} .{c} .(pdi₂) ( .(pdi₂') ∷ .(pdis₂)) (pdi₂>pdi₂' ∷ all-pdi₂>pdis₂) ) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) (>-inc-pdi₂@(>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ∷ >-inc-pdi₂'@(>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ∷ >-inc-pdis₂ ) (homogenous ( .(pdi₂) ∷ .(pdi₂') ∷ .(pdis₂) ) ( .(p₂) , (hide .{p₂} .{r} .{c} in₂ s-ev₂) ∷ hide-p₂-pdi₂' ∷ hide-p₂-pdis₂) )  =
+  ex-join
+    (fuse (pdinstance-left (pdinstance in₁ s-ev₁))
+          (pdinstance-right (pdinstance in₂ s-ev₂)))
+          (List.map (fuse (pdinstance-left (pdinstance in₁ s-ev₁))) (List.map pdinstance-right (pdi₂' ∷ pdis₂))) (prf (pdi₂' ∷ pdis₂)
+                                                                                                                   (hide-p₂-pdi₂' ∷ hide-p₂-pdis₂))
+  where
+    prf : ( qdis : List ( PDInstance r c ) )
+         → All (Inhabit {r} {c} p₂) qdis
+         → All (λ qdi → ( l + r ` loc ) , c ⊢ (fuse {l + r ` loc } {loc} (pdinstance-left (pdinstance in₁ s-ev₁))
+                                                 (pdinstance-right (pdinstance in₂ s-ev₂))) ≥ qdi )
+              (List.map (fuse { l + r ` loc } {loc}  (pdinstance-left (pdinstance in₁ s-ev₁)))
+                                                      (List.map pdinstance-right qdis))
+    prf [] [] = []
+    prf ( qdi@(pdinstance in₂' s-ev₂') ∷ qdis) ((hide {p₂} .{r} .{c} .(in₂') .(s-ev₂')) ∷ hide-p₂-qdis) =  {!!} ∷ prf qdis hide-p₂-qdis
+      where
+      sub : (l + r ` loc) , c ⊢
+        fuse {l + r ` loc}  {loc} {c} (pdinstance-left (pdinstance in₁ s-ev₁)) (pdinstance-right (pdinstance in₂ s-ev₂))  ≥
+        fuse {l + r ` loc}  {loc} {c} (pdinstance-left (pdinstance in₁ s-ev₁)) (pdinstance-right (pdinstance in₂' s-ev₂'))
+      sub = (≥-pdi inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂)
+        where 
+          inject₁ : U (p₁ + p₂ ` loc) → U ( l + r  ` loc )
+          inject₁ = mkfuseInj (LeftU ∘ in₁) (RightU ∘ in₂)
+          inject₂ : U (p₁ + p₂ ` loc) → U ( l + r  ` loc )
+          inject₂ = mkfuseInj (LeftU ∘ in₁) (RightU ∘ in₂')
+
+          sound-ev₁ : ( u :  U (p₁ + p₂ ` loc) )  → proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u )
+          sound-ev₁ = mkfuseInjSoundEv {p₁} {p₂} {l + r ` loc} {loc} {c}  (LeftU ∘ in₁) (RightU ∘ in₂) s-ev₁ s-ev₂ 
+          sound-ev₂ : ( u :  U (p₁ + p₂ ` loc) )  → proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u )
+          sound-ev₂ = mkfuseInjSoundEv {p₁} {p₂} {l + r ` loc} {loc} {c}  (LeftU ∘ in₁) (RightU ∘ in₂') s-ev₁ s-ev₂'
+
+          len-|in₁-u|≡len-|u|+1 : ( u : U p₁ ) →  length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+          len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+          len-|in₂-u|≡len-|u|+1 : ( u : U p₂ ) →  length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+          len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+          len-|in₂'-u|≡len-|u|+1 : ( u : U p₂ ) →  length (proj₁ (flat (in₂' u))) ≡ suc (length (proj₁ (flat u)))
+          len-|in₂'-u|≡len-|u|+1 u rewrite (s-ev₂' u) = refl 
+
+
+          len-|inject₁-u|≡len-|u|+1 : (u : U (p₁ + p₂ ` loc) ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+          len-|inject₁-u|≡len-|u|+1 u rewrite (sound-ev₁ u) = refl 
+    
+          len-|inject₂-u|≡len-|u|+1 : (u : U (p₁ + p₂ ` loc) ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+          len-|inject₂-u|≡len-|u|+1 u rewrite (sound-ev₂ u) = refl
+
+
+          prf₂ : (v : U (p₁ + p₂ ` loc))
+            →  (l + r ` loc) ⊢ inject₁ v > inject₂ v ⊎ inject₁ v ≡ inject₂ v
+          prf₂ v@(RightU u) with v→in₂v≥in₂'v u
+          ... | inj₁ (len-≡ len|in₂u|≡len|in₂'u| in₂u>ⁱin₂'u) = inj₁ (len-≡ len|in₂u|≡len|in₂'u| (choice-rr (len-≡ len|in₂u|≡len|in₂'u| in₂u>ⁱin₂'u))) 
+          ... | inj₁ (len-> len|in₂u|>len|in₂'u|) =  Nullary.contradiction len|in₂u|>len|in₂'u| (<-irrefl (sym len|in₂u|≡len|in₂'u|)) 
+                                                   --  inj₁ (len-> len|inju|>len|inj'u|) this also works but why? maybe it is an eventual contradiction? 
+              where
+                len|in₂u|≡len|in₂'u| : length (proj₁ (flat (in₂ u))) ≡ length (proj₁ (flat (in₂' u)))
+                len|in₂u|≡len|in₂'u| rewrite len-|in₂-u|≡len-|u|+1 u |  len-|in₂'-u|≡len-|u|+1 u = refl                     
+          ... | inj₂ inju≡in₂'u = inj₂ (cong RightU inju≡in₂'u ) 
+          prf₂ v@(LeftU u) = inj₂ refl 
+
+
+
+          prf₁ : (v₁ v₂ : U (p₁ + p₂ ` loc))
+            → (p₁ + p₂ ` loc) ⊢ v₁ > v₂
+            → (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+          prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂|
+            where
+              len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+              len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+          prf₁ v₁@(LeftU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-ll u₁>u₂)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| inject₁leftu₁>inject₂leftu₂
+            where 
+              len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
+              len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl
+              inject₁leftu₁≡leftin₁u₁ : inject₁ (LeftU u₁) ≡ LeftU (in₁ u₁)
+              inject₁leftu₁≡leftin₁u₁ = refl 
+              inject₂leftu₂≡leftin₁u₂ : inject₂ (LeftU u₂) ≡ LeftU (in₁ u₂)
+              inject₂leftu₂≡leftin₁u₂ = refl 
+              inject₁leftu₁>inject₂leftu₂ : l + r ` loc  ⊢ inject₁ (LeftU u₁) >ⁱ inject₂ (LeftU u₂)
+              inject₁leftu₁>inject₂leftu₂ rewrite inject₁leftu₁≡leftin₁u₁ | inject₂leftu₂≡leftin₁u₂  = choice-ll  (v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ u₁ u₂ u₁>u₂)  
+        
+
+          prf₁ v₁@(RightU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rr u₁>u₂)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| inject₁rightu₁>inject₂rightu₂
+            where 
+              len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
+              len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl
+            
+              inject₁rightu₁≡rightinju₁ : inject₁ (RightU u₁) ≡ RightU (in₂ u₁)
+              inject₁rightu₁≡rightinju₁ = refl 
+              inject₂rightu₂≡rightinj'u₂ : inject₂ (RightU u₂) ≡ RightU (in₂' u₂)
+              inject₂rightu₂≡rightinj'u₂ = refl 
+              inject₁rightu₁>inject₂rightu₂ : l + r ` loc  ⊢ inject₁ (RightU u₁) >ⁱ inject₂ (RightU u₂)
+              inject₁rightu₁>inject₂rightu₂ rewrite inject₁rightu₁≡rightinju₁ | inject₂rightu₂≡rightinj'u₂  = choice-rr  (v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ u₁ u₂ u₁>u₂) 
+
+
+          prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) =  inject₁left-u₁>inject₂right-u₂
+            -- from prf₂ we have inject₁ (LeftU u₁) ≥ inject₂ (LeftU u₁)
+
+            -- from >-inc pdi₂, we have inject₂ (LeftU u₁) > inject₂ (RightU u₂), because p₁ + p₂  ⊢  (LeftU u₁) >  (RightU u₂)
+            -- from transitivity inject₁ (LeftU u₁) > inject₂ (RightU u₂)
+            where
+              len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
+              len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl
+              inject₁left-u₁≥inject₂left-u₁ : l + r ` loc   ⊢ inject₁ (LeftU u₁) > inject₂ (LeftU u₁) ⊎ inject₁ (LeftU u₁) ≡ inject₂ (LeftU u₁)
+              inject₁left-u₁≥inject₂left-u₁ = prf₂ (LeftU u₁)
+              >-inc-fuse-in₁-in₂' : >-Inc (pdinstance {p₁ + p₂ ` loc} {l + r ` loc } {c} inject₂ sound-ev₂)
+              >-inc-fuse-in₁-in₂' = 
+                PosixOrder.>-inc-fuse-left-right pdi₁ pdi₂' (PosixOrder.>-inc-left {l} {r} {loc} {c} (pdinstance in₁ s-ev₁) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)) (PosixOrder.>-inc-right {l} {r} {loc} {c} (pdinstance in₂' s-ev₂') (>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ) 
+              inject₂left-u₁>inject₂right-u₂ : l + r ` loc  ⊢ inject₂ (LeftU u₁) > inject₂ (RightU u₂)
+              inject₂left-u₁>inject₂right-u₂ with >-inc-fuse-in₁-in₂'
+              ... | >-inc v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂  = v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) 
+              inject₁left-u₁>inject₂right-u₂ : l + r ` loc  ⊢ inject₁ (LeftU u₁) > inject₂ (RightU u₂)
+              inject₁left-u₁>inject₂right-u₂ with  inject₁left-u₁≥inject₂left-u₁
+              ... | inj₂ inject₁-left-u₁≡inject₂left-u₁ rewrite inject₁-left-u₁≡inject₂left-u₁ =  inject₂left-u₁>inject₂right-u₂
+              ... | inj₁ inject₁-left-u₁>inject₂left-u₁ = >-trans inject₁-left-u₁>inject₂left-u₁ inject₂left-u₁>inject₂right-u₂
+
+          prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )      
+{-
+Goal: All
+      (_,_⊢_≥_ (l + r ` loc) c
+       (pdinstance
+        (cgp.posix.PartialDerivative.inj (λ u → LeftU (in₁ u)) s-ev₁
+         (λ v → RightU (in₂ v)) s-ev₂)
+        (cgp.posix.PartialDerivative.sound-ev (λ u → LeftU (in₁ u)) s-ev₁
+         (λ v → RightU (in₂ v)) s-ev₂)))
+      (List.map (fuse (pdinstance (λ u → LeftU (in₁ u)) s-ev₁))
+       (List.map pdinstance-right pdis₂))
+-}
+   {-            
 map-fuse-+-semilattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁)  
                                           (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdi₂'@(pdinstance {p₂} .{r} .{c} in₂' s-ev₂') ∷  pdis₂)
                                           (ex-join .(pdi₂) .(pdi₂') .(pdis₂) semi-pdi₂'∷pdis₂ pdi₂≥pdi₂'@(≥-pdi .(in₂) .(s-ev₂) .(in₂') .(s-ev₂') v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ v→in₂v≥in₂'v ))
@@ -1812,6 +1957,9 @@ map-fuse-+-semilattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in�
             ... | inj₁ inject₁-left-u₁>inject₂left-u₁ = >-trans inject₁-left-u₁>inject₂left-u₁ inject₂left-u₁>inject₂right-u₂
 
         prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
+-}
+
+{-
 
 oplus-+-ex-semilattice : ∀ { l r : RE } {loc : ℕ } { c : Char }
     → ( pdis₁ : List ( PDInstance l c ))

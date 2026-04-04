@@ -1866,20 +1866,17 @@ oplus-+-lattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev
                                                                    (List.map pdinstance-right (pdi₂ ∷ pdis₂)))
                                                                     (List.map pdinstance-left pdis₁))
                                                                     )
-                                                                    (all-concat (sub₁ pdis₂ >-inc-pdis₂ pdi₂≥pdis₂ ) sub₂  )  
+                                                                    (all-concat (sub₁ pdis₂ >-inc-pdis₂ pdi₂≥pdis₂ ) ( sub₂ pdis₁ >-inc-pdis₁ pdi₁≥pdis₁ )  )  
                                          -- oplus-+-ex-semilattice-sub (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂ ) ex-semi-pdi₁∷pdis₁ ex-semi-pdi₂∷pdis₂ (>-inc-pdi₁ ∷ >-inc-pdis₁) (>-inc-pdi₂ ∷ >-inc-pdis₂) (hide in₁ s-ev₁ ∷ hide-p₁-pdis₁) (hide in₂ s-ev₂ ∷ hide-p₂-pdis₂)                                         
   where
-    -- sub₁ :  All  (_,_⊢_≥_ (l + r ` loc) c  (fuse { l + r ` loc} {loc}  (pdinstance-left pdi₁) (pdinstance-right pdi₂))) 
-    --         (List.map (fuse { l + r ` loc} {loc}  (pdinstance-left pdi₁)) (List.map pdinstance-right pdis₂))
-    -- sub₁ = {!!}
     sub₁ : ( qdis : (List (PDInstance r c ) ) )
       → All >-Inc qdis 
       → All (_,_⊢_≥_ r c pdi₂) qdis
       → All  (_,_⊢_≥_ (l + r ` loc) c  (fuse { l + r ` loc} {loc}  (pdinstance-left pdi₁) (pdinstance-right pdi₂))) 
              (List.map (fuse { l + r ` loc} {loc}  (pdinstance-left pdi₁)) (List.map pdinstance-right qdis))
     sub₁ [] [] [] = []
-    sub₁ (qdi@(pdinstance in₂' s-ev₂') ∷ qdis) ((>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂ )  ∷ all->-inc-pdis ) (  (≥-pdi .{r} .{p₂} .{c} .(in₂) .(s-ev₂) .(in₂') .(s-ev₂') v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ v→in₂v≥in₂'v )  ∷ pdi₂≥qds ) =
-       fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁-right-q ∷ sub₁  qdis all->-inc-pdis pdi₂≥qds  
+    sub₁ (qdi@(pdinstance in₂' s-ev₂') ∷ qdis) ((>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂ )  ∷ all->-inc-qdis ) (  (≥-pdi .{r} .{p₂} .{c} .(in₂) .(s-ev₂) .(in₂') .(s-ev₂') v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ v→in₂v≥in₂'v )  ∷ pdi₂≥qdis ) =
+       fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁-right-q ∷ sub₁  qdis all->-inc-qdis pdi₂≥qdis  
       where
         inject : U (p₁ + p₂ ` loc ) → U (l + r ` loc)
         inject = mkfuseInj (LeftU ∘ in₁) (RightU ∘ in₂)
@@ -1971,9 +1968,114 @@ oplus-+-lattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev
 
         fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁-right-q : (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject' soundEv')
         fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁-right-q = ≥-pdi inject soundEv inject' soundEv' prf₁ prf₂
-    sub₂ :  All  (_,_⊢_≥_ (l + r ` loc) c  (fuse { l + r ` loc} {loc}  (pdinstance-left pdi₁) (pdinstance-right pdi₂)))
-            (concatMap (λ pdiˡ₁ → List.map (fuse { l + r ` loc} {loc}  pdiˡ₁)  (List.map pdinstance-right (pdi₂ ∷ pdis₂))) (List.map pdinstance-left pdis₁))
-    sub₂ = {!!}
+    sub₂ :  ( pdis : (List (PDInstance l c ) ) )
+      → All >-Inc pdis 
+      → All (_,_⊢_≥_ l c pdi₁) pdis
+      → All  (_,_⊢_≥_ (l + r ` loc) c  (fuse { l + r ` loc} {loc}  (pdinstance-left pdi₁) (pdinstance-right pdi₂)))
+            (concatMap (λ pdiˡ₁ → List.map (fuse { l + r ` loc} {loc}  pdiˡ₁)  (List.map pdinstance-right (pdi₂ ∷ pdis₂))) (List.map pdinstance-left pdis))
+    sub₂ [] [] [] = []
+    sub₂ (pdi@(pdinstance in₁' s-ev₁') ∷ pdis) ((>-inc v₁→v₂→v₁>v₂→in₁'v₁>in₁'v₂ ) ∷ all->-inc-pdis) (  (≥-pdi .{l} .{p₁} .{c} .(in₁) .(s-ev₁) .(in₁') .(s-ev₁') v₁→v₂→v₁>v₂→in₁v₁>in₁'v₂ v→in₁v≥in₁'v )  ∷ pdi₂≥pdis ) = all-concat ( fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂ ∷ (sub₃ pdis₂ >-inc-pdis₂  pdi₂≥pdis₂) )
+                          -- (sub₃ (pdi₂ ∷ pdis₂) (>-inc-pdi₂ ∷ >-inc-pdis₂) ({!!} ∷ pdi₂≥pdis₂)  )
+                          (sub₂ pdis all->-inc-pdis pdi₂≥pdis)
+      where
+        inject : U (p₁ + p₂ ` loc ) → U (l + r ` loc)
+        inject = mkfuseInj (LeftU ∘ in₁) (RightU ∘ in₂)
+        soundEv : ( u : U (p₁ + p₂ ` loc ) ) → proj₁ (flat (inject u)) ≡ c ∷ (proj₁ (flat u ))
+        soundEv = mkfuseInjSoundEv {p₁}  {p₂} {l + r ` loc} {loc} {c}  (LeftU ∘ in₁) (RightU ∘ in₂) s-ev₁ s-ev₂
+        inject' : U (p₁ + p₂ ` loc ) → U (l + r ` loc)
+        inject' = mkfuseInj (LeftU ∘ in₁') (RightU ∘ in₂)
+        soundEv' : ( u : U (p₁ + p₂ ` loc ) ) → proj₁ (flat (inject' u)) ≡ c ∷ (proj₁ (flat u ))
+        soundEv' = mkfuseInjSoundEv {p₁}  {p₂} {l + r ` loc} {loc} {c}  (LeftU ∘ in₁') (RightU ∘ in₂) s-ev₁' s-ev₂
+
+
+        len-|in₁-u|≡len-|u|+1 : (u : U p₁) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+        len-|in₂-u|≡len-|u|+1 : (u : U p₂) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+        len-|in₁'-u|≡len-|u|+1 : (u : U p₁) → length (proj₁ (flat (in₁' u))) ≡ suc (length (proj₁ (flat u)))
+        len-|in₁'-u|≡len-|u|+1 u rewrite (s-ev₁' u) = refl
+
+
+        len-|inject-u|≡len-|u|+1 : (u : U ( p₁ + p₂ ` loc )) → length (proj₁ (flat (inject u))) ≡ suc (length (proj₁ (flat u)))
+        len-|inject-u|≡len-|u|+1 u rewrite (soundEv u) = refl 
+
+        len-|inject'-u|≡len-|u|+1 : (u : U ( p₁ + p₂ ` loc )) → length (proj₁ (flat (inject' u))) ≡ suc (length (proj₁ (flat u)))
+        len-|inject'-u|≡len-|u|+1 u rewrite (soundEv' u) = refl
+
+        prf₂ : (v : U (p₁ + p₂ ` loc)) →
+                    (l + r ` loc) ⊢ inject v > inject' v ⊎ inject v ≡ inject' v
+        prf₂ (RightU {p₁} {p₂} {loc} u) = inj₂ refl
+        prf₂ (LeftU {p₁} {p₂} {loc} u) with  v→in₁v≥in₁'v u
+        ... | inj₂ in₁u≡in₁'u = inj₂ (cong LeftU in₁u≡in₁'u ) 
+        ... | inj₁ in₁u>in₁'u = inj₁ (len-≡ len-|left-in₁-u|≡len-|left-in₁'-u| (choice-ll in₁u>in₁'u) )
+          where
+            len-|left-in₁-u|≡len-|left-in₁'-u| : length (proj₁ (flat ((LeftU {l} {r} {loc} ∘ in₁) u))) ≡ 
+                                               length (proj₁ (flat ((LeftU {l} {r} {loc} ∘ in₁') u)))
+            len-|left-in₁-u|≡len-|left-in₁'-u| rewrite len-|in₁-u|≡len-|u|+1 u | len-|in₁'-u|≡len-|u|+1 u = refl
+
+      
+        fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂ :  (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject' soundEv')
+        fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂ =  ≥-pdi inject soundEv inject' soundEv' {!!} prf₂  
+        sub₃ : (qdis : (List (PDInstance r c )))
+             → All >-Inc qdis
+             → All (_,_⊢_≥_ r c pdi₂) qdis
+             → All (_,_⊢_≥_ (l + r ` loc) c (fuse {l + r ` loc} {loc}  (pdinstance-left pdi₁) (pdinstance-right pdi₂)))
+                 (List.map (fuse {l + r ` loc} {loc}  (pdinstance-left pdi) ) (List.map pdinstance-right qdis))
+        sub₃ [] [] [] = []
+        sub₃ (qdi@(pdinstance in₂' s-ev₂') ∷ qdis) ((>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂ )  ∷ all->-inc-qdis ) (  (≥-pdi .{r} .{p₂} .{c} .(in₂) .(s-ev₂) .(in₂') .(s-ev₂') v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ v→in₂v≥in₂'v )  ∷ pdi₂≥qdis ) =  fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' ∷ sub₃ qdis all->-inc-qdis pdi₂≥qdis
+          where
+            len-|in₂'-u|≡len-|u|+1 : (u : U p₂) → length (proj₁ (flat (in₂' u))) ≡ suc (length (proj₁ (flat u)))
+            len-|in₂'-u|≡len-|u|+1 u rewrite (s-ev₂' u) = refl
+            
+            inject'' : U (p₁ + p₂ ` loc ) → U (l + r ` loc)
+            inject'' = mkfuseInj (LeftU ∘ in₁') (RightU ∘ in₂')
+            soundEv'' : ( u : U (p₁ + p₂ ` loc ) ) → proj₁ (flat (inject'' u)) ≡ c ∷ (proj₁ (flat u ))
+            soundEv'' = mkfuseInjSoundEv {p₁}  {p₂} {l + r ` loc} {loc} {c}  (LeftU ∘ in₁') (RightU ∘ in₂') s-ev₁' s-ev₂'
+            prf₄ : (v : U (p₁ + p₂ ` loc)) →
+                    (l + r ` loc) ⊢ inject v > inject'' v ⊎ inject v ≡ inject'' v
+                    
+            prf₄ (RightU {p₁} {p₂} {loc} u) with v→in₂v≥in₂'v u 
+            ... | inj₂ in₂u≡in₂'u = inj₂ (cong RightU in₂u≡in₂'u)
+            ... | inj₁ in₂u>in₂'u = inj₁ (len-≡ len-|right-in₁-u|≡len-|right-in₁'-u| (choice-rr in₂u>in₂'u) )
+              where
+                len-|right-in₁-u|≡len-|right-in₁'-u| : length (proj₁ (flat ((RightU {l} {r} {loc} ∘ in₂) u))) ≡ 
+                                               length (proj₁ (flat ((RightU {l} {r} {loc} ∘ in₂') u)))
+                len-|right-in₁-u|≡len-|right-in₁'-u| rewrite len-|in₂-u|≡len-|u|+1 u | len-|in₂'-u|≡len-|u|+1 u = refl
+            prf₄ (LeftU {p₁} {p₂} {loc} u) with  v→in₁v≥in₁'v u
+            ... | inj₂ in₁u≡in₁'u = inj₂ (cong LeftU in₁u≡in₁'u ) 
+            ... | inj₁ in₁u>in₁'u = inj₁ (len-≡ len-|left-in₁-u|≡len-|left-in₁'-u| (choice-ll in₁u>in₁'u) )
+              where
+                len-|left-in₁-u|≡len-|left-in₁'-u| : length (proj₁ (flat ((LeftU {l} {r} {loc} ∘ in₁) u))) ≡ 
+                                               length (proj₁ (flat ((LeftU {l} {r} {loc} ∘ in₁') u)))
+                len-|left-in₁-u|≡len-|left-in₁'-u| rewrite len-|in₁-u|≡len-|u|+1 u | len-|in₁'-u|≡len-|u|+1 u = refl
+
+
+
+            fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' :  (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject'' soundEv'')
+            fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' =  ≥-pdi inject soundEv inject'' soundEv'' {!!} prf₄  
+
+
+
+{-
+Goal: All
+      (_,_⊢_≥_ (l + r ` loc) c
+       (pdinstance
+        (cgp.posix.PartialDerivative.inj (λ u → LeftU (in₁ u)) s-ev₁
+         (λ v → RightU (in₂ v)) s-ev₂)
+        (cgp.posix.PartialDerivative.sound-ev (λ u → LeftU (in₁ u)) s-ev₁
+         (λ v → RightU (in₂ v)) s-ev₂)))
+      (concatMap
+       (λ pdiˡ₁ →
+          fuse pdiˡ₁ (pdinstance (λ v → RightU (in₂ v)) s-ev₂) ∷
+          List.map (fuse pdiˡ₁) (List.map pdinstance-right pdis₂))
+       (pdinstance (λ u → LeftU (in₁' u)) s-ev₁' ∷
+        List.map pdinstance-left pdis))
+
+-}
+
+
     {-
     oplus-+-lattice-sub : ( pdisˡ : List ( PDInstance l c )) -- something wrong with this sub lemma, the induction is not going through 
       → ( pdisʳ : List ( PDInstance r c ))

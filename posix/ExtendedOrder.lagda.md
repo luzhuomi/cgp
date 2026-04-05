@@ -2153,7 +2153,139 @@ oplus-+-lattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev
             fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' =  ≥-pdi inject soundEv inject'' soundEv'' prf₃ prf₄  
 
 
+oplus-+●-lattice : ∀ { l+s r : RE } { ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char }
+    → ( pdis₁ : List ( PDInstance l+s c ))
+    → ( pdis₂ : List ( PDInstance r c ))
+    → Ex≥-lattice { l+s } {c} pdis₁
+    → Ex≥-lattice { r } {c} pdis₂
+    → All >-Inc pdis₁
+    → All >-Inc pdis₂
+    → Homogenous pdis₁
+    → Homogenous pdis₂
+    ---------------------------------------
+    → Ex≥-lattice  { l+s ● r ` loc } (pdinstance-oplus {l+s ● r ` loc } {loc} {c}  (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdis₁) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdis₂))
+oplus-+●-lattice {l+s} {r} {ε∈l+s} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = {!!}     
+oplus-+●-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ rewrite concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c} =  {!!} 
 
+
+
+
+map-fst-lattice : ∀ { l r : RE } { loc : ℕ } { c : Char }
+                    → ( pdis : List (PDInstance l c) )
+                    → Ex≥-lattice {l} pdis
+                    → Ex≥-lattice {l ● r ` loc } (List.map pdinstance-fst pdis)
+map-fst-lattice {l} {r} {loc} {c} []          ex-empty                        = ex-empty
+-- map-fst-lattice {l} {r} {loc} {c} (pdi ∷ [])  (ex-join .(pdi) [] [])          = ex-join (pdinstance-fst pdi) (List.map pdinstance-fst []) []
+map-fst-lattice {l} {r} {loc} {c} (pdi@(pdinstance {p} {l} {c} in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥all-pdis ) = ex-join (pdinstance-fst pdi) (List.map pdinstance-fst pdis) (prf pdis pdi≥all-pdis )
+  where
+    prf : ( qdis : List (PDInstance l c ) )
+      → All (_,_⊢_≥_ l c pdi) qdis 
+      → All (_,_⊢_≥_ (l ● r ` loc) c (pdinstance-fst pdi))
+        (List.map pdinstance-fst qdis)
+    prf [] [] = []
+    prf (qdi@(pdinstance .{p} .{l} .{c} in₂ s-ev₂) ∷ qdis) (( ≥-pdi  .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) ∷ pdi≥all-qdis) =  fst-pdi≥fst-qdi ∷ prf qdis pdi≥all-qdis
+      where
+        inject₁ : U (p ● r ` loc)  →  U (l ● r  ` loc )
+        inject₁ = mkinjFst in₁
+
+        inject₂ : U (p ● r ` loc)  →  U (l ● r  ` loc )
+        inject₂ = mkinjFst in₂
+
+        soundEv₁ : ( u :  U (p ● r ` loc) ) →  proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u)
+        soundEv₁ = mkinjFstSoundEv in₁ s-ev₁ 
+
+        soundEv₂ : ( u :  U (p ● r ` loc) ) →  proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u)
+        soundEv₂ = mkinjFstSoundEv in₂ s-ev₂
+
+        len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+        len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+        |in₁-u|≡|in₂-u| : (u : U p) →  (proj₁ (flat (in₁ u))) ≡  (proj₁ (flat (in₂ u)))
+        |in₁-u|≡|in₂-u| u rewrite (s-ev₁ u) | (s-ev₂ u) = refl 
+
+        len-|inject₁-u|≡len-|u|+1 : (u : U ( p ● r  ` loc )) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|inject₁-u|≡len-|u|+1 u rewrite (soundEv₁ u) = refl 
+
+        len-|inject₂-u|≡len-|u|+1 : (u : U ( p ● r  ` loc )) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|inject₂-u|≡len-|u|+1 u rewrite (soundEv₂ u) = refl
+
+        prf₂ :  (v : U (p ● r ` loc)) →
+                 (l ● r ` loc) ⊢ inject₁ v > inject₂ v ⊎ inject₁ v ≡ inject₂ v
+        prf₂ (PairU v u) with v→in₁v≥in₂v v
+        ... | inj₂ in₁v≡in₂v = inj₂ (cong (λ x → PairU {l} {r} {loc} x u) in₁v≡in₂v)
+        ... | inj₁ in₁v>in₂v = inj₁ ( len-≡ len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| (seq₁ in₁v>in₂v)  )
+          where
+            len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| : length (proj₁ (flat (inject₁ (PairU v u)))) ≡ length (proj₁ (flat (inject₂ (PairU v u))))
+            len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v |  |in₁-u|≡|in₂-u| v = refl 
+
+        prf₁ : (v₁ v₂ : U (p ● r ` loc)) →
+                   (p ● r ` loc) ⊢ v₁ > v₂ → (l ● r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+        prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂|
+          where
+            len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+            len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+        prf₁ v₁@(PairU u₁ u₁') v₂@(PairU u₂ u₂') (len-≡ len|v₁|≡len|v₂| (seq₁ u₁>u₂)) = len-≡ len-|pair-in₁-u₁-u₁'|≡len-|pair-in₂-u₂-u₂'| (seq₁ (v₁>v₂→in₁v₁>in₂v₂ u₁ u₂ u₁>u₂))  
+          where
+            len-|pair-in₁-u₁-u₁'|≡len-|pair-in₂-u₂-u₂'| : length (proj₁ (flat (inject₁ (PairU u₁ u₁')))) ≡ length (proj₁ (flat (inject₂ (PairU u₂ u₂'))))
+            len-|pair-in₁-u₁-u₁'|≡len-|pair-in₂-u₂-u₂'| rewrite len-|inject₁-u|≡len-|u|+1 v₁ | len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂|  =  refl
+        prf₁ v₁@(PairU u₁ u₁') v₂@(PairU u₂ u₂') (len-≡ len|v₁|≡len|v₂| (seq₂ u₁≡u₂ u₁'>u₂')) = len-≡ len-|pair-in₁-u₁-u₁'|≡len-|pair-in₂-u₂-u₂'| inject₁pair-u₁-u₁'>ⁱinject₂pair-u₂-u₂' 
+          where
+            len-|pair-in₁-u₁-u₁'|≡len-|pair-in₂-u₂-u₂'| : length (proj₁ (flat (inject₁ (PairU u₁ u₁')))) ≡ length (proj₁ (flat (inject₂ (PairU u₂ u₂'))))
+            len-|pair-in₁-u₁-u₁'|≡len-|pair-in₂-u₂-u₂'| rewrite len-|inject₁-u|≡len-|u|+1 v₁ | len-|inject₂-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂|  =  refl
+            inject₁pair-u₁-u₁'>ⁱinject₂pair-u₂-u₂' :  (l ● r ` loc) ⊢ inject₁ (PairU u₁ u₁') >ⁱ inject₂ (PairU u₂ u₂')
+            inject₁pair-u₁-u₁'>ⁱinject₂pair-u₂-u₂' with v→in₁v≥in₂v u₂
+            ... | inj₂ in₁u₂≡in₂u₂ rewrite u₁≡u₂ = seq₂ in₁u₂≡in₂u₂ u₁'>u₂'
+            ... | inj₁ in₁u₂>in₂u₂ rewrite u₁≡u₂ = seq₁ in₁u₂>in₂u₂ 
+        fst-pdi≥fst-qdi :  (l ● r ` loc) , c ⊢ pdinstance inject₁ soundEv₁  ≥ pdinstance inject₂ soundEv₂ 
+        fst-pdi≥fst-qdi = ≥-pdi inject₁ soundEv₁ inject₂ soundEv₂ prf₁ prf₂  
+        
+
+-- main lemma: 
+pdU-lattice : ∀ { r : RE } { c : Char }
+  → Ex≥-lattice {r} {c} pdU[ r , c ]
+pdU-lattice {ε} {c} = ex-empty 
+pdU-lattice {$ c ` loc } {c'} with c Char.≟ c'
+...                              | no _ = ex-empty
+...                              | yes refl = ex-join pdi [] []
+  where
+    -- duplicated from PartialDerivativeParseTree
+    pdi : PDInstance ($ c ` loc) c
+    pdi = pdinstance {ε} {$ c ` loc} {c}
+                     (λ u → LetterU {loc} c)
+                          (λ EmptyU →                 -- ^ soudness ev
+                             begin
+                               [ c ]
+                             ≡⟨⟩
+                               c ∷ []
+                             ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                               c ∷ (proj₁ (flat EmptyU))
+                             ∎)
+pdU-lattice {l + r ` loc } {c} =   oplus-+-lattice pdU[ l , c ] pdU[ r , c ] ind-hyp-l ind-hyp-r (pdU->-inc {l} {c}) (pdU->-inc {r} {c}) (pdU-Homogenous {l} {c}) (pdU-Homogenous {r} {c}) 
+  where
+    ind-hyp-l : Ex≥-lattice pdU[ l , c ]
+    ind-hyp-l = pdU-lattice {l} {c}
+    ind-hyp-r : Ex≥-lattice pdU[ r , c ]
+    ind-hyp-r = pdU-lattice {r} {c}  
+
+pdU-lattice {l ● r ` loc } {c} with ε∈? l
+... | no ¬ε∈l = map-fst-lattice  pdU[ l , c ] ind-hyp-l 
+  where
+    ind-hyp-l : Ex≥-lattice pdU[ l , c ]
+    ind-hyp-l = pdU-lattice {l} {c}
+... | yes ε∈l = oplus-+●-lattice pdU[ l , c ] pdU[ r , c ]  ind-hyp-l ind-hyp-r (pdU->-inc {l} {c}) (pdU->-inc {r} {c}) (pdU-Homogenous {l} {c}) (pdU-Homogenous {r} {c}) 
+  where
+    ind-hyp-l : Ex≥-lattice pdU[ l , c ]
+    ind-hyp-l = pdU-lattice {l} {c}
+    ind-hyp-r : Ex≥-lattice pdU[ r , c ]
+    ind-hyp-r = pdU-lattice {r} {c}
+pdU-lattice {r * ε∉r ` loc } {c} = {!!}
+  where
+    ind-hyp-r : Ex≥-lattice pdU[ r , c ]
+    ind-hyp-r = pdU-lattice {r} {c}
+  
 ```
 
 ```agda

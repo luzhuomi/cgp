@@ -2313,14 +2313,22 @@ concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c}
       → All (_,_⊢_≥_ (l ● r ` loc) c (mk-snd-pdi (e , flat-[]-e) pdi)) (List.map (mk-snd-pdi (e , flat-[]-e)) qdis )
     sub_prf₁ [] [] = []
     sub_prf₁  (qdi@(pdinstance in₂ s-ev₂) ∷ qdis ) (  (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) ∷ pdi≥all-qdis) =
-      {!!} ∷ sub qdis prf₁ pdi≥all-qdis
-    
+      mk-snd-≥-pdi-sorted e flat-[]-e (pdinstance in₁ s-ev₁) (pdinstance in₂ s-ev₂) (hide in₁ s-ev₁) (hide in₂ s-ev₂) (≥-pdi in₁ s-ev₁ in₂ s-ev₂ v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v)  ∷ sub qdis prf₁ pdi≥all-qdis
+
+    sub_prf₂ : (es' : List (U l))
+      → (flat-[]-es' : All (Flat-[] l) es')
+      -- we need e >all es', since e ∷ es' is sorted 
+      → All (_,_⊢_≥_ (l ● r ` loc) c
+       (mk-snd-pdi (e , flat-[]-e) pdi))
+      (concatMap (λ x → List.map (mk-snd-pdi x) (pdi ∷ pdis))  (zip-es-flat-[]-es {l} {ε∈l} es' flat-[]-es'))
+    sub_prf₂ [] [] = []
+    sub_prf₂ (x ∷ xs) ((flat-[] .(x) |x|≡[]) ∷ flat-[]-xs) = {!!} 
 
     prf : All (_,_⊢_≥_ (l ● r ` loc) c (mk-snd-pdi (e , flat-[]-e) pdi))
                           (List.map (mk-snd-pdi (e , flat-[]-e)) pdis ++
-                            concatMap (λ x → mk-snd-pdi x pdi ∷ List.map (mk-snd-pdi x) pdis)
+                            concatMap (λ x →  List.map (mk-snd-pdi x) (pdi ∷  pdis))
                               (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
-    prf = all-concat (sub_prf₁ pdis pdi≥pdis)  {!!} 
+    prf = all-concat (sub_prf₁ pdis pdi≥pdis)  (sub_prf₂ es flat-[]-es ) 
     
 
 {-

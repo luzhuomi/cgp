@@ -2230,14 +2230,117 @@ oplus-+-ex-lattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
             fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' :  (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject'' soundEv'')
             fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' =  ≥-pdi inject soundEv inject'' soundEv'' prf₃ prf₄  
 
+mk-snd-≥-pdi-sorted : ∀ { l r p : RE } { loc : ℕ } { c : Char }
+   → ( e : U l )
+   → ( flat-[]-e : Flat-[] l e )
+   → ( pdi₁ : PDInstance r c )
+   → ( pdi₂ : PDInstance r c )
+   → Inhabit {r} {c} p pdi₁
+   → Inhabit {r} {c} p pdi₂
+   → r , c ⊢ pdi₁ ≥ pdi₂ 
+   -----------------------------------------------------------------------------------------
+   → (l ● r ` loc) , c ⊢ mk-snd-pdi (e , flat-[]-e) pdi₁ ≥  mk-snd-pdi (e , flat-[]-e) pdi₂ 
+mk-snd-≥-pdi-sorted {l} {r} {p} {loc} {c} e (flat-[] .(e) |e|≡[]  ) (pdinstance .{p} .{r} .{c} in₁ s-ev₁)  (pdinstance .{p} .{r} .{c} in₂ s-ev₂) (hide .(in₁) .(s-ev₁))  (hide .(in₂) .(s-ev₂)) (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v⊎in₁v≡in₂v ) = ≥-pdi inject₁ soundEv₁ inject₂ soundEv₂ prf₁ prf₂
+  where
+    inject₁ : ∀ ( u : U p ) → U ( l ● r ` loc)
+    inject₁ = mkinjSnd in₁ e
 
+    inject₂ : ∀ ( u : U p ) → U ( l ● r ` loc)
+    inject₂ = mkinjSnd in₂ e
+
+    soundEv₁ : (u : U p) →  Product.proj₁ (flat (inject₁ u)) ≡ c ∷ Product.proj₁ (flat u)
+    soundEv₁ = mkinjSndSoundEv {p} {l} {r} {loc} {c} in₁ s-ev₁ e (flat-[] e |e|≡[]) 
+
+    soundEv₂ : (u : U p) →  Product.proj₁ (flat (inject₂ u)) ≡ c ∷ Product.proj₁ (flat u)
+    soundEv₂ = mkinjSndSoundEv {p} {l} {r} {loc} {c} in₂ s-ev₂ e (flat-[] e |e|≡[])
+
+    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+    len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+    |in₁-u|≡|in₂-u| : (u : U p) →  (proj₁ (flat (in₁ u))) ≡  (proj₁ (flat (in₂ u)))
+    |in₁-u|≡|in₂-u| u rewrite (s-ev₁ u) | (s-ev₂ u) = refl 
+
+    len-|inject₁-u|≡len-|u|+1 : (u : U  p ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inject₁-u|≡len-|u|+1 u rewrite (soundEv₁ u) = refl 
+
+    len-|inject₂-u|≡len-|u|+1 : (u : U  p ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inject₂-u|≡len-|u|+1 u rewrite (soundEv₂ u) = refl
+
+
+    prf₂ : (v : U p) → (l ● r ` loc) ⊢ inject₁ v > inject₂ v ⊎ inject₁ v ≡ inject₂ v
+    prf₂ v with v→in₁v>in₂v⊎in₁v≡in₂v v
+    ... | inj₂ in₁v≡in₂v = inj₂ (cong (λ x → (PairU e x)) in₁v≡in₂v )
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|pair-e-in₁-v|≡len-|pair-e-in₂-v| (seq₂ refl in₁v>in₂v) ) 
+      where
+        len-|pair-e-in₁-v|≡len-|pair-e-in₂-v| : length (proj₁ (flat (inject₁ v ))) ≡ length (proj₁ (flat (inject₂ v )))
+        len-|pair-e-in₁-v|≡len-|pair-e-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v |  |in₁-u|≡|in₂-u| v = refl
+
+
+    prf₁ : (v₁ v₂ : U p) → p ⊢ v₁ > v₂ → (l ● r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+    prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂|
+      where
+        len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+        len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+    
+    prf₁ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) = len-≡ len-|pair-e-in₁-v₁|≡len-|pair-e-in₂-v₂| (seq₂ refl (v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) ) )
+      where
+        len-|in₁-v₁|≡len|in₂-v₂| : length (proj₁ (flat (in₁ v₁))) ≡  length (proj₁ (flat (in₂ v₂)))
+        len-|in₁-v₁|≡len|in₂-v₂| rewrite  len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl 
+        len-|pair-e-in₁-v₁|≡len-|pair-e-in₂-v₂| : length (proj₁ (flat (inject₁ v₁ ))) ≡ length (proj₁ (flat (inject₂ v₂ )))
+        len-|pair-e-in₁-v₁|≡len-|pair-e-in₂-v₂| rewrite  |e|≡[] |  len-|in₁-v₁|≡len|in₂-v₂|  = refl 
+      
+
+    
+    
 concatmap-snd-ex-lattice : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance r c ) )
   → Ex≥-lattice {r} pdis
+  -------------------------------------------------------------------------------------
   → Ex≥-lattice { l ● r ` loc } (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
-concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} [] ex-empty rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c}  =  ex-empty
-concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) with mkAllEmptyU {l} ε∈l
-... | x = ? 
+concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} []           ex-empty rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c}  =  ex-empty
+concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c} in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) with mkAllEmptyU {l} ε∈l in mkAllEmpty-eq  | mkAllEmptyU-sound ε∈l 
+... | []     | _ = Nullary.contradiction mkAllEmpty-eq (mkAllEmptyU≢[] {l} ε∈l) -- we need a contradiction here 
+... | e ∷ es | flat-[]-e ∷ flat-[]-es =
+  ex-join (mk-snd-pdi (e , flat-[]-e) pdi) (List.map (mk-snd-pdi (e , flat-[]-e)) pdis ++
+                                                     (concatMap (λ x → List.map (mk-snd-pdi x) (pdi ∷ pdis))
+                                                                       (zip-es-flat-[]-es  {l} {ε∈l} es flat-[]-es))) prf
+  where
+    sub_prf₁ : ( qdis : List (PDInstance r c ) )
+      → All (_,_⊢_≥_  r c pdi) qdis 
+      → All (_,_⊢_≥_ (l ● r ` loc) c (mk-snd-pdi (e , flat-[]-e) pdi)) (List.map (mk-snd-pdi (e , flat-[]-e)) qdis )
+    sub_prf₁ [] [] = []
+    sub_prf₁  (qdi@(pdinstance in₂ s-ev₂) ∷ qdis ) (  (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) ∷ pdi≥all-qdis) =
+      {!!} ∷ sub qdis prf₁ pdi≥all-qdis
+    
+
+    prf : All (_,_⊢_≥_ (l ● r ` loc) c (mk-snd-pdi (e , flat-[]-e) pdi))
+                          (List.map (mk-snd-pdi (e , flat-[]-e)) pdis ++
+                            concatMap (λ x → mk-snd-pdi x pdi ∷ List.map (mk-snd-pdi x) pdis)
+                              (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
+    prf = all-concat (sub_prf₁ pdis pdi≥pdis)  {!!} 
+    
+
+{-
+mkAllEmptyU ε∈l != w of type List (U l)
+
+when checking that the type
+
+{l : RE} {ε∈l : ε∈ l} (w : List (U l)) → mkAllEmptyU ε∈l ≡
+
+w → {r : RE} {loc : ℕ} {c : Char} (pdi : PDInstance r c) (pdis : List (PDInstance r c)) (pdi≥pdis : All (_,_⊢_≥_ r c pdi) pdis) →
+
+Ex≥-lattice
+(List.foldr _++_ []
+ (List.map (λ x → mk-snd-pdi x pdi ∷ List.map (mk-snd-pdi x) pdis)
+  (zip-es-flat-[]-es w (mkAllEmptyU-sound ε∈l))))
+of the generated with function is well-formed
+(https://agda.readthedocs.io/en/v2.7.0.1/language/with-abstraction.html#ill-typed-with-abstractions)
+
+-}
+
 
 oplus-+●-ex-lattice : ∀ { l+s r : RE } { ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char }
     → ( pdis₁ : List ( PDInstance l+s c ))

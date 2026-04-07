@@ -1449,6 +1449,13 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
 
 -} 
 
+-- reflexivity
+ex≥-refl : ∀ { r : RE } { c : Char } { pd : PDInstance r c }
+  → >-Inc pd 
+  → r , c ⊢ pd ≥ pd
+ex≥-refl  {r} {c} {pdinstance {p} .{r} .{c} in₁ s-ev₁} (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)  = ≥-pdi {r} {p} {c}  in₁ s-ev₁ in₁ s-ev₁ v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ λ v → inj₂ refl 
+
+
 -- transitivity
 ex≥-trans : ∀ { r p : RE } { c : Char } { pd₁ pd₂ pd₃ : PDInstance r c  }
   { i₁ : Inhabit {r} {c} p pd₁ } 
@@ -2297,13 +2304,15 @@ mk-snd-≥-pdi-sorted {l} {r} {p} {loc} {c} e (flat-[] .(e) |e|≡[]  ) (pdinsta
     
 concatmap-snd-ex-lattice : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance r c ) )
-  → Ex≥-lattice {r} pdis
+  → All >-Inc pdis
+  → Homogenous pdis
+  → Ex≥-lattice {r} pdis  
   -------------------------------------------------------------------------------------
   → Ex≥-lattice { l ● r ` loc } (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
-concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} []           ex-empty rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c}  =  ex-empty
-concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c} in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) with mkAllEmptyU {l} ε∈l in mkAllEmpty-eq  | mkAllEmptyU-sound ε∈l 
-... | []     | _ = Nullary.contradiction mkAllEmpty-eq (mkAllEmptyU≢[] {l} ε∈l) -- we need a contradiction here 
-... | e ∷ es | flat-[]-e ∷ flat-[]-es =
+concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} [] []  homo-pdis  ex-empty rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c}  =  ex-empty
+concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c} in₁ s-ev₁) ∷ pdis) (>-inc-pdi ∷ >-inc-pdis) (homogenous (.(pdi) ∷ .(pdis)) ( .(p) , (hide-p-pdi@(hide .{p} .{r} .{c} .(in₁) .(s-ev₁)) ∷ hide-p-pdis)) ) (ex-join .(pdi) .(pdis) pdi≥pdis) with mkAllEmptyU {l} ε∈l in mkAllEmpty-eq  | mkAllEmptyU-sound ε∈l | mkAllEmptyU-sorted ε∈l 
+... | []     | _                      | _ = Nullary.contradiction mkAllEmpty-eq (mkAllEmptyU≢[] {l} ε∈l) -- we need a contradiction here 
+... | e ∷ es | flat-[]-e@(flat-[] .(e) |e|≡[]) ∷ flat-[]-es | >-cons es->-sorted e>head-es =
   ex-join (mk-snd-pdi (e , flat-[]-e) pdi) (List.map (mk-snd-pdi (e , flat-[]-e)) pdis ++
                                                      (concatMap (λ x → List.map (mk-snd-pdi x) (pdi ∷ pdis))
                                                                        (zip-es-flat-[]-es  {l} {ε∈l} es flat-[]-es))) prf
@@ -2317,37 +2326,79 @@ concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c}
 
     sub_prf₂ : (es' : List (U l))
       → (flat-[]-es' : All (Flat-[] l) es')
-      -- we need e >all es', since e ∷ es' is sorted 
+      → All (_⊢_>_ l e ) es' 
       → All (_,_⊢_≥_ (l ● r ` loc) c
        (mk-snd-pdi (e , flat-[]-e) pdi))
       (concatMap (λ x → List.map (mk-snd-pdi x) (pdi ∷ pdis))  (zip-es-flat-[]-es {l} {ε∈l} es' flat-[]-es'))
-    sub_prf₂ [] [] = []
-    sub_prf₂ (x ∷ xs) ((flat-[] .(x) |x|≡[]) ∷ flat-[]-xs) = {!!} 
+    sub_prf₂ [] [] [] = []
+    sub_prf₂ (x ∷ xs) ((flat-[] .(x) |x|≡[]) ∷ flat-[]-xs) (e>x ∷ e>xs)  = all-concat ( sub_sub_prf (pdi ∷ pdis) (hide in₁ s-ev₁ ∷ hide-p-pdis) (ex≥-refl >-inc-pdi ∷ pdi≥pdis) )  (sub_prf₂ xs flat-[]-xs e>xs)
+      where
+        sub_sub_prf : ( rdis : List (PDInstance r c) )
+                    → All (Inhabit p) rdis 
+                    → All (_,_⊢_≥_ r c pdi) rdis 
+                    → All (_,_⊢_≥_ (l ● r ` loc) c (mk-snd-pdi (e , flat-[]-e) pdi)) 
+                            ( List.map (mk-snd-pdi (x , flat-[] x |x|≡[])) rdis )
+        sub_sub_prf [] [] [] = []
+        sub_sub_prf (rdi@(pdinstance .{p} .{r} .{c} in₂ s-ev₂)  ∷ rdis) ( ( hide .{p} .{r} .{c} .(in₂) .(s-ev₂) ) ∷ hide-p-rdis ) (pdi≥rdi ∷ pdi≥rdis) = mk-snd-pdi-e-pdi≥mk-snd-pdi-x-rdi ∷ sub_sub_prf rdis hide-p-rdis pdi≥rdis 
+          where
+            inject₁ : ∀ ( u : U p ) → U ( l ● r ` loc)
+            inject₁ = mkinjSnd in₁ e
+
+            inject₂ : ∀ ( u : U p ) → U ( l ● r ` loc)
+            inject₂ = mkinjSnd in₂ x
+
+            soundEv₁ : (u : U p) →  Product.proj₁ (flat (inject₁ u)) ≡ c ∷ Product.proj₁ (flat u)
+            soundEv₁ = mkinjSndSoundEv {p} {l} {r} {loc} {c} in₁ s-ev₁ e  flat-[]-e 
+
+            soundEv₂ : (u : U p) →  Product.proj₁ (flat (inject₂ u)) ≡ c ∷ Product.proj₁ (flat u)
+            soundEv₂ = mkinjSndSoundEv {p} {l} {r} {loc} {c} in₂ s-ev₂ x (flat-[] x |x|≡[])
+
+            len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+            len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+            len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+            len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+            |in₁-u|≡|in₂-u| : (u : U p) →  (proj₁ (flat (in₁ u))) ≡  (proj₁ (flat (in₂ u)))
+            |in₁-u|≡|in₂-u| u rewrite (s-ev₁ u) | (s-ev₂ u) = refl 
+
+            len-|inject₁-u|≡len-|u|+1 : (u : U  p ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+            len-|inject₁-u|≡len-|u|+1 u rewrite (soundEv₁ u) = refl 
+
+            len-|inject₂-u|≡len-|u|+1 : (u : U  p ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+            len-|inject₂-u|≡len-|u|+1 u rewrite (soundEv₂ u) = refl
+
+            prf₂ : (v : U p) → (l ● r ` loc) ⊢ inject₁ v > inject₂ v ⊎ inject₁ v ≡ inject₂ v
+            prf₂ v  = inj₁ (len-≡ len-|pair-e-in₁-v|≡len-|pair-x-in₂-v| (seq₁ e>x ) ) 
+              where
+                len-|pair-e-in₁-v|≡len-|pair-x-in₂-v| : length (proj₁ (flat (inject₁ v ))) ≡ length (proj₁ (flat (inject₂ v )))
+                len-|pair-e-in₁-v|≡len-|pair-x-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v |  |in₁-u|≡|in₂-u| v | |e|≡[] | |x|≡[]  = refl 
+
+            prf₁ : (v₁ v₂ : U p) →  p ⊢ v₁ > v₂ → (l ● r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+            prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂|
+              where
+                len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+                len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+
+            prf₁ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) = len-≡ len-|pair-e-in₁-v₁|≡len-|pair-x-in₂-v| (seq₁ e>x)
+              where
+                len-|in₁-v₁|≡len|in₂-v₂| : length (proj₁ (flat (in₁ v₁))) ≡  length (proj₁ (flat (in₂ v₂)))
+                len-|in₁-v₁|≡len|in₂-v₂| rewrite  len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl 
+              
+                len-|pair-e-in₁-v₁|≡len-|pair-x-in₂-v| : length (proj₁ (flat (inject₁ v₁ ))) ≡ length (proj₁ (flat (inject₂ v₂ )))
+                len-|pair-e-in₁-v₁|≡len-|pair-x-in₂-v| rewrite  |e|≡[] | |x|≡[] |  len-|in₁-v₁|≡len|in₂-v₂|  = refl 
+            
+
+            mk-snd-pdi-e-pdi≥mk-snd-pdi-x-rdi :  (l ● r ` loc) , c ⊢  mk-snd-pdi (e , flat-[]-e) pdi ≥ mk-snd-pdi (x , flat-[] x |x|≡[]) rdi
+            -- mk-snd-pdi-e-pdi≥mk-snd-pdi-x-rdi :  (l ● r ` loc) , c ⊢ (pdinstance inject₁ soundEv₁) ≥ (pdinstance inject₂ soundEv₂ )
+            mk-snd-pdi-e-pdi≥mk-snd-pdi-x-rdi = ≥-pdi inject₁ soundEv₁ inject₂ soundEv₂ prf₁ prf₂ 
 
     prf : All (_,_⊢_≥_ (l ● r ` loc) c (mk-snd-pdi (e , flat-[]-e) pdi))
                           (List.map (mk-snd-pdi (e , flat-[]-e)) pdis ++
                             concatMap (λ x →  List.map (mk-snd-pdi x) (pdi ∷  pdis))
                               (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
-    prf = all-concat (sub_prf₁ pdis pdi≥pdis)  (sub_prf₂ es flat-[]-es ) 
+    prf = all-concat (sub_prf₁ pdis pdi≥pdis)  (sub_prf₂ es flat-[]-es (PosixOrder.>-cons→hd>tl (>-cons es->-sorted e>head-es) ) ) 
     
-
-{-
-mkAllEmptyU ε∈l != w of type List (U l)
-
-when checking that the type
-
-{l : RE} {ε∈l : ε∈ l} (w : List (U l)) → mkAllEmptyU ε∈l ≡
-
-w → {r : RE} {loc : ℕ} {c : Char} (pdi : PDInstance r c) (pdis : List (PDInstance r c)) (pdi≥pdis : All (_,_⊢_≥_ r c pdi) pdis) →
-
-Ex≥-lattice
-(List.foldr _++_ []
- (List.map (λ x → mk-snd-pdi x pdi ∷ List.map (mk-snd-pdi x) pdis)
-  (zip-es-flat-[]-es w (mkAllEmptyU-sound ε∈l))))
-of the generated with function is well-formed
-(https://agda.readthedocs.io/en/v2.7.0.1/language/with-abstraction.html#ill-typed-with-abstractions)
-
--}
 
 
 oplus-+●-ex-lattice : ∀ { l+s r : RE } { ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char }
@@ -2361,9 +2412,51 @@ oplus-+●-ex-lattice : ∀ { l+s r : RE } { ε∈l+s : ε∈ l+s } { loc : ℕ 
     → Homogenous pdis₂
     ---------------------------------------
     → Ex≥-lattice  { l+s ● r ` loc } (pdinstance-oplus {l+s ● r ` loc } {loc} {c}  (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdis₁) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdis₂))
-oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = concatmap-snd-ex-lattice pdis₂ ex-semi       
-oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ rewrite concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c} =  map-fst-ex-lattice (pdi₁ ∷ pdis₁) ex-semi  
+oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = concatmap-snd-ex-lattice pdis₂ all->-inc-pdis₂ homo-pdis₂  ex-semi       
+oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁ ∷ pdis₁) []             ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ rewrite concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c} =  map-fst-ex-lattice (pdi₁ ∷ pdis₁) ex-semi
+oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex-join .(pdi₁) .(pdis₁) pdi₁≥pdis₁) (ex-join .(pdi₂) .(pdis₂) pdi₂≥pdis₂) (>-inc-pdi₁ ∷ all->-inc-pdis₁) (>-inc-pdi₂ ∷ all->-inc-pdis₂ ) homo-pdis₁ homo-pdis₂ -- = {!!}
+ with mkAllEmptyU {l+s} ε∈l+s in mkAllEmpty-eq  | mkAllEmptyU-sound ε∈l+s | mkAllEmptyU-sorted ε∈l+s 
+... | []     | _                      | _ = Nullary.contradiction mkAllEmpty-eq (mkAllEmptyU≢[] {l+s} ε∈l+s) -- we need a contradiction here 
+... | e ∷ es | flat-[]-e@(flat-[] .(e) |e|≡[]) ∷ flat-[]-es | >-cons es->-sorted e>head-es =
+  ex-join (fuse (pdinstance-fst pdi₁)
+            (mk-snd-pdi (e , flat-[] e |e|≡[]) pdi₂)) ((List.map (fuse (pdinstance-fst pdi₁))
+                                                        (List.map (mk-snd-pdi (e , flat-[] e |e|≡[])) pdis₂ ++
+                                                         (concatMap (λ x → List.map (mk-snd-pdi x) (pdi₂ ∷  pdis₂))
+                                                          (zip-es-flat-[]-es {l+s} {ε∈l+s} es flat-[]-es))))
+                                                        ++
+                                                        (concatMap
+                                                         (λ pdiˡ₁ →
+                                                            List.map (fuse pdiˡ₁)
+                                                             (concatMap (λ x → List.map (mk-snd-pdi x) (pdi₂ ∷ pdis₂)) 
+                                                              (zip-es-flat-[]-es {l+s} {ε∈l+s}  (e ∷ es) (flat-[]-e ∷ flat-[]-es)))
+                                                             )
+                                                         (List.map pdinstance-fst pdis₁))) (all-concat sub_prf₁ sub_prf₂ )
+    where
+      bar : ∀ { A B : Set } { f : A → B } { xs ys : List A } 
+      → (List.map f (xs ++ ys)) ≡ (List.map f xs ) ++ (List.map f ys)
 
+
+      foo : All (_,_⊢_≥_ (l+s ● r ` loc) c (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁) (mk-snd-pdi (e , flat-[] e |e|≡[]) pdi₂)))
+                     ( (List.map (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁))
+                                      (List.map (mk-snd-pdi (e , flat-[] e |e|≡[])) pdis₂)) ++
+                       (List.map (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁))
+                                     (concatMap (λ x → mk-snd-pdi x pdi₂ ∷ List.map (mk-snd-pdi x) pdis₂)
+                                                                        (zip-es-flat-[]-es {l+s} {ε∈l+s} es flat-[]-es))) )
+      foo = {!!}
+
+      sub_prf₁ : All (_,_⊢_≥_ (l+s ● r ` loc) c (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁) (mk-snd-pdi (e , flat-[] e |e|≡[]) pdi₂)))
+                     (List.map (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁))
+                                     (List.map (mk-snd-pdi (e , flat-[] e |e|≡[])) pdis₂ ++
+                                                              concatMap (λ x → mk-snd-pdi x pdi₂ ∷ List.map (mk-snd-pdi x) pdis₂)
+                                                                        (zip-es-flat-[]-es {l+s} {ε∈l+s} es flat-[]-es)))
+      sub_prf₁ = {!!}
+
+
+      sub_prf₂ : All (_,_⊢_≥_ (l+s ● r ` loc) c (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁) (mk-snd-pdi (e , flat-[] e |e|≡[]) pdi₂)))
+                     (concatMap (λ pdiˡ₁ → List.map (fuse {l+s ● r ` loc} {loc} pdiˡ₁) (concatMap (λ x → List.map (mk-snd-pdi x) (pdi₂ ∷ pdis₂))
+                                                                                                  (zip-es-flat-[]-es {l+s} {ε∈l+s} (e ∷ es) (flat-[] e |e|≡[] ∷ flat-[]-es))))
+                                   (List.map pdinstance-fst pdis₁)) -- induction over pdis₁? 
+      sub_prf₂ = {!!} 
 
 
 -- main lemma: 

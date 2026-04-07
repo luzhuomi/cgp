@@ -695,6 +695,15 @@ data >-sorted : ∀ { r : RE } ( us : List (U r) ) → Set where
     → >-sorted {r} ( u ∷ us  )
 
 
+-- the head of the non empty sorted list is > than all elements in the tail
+>-cons→hd>tl : ∀ {r : RE } { u : U r } { us : List (U r ) }
+  → >-sorted {r} ( u ∷ us )
+  -------------------------
+  → All ( _⊢_>_ r u ) us
+>-cons→hd>tl {r} {u} {[]}       (>-cons >-nil >-nothing) =  []
+>-cons→hd>tl {r} {u} {(v ∷ [])} (>-cons (>-cons >-nil v-nothing) (>-just u>v)) = u>v ∷ >-cons→hd>tl (>-cons >-nil >-nothing )  
+>-cons→hd>tl {r} {u} {(v ∷ (v' ∷ vs))} (>-cons (>-cons >-sorted-v'∷vs (>-just v>v')) (>-just u>v)) = u>v ∷ >-cons→hd>tl (>-cons >-sorted-v'∷vs (>-just (>-trans u>v v>v')) )  
+
 
 -- concatenating two >-sorted lists of parse trees  yields a >-sorted list.
 concat-sorted : ∀ { r : RE } 

@@ -199,13 +199,14 @@ pdinstance-fst {l} {r} {loc} {c} (pdinstance {l'} {l} {c} f s-ev) =
 ------------------------------------------------------------------------------------
 -- pdinstance-snd and its sub functions
 
-
+-- TODO shall we flip to r' l r? 
 mkinjSnd  : ∀ {l r r' : RE } { loc : ℕ } -- r' is the pd
           →  (f : U r' → U r)
           →  U l 
           →  U r'
           →  U (l ● r ` loc )
 mkinjSnd {l} {r} {r'} {loc} f v u = PairU {l} {r} {loc} v (f u)
+
 
 mkinjSndSoundEv : ∀ { p l r : RE } { loc : ℕ } { c : Char } 
   → ( inj : U p → U r )

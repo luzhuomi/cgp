@@ -321,6 +321,7 @@ overall we still need to operate over a list of pdinstances instead of maybe pdi
 
 ```agda
 -- ^ applying parse tree constructors to coercion records (namely, the injection function and the soundness evidence)
+-- TODO rename it to mkinjFuse 
 mkfuseInj : ∀ { pˡ pʳ r : RE } { loc : ℕ }
   → ( inj-l : U pˡ → U r )
   → ( inj-r : U pʳ → U r )

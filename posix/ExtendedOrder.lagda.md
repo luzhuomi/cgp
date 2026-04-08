@@ -2618,7 +2618,11 @@ oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                    where
                      sub_sub_prf₄ :  (v : U ((p₁ ● r ` loc) + p₂ ` loc)) →
                                      (l+s ● r ` loc) ⊢ inject₁ v > inject₂ v ⊎ inject₁ v ≡ inject₂ v
-                     sub_sub_prf₄ = {!!}
+                     sub_sub_prf₄ v@(LeftU (PairU u u')) = inj₂ refl
+                     sub_sub_prf₄ v@(RightU u)           = inj₁ (len-≡ len|pair-e-in₂u|≡len|pair-x-in₂u| (seq₁ e>x ) )
+                       where
+                         len|pair-e-in₂u|≡len|pair-x-in₂u| :  length (Product.proj₁ (flat (PairU {l+s} {r} {loc}  e (in₂ u)))) ≡  length (Product.proj₁ (flat (PairU  {l+s} {r} {loc} x (in₂ u))))
+                         len|pair-e-in₂u|≡len|pair-x-in₂u| rewrite |e|≡[] | |x|≡[] |   len-|in₂-u|≡len-|u|+1 u | len-|in₂-u|≡len-|u|+1 u  = refl
 
                      sub_sub_prf₃ :  (v₁ v₂ : U ((p₁ ● r ` loc) + p₂ ` loc)) →
                                      ((p₁ ● r ` loc) + p₂ ` loc) ⊢ v₁ > v₂ →

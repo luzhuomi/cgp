@@ -2627,7 +2627,32 @@ oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                      sub_sub_prf₃ :  (v₁ v₂ : U ((p₁ ● r ` loc) + p₂ ` loc)) →
                                      ((p₁ ● r ` loc) + p₂ ` loc) ⊢ v₁ > v₂ →
                                      (l+s ● r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
-                     sub_sub_prf₃ = {!!} 
+                     in₁-preserves : (u₁ u₂ : U p₁) → p₁ ⊢ u₁ > u₂ → l+s ⊢ in₁ u₁ > in₁ u₂
+                     in₁-preserves = v₁→v₂→v₁>v₂→in₁v₁>in₁v₂
+                     sub_sub_prf₃ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂|
+                       where
+                         len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+                         len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ | len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+                     sub_sub_prf₃ (LeftU (PairU u₁ w₁)) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-ll (len-> len|pair₁|>len|pair₂|))) rewrite len|v₁|≡len|v₂| = Nullary.contradiction len|pair₁|>len|pair₂| (<-irrefl refl)
+                     sub_sub_prf₃ (LeftU (PairU u₁ w₁)) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-ll (len-≡ len|pair₁|≡len|pair₂| (seq₁ u₁>u₂)))) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ (in₁-preserves u₁ u₂ u₁>u₂))
+                       where
+                         len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (LeftU (PairU u₁ w₁))))) ≡ length (proj₁ (flat (inject₂ (LeftU (PairU u₂ w₂)))))
+                         len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (LeftU (PairU u₁ w₁)) | len-|inject₂-u|≡len-|u|+1 (LeftU (PairU u₂ w₂)) | len|v₁|≡len|v₂| = refl
+                     sub_sub_prf₃ (LeftU (PairU u₁ w₁)) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-ll (len-≡ len|pair₁|≡len|pair₂| (seq₂ u₁≡u₂ w₁>w₂)))) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₂ (cong in₁ u₁≡u₂) w₁>w₂)
+                       where
+                         len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (LeftU (PairU u₁ w₁))))) ≡ length (proj₁ (flat (inject₂ (LeftU (PairU u₂ w₂)))))
+                         len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (LeftU (PairU u₁ w₁)) | len-|inject₂-u|≡len-|u|+1 (LeftU (PairU u₂ w₂)) | len|v₁|≡len|v₂| = refl
+                     sub_sub_prf₃ (LeftU (PairU u₁ w₁)) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|pair₁|≥len|u₂|)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ (len-> len|in₁u₁|>len|x|))
+                       where
+                         len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (LeftU (PairU u₁ w₁))))) ≡ length (proj₁ (flat (inject₂ (RightU u₂))))
+                         len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (LeftU (PairU u₁ w₁)) | len-|inject₂-u|≡len-|u|+1 (RightU u₂) | len|v₁|≡len|v₂| = refl
+                         len|in₁u₁|>len|x| : length (proj₁ (flat (in₁ u₁))) Nat.> length (proj₁ (flat x))
+                         len|in₁u₁|>len|x| rewrite |x|≡[] | len-|in₁-u|≡len-|u|+1 u₁ = Nat.s≤s Nat.z≤n
+                     sub_sub_prf₃ (RightU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rr u₁>u₂)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ e>x)
+                       where
+                         len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (RightU u₁)))) ≡ length (proj₁ (flat (inject₂ (RightU u₂))))
+                         len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (RightU u₁) | len-|inject₂-u|≡len-|u|+1 (RightU u₂) | len|v₁|≡len|v₂| = refl
+                     sub_sub_prf₃ (RightU u₁) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>len|pair₂|)) rewrite len|v₁|≡len|v₂| = Nullary.contradiction len|u₁|>len|pair₂| (<-irrefl refl)
 
       sub_prf₃ : All (_,_⊢_≥_ (l+s ● r ` loc) c (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁) (mk-snd-pdi (e , flat-[] e |e|≡[]) pdi₂)))
                      ( (List.map (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁))

@@ -2858,6 +2858,80 @@ oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                   sub_sub_prf_strict (RightU u₁) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>len|pair₂|)) rewrite len|v₁|≡len|v₂| = Nullary.contradiction len|u₁|>len|pair₂| (<-irrefl refl)
 
 
+
+map-star-lattice : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  → (pdis : List ( PDInstance r c ) )
+  → Ex≥-lattice {r} {c} pdis
+  → All >-Inc pdis
+  → Homogenous pdis
+  --------------------------------------------------------------------------  
+  → Ex≥-lattice (List.map (pdinstance-star {r} {ε∉r} {loc}) pdis)
+map-star-lattice {r} {ε∉r} {loc} {c} []           ex-empty [] _ = ex-empty
+map-star-lattice {r} {ε∉r} {loc} {c} (pdi@(pdinstance in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) ((>-inc v₁→v₂→v₁>v₂→in₁v₁>in₂v₂) ∷ all->-inc-pdis) (homogenous (.(pdi) ∷ .(pdis)) ( p , ((hide .(in₁) .(s-ev₁)) ∷ hide-p-pdis ) ) ) = ex-join (pdinstance-star (pdinstance in₁ s-ev₁)) (List.map pdinstance-star pdis) (prf pdis hide-p-pdis pdi≥pdis )  
+  where
+    inject₁ :  U ( p ● (r * ε∉r ` loc ) ` loc )  → U (r * ε∉r ` loc )
+    inject₁ =  mkinjList in₁
+    soundEv₁ : ( u : U ( p ● (r * ε∉r ` loc ) ` loc ) ) → ( proj₁ (flat (inject₁ u ) )  ≡ c ∷ (proj₁ (flat u)))
+    soundEv₁ = mkinjListSoundEv in₁ s-ev₁
+
+    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl
+
+    len-|inject₁-u|≡len-|u|+1 : (u : U  ( p ● (r * ε∉r ` loc ) ` loc) ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inject₁-u|≡len-|u|+1 u rewrite (soundEv₁ u) = refl 
+
+    prf : ( qdis : (List (PDInstance r c) ) )
+        → All (Inhabit p) qdis
+        → All (_,_⊢_≥_ r c (pdinstance in₁ s-ev₁)) qdis 
+        → All (_,_⊢_≥_ (r * ε∉r ` loc) c (pdinstance inject₁ soundEv₁)) (List.map pdinstance-star qdis)
+    prf [] [] [] = []
+    prf (qdi@(pdinstance in₂ s-ev₂) ∷ qdis ) ((hide .(in₂) .(s-ev₂)) ∷ hide-p-qdis)  ((≥-pdi .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) ∷ pdi≥qdis) =  ≥-pdi inject₁ soundEv₁ inject₂ soundEv₂ prf₁ prf₂  ∷ prf qdis hide-p-qdis pdi≥qdis
+      where
+        inject₂ :  U ( p ● (r * ε∉r ` loc ) ` loc )  → U (r * ε∉r ` loc )
+        inject₂ =  mkinjList in₂
+        soundEv₂ : ( u : U ( p ● (r * ε∉r ` loc ) ` loc ) ) → ( proj₁ (flat (inject₂ u ) )  ≡ c ∷ (proj₁ (flat u)))
+        soundEv₂ = mkinjListSoundEv in₂ s-ev₂
+
+
+        len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+        |in₁-u|≡|in₂-u| : (u : U p) →  (proj₁ (flat (in₁ u))) ≡  (proj₁ (flat (in₂ u)))
+        |in₁-u|≡|in₂-u| u rewrite (s-ev₁ u) | (s-ev₂ u) = refl 
+
+
+        len-|inject₂-u|≡len-|u|+1 : (u : U  ( p ● (r * ε∉r ` loc ) ` loc )  ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+        len-|inject₂-u|≡len-|u|+1 u rewrite (soundEv₂ u) = refl
+
+        prf₂ : (v : U (p ● r * ε∉r ` loc ` loc)) →
+               (r * ε∉r ` loc) ⊢ inject₁ v > inject₂ v ⊎ inject₁ v ≡ inject₂ v
+        prf₂ v@(PairU u (ListU us)) with v→in₁v≥in₂v u
+        ... | inj₂ in₁u≡in₂u = inj₂ (cong (λ x → ListU ( x ∷ us )) in₁u≡in₂u )
+        ... | inj₁ in₁u>in₂u = inj₁ (len-≡ len-|list-in₁-u-us|≡len-|list-in₂-u-us| (star-head in₁u>in₂u) ) 
+          where
+            len-|list-in₁-u-us|≡len-|list-in₂-u-us| : length (proj₁ (flat (inject₁ v ))) ≡ length (proj₁ (flat (inject₂ v )))
+            len-|list-in₁-u-us|≡len-|list-in₂-u-us| rewrite len-|in₁-u|≡len-|u|+1 u | len-|in₂-u|≡len-|u|+1 u |  |in₁-u|≡|in₂-u| u = refl
+        prf₁ :  (v₁ v₂ : U (p ● r * ε∉r ` loc ` loc))
+             →  (p ● r * ε∉r ` loc ` loc) ⊢ v₁ > v₂
+             →  (r * ε∉r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+        prf₁ v₁@(PairU u₁ (ListU us₁)) v₂@(PairU u₂ (ListU us₂)) (len-> len|v₁|>len|v₂|) = len-> len|inject₁v₁|>len|inject₂v₂| 
+          where
+            len|inject₁v₁|>len|inject₂v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+            len|inject₁v₁|>len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ |  len-|inject₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+
+        prf₁ v₁@(PairU u₁ (ListU us₁)) v₂@(PairU u₂ (ListU us₂)) (len-≡ len|v₁|≡len|v₂| (seq₁ u₁>u₂)) = len-≡ len-|list-in₁-u₁-us₁|≡len-|list-in₂-u₂-us₂| (star-head (v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ u₁ u₂ u₁>u₂))  
+          where
+            len-|list-in₁-u₁-us₁|≡len-|list-in₂-u₂-us₂| : length (proj₁ (flat (inject₁ v₁ ))) ≡ length (proj₁ (flat (inject₂ v₂ )))
+            len-|list-in₁-u₁-us₁|≡len-|list-in₂-u₂-us₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ | len-|inject₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl
+        prf₁ v₁@(PairU u₁ (ListU us₁)) v₂@(PairU u₂ (ListU us₂)) (len-≡ len|v₁|≡len|v₂| (seq₂ u₁≡u₂ list-us₁>list-us₂)) = len-≡ len-|list-in₁-u₁-us₁|≡len-|list-in₂-u₂-us₂| inject₁v₁>ⁱinject₂v₂
+          where
+            len-|list-in₁-u₁-us₁|≡len-|list-in₂-u₂-us₂| : length (proj₁ (flat (inject₁ v₁ ))) ≡ length (proj₁ (flat (inject₂ v₂ )))
+            len-|list-in₁-u₁-us₁|≡len-|list-in₂-u₂-us₂| rewrite len-|inject₁-u|≡len-|u|+1 v₁ | len-|inject₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl
+            inject₁v₁>ⁱinject₂v₂ :  (r * ε∉r ` loc) ⊢  ListU ((in₁ u₁) ∷  us₁)  >ⁱ ListU ( (in₂ u₂) ∷ us₂)
+            inject₁v₁>ⁱinject₂v₂ rewrite u₁≡u₂ with v→in₁v≥in₂v u₂
+            ... | inj₁ in₁u₂>in₂u₂ = star-head in₁u₂>in₂u₂
+            ... | inj₂ in₁u₂≡in₂u₂ = star-tail in₁u₂≡in₂u₂ list-us₁>list-us₂ 
+
 -- main lemma: 
 pdU-ex-lattice : ∀ { r : RE } { c : Char }
   → Ex≥-lattice {r} {c} pdU[ r , c ]
@@ -2896,7 +2970,7 @@ pdU-ex-lattice {l ● r ` loc } {c} with ε∈? l
     ind-hyp-l = pdU-ex-lattice {l} {c}
     ind-hyp-r : Ex≥-lattice pdU[ r , c ]
     ind-hyp-r = pdU-ex-lattice {r} {c}
-pdU-ex-lattice {r * ε∉r ` loc } {c} = {!!}
+pdU-ex-lattice {r * ε∉r ` loc } {c} = map-star-lattice  pdU[ r , c ] ind-hyp-r (pdU->-inc {r} {c}) (pdU-Homogenous {r} {c})
   where
     ind-hyp-r : Ex≥-lattice pdU[ r , c ]
     ind-hyp-r = pdU-ex-lattice {r} {c}

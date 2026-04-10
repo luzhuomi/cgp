@@ -79,7 +79,8 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   >-inc-mk-snd-pdi ;
   >-inc-pdinstance-snd ;
   Flat-[]-Fst-PDI ; fst-flat-[] ; flat-[]-fst ;
-  flat-[]-fst-pdinstance-snd )   
+  flat-[]-fst-pdinstance-snd 
+  )
 
 
 
@@ -147,7 +148,7 @@ open import Function using (_∘_ ; flip)
 data Inhabit : ∀ { r : RE } { c : Char } → RE →  PDInstance r c → Set where
   hide : ∀ { p r : RE } { c : Char } 
     → ( inj : U p → U r ) -- ^ the injection function 
-    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  -- s^ soundnes evidence
+    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  -- ^ soundnes evidence
     → Inhabit {r} {c} p (pdinstance {p} {r} {c} inj s-ev)
 
 -- a list of pdinstance is homogenous iff all of them are hiding the same pd.
@@ -426,7 +427,7 @@ data _,_⊢_≥_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInsta
 
 
 
-### Definition 37 : (Extended) POSIX order sortedness
+### Definition 37 : (Extended) POSIX order lattice
 
 ```agda
 
@@ -482,7 +483,7 @@ Then pdU[r , c] is complete lattice.
 
 
 
-
+TODO: we should change the descrption, it is not sortedness. 
 #### Sub Lemma 38.1 - 38.22 : r , c ⊢ _≥_ order is preserved inductively over pdinstance operations.
 
 ```agda
@@ -490,11 +491,12 @@ Then pdU[r , c] is complete lattice.
 -------------------------------------------------------------
 -- Sub Lemma 38.1 - 38.22 BEGIN
 -------------------------------------------------------------
-
+-- not total order, we don't need tricholomy
+{-
 import Relation.Binary.Definitions
 open  Relation.Binary.Definitions using (
   Tri ; tri< ; tri≈ ; tri> ) 
-
+-} 
 
 left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
   → (pdi₁  : PDInstance l c )
@@ -973,25 +975,12 @@ map-right-ex-lattice : ∀ { l r : RE }  { loc : ℕ } { c : Char }
 map-right-ex-lattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
 map-right-ex-lattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis)  (map-right-all-ex-≥ pdi pdis all-pdi≥pdis) 
 
-map-ex≥-trans : ∀ { r p : RE } { c : Char } { pd₁ pd₂ : PDInstance r c  } { pds₃ : List (PDInstance r c) }
-  { i₁ : Inhabit {r} {c} p pd₁ } 
-  { i₂ : Inhabit {r} {c} p pd₂ } 
-  { is₃ : All (Inhabit {r} {c} p) pds₃ }
-  → r , c ⊢ pd₁ ≥ pd₂
-  → All (λ pd₃ →  r , c ⊢ pd₂ ≥ pd₃ ) pds₃ 
-  ----------------------------------------------
-  → All (λ pd₃ →  r , c ⊢ pd₁ ≥ pd₃ ) pds₃ 
-map-ex≥-trans {r} {p} {c} {pd₁} {pd₂} {[]} {i₁} {i₂} {[]} pd₁≥pd₂ [] = []   
-map-ex≥-trans {r} {p} {c} {pd₁} {pd₂} {(pd₃ ∷ pds₃)} {i₁} {i₂} {(i₃ ∷ is₃)} pd₁≥pd₂ (pd₂≥pd₃ ∷ all-pd₂≥pds₃) =
-  ex≥-trans {r} {p} {c} {pd₁} {pd₂} {pd₃} {i₁} {i₂} {i₃} pd₁≥pd₂ pd₂≥pd₃ ∷ map-ex≥-trans  {r} {p} {c} {pd₁} {pd₂} {pds₃} {i₁} {i₂} {is₃} pd₁≥pd₂ all-pd₂≥pds₃ 
-
 
 map-fst-ex-lattice : ∀ { l r : RE } { loc : ℕ } { c : Char }
                     → ( pdis : List (PDInstance l c) )
                     → Ex≥-lattice {l} pdis
                     → Ex≥-lattice {l ● r ` loc } (List.map pdinstance-fst pdis)
 map-fst-ex-lattice {l} {r} {loc} {c} []          ex-empty                        = ex-empty
--- map-fst-ex-lattice {l} {r} {loc} {c} (pdi ∷ [])  (ex-join .(pdi) [] [])          = ex-join (pdinstance-fst pdi) (List.map pdinstance-fst []) []
 map-fst-ex-lattice {l} {r} {loc} {c} (pdi@(pdinstance {p} {l} {c} in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥all-pdis ) = ex-join (pdinstance-fst pdi) (List.map pdinstance-fst pdis) (prf pdis pdi≥all-pdis )
   where
     prf : ( qdis : List (PDInstance l c ) )
@@ -1071,11 +1060,11 @@ concat-ex-lattice : ∀ { r p : RE } { c }
     → Ex≥-maybe₂ {r} {c} (head pdis₁) (head pdis₂)
     -------------------------------------------------------
     → Ex≥-lattice { r } {c } (pdis₁ ++ pdis₂)
-concat-ex-lattice []           pdis₂ ex-empty      ex-semi-pdis₂ _ _ _  =  ex-semi-pdis₂
-concat-ex-lattice pdis₁        []    ex-semi-pdis₁ ex-empty _ _ _ rewrite (++-identityʳ pdis₁) = ex-semi-pdis₁
+concat-ex-lattice []           pdis₂ ex-empty      ex-lattice-pdis₂ _ _ _  =  ex-lattice-pdis₂
+concat-ex-lattice pdis₁        []    ex-lattice-pdis₁ ex-empty _ _ _ rewrite (++-identityʳ pdis₁) = ex-lattice-pdis₁
 concat-ex-lattice {r} {p} {c} (pdi₁ ∷ pdis₁)  (pdi₂ ∷ pdis₂)  (ex-join .(pdi₁) .(pdis₁) all-pdi₁≥pdis₁ ) (ex-join .(pdi₂) .(pdis₂) all-pdi₂≥pdis₂ ) (i₁ ∷ is₁) (i₂ ∷ is₂) (ex≥-just₂ pdi₁≥pdi₂) 
   = ex-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)
-    (all-concat all-pdi₁≥pdis₁ (pdi₁≥pdi₂ ∷ map-ex≥-trans {r} {p} {c} {pdi₁} {pdi₂} {pdis₂} {i₁} {i₂} {is₂} pdi₁≥pdi₂ all-pdi₂≥pdis₂ ) )  -- we need to apply ex≥-trans to all pdis₂
+    (all-concat all-pdi₁≥pdis₁ (pdi₁≥pdi₂ ∷ ex≥-trans-map {r} {p} {c} {pdi₁} {pdi₂} {pdis₂} {i₁} {i₂} {is₂} pdi₁≥pdi₂ all-pdi₂≥pdis₂ ) )  -- we need to apply ex≥-trans to all pdis₂
 
 
 
@@ -1235,11 +1224,10 @@ oplus-+-ex-lattice : ∀ { l r : RE } {loc : ℕ } { c : Char }
     → Homogenous pdis₂
     ---------------------------------------
     → Ex≥-lattice  { l + r ` loc } (pdinstance-oplus {l + r ` loc } {loc} {c}  (List.map pdinstance-left pdis₁) (List.map pdinstance-right pdis₂))
-oplus-+-ex-lattice {l} {r} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = map-right-ex-lattice pdis₂ ex-semi 
-oplus-+-ex-lattice {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ = map-left-ex-lattice (pdi₁ ∷ pdis₁) ex-semi
+oplus-+-ex-lattice {l} {r} {loc} {c} [] pdis₂ ex-empty ex-lattice [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = map-right-ex-lattice pdis₂ ex-lattice 
+oplus-+-ex-lattice {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-lattice ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ = map-left-ex-lattice (pdi₁ ∷ pdis₁) ex-lattice
 
 oplus-+-ex-lattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂)
-                                                           -- ex-semi-pdi₁∷pdis₁  ex-semi-pdi₂∷pdis₂
                                                            (ex-join .(pdi₁) .(pdis₁) pdi₁≥pdis₁)
                                                            (ex-join .(pdi₂) .(pdis₂) pdi₂≥pdis₂)                                                            
                                                            (>-inc-pdi₁@(>-inc  v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)  ∷ >-inc-pdis₁ )
@@ -2270,16 +2258,219 @@ Let w be a word.
 
 Let pdi₁ and pdi₂ be two partial derivative descendant instances of r w.r.t w.
 
-We say pdi₁ is POSIX  greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
+We say pdi₁ is POSIX  greater than pdi₂, r , w  ⊢* pdi₁ ≥ pdi₂ iff
   for all parse trees u₁ u₂  of r, u₁ is constructable from pdi₁ and u₂ is constructabled from pdi₂ 
-    then r ⊢ u₁ > u₂ 
+    then r ⊢ u₁ ≥ u₂ 
 
 ```agda
 
 data _,_⊢*_≥_ : ∀ ( r : RE ) → (w : List Char ) → PDInstance* r w → PDInstance* r w → Set where
-  *>-pdi : ∀ { r : RE } { w : List Char }
-    → ( pdi₁ : PDInstance* r w )
-    → ( pdi₂ : PDInstance* r w )
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
-    → r , w ⊢* pdi₁ > pdi₂ 
+  *≥-pdi : ∀ { r p : RE } { w : List Char }
+    → ( injection₁ : U p → U r )
+    → ( s-ev₁ : ∀ ( u : U p ) → (proj₁ ( flat {r} (injection₁ u)) ≡ w ++ (proj₁ (flat {p} u))) )
+    → ( injection₂ : U p → U r )
+    → ( s-ev₂ : ∀ ( u : U p ) → (proj₁ ( flat {r} (injection₂ u)) ≡ w ++ (proj₁ (flat {p} u))) )
+    → ( ∀ ( v₁ : U p )
+        → ( v₂ : U p ) 
+        → p ⊢ v₁ > v₂ 
+        → r ⊢ injection₁ v₁ > injection₂ v₂ )
+    → ( ∀ ( v : U p ) → ( r ⊢ injection₁ v > injection₂ v ) ⊎ (injection₁ v ≡ injection₂ v ) ) -- ? strict inc? 
+   → r , w ⊢* (pdinstance* {p} {r} {w} injection₁ s-ev₁) ≥ (pdinstance* {p} {r} {w} injection₂ s-ev₂)
+
+```
+
+
+```agda
+
+data Ex*≥-maybe : ∀ { r : RE } { w : List Char } ( pdi : PDInstance* r w ) → ( mpdi : Maybe (PDInstance* r w) ) → Set where
+  ex*≥-nothing : ∀ { r : RE } { w : List Char }
+    → { pdi : PDInstance* r w } 
+    ---------------------------
+    → Ex*≥-maybe {r} {w} pdi nothing
+  ex*≥-just : ∀ { r : RE } { w : List Char }
+    → { pdi : PDInstance* r w }
+    → { pdi' : PDInstance* r w }
+    → r , w ⊢* pdi ≥ pdi' 
+    ----------------------------------
+    → Ex*≥-maybe {r} {w} pdi (just pdi')
+
+data Ex*≥-maybe₂ : ∀ { r : RE } { w : List Char } ( mpdi : Maybe (PDInstance* r w )) → ( mpdi' : Maybe (PDInstance* r w) ) → Set where
+  ex*≥-nothingʳ : ∀ { r : RE } { w : List Char }
+    → { pdi : PDInstance* r w } 
+    ---------------------------
+    → Ex*≥-maybe₂ {r} {w} (just pdi) nothing
+  ex*≥-nothingˡ : ∀ { r : RE } { w : List Char }
+    → { pdi : PDInstance* r w } 
+    ---------------------------
+    → Ex*≥-maybe₂ {r} {w} nothing (just pdi)
+
+  ex*≥-nothing₂ : ∀ { r : RE } { w : List Char }
+    ---------------------------
+    → Ex*≥-maybe₂ {r} {w} nothing nothing
+
+  ex*≥-just₂ : ∀ { r : RE } { w : List Char }
+    → { pdi : PDInstance* r w }
+    → { pdi' : PDInstance* r w }
+    → r , w ⊢* pdi ≥ pdi' 
+    ----------------------------------
+    → Ex*≥-maybe₂ {r} {w} (just pdi )(just pdi')
+
+
+```
+
+
+### Lemma 40: the list of pdinstance*s from pdUMany[ r , w] is a complete lattice over the partial order r , w ⊢*_≥_  
+
+
+Let r be a non problematic regular expression.
+
+Let w be a word.
+
+Then pdUMany[r , w] is complete lattice. 
+
+```agda
+data Ex*≥-lattice : ∀ { r : RE } { w : List Char } (pdis : List (PDInstance* r w) ) → Set where
+  ex*-empty :  ∀ { r : RE } { w : List Char } → Ex*≥-lattice {r} {w} []
+  ex*-join :  ∀ { r : RE } { w : List Char }
+    → ( top : PDInstance* r w )
+    → ( pdis : List (PDInstance* r w ) )
+    →  All ( λ x → r , w ⊢* top ≥ x ) pdis   -- top is the join
+    -----------------------------------------
+    → Ex*≥-lattice {r} {w} (top ∷ pdis )
+
+data Inhabit* : ∀ { r : RE } { w : List Char } → RE → PDInstance* r w → Set where
+  hide* : ∀ { p r : RE } { w : List Char }
+    → ( inj : U p → U r ) -- ^ the injection function
+    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ w ++ ( proj₁ (flat {p} u) )) )  -- ^ soundnes evidence
+    → Inhabit* {r} {w} p (pdinstance* {p} {r} {w} inj s-ev) 
+
+
+-- a list of pdinstance*s is homogenous iff all of them are hiding the same pd.
+data Homogenous* : ∀ { r : RE } { w : List Char } → List (PDInstance* r w) → Set where
+  homogenous* : ∀ { r : RE } { w : List Char } (pdis : List (PDInstance* r w ) )
+    → ∃[ p ] (All (Inhabit* p) pdis)
+    → Homogenous* {r} {w} pdis 
+
+```
+
+
+
+### Lemma 41: the list of pdinstance*'s from pdUMany[ r , c] is a lattice in extended POSIX order
+
+
+Let r be a non problematic regular expression.
+
+Let w be a word.
+
+Then pdUMany[r , w] is a lattice in extended POSIX order. 
+
+
+#### Sub Lemma 41.1 - 41.6 : Ex*>-lattice is inductively preserved over pdinstance*'s operations 
+
+```agda
+-------------------------------------------------------------
+-- Sub Lemma 41.1 - 41.6 BEGIN
+-------------------------------------------------------------
+
+-- reflexivity
+ex*≥-refl : ∀ { r : RE } { w : List Char } { pd : PDInstance* r w }
+  → *>-Inc pd 
+  → r , w ⊢* pd ≥ pd
+ex*≥-refl  {r} {w} {pdinstance* {p} .{r} .{w} in₁ s-ev₁} (*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)  = *≥-pdi {r} {p} {w}  in₁ s-ev₁ in₁ s-ev₁ v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ λ v → inj₂ refl 
+
+-- transitivity
+ex*≥-trans : ∀ { r p : RE } { w : List Char } { pd₁ pd₂ pd₃ : PDInstance* r w  }
+  { i₁ : Inhabit* {r} {w} p pd₁ } 
+  { i₂ : Inhabit* {r} {w} p pd₂ } 
+  { i₃ : Inhabit* {r} {w} p pd₃ }
+  → r , w ⊢* pd₁ ≥ pd₂
+  → r , w ⊢* pd₂ ≥ pd₃
+  -------------------
+  → r , w ⊢* pd₁ ≥ pd₃
+ex*≥-trans {r} {p} {w}
+          {pdinstance* in₁ s-ev₁} {pdinstance* in₂ s-ev₂} {pdinstance* in₃ s-ev₃}
+          {hide* .(in₁) .(s-ev₁)}
+          {hide* .(in₂) .(s-ev₂)}
+          {hide* .(in₃) .(s-ev₃)}
+          (*≥-pdi .{r} .{p} .{w} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v⊎in₁v≡in₂v )
+          (*≥-pdi .{r} .{p} .{w} .(in₂) .(s-ev₂) .(in₃) .(s-ev₃) v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v→in₂v>in₃v⊎in₂v≡in₃v ) =
+          *≥-pdi {r} {p} {w} in₁ s-ev₁ in₃ s-ev₃ prf₁ prf₂
+          where
+            prf₂ :  (v : U p) → r ⊢ in₁ v > in₃ v ⊎ in₁ v ≡ in₃ v
+            prf₂ v with v→in₁v>in₂v⊎in₁v≡in₂v v  | v→in₂v>in₃v⊎in₂v≡in₃v v 
+            ... | inj₁ in₁v>in₂v₁ | inj₁ in₂v₁>in₃v₁ = inj₁ (>-trans in₁v>in₂v₁ in₂v₁>in₃v₁)
+            ... | inj₁ in₁v>in₂v₁ | inj₂ in₂v₁≡in₃v₁ rewrite sym in₂v₁≡in₃v₁ = inj₁ in₁v>in₂v₁
+            ... | inj₂ in₁v≡in₂v₁ | inj₂ in₂v₁≡in₃v₁ rewrite sym in₂v₁≡in₃v₁ = inj₂ in₁v≡in₂v₁
+            ... | inj₂ in₁v≡in₂v₁ | inj₁ in₂v₁>in₃v₁ rewrite in₁v≡in₂v₁ = inj₁ in₂v₁>in₃v₁ 
+            prf₁ : (v₁ v₃ : U p) → p ⊢ v₁ > v₃ → r ⊢ in₁ v₁ > in₃ v₃
+            prf₁ v₁ v₃ v₁>v₃ with v→in₁v>in₂v⊎in₁v≡in₂v v₁
+            ... | inj₁ in₁v₁>in₂v₁ = >-trans in₁v₁>in₂v₁ (v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v₁ v₃ v₁>v₃)
+            ... | inj₂ in₁v₁≡in₂v₁ rewrite  in₁v₁≡in₂v₁ = v₂→v₃→v₂>v₃→in₂v₂>in₃v₃ v₁ v₃ v₁>v₃ 
+
+
+ex*≥-trans-map : ∀ { r p : RE } { w : List Char } { pd₁ pd₂ : PDInstance* r w }
+  { pds₃ : List (PDInstance* r w) }
+  { i₁ : Inhabit* {r} {w} p pd₁ } 
+  { i₂ : Inhabit* {r} {w} p pd₂ } 
+  { is₃ : All (Inhabit* {r} {w} p) pds₃ }
+  → r , w ⊢* pd₁ ≥ pd₂
+  → All (_,_⊢*_≥_ r w pd₂)  pds₃
+  ---------------------------------------
+  → All (_,_⊢*_≥_ r w pd₁)  pds₃
+ex*≥-trans-map pd₁≥pd₂ [] = []
+ex*≥-trans-map {r} {p} {w} {pd₁} {pd₂} {pd₃ ∷ pds₃} {i₁} {i₂} {i₃ ∷ is₃} pd₁≥pd₂ (pd₂≥pd₃ ∷ pd₂≥pds₃) = ex*≥-trans {r} {p} {w} {pd₁} {pd₂} {pd₃} {i₁} {i₂} {i₃}  pd₁≥pd₂ pd₂≥pd₃ ∷  ex*≥-trans-map {r} {p} {w} {pd₁} {pd₂} {pds₃} {i₁} {i₂} {is₃}  pd₁≥pd₂ pd₂≥pds₃ 
+  
+
+
+concat-ex*-lattice : ∀ { r p : RE } { w : List Char }
+    → ( pdis₁ : List ( PDInstance* r w ))
+    → ( pdis₂ : List ( PDInstance* r w ))
+    → Ex*≥-lattice { r } { w } pdis₁
+    → Ex*≥-lattice { r } { w } pdis₂
+    → All (Inhabit* {r} {w} p) pdis₁
+    → All (Inhabit* {r} {w} p) pdis₂    
+    → Ex*≥-maybe₂  {r} {w} (head pdis₁) (head pdis₂)
+    -------------------------------------------------------
+    → Ex*≥-lattice { r } {w}  (pdis₁ ++ pdis₂)
+concat-ex*-lattice []    pdis₂   ex*-empty  ex*-lattice-pdi₂ _ _ _ = ex*-lattice-pdi₂
+concat-ex*-lattice pdis₁ []      ex*-lattice-pdi₁ ex*-empty  _ _  _ rewrite  (++-identityʳ pdis₁) = ex*-lattice-pdi₁
+concat-ex*-lattice {r} {p} {w} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*-join .(pdi₁) .(pdis₁) all-pdi₁≥pdis₁ ) (ex*-join .(pdi₂) .(pdis₂) all-pdi₂≥pdis₂ ) (i₁ ∷ is₁) (i₂ ∷ is₂ ) (ex*≥-just₂ pdi₁≥pdi₂)
+  = ex*-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)  (all-concat all-pdi₁≥pdis₁ (pdi₁≥pdi₂ ∷ ex*≥-trans-map {r} {p} {w} {pdi₁} {pdi₂} {pdis₂} {i₁} {i₂} {is₂} pdi₁≥pdi₂ all-pdi₂≥pdis₂ ) ) 
+
+
+compose-pdi-with-ex*≥-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
+  → ( d→r : U d → U r )
+  → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
+  → ( pdi : PDInstance d c )
+  → ( pdis : List (PDInstance d c) )
+  → All (_,_⊢_≥_ d c pdi) pdis 
+  -------------------------------------------------------------------------------------------------
+  → All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with d→r s-ev-d-r pdi)) (List.map (compose-pdi-with d→r s-ev-d-r) pdis)
+compose-pdi-with-ex*≥-map-compose-pdi-with  {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r pdi [] [] = []
+compose-pdi-with-ex*≥-map-compose-pdi-with  {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r
+  pdi₁@(pdinstance {p₁} {d} {c} in₁ s-ev₁)
+  (pdi₂@(pdinstance {p₂} {d} {c} in₂ s-ev₂) ∷ pdis )
+  ( (≥-pdi .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v )  ∷ pdi₁≥pdis₂) =
+   {!!} ∷  compose-pdi-with-ex*≥-map-compose-pdi-with d→r s-ev-d-r >-inc-d→r
+           (pdinstance in₁ s-ev₁) pdis pdi₁≥pdis₂  
+
+
+
+
+map-compose-pdi-with-lattice : ∀ { d r : RE } { pref : List Char} { c : Char }
+  → ( d→r : U d → U r )
+  → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
+  → ( pdis : List (PDInstance d c) )
+  → Ex≥-lattice pdis
+  -------------------------------------------------------------
+  → Ex*≥-lattice {r}  (List.map (compose-pdi-with d→r s-ev-d-r) pdis )
+map-compose-pdi-with-lattice {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r []           ex-empty = ex*-empty
+map-compose-pdi-with-lattice {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r (pdi ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) =  ex*-join (compose-pdi-with d→r s-ev-d-r pdi) (List.map (compose-pdi-with d→r s-ev-d-r) pdis) prf
+  where
+    prf :  All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with d→r s-ev-d-r pdi))
+           (List.map (compose-pdi-with d→r s-ev-d-r) pdis)
+    prf = compose-pdi-with-ex*≥-map-compose-pdi-with  d→r s-ev-d-r >-inc-d→r pdi pdis pdi≥pdis  
+
 ```

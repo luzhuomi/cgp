@@ -1477,11 +1477,11 @@ Then pdUMany[r , w] is extended LNE sorted.
 concat-ex*-sorted : ∀ { r : RE } { w : List Char }
     → ( pdis₁ : List ( PDInstance* r w ))
     → ( pdis₂ : List ( PDInstance* r w ))
-    → Ex*>-sorted { r } pdis₁
-    → Ex*>-sorted { r } pdis₂
+    → Ex*>-sorted { r } { w } pdis₁
+    → Ex*>-sorted { r } {w} pdis₂
     → All (λ pdi₁ → Ex*>-maybe  {r} pdi₁ (head pdis₂)) pdis₁
     -------------------------------------------------------
-    → Ex*>-sorted { r } (pdis₁ ++ pdis₂)
+    → Ex*>-sorted { r } {w} (pdis₁ ++ pdis₂)
 concat-ex*-sorted []                       pdis₂          ex*>-nil                                       pdis₂-sorted     []                              = pdis₂-sorted
 concat-ex*-sorted pdis₁                    []             pdis₁-sorted                                  ex*>-nil           _  rewrite (++-identityʳ pdis₁) = pdis₁-sorted
 concat-ex*-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-sorted                                  pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂  ∷ [])      = ex*>-cons pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂) 

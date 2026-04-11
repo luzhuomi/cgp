@@ -379,6 +379,24 @@ import cgp.Rewriting  -- import ∷ʳ-++ rewriting rule
 -- A helper function  for pdUMany-aux then pdUMany 
 -- compose-pdi-with : copmose a PDInstance with the "downstream" PDinstance* injection and soundness evidence
 
+compose-pdi-with-soundEv : ∀ { p d r : RE } { pref : List Char } { c : Char }
+  → ( d→r : U d → U r )
+  → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+  → ( p→d : U p → U d )
+  → ( s-ev-p-d : ∀ ( u : U p ) → ( proj₁ ( flat {d} (p→d u) ) ≡ c ∷ (proj₁ (flat {p} u))) )
+  → ( u : U p )
+  → proj₁ (flat (( d→r ∘ p→d ) u )) ≡  pref ∷ʳ c ++ proj₁ (flat u)
+compose-pdi-with-soundEv {p} {d} {r} {pref} {c} d→r s-ev-d-r p→d s-ev-p-d u =   
+  begin
+    proj₁ (flat (d→r (p→d u)))
+  ≡⟨ s-ev-d-r (p→d u) ⟩
+    pref ++ proj₁ (flat (p→d u))
+  ≡⟨ cong ( pref ++_ ) (s-ev-p-d u) ⟩
+    pref ++ ( c ∷ Product.proj₁ (flat u) )
+  -- ≡⟨ sym ( ∷ʳ-++ pref c (Product.proj₁ (flat u)) ) ⟩  -- this becomes a refl, thanks to the REWRITE ∷ʳ-++  pragma 
+  ≡⟨ refl ⟩                                         
+    pref ∷ʳ c ++ proj₁ (flat u) 
+  ∎
 
 compose-pdi-with : ∀ { r d : RE } { pref : List Char } { c : Char }
                    → ( d→r-inj : U d → U r )
@@ -386,7 +404,8 @@ compose-pdi-with : ∀ { r d : RE } { pref : List Char } { c : Char }
                    → PDInstance d c
                    → PDInstance* r (pref ∷ʳ c )
 compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r (pdinstance {p} {d} {c} p→d s-ev-p-d) = 
-                 pdinstance* {p} {r} {pref ∷ʳ c } ( d→r ∘ p→d ) 
+                 pdinstance* {p} {r} {pref ∷ʳ c } ( d→r ∘ p→d )  (compose-pdi-with-soundEv  d→r s-ev-d-r p→d s-ev-p-d)
+                 {- -- lifted out 
                                        (
                                         λ u →
                                           begin
@@ -399,7 +418,7 @@ compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d-r (pdinstance {p} {d} {c} p→d
                                           ≡⟨ refl ⟩                                         
                                             pref ∷ʳ c ++ proj₁ (flat u) 
                                           ∎
-                                        )
+                                        ) -}
                                         
 
 

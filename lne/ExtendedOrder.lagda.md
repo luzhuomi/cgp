@@ -15,7 +15,6 @@ open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj ; ¬∷�
 import cgp.Word as Word
 open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 
-
 import cgp.ParseTree as ParseTree
 open ParseTree using (
   U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ;

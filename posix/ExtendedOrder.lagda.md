@@ -7,7 +7,6 @@ open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ;
   ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ; ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? ;
   first ; ε∉r→¬first-r≡[] )
 
-
 import cgp.Utils as Utils
 open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj ; ¬∷≡[] ; inv-map-[] ; inv-concatMap-map-f-[] ) 
 
@@ -35,7 +34,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-snd ; mk-snd-pdi ; mkinjSnd ; mkinjSndSoundEv ; 
   concatmap-pdinstance-snd ; zip-es-flat-[]-es  ;
   pdinstance-assoc; inv-assoc ;
-  compose-pdi-with   ; concatmap-pdinstance-snd-[]≡[]
+  compose-pdi-with; compose-pdi-with-soundEv  ; concatmap-pdinstance-snd-[]≡[]
   ) 
 
 
@@ -2438,39 +2437,67 @@ concat-ex*-lattice {r} {p} {w} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*-jo
   = ex*-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)  (all-concat all-pdi₁≥pdis₁ (pdi₁≥pdi₂ ∷ ex*≥-trans-map {r} {p} {w} {pdi₁} {pdi₂} {pdis₂} {i₁} {i₂} {is₂} pdi₁≥pdi₂ all-pdi₂≥pdis₂ ) ) 
 
 
-compose-pdi-with-ex*≥-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
+compose-pdi-with-ex*≥-map-compose-pdi-with : ∀ { p d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
   → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
   → ( pdi : PDInstance d c )
   → ( pdis : List (PDInstance d c) )
+  → Inhabit p pdi
+  → All (Inhabit p) pdis 
   → All (_,_⊢_≥_ d c pdi) pdis 
   -------------------------------------------------------------------------------------------------
   → All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with d→r s-ev-d-r pdi)) (List.map (compose-pdi-with d→r s-ev-d-r) pdis)
-compose-pdi-with-ex*≥-map-compose-pdi-with  {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r pdi [] [] = []
-compose-pdi-with-ex*≥-map-compose-pdi-with  {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r
-  pdi₁@(pdinstance {p₁} {d} {c} in₁ s-ev₁)
-  (pdi₂@(pdinstance {p₂} {d} {c} in₂ s-ev₂) ∷ pdis )
+compose-pdi-with-ex*≥-map-compose-pdi-with  {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r pdi [] hide-p-pdi [] [] = []
+compose-pdi-with-ex*≥-map-compose-pdi-with  {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r
+  pdi₁@(pdinstance .{p} .{d} .{c} in₁ s-ev₁)
+  (pdi₂@(pdinstance .{p} .{d} .{c} in₂ s-ev₂) ∷ pdis )
+  (hide .(in₁) .(s-ev₁)) ((hide .(in₂) .(s-ev₂)) ∷ hide-p-pdis) 
   ( (≥-pdi .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v )  ∷ pdi₁≥pdis₂) =
-   {!!} ∷  compose-pdi-with-ex*≥-map-compose-pdi-with d→r s-ev-d-r >-inc-d→r
-           (pdinstance in₁ s-ev₁) pdis pdi₁≥pdis₂  
+   prf ∷  compose-pdi-with-ex*≥-map-compose-pdi-with {p} {d} {r}  d→r s-ev-d-r >-inc-d→r
+           (pdinstance in₁ s-ev₁) pdis (hide in₁ s-ev₁) hide-p-pdis  pdi₁≥pdis₂  
+  where
+    inject₁ : U p → U r
+    inject₁ = d→r ∘ in₁
+    inject₂ : U p → U r
+    inject₂ = d→r ∘ in₂
+    soundEv₁ : (u : U p) → proj₁ (flat (inject₁ u )) ≡  pref ∷ʳ c ++ proj₁ (flat u)
+    soundEv₁ = compose-pdi-with-soundEv  d→r s-ev-d-r in₁ s-ev₁ 
+    soundEv₂ : (u : U p) → proj₁ (flat (inject₂ u )) ≡  pref ∷ʳ c ++ proj₁ (flat u)
+    soundEv₂ = compose-pdi-with-soundEv  d→r s-ev-d-r in₂ s-ev₂
+
+    len-|inject₁-u|≡len-pref-c++|u| : (u : U  p )
+      → length (proj₁ (flat (inject₁ u))) ≡ length ((pref ∷ʳ c) ++ (proj₁ (flat u))) 
+    len-|inject₁-u|≡len-pref-c++|u| u rewrite (soundEv₁ u) = refl 
+
+    len-|inject₂-u|≡len-pref-c++|u| : (u : U  p )
+      → length (proj₁ (flat (inject₂ u))) ≡ length ((pref ∷ʳ c) ++ (proj₁ (flat u))) 
+    len-|inject₂-u|≡len-pref-c++|u| u rewrite (soundEv₂ u) = refl 
+    -- prf :  r , pref ∷ʳ c ⊢*  compose-pdi-with d→r s-ev-d-r (pdinstance in₁ s-ev₁) ≥ compose-pdi-with d→r s-ev-d-r (pdinstance in₂ s-ev₂)
+    prf :  r , (pref ∷ʳ c) ⊢*  pdinstance* inject₁ soundEv₁ ≥ pdinstance* inject₂ soundEv₂ 
+    prf = *≥-pdi {r} {p} {(pref ∷ʳ c)} inject₁ soundEv₁  inject₂ soundEv₂  (λ v₁ v₂ z →
+                                                                               >-inc-d→r (in₁ v₁) (in₂ v₂) (v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ z)) sub_prf₂
+      where
+        sub_prf₂ : (v : U p) → r ⊢ inject₁ v > inject₂ v ⊎ inject₁ v ≡ inject₂ v
+        sub_prf₂ v with v→in₁v≥in₂v v 
+        ... | inj₂ in₁v≣in₂v = inj₂ (cong d→r in₁v≣in₂v )
+        ... | inj₁ in₁v>in₁v = inj₁ (>-inc-d→r (in₁ v) (in₂ v) in₁v>in₁v) 
 
 
-
-
-map-compose-pdi-with-lattice : ∀ { d r : RE } { pref : List Char} { c : Char }
+map-compose-pdi-with-lattice : ∀ { p d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
   → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
   → ( pdis : List (PDInstance d c) )
+  → All (Inhabit p) pdis
   → Ex≥-lattice pdis
   -------------------------------------------------------------
   → Ex*≥-lattice {r}  (List.map (compose-pdi-with d→r s-ev-d-r) pdis )
-map-compose-pdi-with-lattice {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r []           ex-empty = ex*-empty
-map-compose-pdi-with-lattice {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r (pdi ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) =  ex*-join (compose-pdi-with d→r s-ev-d-r pdi) (List.map (compose-pdi-with d→r s-ev-d-r) pdis) prf
+map-compose-pdi-with-lattice {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r []           []  ex-empty = ex*-empty
+map-compose-pdi-with-lattice {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r (pdi ∷ pdis) (hide-p-pdi ∷ hide-p-pdis)  (ex-join .(pdi) .(pdis) pdi≥pdis) =  ex*-join (compose-pdi-with d→r s-ev-d-r pdi) (List.map (compose-pdi-with d→r s-ev-d-r) pdis) prf
   where
     prf :  All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with d→r s-ev-d-r pdi))
            (List.map (compose-pdi-with d→r s-ev-d-r) pdis)
-    prf = compose-pdi-with-ex*≥-map-compose-pdi-with  d→r s-ev-d-r >-inc-d→r pdi pdis pdi≥pdis  
+    prf = compose-pdi-with-ex*≥-map-compose-pdi-with  d→r s-ev-d-r >-inc-d→r pdi pdis hide-p-pdi hide-p-pdis pdi≥pdis  
 
 ```

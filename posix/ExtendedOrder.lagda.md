@@ -2483,7 +2483,7 @@ compose-pdi-with-ex*≥-map-compose-pdi-with  {p} {d} {r} {pref} {c} d→r s-ev-
         ... | inj₂ in₁v≣in₂v = inj₂ (cong d→r in₁v≣in₂v )
         ... | inj₁ in₁v>in₁v = inj₁ (>-inc-d→r (in₁ v) (in₂ v) in₁v>in₁v) 
 
-
+-- do we need this? 
 map-compose-pdi-with-lattice : ∀ { p d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
@@ -2499,5 +2499,44 @@ map-compose-pdi-with-lattice {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r (
     prf :  All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with d→r s-ev-d-r pdi))
            (List.map (compose-pdi-with d→r s-ev-d-r) pdis)
     prf = compose-pdi-with-ex*≥-map-compose-pdi-with  d→r s-ev-d-r >-inc-d→r pdi pdis hide-p-pdi hide-p-pdis pdi≥pdis  
+
+
+advance-pdi*-with-c-lattice : ∀ { r : RE } { pref : List Char} { c : Char }
+  → (pdi : PDInstance* r pref)
+  → *>-Inc pdi
+  ----------------------------------------------------------
+  → Ex*≥-lattice (advance-pdi*-with-c {r} {pref} {c} pdi)
+advance-pdi*-with-c-lattice {r} {pref} {c}  pdi@(pdinstance* {d} {r} {pref} d→r s-ev-d-r) (*>-inc d→r-inc-ev) 
+  with pdU[ d , c ]    | pdU-ex-lattice { d } {c}         | pdU-Homogenous {d } {c} 
+... | []               | _                                | _  = ex*-empty
+... | (pdi ∷ pdis )    | ex-join  .(pdi) .(pdis) pdi≥pdis | homogenous _ ( p , hide-p-pdi ∷ hide-p-pdis) = ex*-join (compose-pdi-with d→r s-ev-d-r pdi) (List.map (compose-pdi-with d→r s-ev-d-r) pdis) (compose-pdi-with-ex*≥-map-compose-pdi-with  d→r s-ev-d-r d→r-inc-ev pdi pdis hide-p-pdi hide-p-pdis pdi≥pdis )
+
+
+concatmap-advance-pdi*-with-c-lattice : ∀ { d  r : RE } { pref : List Char } { c : Char }
+  → (pdis : List (PDInstance* r pref) )
+  → Ex*≥-lattice pdis
+  → All *>-Inc pdis
+  → All (Inhabit* d) pdis
+  -------------------------------------------------------------------------------------
+  → Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} [] ex*-empty [] [] =  ex*-empty
+concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} (pdi@(pdinstance* .{d} .{r} .{pref} in₁ s-ev₁) ∷ pdis) (ex*-join .(pdi) .(pdis) pdi≥pdis)
+  ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂) ∷ all-*>-inc-pdis)
+  ((hide* .{d} .(in₁) .(s-ev₁)) ∷ hide*-d-pdis )
+  with pdU[ d , c ]    | pdU-ex-lattice { d } {c}             |   pdU-Homogenous {d } {c} 
+... | []               | _                                    |   _  = {!!}  -- all the rest of pdis must be pdU[ d , c ] ≡ [] also 
+... | (pdi₁ ∷ pdis₁ )  | ex-join  .(pdi₁) .(pdis₁) pdi₁≥pdis₁ | homogenous _ ( p , hide-p-pdi₁ ∷ hide-p-pdis₁) =
+  ex*-join (compose-pdi-with in₁ s-ev₁ pdi₁)
+  (List.map (compose-pdi-with in₁ s-ev₁) pdis₁ ++
+    (concatMap advance-pdi*-with-c pdis)) (all-concat prf₁ prf₂)
+  where
+    prf₁ : All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with in₁ s-ev₁ pdi₁))
+           (List.map (compose-pdi-with in₁ s-ev₁) pdis₁)
+    prf₁ = compose-pdi-with-ex*≥-map-compose-pdi-with  in₁ s-ev₁ v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ pdi₁ pdis₁ hide-p-pdi₁ hide-p-pdis₁ pdi₁≥pdis₁ 
+    prf₂ : All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with in₁ s-ev₁ pdi₁))
+           (concatMap advance-pdi*-with-c pdis)
+    prf₂ = {!!} 
+
+                                                                                                                                                               
 
 ```

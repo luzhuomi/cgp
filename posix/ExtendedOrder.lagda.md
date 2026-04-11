@@ -2540,3 +2540,35 @@ concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} (pdi@(pdinstance* .{d} 
                                                                                                                                                                
 
 ```
+
+
+-------------------------------------------------------------
+-- Sub Lemma 41.1 - 41.6 BEGIN
+-------------------------------------------------------------
+
+
+#### Main proof for Lemma 41
+
+```agda 
+
+pdUMany-aux-lattice : ∀ { d r : RE }  { pref : List Char }
+  → ( c : Char )
+  → ( cs : List Char )
+  → ( pdis : List (PDInstance* r pref ) )
+  → All (Inhabit* d) pdis 
+  → Ex*≥-lattice pdis
+  → All *>-Inc pdis -- we need to thread through *>-Inc for all the sub lemmas so that we can use it in compose-pdi-with-ex*>-head-map-compose-pdi-with 
+  -------------------------------------------------------
+  → Ex*≥-lattice (pdUMany-aux (c ∷ cs) pdis)
+pdUMany-aux-lattice {d} {r}  {pref} c [] pdis hide-d-pdis pdis-ex*>-lattice *>-inc-pdis  rewrite (++-identityʳ (pref ∷ʳ c) )   = concatmap-advance-pdi*-with-c-pdis-lattice
+  where
+    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} pdis  pdis-ex*>-lattice *>-inc-pdis hide-d-pdis
+-- pdis-ex*>-sorted
+pdUMany-aux-lattice {d} {r}  {pref} c (c' ∷ cs) pdis hide-d-pdis pdis-ex*>-lattice *>-inc-pdis =
+  pdUMany-aux-lattice  {d} {r}  {pref ∷ʳ c} c' cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) {!!}  concatmap-advance-pdi*-with-c-pdis-lattice (concatmap-advance-pdi*-with-c-*>inc pdis *>-inc-pdis)
+  where
+    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} pdis pdis-ex*>-lattice *>-inc-pdis hide-d-pdis 
+
+```

@@ -2714,13 +2714,30 @@ pdUMany-lattice {r} {c ∷ cs} = pdUMany-aux-lattice {r}  {[]} c cs [  ( pdinsta
                                                                                                                              (r , hide* (λ u → u) (λ u → refl) ∷ [])) (ex*-join (pdinstance* (λ u → u) (λ u → refl)) [] []) (*>-inc (λ u₁ u₂ z → z) ∷ []) 
 
 
+-- this lemma is proven by opus 4.6
+pdUMany-aux-homogenous* : ∀ { r : RE } { pref : List Char }
+  → ( c : Char )
+  → ( cs : List Char )
+  → ( pdis : List (PDInstance* r pref) )
+  → Homogenous* pdis
+  → Homogenous* (pdUMany-aux (c ∷ cs) pdis)
+pdUMany-aux-homogenous* {r} {pref} c [] pdis homo-pdis rewrite (++-identityʳ (pref ∷ʳ c))
+  = concatmap-advance-pdi*-with-c-pdis-homgenous* homo-pdis
+pdUMany-aux-homogenous* {r} {pref} c cs [] homo-[] rewrite pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs)
+  = homogenous* [] (r , [])
+pdUMany-aux-homogenous* {r} {pref} c (c' ∷ cs) (pdi ∷ pdis) homo-pdis
+  = pdUMany-aux-homogenous* {r} {pref ∷ʳ c} c' cs
+      (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis))
+      (concatmap-advance-pdi*-with-c-pdis-homgenous* homo-pdis)
 
 pdUMany-homogenous* : ∀ { r : RE } { w : List Char }
   → Homogenous* pdUMany[ r , w ]
 pdUMany-homogenous* {r} {[]} = homogenous* pdUMany[ r , [] ]
                                 (r ,
                                  hide* PartialDerivative.injId PartialDerivative.injId-sound ∷ [])   
-pdUMany-homogenous* {r} {c ∷ cs} = {!!} 
+pdUMany-homogenous* {r} {c ∷ cs} = pdUMany-aux-homogenous* {r} {[]} c cs
+  [ pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ]
+  (homogenous* [ pdinstance* (λ u → u) (λ u → refl) ] (r , hide* (λ u → u) (λ u → refl) ∷ []))
 
 
 
@@ -2734,6 +2751,7 @@ data ≥-lattice : ∀ { r : RE } ( us : List ( U r ) ) → Set where
     -----------------------------------------------
     → ≥-lattice {r} (top ∷ us ) 
 
+-- this lemma is proven by opus 4.6
 concatMap-buildU-lattice : ∀ { r : RE } { w : List Char }
   → ( pdis : List (PDInstance* r w) )
   → Homogenous* pdis 
@@ -2742,7 +2760,57 @@ concatMap-buildU-lattice : ∀ { r : RE } { w : List Char }
   → ≥-lattice{r} (concatMap buildU pdis)
 concatMap-buildU-lattice {r} {w} [] _  ex*-empty [] = ≥-empty
 
-concatMap-buildU-lattice {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , ((hide* .(in₁) .(s-ev₁)) ∷ hide-d-pdis) ) )(ex*-join .(pdi) .(pdis) pdi≥pdis) ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) ∷ >-inc-pdis ) = {!!}  
+concatMap-buildU-lattice {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , ((hide* .(in₁) .(s-ev₁)) ∷ hide-d-pdis) ) )(ex*-join .(pdi) .(pdis) pdi≥pdis) ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) ∷ >-inc-pdis )
+  with ε∈? d in ε∈?d-eq
+... | no ε∉d = subst ≥-lattice (sym (empty-helper pdis hide-d-pdis)) ≥-empty
+  where
+    empty-helper : (xs : List (PDInstance* r w)) → All (Inhabit* d) xs
+                 → concatMap buildU xs ≡ []
+    empty-helper [] [] = refl
+    empty-helper (pdinstance* in' s-ev' ∷ xs) (hide* .(in') .(s-ev') ∷ ihs)
+      rewrite ε∈?d-eq = empty-helper xs ihs
+... | yes ε∈d with mkAllEmptyU ε∈d in mkAllEmpty-eq | mkAllEmptyU-sorted ε∈d
+...   | [] | _ = Nullary.contradiction mkAllEmpty-eq (mkAllEmptyU≢[] ε∈d)
+...   | (e₀ ∷ es') | sorted-e₀∷es' = ≥-join (in₁ e₀) _ (all-concat prf₁ prf₂)
+  where
+    e₀>es' : All (d ⊢ e₀ >_) es'
+    e₀>es' = PosixOrder.>-cons→hd>tl sorted-e₀∷es'
+
+    -- head of buildU pdi dominates tail of buildU pdi
+    prf₁ : All (λ x → r ⊢ in₁ e₀ > x ⊎ in₁ e₀ ≡ x) (List.map in₁ es')
+    prf₁ = prf₁-helper es' e₀>es'
+      where
+        prf₁-helper : (ys : List (U d)) → All (d ⊢ e₀ >_) ys
+                     → All (λ x → r ⊢ in₁ e₀ > x ⊎ in₁ e₀ ≡ x) (List.map in₁ ys)
+        prf₁-helper [] [] = []
+        prf₁-helper (y ∷ ys) (e₀>y ∷ e₀>ys) =
+          inj₁ (v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ e₀ y e₀>y) ∷ prf₁-helper ys e₀>ys
+
+    -- for a single pdi' with injection in₂, head of buildU pdi dominates all of buildU pdi'
+    per-pdi : (in₂ : U d → U r)
+            → (∀ (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ in₁ v₁ > in₂ v₂)
+            → (∀ (v : U d) → r ⊢ in₁ v > in₂ v ⊎ in₁ v ≡ in₂ v)
+            → All (λ x → r ⊢ in₁ e₀ > x ⊎ in₁ e₀ ≡ x) (List.map in₂ (e₀ ∷ es'))
+    per-pdi in₂ strict eqorgt = eqorgt e₀ ∷ per-pdi-tail es' e₀>es'
+      where
+        per-pdi-tail : (ys : List (U d)) → All (d ⊢ e₀ >_) ys
+                     → All (λ x → r ⊢ in₁ e₀ > x ⊎ in₁ e₀ ≡ x) (List.map in₂ ys)
+        per-pdi-tail [] [] = []
+        per-pdi-tail (y ∷ ys) (e₀>y ∷ e₀>ys) =
+          inj₁ (strict e₀ y e₀>y) ∷ per-pdi-tail ys e₀>ys
+
+    -- head of buildU pdi dominates all of concatMap buildU pdis
+    prf₂ : All (λ x → r ⊢ in₁ e₀ > x ⊎ in₁ e₀ ≡ x) (concatMap buildU pdis)
+    prf₂ = prf₂-helper pdis hide-d-pdis pdi≥pdis
+      where
+        prf₂-helper : (xs : List (PDInstance* r w)) → All (Inhabit* d) xs
+                     → All (_,_⊢*_≥_ r w pdi) xs
+                     → All (λ x → r ⊢ in₁ e₀ > x ⊎ in₁ e₀ ≡ x) (concatMap buildU xs)
+        prf₂-helper [] [] [] = []
+        prf₂-helper (pdinstance* in₂ s-ev₂ ∷ xs) (hide* .(in₂) .(s-ev₂) ∷ ihs)
+          ((*≥-pdi .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) strict eqorgt) ∷ pdi≥xs)
+          rewrite ε∈?d-eq | mkAllEmpty-eq
+          = all-concat (per-pdi in₂ strict eqorgt) (prf₂-helper xs ihs pdi≥xs)
 ```
 
 

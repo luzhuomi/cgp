@@ -2638,34 +2638,6 @@ concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} (pdi@(pdinstance* .{d} 
 #### Main proof for Lemma 41
 
 ```agda 
-{-
--- exposing the d here makes the proof difficult to be developed 
-pdUMany-aux-lattice : ∀ { d r : RE }  { pref : List Char } -- pref is the prefixed has been consumed so far. 
-  → ( c : Char )
-  → ( cs : List Char )
-  → ( pdis : List (PDInstance* r pref ) )
-  → All (Inhabit* d) pdis 
-  → Ex*≥-lattice pdis
-  → All *>-Inc pdis -- we need to thread through *>-Inc for all the sub lemmas so that we can use it in compose-pdi-with-ex*>-head-map-compose-pdi-with 
-  -------------------------------------------------------
-  → Ex*≥-lattice (pdUMany-aux (c ∷ cs) pdis)
-pdUMany-aux-lattice {d} {r}  {pref} c [] pdis hide-d-pdis pdis-ex*>-lattice *>-inc-pdis  rewrite (++-identityʳ (pref ∷ʳ c) )   = concatmap-advance-pdi*-with-c-pdis-lattice
-  where
-    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} pdis  pdis-ex*>-lattice *>-inc-pdis hide-d-pdis
-pdUMany-aux-lattice {d} {r}  {pref} c cs        []           [] ex*-empty [] rewrite pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs)  = ex*-empty  
-pdUMany-aux-lattice {d} {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (hide-d-pdi@(hide* .{d} .{r} .{pref} in₁ s-ev₁) ∷ hide-d-pdis) pdis-ex*>-lattice *>-inc-pdis  -- with pdU[ d , c ]
--- ... | [] = ?
--- ... | ( qdi@(pdinstance {p} .{r} .{c} in₁' s-ev₁') ∷ qdis ) 
---  with pdU[ r , c ]    | pdU-ex-lattice { r } {c}         | pdU-Homogenous {r } {c} 
---... | []                | _                                 | _  = ex*-empty
--- ... | (pdi' ∷ pdis' )   | ex-join  .(pdi') .(pdis') pdi'≥pdis' | homogenous _ ( p , hide-p-pdi' ∷ hide-p-pdis') =  ?
-  = pdUMany-aux-lattice  {- {p} {r}  {pref ∷ʳ c} -}  c' cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) {!!}  concatmap-advance-pdi*-with-c-pdis-lattice (concatmap-advance-pdi*-with-c-*>inc (pdi ∷ pdis)  *>-inc-pdis)
-  -- not {d}, should be d/c
-  where
-    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) 
-    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis ) 
--} 
 
 -- this lemma is implemented by opus 4.6 when the annotation is given by me. it took 10 mins.
 concatmap-advance-pdi*-with-c-pdis-homgenous* : ∀ { r : RE } { pref : List Char } { c : Char } { pdis : List (PDInstance* r pref) }
@@ -2743,6 +2715,15 @@ pdUMany-lattice {r} {c ∷ cs} = pdUMany-aux-lattice {r}  {[]} c cs [  ( pdinsta
 
 
 
+pdUMany-homogenous* : ∀ { r : RE } { w : List Char }
+  → Homogenous* pdUMany[ r , w ]
+pdUMany-homogenous* {r} {[]} = homogenous* pdUMany[ r , [] ]
+                                (r ,
+                                 hide* PartialDerivative.injId PartialDerivative.injId-sound ∷ [])   
+pdUMany-homogenous* {r} {c ∷ cs} = {!!} 
+
+
+
 
 data ≥-lattice : ∀ { r : RE } ( us : List ( U r ) ) → Set where
   ≥-empty : ∀ { r : RE } → ≥-lattice {r} []
@@ -2755,9 +2736,20 @@ data ≥-lattice : ∀ { r : RE } ( us : List ( U r ) ) → Set where
 
 concatMap-buildU-lattice : ∀ { r : RE } { w : List Char }
   → ( pdis : List (PDInstance* r w) )
+  → Homogenous* pdis 
   → Ex*≥-lattice pdis
   → All *>-Inc pdis
   → ≥-lattice{r} (concatMap buildU pdis)
-concatMap-buildU-lattice {r} {w} [] ex*-empty [] = ≥-empty   
+concatMap-buildU-lattice {r} {w} [] _  ex*-empty [] = ≥-empty
 
+concatMap-buildU-lattice {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , ((hide* .(in₁) .(s-ev₁)) ∷ hide-d-pdis) ) )(ex*-join .(pdi) .(pdis) pdi≥pdis) ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) ∷ >-inc-pdis ) = {!!}  
+```
+
+
+#### Main proof for Theorem 42 
+```agda
+
+parseAll-is-posix-lattice : ∀ { r : RE } { w : List Char }
+  →  ≥-lattice {r} (parseAll[ r , w ])
+parseAll-is-posix-lattice {r} {w} = concatMap-buildU-lattice pdUMany[ r , w ] (pdUMany-homogenous* {r} {w}) pdUMany-lattice  pdUMany-*>-inc 
 ```

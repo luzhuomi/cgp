@@ -54,7 +54,8 @@ open PartialDerivative using (
   pdUMany[_,_]; pdUMany-aux;
   advance-pdi*-with-c ; 
   parseAll[_,_] ; buildU ;
-  pdi*-∃
+  pdi*-∃ ;
+  pdUMany-aux-cs-[]≡[] 
   -- ;
   -- recons-v→¬proj₁flat-v≡[]
   )
@@ -2637,8 +2638,9 @@ concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} (pdi@(pdinstance* .{d} 
 #### Main proof for Lemma 41
 
 ```agda 
-
-pdUMany-aux-lattice : ∀ { d r : RE }  { pref : List Char }
+{-
+-- exposing the d here makes the proof difficult to be developed 
+pdUMany-aux-lattice : ∀ { d r : RE }  { pref : List Char } -- pref is the prefixed has been consumed so far. 
   → ( c : Char )
   → ( cs : List Char )
   → ( pdis : List (PDInstance* r pref ) )
@@ -2651,11 +2653,46 @@ pdUMany-aux-lattice {d} {r}  {pref} c [] pdis hide-d-pdis pdis-ex*>-lattice *>-i
   where
     concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
     concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} pdis  pdis-ex*>-lattice *>-inc-pdis hide-d-pdis
--- pdis-ex*>-sorted
-pdUMany-aux-lattice {d} {r}  {pref} c (c' ∷ cs) pdis hide-d-pdis pdis-ex*>-lattice *>-inc-pdis =
-  pdUMany-aux-lattice  {d} {r}  {pref ∷ʳ c} c' cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) {!!}  concatmap-advance-pdi*-with-c-pdis-lattice (concatmap-advance-pdi*-with-c-*>inc pdis *>-inc-pdis)
+pdUMany-aux-lattice {d} {r}  {pref} c cs        []           [] ex*-empty [] rewrite pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs)  = ex*-empty  
+pdUMany-aux-lattice {d} {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (hide-d-pdi@(hide* .{d} .{r} .{pref} in₁ s-ev₁) ∷ hide-d-pdis) pdis-ex*>-lattice *>-inc-pdis  -- with pdU[ d , c ]
+-- ... | [] = ?
+-- ... | ( qdi@(pdinstance {p} .{r} .{c} in₁' s-ev₁') ∷ qdis ) 
+--  with pdU[ r , c ]    | pdU-ex-lattice { r } {c}         | pdU-Homogenous {r } {c} 
+--... | []                | _                                 | _  = ex*-empty
+-- ... | (pdi' ∷ pdis' )   | ex-join  .(pdi') .(pdis') pdi'≥pdis' | homogenous _ ( p , hide-p-pdi' ∷ hide-p-pdis') =  ?
+  = pdUMany-aux-lattice  {- {p} {r}  {pref ∷ʳ c} -}  c' cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) {!!}  concatmap-advance-pdi*-with-c-pdis-lattice (concatmap-advance-pdi*-with-c-*>inc (pdi ∷ pdis)  *>-inc-pdis)
+  -- not {d}, should be d/c
+  where
+    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) 
+    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis ) 
+-} 
+
+
+concatmap-advance-pdi*-with-c-pdis-homgenous* : ∀ { r : RE } { pref : List Char } { c : Char } { pdis : List (PDInstance* r pref) }
+  → Homogenous* pdis
+  ------------------------------------------------------------------------
+  → Homogenous* (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+concatmap-advance-pdi*-with-c-pdis-homgenous* =  {!!}  
+
+
+pdUMany-aux-lattice : ∀ { r : RE }  { pref : List Char } -- pref is the prefixed has been consumed so far. 
+  → ( c : Char )
+  → ( cs : List Char )
+  → ( pdis : List (PDInstance* r pref ) )
+  → Homogenous* pdis 
+  → Ex*≥-lattice pdis
+  → All *>-Inc pdis -- we need to thread through *>-Inc for all the sub lemmas so that we can use it in compose-pdi-with-ex*>-head-map-compose-pdi-with 
+  -------------------------------------------------------
+  → Ex*≥-lattice (pdUMany-aux (c ∷ cs) pdis)
+pdUMany-aux-lattice {r}  {pref} c [] pdis (homogenous* .(pdis) ( d , hide-d-pdis) ) pdis-ex*>-lattice *>-inc-pdis  rewrite (++-identityʳ (pref ∷ʳ c) )   = concatmap-advance-pdi*-with-c-pdis-lattice
   where
     concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} pdis pdis-ex*>-lattice *>-inc-pdis hide-d-pdis 
-
+    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} pdis  pdis-ex*>-lattice *>-inc-pdis hide-d-pdis 
+pdUMany-aux-lattice {r}  {pref} c cs        []           homo-[] ex*-empty [] rewrite pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs)  = ex*-empty  
+pdUMany-aux-lattice {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , hide-d-pdi ∷ hide-d-pdis ) )  pdis-ex*>-lattice *>-inc-pdis  -- with pdU[ d , c ]
+  = pdUMany-aux-lattice   {r}  {pref ∷ʳ c}  c' cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) (concatmap-advance-pdi*-with-c-pdis-homgenous* (homogenous* (pdi ∷ pdis) (d , hide-d-pdi ∷ hide-d-pdis)) )  concatmap-advance-pdi*-with-c-pdis-lattice (concatmap-advance-pdi*-with-c-*>inc (pdi ∷ pdis)  *>-inc-pdis)
+  -- not {d}, should be d/c
+  where
+    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) 
+    concatmap-advance-pdi*-with-c-pdis-lattice =  concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis)  
 ```

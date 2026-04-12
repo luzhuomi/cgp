@@ -37,7 +37,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   compose-pdi-with; compose-pdi-with-soundEv  ; concatmap-pdinstance-snd-[]≡[]
   ) 
 
-
+{-
 import cgp.Recons as Recons
 open Recons using ( Recons ; recons ;
   Recons* ; recons* ;
@@ -45,6 +45,7 @@ open Recons using ( Recons ; recons ;
   inv-recons*-compose-pdi-with ; 
   ¬recons-right-from-pdinstance-left ; ¬recons-left-from-pdinstance-right ; ¬recons-[]-from-pdinstance-star 
   )
+-}
 
 
 import cgp.posix.PartialDerivative as PartialDerivative
@@ -83,6 +84,15 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   )
 
 
+import cgp.posix.Homogenous as Homo
+open Homo using ( Inhabit ; hide ;
+  Homogenous ; homogenous ;
+  map-snd-pdi-inhabit ;   map-fuse-inhabit ;
+  pdU-Homogenous ;
+  Inhabit* ; hide* ;
+  Homogenous* ; homogenous* ;
+  concatmap-advance-pdi*-with-c-pdis-homgenous* ; pdUMany-homogenous*
+  )
 
 import Data.Char as Char
 open Char using (Char )
@@ -142,252 +152,6 @@ open import Function using (_∘_ ; flip)
 
 ```
 
-
-```agda
--- a relation shoow a partial derivative instance is "hiding" a partial derivative p
-data Inhabit : ∀ { r : RE } { c : Char } → RE →  PDInstance r c → Set where
-  hide : ∀ { p r : RE } { c : Char } 
-    → ( inj : U p → U r ) -- ^ the injection function 
-    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )  -- ^ soundnes evidence
-    → Inhabit {r} {c} p (pdinstance {p} {r} {c} inj s-ev)
-
--- a list of pdinstance is homogenous iff all of them are hiding the same pd.
-data Homogenous : ∀ { r : RE } { c : Char } → List (PDInstance r c) → Set where
-  homogenous : ∀ { r : RE } { c : Char } (pdis : List (PDInstance r c ) )
-    → ∃[ p ] (All (Inhabit p) pdis)
-    → Homogenous {r} {c} pdis 
-    
-
-
-map-left-inhabit⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance l c } { pdis : List (PDInstance l c) }
-  → Inhabit {l} {c} p pdi
-  → All (Inhabit {l} {c}  p) pdis
-  -------------------------------------------
-  → All (Inhabit {l + r ` loc} {c}  p) (List.map pdinstance-left (pdi ∷ pdis))
-map-left-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {[]}
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) [] = hide (λ u → LeftU (inj u)) s-ev ∷ []
-map-left-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{l} .{c} inj' s-ev') ∷ pdis} 
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → LeftU (inj u)) s-ev ∷ map-left-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
-
-map-left-Homogenous : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance l c) }
-  → Homogenous pdis
-  --------------------------------------------------
-  → Homogenous (List.map (pdinstance-left {l} {r} {loc} {c}) pdis)
-map-left-Homogenous {l} {r} {loc} {c} {[]} (homogenous [] ( p , [] ) ) =  homogenous (List.map pdinstance-left []) (p , [])
-map-left-Homogenous {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ pdis }  (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {l} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = homogenous (pdinstance {p} {l + r ` loc} {c} (λ u → LeftU (inj u)) s-ev ∷  List.map pdinstance-left pdis) (p , map-left-inhabit⁺ {l} {r} {p} {loc} {c} {pdi} {pdis}  hide-p-pdi  hide-p-pdis  ) 
-
-
-map-right-inhabit⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance r c } { pdis : List (PDInstance r c) }
-  → Inhabit {r} {c} p pdi
-  → All (Inhabit {r} {c} p) pdis
-  -------------------------------------------
-  → All (Inhabit {l + r ` loc} {c}  p) (List.map pdinstance-right (pdi ∷ pdis))
-map-right-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]}
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) [] = hide (λ u → RightU (inj u)) s-ev ∷ []
-map-right-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis} 
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (λ u → RightU (inj u)) s-ev ∷
-                                                                                                      map-right-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
-
-map-right-Homogenous : ∀ { l r : RE } {loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
-  → Homogenous pdis
-  --------------------------------------------------
-  → Homogenous (List.map (pdinstance-right {l} {r} {loc} {c}) pdis)
-map-right-Homogenous {l} {r} {loc} {c} {[]} (homogenous [] ( p , [] ) ) =  homogenous (List.map pdinstance-right []) (p , [])
-map-right-Homogenous {l} {r} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis }  (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = homogenous (pdinstance {p} {l + r ` loc} {c} (λ u → RightU (inj u)) s-ev ∷  List.map pdinstance-right pdis) (p , map-right-inhabit⁺ {l} {r} {p} {loc} {c} {pdi} {pdis}  hide-p-pdi  hide-p-pdis  )
-
-
-
-map-fst-inhabit⁺ : ∀ { l r p : RE } { loc : ℕ } { c : Char } { pdi : PDInstance l c } { pdis : List (PDInstance l c) }
-  → Inhabit {l} {c} p pdi
-  → All (Inhabit {l} {c} p) pdis
-  -------------------------------------------------
-  → All (Inhabit {l ● r ` loc} {c} ( p ● r ` loc) ) (List.map pdinstance-fst (pdi ∷ pdis))
-map-fst-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {[]}
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) [] = hide (mkinjFst inj) (mkinjFstSoundEv inj s-ev)   ∷ []
-map-fst-inhabit⁺ {l} {r} {p} {loc} {c} {pdi@(pdinstance .{p} .{l} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{l} .{c} inj' s-ev') ∷ pdis}
-  (hide .{p} .{l} .{c} .(inj) .(s-ev)) ((hide .{p} .{l} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis ) = hide (mkinjFst inj)
-                                                                                                      (mkinjFstSoundEv inj s-ev)  
-                                                                                                      ∷ map-fst-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
-      
-
-map-fst-Homogenous : ∀ { l r : RE } { loc : ℕ } { c : Char } { pdis : List (PDInstance l c)  }
-  → Homogenous pdis
-  --------------------------------------------------
-  → Homogenous (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
-map-fst-Homogenous {l} {r} {loc} {c} {[]} (homogenous [] ( p , [] )) = homogenous (List.map pdinstance-fst []) (l , [])
-map-fst-Homogenous {l} {r} {loc} {c} {pdi@(pdinstance {p} {l} {c} inj s-ev) ∷ pdis }  (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {l} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = homogenous (List.map pdinstance-fst (pdinstance inj s-ev ∷ pdis)) ( (p ● r ` loc) , map-fst-inhabit⁺ (hide inj s-ev) hide-p-pdis ) 
-
-
-cong-mk-snd-pdi-inhabit : ∀ { l r p : RE } { loc : ℕ } { c : Char }
-  → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
-  → ( pdi : PDInstance r c ) 
-  → Inhabit {r} {c} p pdi
-  → Inhabit {l ● r ` loc} {c} p (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi)
-cong-mk-snd-pdi-inhabit {l} {r} {p} {loc} {c} ( e , (flat-[] .(e) proj₁∘flate≡[]) ) (pdinstance .{p} .{r} .{c} inj s-ev) (hide inj s-ev)
-  = hide (mkinjSnd inj e) (mkinjSndSoundEv {p} {l} {r} {loc} {c} inj s-ev e (flat-[] e proj₁∘flate≡[]))
-
-
--- lifted out from concatmap-snd-inhabit⁺
-map-snd-pdi-inhabit : ∀ {l r p : RE } {loc : ℕ } { c : Char}
-  → ( e : U l )
-  → ( flat-[]-e  :  (Flat-[] l e) ) 
-  → ( qdis : List (PDInstance r c) )
-  → All (Inhabit p ) qdis 
-  → All (Inhabit p ) (List.map (mk-snd-pdi {l} {r} {loc} {c} (e , flat-[]-e) ) qdis)
-map-snd-pdi-inhabit _  _ [] []  = []
-map-snd-pdi-inhabit {l} {r} {p} {loc} {c}  e  flat-[]-e ( qdi@(pdinstance {- {p} {r} {c} -} inj s-ev) ∷ qdis ) ((hide .{p} .{r} .{c} .(inj) .(s-ev)) ∷ all-hide-p-qdis ) = 
-  cong-mk-snd-pdi-inhabit {l} {r} {p} {loc} {c} (e , flat-[]-e) qdi (hide inj s-ev)
-  ∷ map-snd-pdi-inhabit e  flat-[]-e   qdis all-hide-p-qdis 
-  
-
-concatmap-snd-inhabit⁺ :  ∀ { l r p : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdi : PDInstance r c } { pdis : List (PDInstance r c) }
-  → Inhabit {r} {c} p pdi
-  → All (Inhabit {r} {c} p) pdis
-  --------------------------------------------
-  → All (Inhabit {l ● r ` loc} {c} p) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (pdi ∷ pdis))
-  -- hm... p is the partial derivative here. not p ● r !!!
-  -- so it is not weaksingleton or homomogenous
-  -- posix has a very unique extended ordering
-  -- it is like staircase, a list of pdis with the same partial derivative,
-  -- the until a concat case... change to another partial derivative which should be following ≥ order.  let me think about how to write it down as data type in agda.
-  -- update: it is ok, because (pˡ ● r) the fst'ed pd and pʳ the snd'ed pd, will be combined by oplus and become (pˡ ● r) + pʳ
-  -- update2: the order is not total, it is a poset and a lattice. 
-concatmap-snd-inhabit⁺ {l} {r} {p} {ε∈l} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdis}  
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) all-hide-p-pdis = prf e-flat-es 
-  where
-    es : List (U l)
-    es = mkAllEmptyU {l} ε∈l
-    flat-[]-es : All (Flat-[] l) es
-    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
-    e-flat-es :  List ( ∃[ e ] (Flat-[] l e) )
-    e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
-    prf : (xs :  List ( ∃[ e ] (Flat-[] l e) )) → All (Inhabit p) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x ((pdinstance {p} {r} {c} inj s-ev) ∷ pdis)) xs)
-    prf [] = []
-    prf ( (x , flat-[]-x) ∷ xs ) = all-concat (map-snd-pdi-inhabit x flat-[]-x ((pdinstance inj s-ev) ∷ pdis) (hide inj s-ev ∷ all-hide-p-pdis))  (prf xs)
-
-concatmap-snd-Homogenous : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
-  → Homogenous pdis
-  ---------------------------------------------------------------
-  → Homogenous (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
-concatmap-snd-Homogenous {l} {r} {ε∈l} {loc} {c} {[]} (homogenous [] ( p , [] )) rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = homogenous [] (p , [])
-concatmap-snd-Homogenous {l} {r} {ε∈l} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis } (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = homogenous (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} (pdi ∷  pdis)) ( p , concatmap-snd-inhabit⁺ (hide inj s-ev) hide-p-pdis )
-
-
-
-map-star-inhabit⁺ :  ∀ { r p  : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } {pdi : PDInstance r c } { pdis : List (PDInstance r c) }
-  → Inhabit {r} {c} p pdi
-  → All (Inhabit {r} {c} p) pdis
-  --------------------------------
-  → All (Inhabit {r * ε∉r ` loc} {c} ( p ● (r * ε∉r ` loc) ` loc )) (List.map pdinstance-star ( pdi ∷ pdis ))
-map-star-inhabit⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {[]} -- TODO:  can we combine these two cases?
-  (hide .{p} .{r} .{c} .(inj) .(s-ev)) [] = hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ []
-map-star-inhabit⁺ {r} {p} {ε∉r} {loc} {c} {pdi@(pdinstance .{p} .{r} .{c} inj s-ev)} {pdi'@(pdinstance .{p} .{r} .{c} inj' s-ev') ∷ pdis}
-   (hide .{p} .{r} .{c} .(inj) .(s-ev)) ((hide .{p} .{r} .{c} .(inj') .(s-ev')) ∷ all-hide-p-pdis )  =
-     hide (mkinjList inj) (mkinjListSoundEv inj s-ev) ∷ map-star-inhabit⁺ (hide inj' s-ev') all-hide-p-pdis 
-
-map-star-Homogenous : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
-  → Homogenous pdis
-  ----------------------------------------------------------------
-  → Homogenous (List.map (pdinstance-star {r} {ε∉r} {loc}) pdis)
-map-star-Homogenous {r} {ε∉r} {loc} {c} {[]} (homogenous [] ( p , [] ))  = homogenous (List.map pdinstance-star []) (r , [])
-map-star-Homogenous {r} {ε∉r} {loc} {c} {pdi@(pdinstance {p} {r} {c} inj s-ev) ∷ pdis} (homogenous  (.(pdi) ∷ .(pdis)) ( .(p) , hide-p-pdi@(hide .{p} {r} {c} .(inj) .(s-ev)) ∷ hide-p-pdis ))
-  = homogenous (List.map (pdinstance-star {r} {ε∉r} {loc}) (pdi ∷ pdis)) (  ( p ● (r * ε∉r ` loc) ` loc ) , map-star-inhabit⁺ hide-p-pdi hide-p-pdis  )
-
-
-
--- this lemma is lifted out from oplus-Homoegenous, which can be resused.
-map-fuse-inhabit : { r p₁ p₂ : RE } {loc : ℕ } { c : Char}
-            → (pdi : PDInstance r c)
-            → ( pdis₂' : List (PDInstance r c ) )
-            → Inhabit {r} {c} p₁ pdi 
-            → All (Inhabit {r} {c} p₂) pdis₂'
-            → All (Inhabit {r} {c} (p₁ + p₂ ` loc)) (List.map (fuse  {r} {loc} {c} pdi) (pdis₂'))
-map-fuse-inhabit (pdinstance in₁ s-ev₁)  [] hide-p₁-pdi₁ [] = []
-map-fuse-inhabit {r} {p₁} {p₂} {loc} {c} pdi@(pdinstance in₁ s-ev₁) ((pdinstance in₂ s-ev₂) ∷ pdis₂')  hide-p₁-pdi@(hide .{p₁} {r} {c} .(in₁) .(s-ev₁)) (hide-p₂-pdi₂'@(hide .{p₂} {r} {c} .(in₂) .(s-ev₂)) ∷ hide-p₂-pdis₂') = (hide inj sound-ev) ∷ map-fuse-inhabit pdi pdis₂' hide-p₁-pdi hide-p₂-pdis₂' 
-  where
-    inj : U (p₁ + p₂ ` loc ) → U r
-    inj = mkfuseInj in₁ in₂
-    sound-ev : (u : U (p₁ + p₂ ` loc)) → proj₁ (flat (inj u))  ≡ c ∷ proj₁ (flat u)
-    sound-ev = mkfuseInjSoundEv in₁ in₂ s-ev₁ s-ev₂
-
-oplus-Homogenous : ∀ { r : RE } { loc : ℕ } { c : Char }
-  → ( pdis₁ : List (PDInstance r c ) )
-  → ( pdis₂ : List (PDInstance r c ) )
-  → Homogenous pdis₁
-  → Homogenous pdis₂
-  --------------------------------------------------------------
-  → Homogenous (pdinstance-oplus {r} {loc} {c} pdis₁ pdis₂)
-oplus-Homogenous {r} {loc} {c} []             pdis₂ _  homo-pdis₂ = homo-pdis₂
-oplus-Homogenous {r} {loc} {c} (pdi₁ ∷ pdis₁) []    homo-pdi₁pdis₁ _ = homo-pdi₁pdis₁
-oplus-Homogenous {r} {loc} {c} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)
-  (homogenous (.(pdi₁) ∷ .(pdis₁)) ( p₁ , hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ ))
-  (homogenous (.(pdi₂) ∷ .(pdis₂)) ( p₂ , hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ))  = homogenous (pdinstance-oplus (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂)) prf
-    where
-      prf : ∃[ p ] All (Inhabit {r} {c} p) (concatMap (λ pdiˡ₁ → 
-                                                (fuse pdiˡ₁ pdi₂) ∷  (List.map (fuse pdiˡ₁) pdis₂) )
-                                             (pdi₁ ∷ pdis₁))
-      prf = (p₁ + p₂ ` loc) , sub-prf (pdi₁ ∷ pdis₁) ( hide-p₁-pdi₁ ∷ hide-p₁-pdis₁ )
-        where
-          sub-prf : ∀ ( pdis₁' : List (PDInstance r c ) )
-            → All (Inhabit {r} {c} p₁) pdis₁'
-            → All (Inhabit {r} {c} (p₁ + p₂ ` loc)) (concatMap (λ pdiˡ₁ → 
-                                                (List.map (fuse {r} {loc} {c}  pdiˡ₁) (pdi₂ ∷ pdis₂) )) pdis₁')
-          sub-prf [] []  = [] 
-          sub-prf ( pdi₁' ∷ pdis₁') ( hide-p₁-pdi₁' ∷ hide-p₁-pdis₁' ) =
-            all-concat ( map-fuse-inhabit {r} {p₁} {p₂} {loc} {c}  pdi₁' (pdi₂ ∷  pdis₂) hide-p₁-pdi₁' (hide-p₂-pdi₂ ∷ hide-p₂-pdis₂ ) )  (sub-prf pdis₁'  hide-p₁-pdis₁')              
-
-
-pdU-Homogenous : ∀ { r : RE } { c : Char }
-  → Homogenous pdU[ r  , c ]
-pdU-Homogenous {ε} {c} = homogenous pdU[ ε , c ] (ε , [])
-pdU-Homogenous {$ c ` loc} {c₁} with c Char.≟ c₁
-... | no ¬c≡c₁ = homogenous [] (ε , [])
-... | yes c≡c₁ rewrite c≡c₁ = homogenous (( pdinstance {ε} {$ c₁ ` loc} {c₁} inj s-ev ) ∷ [] ) 
-                               (ε , 
-                                hide inj s-ev                                   
-                                ∷ [])
-                   where
-                     inj : U ε → U ($ c₁ ` loc)
-                     inj =  (λ u → LetterU c₁)
-                     s-ev : ∀ ( u : U ε ) → ( proj₁ ( flat {$ c₁ ` loc} (inj u) ) ≡ c₁ ∷ ( proj₁ (flat {ε} u) ))  
-                     s-ev = (λ EmptyU →                 -- ^ soundness ev
-                               begin
-                                 [ c₁ ]
-                               ≡⟨⟩
-                                 c₁ ∷ []
-                               ≡⟨ cong ( λ x → ( c₁ ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
-                                 c₁ ∷ (proj₁ (flat EmptyU))
-                               ∎)
-pdU-Homogenous {l + r ` loc} {c} = oplus-Homogenous (List.map pdinstance-left pdU[ l , c ]) (List.map pdinstance-right pdU[ r , c ]) (map-left-Homogenous ind-hyp-l) (map-right-Homogenous ind-hyp-r)
-  where
-    ind-hyp-l : Homogenous pdU[ l , c ]
-    ind-hyp-l = pdU-Homogenous {l} {c}
-    ind-hyp-r : Homogenous pdU[ r , c ]
-    ind-hyp-r = pdU-Homogenous {r} {c}
-pdU-Homogenous {l ● r ` loc} {c} with ε∈? l
-... | no ¬ε∈l = map-fst-Homogenous ind-hyp-l
-  where
-    ind-hyp-l : Homogenous pdU[ l , c ]
-    ind-hyp-l = pdU-Homogenous {l} {c}
-... | yes ε∈l = oplus-Homogenous (List.map pdinstance-fst pdU[ l , c ]) (concatmap-pdinstance-snd pdU[ r , c ]) ( map-fst-Homogenous ind-hyp-l) (concatmap-snd-Homogenous ind-hyp-r) 
-  where 
-    ind-hyp-l : Homogenous pdU[ l , c ]
-    ind-hyp-l = pdU-Homogenous {l} {c}
-    ind-hyp-r : Homogenous pdU[ r , c ]
-    ind-hyp-r = pdU-Homogenous {r} {c}
-pdU-Homogenous {r * ε∉r ` loc} {c} = map-star-Homogenous  ind-hyp-r 
-  where                                        
-    ind-hyp-r : Homogenous pdU[ r , c ]
-    ind-hyp-r = pdU-Homogenous {r} {c}
-
-
-```
-
-
 ### Definition 36 : (Extended) POSIX ordering among PDInstances 
 
 Let r be a non problematic regular expression.
@@ -402,6 +166,7 @@ We say pdi₁ is "posix" greater than pdi₂, r , c  ⊢ pdi₁ ≥ pdi₂ iff
 
 
 .
+
 
 
 ```agda
@@ -427,10 +192,9 @@ data _,_⊢_≥_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInsta
 
 
 
-### Definition 37 : (Extended) POSIX order lattice
 
 ```agda
-
+{-
 data Ex≥-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex≥-nothing : ∀ { r : RE } { c : Char }
     → { pdi : PDInstance r c } 
@@ -442,7 +206,7 @@ data Ex≥-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mp
     → r , c ⊢ pdi ≥ pdi' 
     ----------------------------------
     → Ex≥-maybe {r} {c} pdi (just pdi')
-
+-}
 data Ex≥-maybe₂ : ∀ { r : RE } { c : Char } ( mpdi : Maybe (PDInstance r c )) → ( mpdi' : Maybe (PDInstance r c) ) → Set where
   ex≥-nothingʳ : ∀ { r : RE } { c : Char }
     → { pdi : PDInstance r c } 
@@ -479,269 +243,10 @@ Let r be a non problematic regular expression.
 
 Let c be a letter.
 
-Then pdU[r , c] is complete lattice. 
+Then pdU[r , c] is a complete lattice. 
 
-
-
-TODO: we should change the descrption, it is not sortedness. 
-#### Sub Lemma 38.1 - 38.22 : r , c ⊢ _≥_ order is preserved inductively over pdinstance operations.
-
+### Definition 37 : (Extended) POSIX order lattice
 ```agda
-
--------------------------------------------------------------
--- Sub Lemma 38.1 - 38.22 BEGIN
--------------------------------------------------------------
--- not total order, we don't need tricholomy
-{-
-import Relation.Binary.Definitions
-open  Relation.Binary.Definitions using (
-  Tri ; tri< ; tri≈ ; tri> ) 
--} 
-
-left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
-  → (pdi₁  : PDInstance l c )
-  → (pdi₂ : PDInstance l c )
-  → l , c ⊢ pdi₁ ≥ pdi₂ 
-  -------------------------------------------------
-  → (l + r ` loc) , c ⊢ pdinstance-left pdi₁ ≥ pdinstance-left pdi₂
-left-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
-  (≥-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) = ≥-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂
-  where
-    inject₁ : U p → U ( l + r ` loc )
-    inject₁ v = LeftU (in₁ v)
-    inject₂ : U p → U ( l + r ` loc )    
-    inject₂ v = LeftU (in₂ v)    
-
-    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
-    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
-
-    len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
-    len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
-
-
-    prf₁ : ∀ ( v₁ : U p)
-          → ( v₂ : U p) 
-          →  p ⊢ v₁ > v₂ 
-          -------------------------
-          →  (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
-    prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len-|left-in₁-v₁|>len-|left-in₂-v₂|
-      where
-        len-|left-in₁-v₁|>len-|left-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
-                                               
-        len-|left-in₁-v₁|>len-|left-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
-    prf₁ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) =  len-≡ len-|left-in₁-v₁|≡len-|left-in₂-v₂| (choice-ll (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂)))
-      where
-        len-|left-in₁-v₁|≡len-|left-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
-        len-|left-in₁-v₁|≡len-|left-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl
-        
-    prf₂ : ∀ ( v : U p )
-      → ( (l + r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ (inject₁ v ≡ inject₂ v)
-    prf₂ v with v→in₁v≥in₂v v
-    ... | inj₂ in₁v≡in₂v = inj₂ (cong LeftU in₁v≡in₂v ) 
-    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|left-in₁-v|≡len-|left-in₂-v| (choice-ll in₁v>in₂v) ) 
-      where
-        len-|left-in₁-v|≡len-|left-in₂-v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
-        len-|left-in₁-v|≡len-|left-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
-
-right-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
-  → (pdi₁  : PDInstance r c )
-  → (pdi₂ : PDInstance r c )
-  → r , c ⊢ pdi₁ ≥ pdi₂ 
-  -------------------------------------------------
-  → (l + r ` loc) , c ⊢ pdinstance-right pdi₁ ≥ pdinstance-right pdi₂
-right-ex-sorted {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
-  (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) = ≥-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂
-  where
-    inject₁ : U p → U ( l + r ` loc )
-    inject₁ v = RightU (in₁ v)
-    inject₂ : U p → U ( l + r ` loc )    
-    inject₂ v = RightU (in₂ v)    
-
-    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
-    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
-
-    len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
-    len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
-
-
-    prf₁ : ∀ ( v₁ : U p)
-          → ( v₂ : U p) 
-          →  p ⊢ v₁ > v₂ 
-          -------------------------
-          →  (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
-    prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len-|right-in₁-v₁|>len-|right-in₂-v₂|
-      where
-        len-|right-in₁-v₁|>len-|right-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.>
-                                              length (proj₁ (flat (inject₂ v₂)))
-                                               
-        len-|right-in₁-v₁|>len-|right-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
-    prf₁ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) =  len-≡ len-|right-in₁-v₁|≡len-|right-in₂-v₂| (choice-rr (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂)))
-      where
-        len-|right-in₁-v₁|≡len-|right-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ 
-                                               length (proj₁ (flat (inject₂ v₂)))
-        len-|right-in₁-v₁|≡len-|right-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl                                        
-
-    prf₂ : ∀ ( v : U p )
-      → ( (l + r ` loc) ⊢ inject₁ v > inject₂ v)  ⊎ (inject₁ v ≡ inject₂ v)
-    prf₂ v with v→in₁v≥in₂v v
-    ... | inj₂ in₁v≡in₂v = inj₂ (cong RightU in₁v≡in₂v) 
-    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|right-in₁-v|≡len-|right-in₂-v| (choice-rr in₁v>in₂v ) )
-      where
-        len-|right-in₁-v|≡len-|right-in₂-v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
-        len-|right-in₁-v|≡len-|right-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
-
-
-star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } 
-  → (pdi₁ : PDInstance r c )
-  → (pdi₂ : PDInstance r c )
-  → r , c ⊢ pdi₁ ≥ pdi₂ 
-  -------------------------------------------------
-  → (r * ε∉r ` loc) , c ⊢ pdinstance-star pdi₁ ≥ pdinstance-star pdi₂
-star-ex-sorted {r} {ε∉r} {loc} {c}  (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
-    (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v) = ≥-pdi {r * ε∉r ` loc} {p ● (r * ε∉r ` loc) ` loc } {c} (mkinjList in₁) (mkinjListSoundEv in₁ s-ev₁) (mkinjList in₂) (mkinjListSoundEv in₂ s-ev₂) prf₁ prf₂ 
-    where
-      inject₁ : U ( p ● (r * ε∉r ` loc) ` loc )  → U ( r * ε∉r ` loc )
-      inject₁ = mkinjList {p} {r} {ε∉r} {loc} in₁ 
-      inject₂ : U ( p ● (r * ε∉r ` loc) ` loc )  → U ( r * ε∉r ` loc )
-      inject₂ = mkinjList {p} {r} {ε∉r} {loc} in₂  
-
-      sound-ev₁ : ∀ ( u : U ( p ● (r * ε∉r ` loc) ` loc )) → proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u)
-      sound-ev₁ = mkinjListSoundEv {p} {r} {ε∉r} {loc} {c} in₁ s-ev₁ 
-
-      sound-ev₂ : ∀ ( u : U ( p ● (r * ε∉r ` loc) ` loc )) → proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u)
-      sound-ev₂ = mkinjListSoundEv {p} {r} {ε∉r} {loc} {c} in₂ s-ev₂ 
-
-      len-|inject₁-u|≡len-|u|+1 : (u : U ( p ● (r * ε∉r ` loc) ` loc ) ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
-      len-|inject₁-u|≡len-|u|+1 u rewrite (sound-ev₁ u) = refl 
-    
-      len-|inject₂-u|≡len-|u|+1 : (u : U ( p ● (r * ε∉r ` loc) ` loc ) ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
-      len-|inject₂-u|≡len-|u|+1 u rewrite (sound-ev₂ u) = refl 
-
-
-      prf₁ : (v₁ v₂ : U (p ● r * ε∉r ` loc ` loc)) →
-            (p ● r * ε∉r ` loc ` loc) ⊢ v₁ > v₂ →
-            (r * ε∉r ` loc) ⊢ mkinjList in₁ v₁ > mkinjList in₂ v₂
-      prf₁ (PairU v₁ v₂) (PairU u₁ u₂) (len-> len|pair-v₁v₂|>len|pair-u₁u₂|) = len-> len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂|
-        where
-          len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))
-                           Nat.> length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
-          len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) = Nat.s≤s len|pair-v₁v₂|>len|pair-u₁u₂|
-          
-      prf₁ (PairU v (ListU vs)) (PairU u (ListU us)) (len-≡ len|pair-vvs|≡len|pair-uus| (seq₁ v>u)) = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-head (v₁>v₂→in₁v₁>in₂v₂ v u v>u)) 
-        where
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  u (ListU us)))))
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
-          
-
-      prf₁ (PairU v (ListU vs)) (PairU u (ListU us)) (len-≡ len|pair-vvs|≡len|pair-uus| (seq₂ v≡u vs>us)) with  v→in₁v≥in₂v u
-      ... | inj₂ in₁u≡in₂u = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-tail  in₁v≡in₂u vs>us ) 
-        where
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  u (ListU us)))))
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
-          in₁v≡in₂u  : in₁ v ≡ in₂ u
-          in₁v≡in₂u rewrite v≡u = in₁u≡in₂u 
-      ... | inj₁ in₁u>in₂u = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-head in₁v>in₂u  ) 
-        where
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  u (ListU us)))))
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
-          in₁v>in₂u  : r ⊢ in₁ v > in₂ u
-          in₁v>in₂u rewrite v≡u = in₁u>in₂u 
-
-      prf₂ : (v : U (p ● r * ε∉r ` loc ` loc)) →
-        ( (r * ε∉r ` loc) ⊢ mkinjList in₁ v > mkinjList in₂ v )  ⊎  ( mkinjList in₁ v ≡  mkinjList in₂ v  )
-      prf₂ (PairU v (ListU vs)) with v→in₁v≥in₂v v
-      ... | inj₂ in₁v≡in₂v = inj₂ (cong (λ x → ListU (x ∷ vs)) in₁v≡in₂v ) 
-      ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| (star-head in₁v>in₂v) )
-        where
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs)))))
-          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU v (ListU vs))  = refl
-          
-
--- do we need this ?
-{-
-map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
-                     → ( pdis : List (PDInstance r c) )
-                     → Ex>-sorted {r} pdis
-                     → Ex>-sorted {r * ε∉r ` loc } (List.map pdinstance-star pdis)
-map-star-ex-sorted {r} {ε∉r} {loc} {c} [] ex>-nil = ex>-nil
-map-star-ex-sorted {r} {ε∉r} {loc} {c} (pdi ∷ [])  (ex>-cons ex>-nil ex>-nothing) = ex>-cons ex>-nil ex>-nothing
-map-star-ex-sorted {r} {ε∉r} {loc} {c} (pdi₁ ∷ pdi₂ ∷ pdis)  (ex>-cons ex>-sorted-pdi2pdis (ex>-just pdi1>pdi2))
-  = ex>-cons (map-star-ex-sorted (pdi₂ ∷ pdis) ex>-sorted-pdi2pdis)
-             (ex>-just (star-ex-sorted pdi₁ pdi₂ pdi1>pdi2))
--}
-
-
-
-fst-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
-  → (pdi₁ : PDInstance l c )
-  → (pdi₂ : PDInstance l c )
-  → l , c ⊢ pdi₁ ≥ pdi₂ 
-  -------------------------------------------------
-  → (l ● r ` loc) , c ⊢ pdinstance-fst pdi₁ ≥ pdinstance-fst pdi₂
-fst-ex-sorted {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
-  (≥-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v) = ≥-pdi {l ● r ` loc } { p ● r ` loc } {c} inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂
-  where 
-    inject₁ : U (p ● r ` loc ) → U ( l ● r ` loc )
-    inject₁ v = mkinjFst in₁ v
-    inject₂ : U (p ● r ` loc ) → U ( l ● r ` loc )    
-    inject₂ v = mkinjFst in₂ v
-
-    sound-ev₁ : ∀ (u : U ( p ● r ` loc ) ) → proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u)
-    sound-ev₁ = mkinjFstSoundEv in₁ s-ev₁
-
-    sound-ev₂ : ∀ (u : U ( p ● r ` loc ) ) → proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u)
-    sound-ev₂ = mkinjFstSoundEv in₂ s-ev₂
-
-    len-|inject₁-u|≡len-|u|+1 : (u : U ( p ● r ` loc ) ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inject₁-u|≡len-|u|+1 u rewrite (sound-ev₁ u) = refl 
-
-    len-|inject₂-u|≡len-|u|+1 : (u : U ( p ● r ` loc ) ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
-    len-|inject₂-u|≡len-|u|+1 u rewrite (sound-ev₂ u) = refl 
-
-    
-    prf₁ : (v₁ v₂ : U (p ● r ` loc))
-         → (p ● r ` loc) ⊢ v₁ > v₂
-         -----------------------------------------
-         → (l ● r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
-    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-> len|pair-v₁u₁|>len|pair-v₂u₂|) = len-> len-|pair-in₁-v₁-u₁|>len-|pair-in₂-v₂-u₂| 
-      where
-        len-|pair-in₁-v₁-u₁|>len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) Nat.> length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
-                                               
-        len-|pair-in₁-v₁-u₁|>len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂)  = Nat.s≤s len|pair-v₁u₁|>len|pair-v₂u₂|
-    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-≡ len|pair-v₁u₁|≡len|pair-v₂u₂| (seq₁ v₁>v₂)) = len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₁ (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ v₁>v₂)) 
-      where
-        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
-                                               
-        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
-    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-≡ len|pair-v₁u₁|≡len|pair-v₂u₂| (seq₂ v₁≡v₂ u₁>u₂)) with v→in₁v≥in₂v v₂
-    ... | inj₂ in₁v₂≡in₂v₂ =  len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₂ in₁v≡in₂u u₁>u₂) 
-      where
-        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
-                                               
-        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
-        in₁v≡in₂u  : in₁ v₁ ≡ in₂ v₂
-        in₁v≡in₂u rewrite v₁≡v₂ =  in₁v₂≡in₂v₂  
-    ... | inj₁ in₁v₂>in₂v₂ =  len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₁ in₁v>in₂u )
-      where
-        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
-                                               
-        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
-        in₁v>in₂u  : l ⊢ in₁ v₁ > in₂ v₂
-        in₁v>in₂u rewrite v₁≡v₂ =  in₁v₂>in₂v₂  
-
-    prf₂ :  (v : U (p ● r ` loc)) 
-      → ( (l ● r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ ( inject₁ v ≡ inject₂ v )
-    prf₂ (PairU v u) with v→in₁v≥in₂v v
-    ... | inj₂ in₁v≡in₂v = inj₂ (cong (λ x → (PairU x u) ) in₁v≡in₂v ) 
-    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| (seq₁ in₁v>in₂v ))
-      where
-        len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v u)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v u))))
-                                               
-        len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v u) | len-|inject₂-u|≡len-|u|+1 (PairU v u)  = refl 
-        
-
-
-
 
 -- reflexivity
 ex≥-refl : ∀ { r : RE } { c : Char } { pd : PDInstance r c }
@@ -941,7 +446,270 @@ data Ex≥-lattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) 
     -- →  All ( λ x → r , c ⊢ x ≥ bot ) (top ∷ pdis ∷ʳ bot)  -- bot is the meet
     -----------------------------------------
     -- → Ex≥-lattice {r} {c} (top ∷ pdis ∷ʳ bot)
+```
 
+
+#### Sub Lemma 38.1 - 38.2 : r , c ⊢ _≥_ order is preserved inductively over pdinstance operations.
+
+```agda
+
+-------------------------------------------------------------
+-- Sub Lemma 38.1 - 38.2 BEGIN
+-------------------------------------------------------------
+
+left-ex-order : ∀ { l r : RE } {loc : ℕ} { c : Char } 
+  → (pdi₁  : PDInstance l c )
+  → (pdi₂ : PDInstance l c )
+  → l , c ⊢ pdi₁ ≥ pdi₂ 
+  -------------------------------------------------
+  → (l + r ` loc) , c ⊢ pdinstance-left pdi₁ ≥ pdinstance-left pdi₂
+left-ex-order {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
+  (≥-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) = ≥-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂
+  where
+    inject₁ : U p → U ( l + r ` loc )
+    inject₁ v = LeftU (in₁ v)
+    inject₂ : U p → U ( l + r ` loc )    
+    inject₂ v = LeftU (in₂ v)    
+
+    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+    len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+
+    prf₁ : ∀ ( v₁ : U p)
+          → ( v₂ : U p) 
+          →  p ⊢ v₁ > v₂ 
+          -------------------------
+          →  (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+    prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len-|left-in₁-v₁|>len-|left-in₂-v₂|
+      where
+        len-|left-in₁-v₁|>len-|left-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.> length (proj₁ (flat (inject₂ v₂)))
+                                               
+        len-|left-in₁-v₁|>len-|left-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+    prf₁ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) =  len-≡ len-|left-in₁-v₁|≡len-|left-in₂-v₂| (choice-ll (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂)))
+      where
+        len-|left-in₁-v₁|≡len-|left-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ length (proj₁ (flat (inject₂ v₂)))
+        len-|left-in₁-v₁|≡len-|left-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl
+        
+    prf₂ : ∀ ( v : U p )
+      → ( (l + r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ (inject₁ v ≡ inject₂ v)
+    prf₂ v with v→in₁v≥in₂v v
+    ... | inj₂ in₁v≡in₂v = inj₂ (cong LeftU in₁v≡in₂v ) 
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|left-in₁-v|≡len-|left-in₂-v| (choice-ll in₁v>in₂v) ) 
+      where
+        len-|left-in₁-v|≡len-|left-in₂-v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
+        len-|left-in₁-v|≡len-|left-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
+
+right-ex-order : ∀ { l r : RE } {loc : ℕ} { c : Char } 
+  → (pdi₁  : PDInstance r c )
+  → (pdi₂ : PDInstance r c )
+  → r , c ⊢ pdi₁ ≥ pdi₂ 
+  -------------------------------------------------
+  → (l + r ` loc) , c ⊢ pdinstance-right pdi₁ ≥ pdinstance-right pdi₂
+right-ex-order {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
+  (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) = ≥-pdi {l + r ` loc} {p} {c} inject₁ s-ev₁  inject₂ s-ev₂ prf₁ prf₂
+  where
+    inject₁ : U p → U ( l + r ` loc )
+    inject₁ v = RightU (in₁ v)
+    inject₂ : U p → U ( l + r ` loc )    
+    inject₂ v = RightU (in₂ v)    
+
+    len-|in₁-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₁-u|≡len-|u|+1 u rewrite (s-ev₁ u) = refl 
+
+    len-|in₂-u|≡len-|u|+1 : (u : U p) → length (proj₁ (flat (in₂ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|in₂-u|≡len-|u|+1 u rewrite (s-ev₂ u) = refl 
+
+
+    prf₁ : ∀ ( v₁ : U p)
+          → ( v₂ : U p) 
+          →  p ⊢ v₁ > v₂ 
+          -------------------------
+          →  (l + r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+    prf₁ v₁ v₂ (len-> len|v₁|>len|v₂|) = len-> len-|right-in₁-v₁|>len-|right-in₂-v₂|
+      where
+        len-|right-in₁-v₁|>len-|right-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) Nat.>
+                                              length (proj₁ (flat (inject₂ v₂)))
+                                               
+        len-|right-in₁-v₁|>len-|right-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ = Nat.s≤s len|v₁|>len|v₂|
+    prf₁ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂) =  len-≡ len-|right-in₁-v₁|≡len-|right-in₂-v₂| (choice-rr (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ (len-≡ len|v₁|≡len|v₂| v₁>ⁱv₂)))
+      where
+        len-|right-in₁-v₁|≡len-|right-in₂-v₂| : length (proj₁ (flat (inject₁ v₁))) ≡ 
+                                               length (proj₁ (flat (inject₂ v₂)))
+        len-|right-in₁-v₁|≡len-|right-in₂-v₂| rewrite len-|in₁-u|≡len-|u|+1 v₁ | len-|in₂-u|≡len-|u|+1 v₂ | len|v₁|≡len|v₂| = refl                                        
+
+    prf₂ : ∀ ( v : U p )
+      → ( (l + r ` loc) ⊢ inject₁ v > inject₂ v)  ⊎ (inject₁ v ≡ inject₂ v)
+    prf₂ v with v→in₁v≥in₂v v
+    ... | inj₂ in₁v≡in₂v = inj₂ (cong RightU in₁v≡in₂v) 
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|right-in₁-v|≡len-|right-in₂-v| (choice-rr in₁v>in₂v ) )
+      where
+        len-|right-in₁-v|≡len-|right-in₂-v| : length (proj₁ (flat (inject₁ v))) ≡ length (proj₁ (flat (inject₂ v)))
+        len-|right-in₁-v|≡len-|right-in₂-v| rewrite len-|in₁-u|≡len-|u|+1 v | len-|in₂-u|≡len-|u|+1 v = refl
+
+{-
+star-ex-order : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } 
+  → (pdi₁ : PDInstance r c )
+  → (pdi₂ : PDInstance r c )
+  → r , c ⊢ pdi₁ ≥ pdi₂ 
+  -------------------------------------------------
+  → (r * ε∉r ` loc) , c ⊢ pdinstance-star pdi₁ ≥ pdinstance-star pdi₂
+star-ex-order {r} {ε∉r} {loc} {c}  (pdinstance {p} .{r} .{c} in₁ s-ev₁) (pdinstance .{p} .{r} .{c} in₂ s-ev₂)
+    (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v) = ≥-pdi {r * ε∉r ` loc} {p ● (r * ε∉r ` loc) ` loc } {c} (mkinjList in₁) (mkinjListSoundEv in₁ s-ev₁) (mkinjList in₂) (mkinjListSoundEv in₂ s-ev₂) prf₁ prf₂ 
+    where
+      inject₁ : U ( p ● (r * ε∉r ` loc) ` loc )  → U ( r * ε∉r ` loc )
+      inject₁ = mkinjList {p} {r} {ε∉r} {loc} in₁ 
+      inject₂ : U ( p ● (r * ε∉r ` loc) ` loc )  → U ( r * ε∉r ` loc )
+      inject₂ = mkinjList {p} {r} {ε∉r} {loc} in₂  
+
+      sound-ev₁ : ∀ ( u : U ( p ● (r * ε∉r ` loc) ` loc )) → proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u)
+      sound-ev₁ = mkinjListSoundEv {p} {r} {ε∉r} {loc} {c} in₁ s-ev₁ 
+
+      sound-ev₂ : ∀ ( u : U ( p ● (r * ε∉r ` loc) ` loc )) → proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u)
+      sound-ev₂ = mkinjListSoundEv {p} {r} {ε∉r} {loc} {c} in₂ s-ev₂ 
+
+      len-|inject₁-u|≡len-|u|+1 : (u : U ( p ● (r * ε∉r ` loc) ` loc ) ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+      len-|inject₁-u|≡len-|u|+1 u rewrite (sound-ev₁ u) = refl 
+    
+      len-|inject₂-u|≡len-|u|+1 : (u : U ( p ● (r * ε∉r ` loc) ` loc ) ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+      len-|inject₂-u|≡len-|u|+1 u rewrite (sound-ev₂ u) = refl 
+
+
+      prf₁ : (v₁ v₂ : U (p ● r * ε∉r ` loc ` loc)) →
+            (p ● r * ε∉r ` loc ` loc) ⊢ v₁ > v₂ →
+            (r * ε∉r ` loc) ⊢ mkinjList in₁ v₁ > mkinjList in₂ v₂
+      prf₁ (PairU v₁ v₂) (PairU u₁ u₂) (len-> len|pair-v₁v₂|>len|pair-u₁u₂|) = len-> len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂|
+        where
+          len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| : length (proj₁ (flat (mkinjList in₁ (PairU v₁ v₂))))
+                           Nat.> length (proj₁ (flat (mkinjList in₂ (PairU u₁ u₂))))
+          len-|star-in₁-pair-v₁v₂|>len-|star-in₂-pair-u₁u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ v₂) | len-|inject₂-u|≡len-|u|+1 (PairU u₁ u₂) = Nat.s≤s len|pair-v₁v₂|>len|pair-u₁u₂|
+          
+      prf₁ (PairU v (ListU vs)) (PairU u (ListU us)) (len-≡ len|pair-vvs|≡len|pair-uus| (seq₁ v>u)) = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-head (v₁>v₂→in₁v₁>in₂v₂ v u v>u)) 
+        where
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  u (ListU us)))))
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
+          
+
+      prf₁ (PairU v (ListU vs)) (PairU u (ListU us)) (len-≡ len|pair-vvs|≡len|pair-uus| (seq₂ v≡u vs>us)) with  v→in₁v≥in₂v u
+      ... | inj₂ in₁u≡in₂u = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-tail  in₁v≡in₂u vs>us ) 
+        where
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  u (ListU us)))))
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
+          in₁v≡in₂u  : in₁ v ≡ in₂ u
+          in₁v≡in₂u rewrite v≡u = in₁u≡in₂u 
+      ... | inj₁ in₁u>in₂u = len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| (star-head in₁v>in₂u  ) 
+        where
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  u (ListU us)))))
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-uus| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU u (ListU us)) | len|pair-vvs|≡len|pair-uus| = refl
+          in₁v>in₂u  : r ⊢ in₁ v > in₂ u
+          in₁v>in₂u rewrite v≡u = in₁u>in₂u 
+
+      prf₂ : (v : U (p ● r * ε∉r ` loc ` loc)) →
+        ( (r * ε∉r ` loc) ⊢ mkinjList in₁ v > mkinjList in₂ v )  ⊎  ( mkinjList in₁ v ≡  mkinjList in₂ v  )
+      prf₂ (PairU v (ListU vs)) with v→in₁v≥in₂v v
+      ... | inj₂ in₁v≡in₂v = inj₂ (cong (λ x → ListU (x ∷ vs)) in₁v≡in₂v ) 
+      ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| (star-head in₁v>in₂v) )
+        where
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| : length (proj₁ (flat (mkinjList in₁ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs))))) ≡ length (proj₁ (flat (mkinjList in₂ (PairU {p} { r * ε∉r ` loc} {loc}  v (ListU vs)))))
+          len-|star-in₁-pair-vvs|≡len-|star-in₂-pair-vvs| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v (ListU vs)) | len-|inject₂-u|≡len-|u|+1 (PairU v (ListU vs))  = refl
+-}           
+
+-- do we need this ?
+{-
+map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+                     → ( pdis : List (PDInstance r c) )
+                     → Ex>-sorted {r} pdis
+                     → Ex>-sorted {r * ε∉r ` loc } (List.map pdinstance-star pdis)
+map-star-ex-sorted {r} {ε∉r} {loc} {c} [] ex>-nil = ex>-nil
+map-star-ex-sorted {r} {ε∉r} {loc} {c} (pdi ∷ [])  (ex>-cons ex>-nil ex>-nothing) = ex>-cons ex>-nil ex>-nothing
+map-star-ex-sorted {r} {ε∉r} {loc} {c} (pdi₁ ∷ pdi₂ ∷ pdis)  (ex>-cons ex>-sorted-pdi2pdis (ex>-just pdi1>pdi2))
+  = ex>-cons (map-star-ex-sorted (pdi₂ ∷ pdis) ex>-sorted-pdi2pdis)
+             (ex>-just (star-ex-sorted pdi₁ pdi₂ pdi1>pdi2))
+-}
+
+
+{-
+fst-ex-order : ∀ { l r : RE } {loc : ℕ} { c : Char } 
+  → (pdi₁ : PDInstance l c )
+  → (pdi₂ : PDInstance l c )
+  → l , c ⊢ pdi₁ ≥ pdi₂ 
+  -------------------------------------------------
+  → (l ● r ` loc) , c ⊢ pdinstance-fst pdi₁ ≥ pdinstance-fst pdi₂
+fst-ex-order {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinstance .{p} .{l} .{c} in₂ s-ev₂)
+  (≥-pdi .{l} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v) = ≥-pdi {l ● r ` loc } { p ● r ` loc } {c} inject₁ sound-ev₁ inject₂ sound-ev₂ prf₁ prf₂
+  where 
+    inject₁ : U (p ● r ` loc ) → U ( l ● r ` loc )
+    inject₁ v = mkinjFst in₁ v
+    inject₂ : U (p ● r ` loc ) → U ( l ● r ` loc )    
+    inject₂ v = mkinjFst in₂ v
+
+    sound-ev₁ : ∀ (u : U ( p ● r ` loc ) ) → proj₁ (flat (inject₁ u)) ≡ c ∷ proj₁ (flat u)
+    sound-ev₁ = mkinjFstSoundEv in₁ s-ev₁
+
+    sound-ev₂ : ∀ (u : U ( p ● r ` loc ) ) → proj₁ (flat (inject₂ u)) ≡ c ∷ proj₁ (flat u)
+    sound-ev₂ = mkinjFstSoundEv in₂ s-ev₂
+
+    len-|inject₁-u|≡len-|u|+1 : (u : U ( p ● r ` loc ) ) → length (proj₁ (flat (inject₁ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inject₁-u|≡len-|u|+1 u rewrite (sound-ev₁ u) = refl 
+
+    len-|inject₂-u|≡len-|u|+1 : (u : U ( p ● r ` loc ) ) → length (proj₁ (flat (inject₂ u))) ≡ suc (length (proj₁ (flat u)))
+    len-|inject₂-u|≡len-|u|+1 u rewrite (sound-ev₂ u) = refl 
+
+    
+    prf₁ : (v₁ v₂ : U (p ● r ` loc))
+         → (p ● r ` loc) ⊢ v₁ > v₂
+         -----------------------------------------
+         → (l ● r ` loc) ⊢ inject₁ v₁ > inject₂ v₂
+    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-> len|pair-v₁u₁|>len|pair-v₂u₂|) = len-> len-|pair-in₁-v₁-u₁|>len-|pair-in₂-v₂-u₂| 
+      where
+        len-|pair-in₁-v₁-u₁|>len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) Nat.> length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
+                                               
+        len-|pair-in₁-v₁-u₁|>len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂)  = Nat.s≤s len|pair-v₁u₁|>len|pair-v₂u₂|
+    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-≡ len|pair-v₁u₁|≡len|pair-v₂u₂| (seq₁ v₁>v₂)) = len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₁ (v₁>v₂→in₁v₁>in₂v₂ v₁ v₂ v₁>v₂)) 
+      where
+        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
+                                               
+        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
+    prf₁ (PairU v₁ u₁) (PairU v₂ u₂) (len-≡ len|pair-v₁u₁|≡len|pair-v₂u₂| (seq₂ v₁≡v₂ u₁>u₂)) with v→in₁v≥in₂v v₂
+    ... | inj₂ in₁v₂≡in₂v₂ =  len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₂ in₁v≡in₂u u₁>u₂) 
+      where
+        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
+                                               
+        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
+        in₁v≡in₂u  : in₁ v₁ ≡ in₂ v₂
+        in₁v≡in₂u rewrite v₁≡v₂ =  in₁v₂≡in₂v₂  
+    ... | inj₁ in₁v₂>in₂v₂ =  len-≡ len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| (seq₁ in₁v>in₂u )
+      where
+        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v₁ u₁)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v₂ u₂))))
+                                               
+        len-|pair-in₁-v₁-u₁|≡len-|pair-in₂-v₂-u₂| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v₁ u₁) | len-|inject₂-u|≡len-|u|+1 (PairU v₂ u₂) | len|pair-v₁u₁|≡len|pair-v₂u₂|  = refl 
+        in₁v>in₂u  : l ⊢ in₁ v₁ > in₂ v₂
+        in₁v>in₂u rewrite v₁≡v₂ =  in₁v₂>in₂v₂  
+
+    prf₂ :  (v : U (p ● r ` loc)) 
+      → ( (l ● r ` loc) ⊢ inject₁ v > inject₂ v ) ⊎ ( inject₁ v ≡ inject₂ v )
+    prf₂ (PairU v u) with v→in₁v≥in₂v v
+    ... | inj₂ in₁v≡in₂v = inj₂ (cong (λ x → (PairU x u) ) in₁v≡in₂v ) 
+    ... | inj₁ in₁v>in₂v = inj₁ (len-≡ len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| (seq₁ in₁v>in₂v ))
+      where
+        len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| : length (proj₁ (flat (inject₁ (PairU {p} {r} {loc} v u)))) ≡ length (proj₁ (flat (inject₂ (PairU {p} {r} {loc} v u))))
+                                               
+        len-|pair-in₁-v-u|≡len-|pair-in₂-v-u| rewrite len-|inject₁-u|≡len-|u|+1 (PairU v u) | len-|inject₂-u|≡len-|u|+1 (PairU v u)  = refl
+-}
+-------------------------------------------------------------
+-- Sub Lemma 38.1 - 38.2 END 
+-------------------------------------------------------------
+```
+
+Sub Lemma 38.3 - 38.14: shows that lattice property is preserved by pd operations. 
+
+```agda
+-------------------------------------------------------------
+-- Sub Lemma 38.3 - 38.14 BEGIN
+-------------------------------------------------------------
+-- 38.3
 map-left-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ( pdis : List (PDInstance l c ) )
@@ -949,15 +717,16 @@ map-left-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   --------------------------------------
   → All ( λ x → (l + r ` loc) , c ⊢ pdinstance-left {l} {r} {loc} pdi ≥ x ) (List.map pdinstance-left pdis)
 map-left-all-ex-≥ pdi [] [] = []
-map-left-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = left-ex-sorted pdi p pdi≥p ∷ (map-left-all-ex-≥ pdi ps all-pdi≥ps)
+map-left-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = left-ex-order pdi p pdi≥p ∷ (map-left-all-ex-≥ pdi ps all-pdi≥ps)
 
+-- 38.4
 map-left-ex-lattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance l c ) )
   → Ex≥-lattice {l} {c} pdis
   → Ex≥-lattice {l + r ` loc } {c} (List.map pdinstance-left pdis)
 map-left-ex-lattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
 map-left-ex-lattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {l} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-left pdi) (List.map pdinstance-left pdis) (map-left-all-ex-≥ pdi pdis all-pdi≥pdis) 
-
+-- 38.5
 map-right-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
   → ( pdis : List (PDInstance r c ) )
@@ -965,9 +734,9 @@ map-right-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   --------------------------------------
   → All ( λ x → (l + r ` loc) , c ⊢ pdinstance-right {l} {r} {loc} pdi ≥ x ) (List.map pdinstance-right pdis)
 map-right-all-ex-≥ pdi [] [] = []
-map-right-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = right-ex-sorted pdi p pdi≥p ∷ (map-right-all-ex-≥ pdi ps all-pdi≥ps)
+map-right-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = right-ex-order pdi p pdi≥p ∷ (map-right-all-ex-≥ pdi ps all-pdi≥ps)
 
-
+-- 38.6
 map-right-ex-lattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
   → Ex≥-lattice {r} {c} pdis
@@ -975,7 +744,7 @@ map-right-ex-lattice : ∀ { l r : RE }  { loc : ℕ } { c : Char }
 map-right-ex-lattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
 map-right-ex-lattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis)  (map-right-all-ex-≥ pdi pdis all-pdi≥pdis) 
 
-
+-- 38.7
 map-fst-ex-lattice : ∀ { l r : RE } { loc : ℕ } { c : Char }
                     → ( pdis : List (PDInstance l c) )
                     → Ex≥-lattice {l} pdis
@@ -1047,7 +816,7 @@ map-fst-ex-lattice {l} {r} {loc} {c} (pdi@(pdinstance {p} {l} {c} in₁ s-ev₁)
         fst-pdi≥fst-qdi :  (l ● r ` loc) , c ⊢ pdinstance inject₁ soundEv₁  ≥ pdinstance inject₂ soundEv₂ 
         fst-pdi≥fst-qdi = ≥-pdi inject₁ soundEv₁ inject₂ soundEv₂ prf₁ prf₂  
 
-
+-- 38.8
 -- concatenation of two ex lub bounded lists of pdis are lub bounded
 -- if the lub of the first list exists then it is ≥ than the 2nd list's lub if it exists
 concat-ex-lattice : ∀ { r p : RE } { c }
@@ -1070,7 +839,7 @@ concat-ex-lattice {r} {p} {c} (pdi₁ ∷ pdis₁)  (pdi₂ ∷ pdis₂)  (ex-jo
 
 
 
-
+-- 38.9
 map-fuse-+-ex-lattice :  ∀ { l r : RE } {loc : ℕ } { c : Char }
   → ( pdi₁ : PDInstance l c )
   → ( pdis₂ : List (PDInstance r c ))
@@ -1212,7 +981,7 @@ map-fuse-+-ex-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁
 
           prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
 
-
+-- 38.10
 oplus-+-ex-lattice : ∀ { l r : RE } {loc : ℕ } { c : Char }
     → ( pdis₁ : List ( PDInstance l c ))
     → ( pdis₂ : List ( PDInstance r c ))
@@ -1529,7 +1298,8 @@ oplus-+-ex-lattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
             fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' :  (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject'' soundEv'')
             fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' =  ≥-pdi inject soundEv inject'' soundEv'' prf₃ prf₄  
 
-mk-snd-≥-pdi-sorted : ∀ { l r p : RE } { loc : ℕ } { c : Char }
+-- 38.11
+mk-snd-≥-pdi-order : ∀ { l r p : RE } { loc : ℕ } { c : Char }
    → ( e : U l )
    → ( flat-[]-e : Flat-[] l e )
    → ( pdi₁ : PDInstance r c )
@@ -1539,7 +1309,7 @@ mk-snd-≥-pdi-sorted : ∀ { l r p : RE } { loc : ℕ } { c : Char }
    → r , c ⊢ pdi₁ ≥ pdi₂ 
    -----------------------------------------------------------------------------------------
    → (l ● r ` loc) , c ⊢ mk-snd-pdi (e , flat-[]-e) pdi₁ ≥  mk-snd-pdi (e , flat-[]-e) pdi₂ 
-mk-snd-≥-pdi-sorted {l} {r} {p} {loc} {c} e (flat-[] .(e) |e|≡[]  ) (pdinstance .{p} .{r} .{c} in₁ s-ev₁)  (pdinstance .{p} .{r} .{c} in₂ s-ev₂) (hide .(in₁) .(s-ev₁))  (hide .(in₂) .(s-ev₂)) (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v⊎in₁v≡in₂v ) = ≥-pdi inject₁ soundEv₁ inject₂ soundEv₂ prf₁ prf₂
+mk-snd-≥-pdi-order {l} {r} {p} {loc} {c} e (flat-[] .(e) |e|≡[]  ) (pdinstance .{p} .{r} .{c} in₁ s-ev₁)  (pdinstance .{p} .{r} .{c} in₂ s-ev₂) (hide .(in₁) .(s-ev₁))  (hide .(in₂) .(s-ev₂)) (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁→v₂→v₁>v₂→in₁v₁>in₂v₂ v→in₁v>in₂v⊎in₁v≡in₂v ) = ≥-pdi inject₁ soundEv₁ inject₂ soundEv₂ prf₁ prf₂
   where
     inject₁ : ∀ ( u : U p ) → U ( l ● r ` loc)
     inject₁ = mkinjSnd in₁ e
@@ -1593,7 +1363,7 @@ mk-snd-≥-pdi-sorted {l} {r} {p} {loc} {c} e (flat-[] .(e) |e|≡[]  ) (pdinsta
       
 
     
-    
+-- 38.12     
 concatmap-snd-ex-lattice : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance r c ) )
   → All >-Inc pdis
@@ -1614,7 +1384,7 @@ concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c}
       → All (_,_⊢_≥_ (l ● r ` loc) c (mk-snd-pdi (e , flat-[]-e) pdi)) (List.map (mk-snd-pdi (e , flat-[]-e)) qdis )
     sub_prf₁ [] [] = []
     sub_prf₁  (qdi@(pdinstance in₂ s-ev₂) ∷ qdis ) (  (≥-pdi .{r} .{p} .{c} .(in₁) .(s-ev₁) .(in₂) .(s-ev₂) v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v ) ∷ pdi≥all-qdis) =
-      mk-snd-≥-pdi-sorted e flat-[]-e (pdinstance in₁ s-ev₁) (pdinstance in₂ s-ev₂) (hide in₁ s-ev₁) (hide in₂ s-ev₂) (≥-pdi in₁ s-ev₁ in₂ s-ev₂ v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v)  ∷ sub qdis prf₁ pdi≥all-qdis
+      mk-snd-≥-pdi-order e flat-[]-e (pdinstance in₁ s-ev₁) (pdinstance in₂ s-ev₂) (hide in₁ s-ev₁) (hide in₂ s-ev₂) (≥-pdi in₁ s-ev₁ in₂ s-ev₂ v₁>v₂→in₁v₁>in₂v₂ v→in₁v≥in₂v)  ∷ sub qdis prf₁ pdi≥all-qdis
 
     sub_prf₂ : (es' : List (U l))
       → (flat-[]-es' : All (Flat-[] l) es')
@@ -1692,7 +1462,7 @@ concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c}
     prf = all-concat (sub_prf₁ pdis pdi≥pdis)  (sub_prf₂ es flat-[]-es (PosixOrder.>-cons→hd>tl (>-cons es->-sorted e>head-es) ) ) 
     
 
-
+-- 38.13
 oplus-+●-ex-lattice : ∀ { l+s r : RE } { ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char }
     → ( pdis₁ : List ( PDInstance l+s c ))
     → ( pdis₂ : List ( PDInstance r c ))
@@ -2123,7 +1893,7 @@ oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                   sub_sub_prf_strict (RightU u₁) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>len|pair₂|)) rewrite len|v₁|≡len|v₂| = Nullary.contradiction len|u₁|>len|pair₂| (<-irrefl refl)
 
 
-
+-- 38.14
 map-star-lattice : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
   → (pdis : List ( PDInstance r c ) )
   → Ex≥-lattice {r} {c} pdis
@@ -2197,7 +1967,16 @@ map-star-lattice {r} {ε∉r} {loc} {c} (pdi@(pdinstance in₁ s-ev₁) ∷ pdis
             ... | inj₁ in₁u₂>in₂u₂ = star-head in₁u₂>in₂u₂
             ... | inj₂ in₁u₂≡in₂u₂ = star-tail in₁u₂≡in₂u₂ list-us₁>list-us₂ 
 
--- main lemma: 
+-------------------------------------------------------------
+-- Sub Lemma 38.3 - 38.14 END 
+-------------------------------------------------------------
+
+```
+
+#### Main Proof for Lemma 38
+
+```agda
+-- main lemma 38: 
 pdU-ex-lattice : ∀ { r : RE } { c : Char }
   → Ex≥-lattice {r} {c} pdU[ r , c ]
 pdU-ex-lattice {ε} {c} = ex-empty 
@@ -2247,8 +2026,6 @@ pdU-ex-lattice {r * ε∉r ` loc } {c} = map-star-lattice  pdU[ r , c ] ind-hyp-
 
 
 
-
-
 ### Definition 39 : (Extended) Posix ordering among PDInstance*'s 
 
 
@@ -2280,8 +2057,10 @@ data _,_⊢*_≥_ : ∀ ( r : RE ) → (w : List Char ) → PDInstance* r w → 
 ```
 
 
-```agda
+Definition 40: 
 
+```agda
+{-
 data Ex*≥-maybe : ∀ { r : RE } { w : List Char } ( pdi : PDInstance* r w ) → ( mpdi : Maybe (PDInstance* r w) ) → Set where
   ex*≥-nothing : ∀ { r : RE } { w : List Char }
     → { pdi : PDInstance* r w } 
@@ -2293,6 +2072,7 @@ data Ex*≥-maybe : ∀ { r : RE } { w : List Char } ( pdi : PDInstance* r w ) �
     → r , w ⊢* pdi ≥ pdi' 
     ----------------------------------
     → Ex*≥-maybe {r} {w} pdi (just pdi')
+-}
 
 data Ex*≥-maybe₂ : ∀ { r : RE } { w : List Char } ( mpdi : Maybe (PDInstance* r w )) → ( mpdi' : Maybe (PDInstance* r w) ) → Set where
   ex*≥-nothingʳ : ∀ { r : RE } { w : List Char }
@@ -2338,19 +2118,6 @@ data Ex*≥-lattice : ∀ { r : RE } { w : List Char } (pdis : List (PDInstance*
     -----------------------------------------
     → Ex*≥-lattice {r} {w} (top ∷ pdis )
 
-data Inhabit* : ∀ { r : RE } { w : List Char } → RE → PDInstance* r w → Set where
-  hide* : ∀ { p r : RE } { w : List Char }
-    → ( inj : U p → U r ) -- ^ the injection function
-    → ( s-ev : ∀ ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ w ++ ( proj₁ (flat {p} u) )) )  -- ^ soundnes evidence
-    → Inhabit* {r} {w} p (pdinstance* {p} {r} {w} inj s-ev) 
-
-
--- a list of pdinstance*s is homogenous iff all of them are hiding the same pd.
-data Homogenous* : ∀ { r : RE } { w : List Char } → List (PDInstance* r w) → Set where
-  homogenous* : ∀ { r : RE } { w : List Char } (pdis : List (PDInstance* r w ) )
-    → ∃[ p ] (All (Inhabit* p) pdis)
-    → Homogenous* {r} {w} pdis 
-
 ```
 
 
@@ -2369,7 +2136,7 @@ Then pdUMany[r , w] is a lattice in extended POSIX order.
 
 ```agda
 -------------------------------------------------------------
--- Sub Lemma 41.1 - 41.7 BEGIN
+-- Sub Lemma 41.1 - 41.8 BEGIN
 -------------------------------------------------------------
 
 -- Lemma 41.1 
@@ -2643,84 +2410,7 @@ concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} (pdi@(pdinstance* .{d} 
 ```
 
 
-
-The next two sub lemmas shows that the homegenous property is preserved by the (concatmap advance-pdi*-with-c) operation and pdUMany-aux.
-
-```agda 
--- Lemma 41.8
--- this lemma is implemented by opus 4.6 when the annotation is given by me. it took 10 mins.
-concatmap-advance-pdi*-with-c-pdis-homgenous* : ∀ { r : RE } { pref : List Char } { c : Char } { pdis : List (PDInstance* r pref) }
-  → Homogenous* pdis
-  ------------------------------------------------------------------------
-  → Homogenous* (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-concatmap-advance-pdi*-with-c-pdis-homgenous* {r} {pref} {c} {[]} (homogenous* .[] (d , [])) =
-  homogenous* [] (r , [])
-concatmap-advance-pdi*-with-c-pdis-homgenous* {r} {pref} {c} {pdi₀ ∷ pdis₀}
-  (homogenous* .(pdi₀ ∷ pdis₀) (d , (hide* .{d} .{r} .{pref} in₀ s-ev₀) ∷ hide-d-pdis₀))
-  with pdU[ d , c ] in pdU-eq | pdU-Homogenous {d} {c}
-... | [] | _ =
-  homogenous* _
-              (r , subst (All (Inhabit* r))
-                         (sym (empty-helper pdis₀ hide-d-pdis₀))
-                         [])
-  where
-    empty-helper : (xs : List (PDInstance* r pref)) → All (Inhabit* d) xs
-                 → concatMap (advance-pdi*-with-c {r} {pref} {c}) xs ≡ []
-    empty-helper [] [] = refl
-    empty-helper (pdinstance* in' s-ev' ∷ xs) (hide* .(in') .(s-ev') ∷ ihs)
-      rewrite pdU-eq = empty-helper xs ihs
-... | (pdj₀ ∷ pdjs₀) | homogenous .(pdj₀ ∷ pdjs₀) (p , hide-p-pdj₀ ∷ hide-p-pdjs₀) =
-  homogenous* _
-              (p , all-concat (map-helper in₀ s-ev₀ (pdj₀ ∷ pdjs₀) (hide-p-pdj₀ ∷ hide-p-pdjs₀))
-                              (nonempty-helper pdis₀ hide-d-pdis₀))
-  where
-    map-helper : (in' : U d → U r)
-              → (s-ev' : ∀ (u : U d) → proj₁ (flat (in' u)) ≡ pref ++ proj₁ (flat u))
-              → (qjs : List (PDInstance d c)) → All (Inhabit p) qjs
-              → All (Inhabit* {r} {pref ∷ʳ c} p) (List.map (compose-pdi-with in' s-ev') qjs)
-    map-helper in' s-ev' [] [] = []
-    map-helper in' s-ev' (pdinstance pj-inj pj-sev ∷ qjs) (hide .(pj-inj) .(pj-sev) ∷ ihs) =
-      hide* {p} {r} {pref ∷ʳ c} (in' ∘ pj-inj) (compose-pdi-with-soundEv in' s-ev' pj-inj pj-sev)
-        ∷ map-helper in' s-ev' qjs ihs
-
-    nonempty-helper : (xs : List (PDInstance* r pref)) → All (Inhabit* d) xs
-                    → All (Inhabit* {r} {pref ∷ʳ c} p) (concatMap (advance-pdi*-with-c {r} {pref} {c}) xs)
-    nonempty-helper [] [] = []
-    nonempty-helper (pdinstance* in' s-ev' ∷ xs) (hide* .(in') .(s-ev') ∷ ihs)
-      rewrite pdU-eq = all-concat (map-helper in' s-ev' (pdj₀ ∷ pdjs₀) (hide-p-pdj₀ ∷ hide-p-pdjs₀))
-                                  (nonempty-helper xs ihs)
-
--- Lemma 41.9
--- perhaps all the homgenous properties should be moved to another module. 
--- this lemma is proven by opus 4.6
-pdUMany-aux-homogenous* : ∀ { r : RE } { pref : List Char }
-  → ( c : Char )
-  → ( cs : List Char )
-  → ( pdis : List (PDInstance* r pref) )
-  → Homogenous* pdis
-  → Homogenous* (pdUMany-aux (c ∷ cs) pdis)
-pdUMany-aux-homogenous* {r} {pref} c [] pdis homo-pdis rewrite (++-identityʳ (pref ∷ʳ c))
-  = concatmap-advance-pdi*-with-c-pdis-homgenous* homo-pdis
-pdUMany-aux-homogenous* {r} {pref} c cs [] homo-[] rewrite pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs)
-  = homogenous* [] (r , [])
-pdUMany-aux-homogenous* {r} {pref} c (c' ∷ cs) (pdi ∷ pdis) homo-pdis
-  = pdUMany-aux-homogenous* {r} {pref ∷ʳ c} c' cs
-      (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis))
-      (concatmap-advance-pdi*-with-c-pdis-homgenous* homo-pdis)
-
--- Lemma 41.10 
-pdUMany-homogenous* : ∀ { r : RE } { w : List Char }
-  → Homogenous* pdUMany[ r , w ]
-pdUMany-homogenous* {r} {[]} = homogenous* pdUMany[ r , [] ]
-                                (r ,
-                                 hide* PartialDerivative.injId PartialDerivative.injId-sound ∷ [])   
-pdUMany-homogenous* {r} {c ∷ cs} = pdUMany-aux-homogenous* {r} {[]} c cs
-  [ pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ]
-  (homogenous* [ pdinstance* (λ u → u) (λ u → refl) ] (r , hide* (λ u → u) (λ u → refl) ∷ []))
-
-```
-
-Leamm 41.11
+Leamm 41.8
 The next two sub lemma shows that the Ex*≥-lattice property is maintained by `pdUMany-aux` and `pdUMany`.
 
 ```agda
@@ -2744,10 +2434,16 @@ pdUMany-aux-lattice {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (homogenous* (.(pdi
   where
     concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) 
     concatmap-advance-pdi*-with-c-pdis-lattice =  concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis)
+
+-------------------------------------------------------------
+-- Sub Lemma 41.1 - 41.8 END 
+-------------------------------------------------------------
 ```
 
 
 #### Main proof for Lemma 41
+Let r be a non problematic regular expression and w be word.
+Then the list of partial derivative descendant instances pdUMany[ r , w ] is an ex*≥ lattice. 
 
 ```agda
 pdUMany-lattice : ∀ { r : RE } { w : List Char }
@@ -2761,11 +2457,12 @@ pdUMany-lattice {r} {c ∷ cs} = pdUMany-aux-lattice {r}  {[]} c cs [  ( pdinsta
 ```
 
 
-### Sub data definition 42.1 and sub Lemma 42.1 
-The following data type defines the lattice property among parse trees. It is defined over the total order > 
+###  definition 42 and sub Lemma 42.1 
 
 
 ```agda
+-- Definition 42
+-- The following data type defines the lattice property among parse trees. It is defined over the total order > 
 data ≥-lattice : ∀ { r : RE } ( us : List ( U r ) ) → Set where
   ≥-empty : ∀ { r : RE } → ≥-lattice {r} []
   ≥-join : ∀ { r : RE }
@@ -2774,8 +2471,15 @@ data ≥-lattice : ∀ { r : RE } ( us : List ( U r ) ) → Set where
     → All ( λ x → r ⊢ top > x ⊎ top ≡ x ) us
     -----------------------------------------------
     → ≥-lattice {r} (top ∷ us ) 
+```
 
--- Lemma 42.1
+### Theorem 43:
+Let r be a non problematic regular expression and w be a word.
+Let the pdis be the list of parse trees produced by parseAll[ r , w ]
+Then the list of parse trees computed by `parseAll[ r , w ]` is a lattice and the left most element
+is the top. 
+
+```agda 
 -- the next lemma shows that the list of parse trees generated by concatMap buildU is a lattice.
 -- this lemma is proven by opus 4.6
 concatMap-buildU-lattice : ∀ { r : RE } { w : List Char }
@@ -2785,7 +2489,6 @@ concatMap-buildU-lattice : ∀ { r : RE } { w : List Char }
   → All *>-Inc pdis
   → ≥-lattice {r} (concatMap buildU pdis)
 concatMap-buildU-lattice {r} {w} [] _  ex*-empty [] = ≥-empty
-
 concatMap-buildU-lattice {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , ((hide* .(in₁) .(s-ev₁)) ∷ hide-d-pdis) ) )(ex*-join .(pdi) .(pdis) pdi≥pdis) ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) ∷ >-inc-pdis )
   with ε∈? d in ε∈?d-eq
 ... | no ε∉d = subst ≥-lattice (sym (empty-helper pdis hide-d-pdis)) ≥-empty
@@ -2840,7 +2543,8 @@ concatMap-buildU-lattice {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (ho
 ```
 
 
-#### Main proof for Theorem 42 
+#### Main proof for Theorem 43
+
 ```agda
 parseAll-is-posix-lattice : ∀ { r : RE } { w : List Char }
   →  ≥-lattice {r} (parseAll[ r , w ])

@@ -2667,12 +2667,47 @@ pdUMany-aux-lattice {d} {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (hide-d-pdi@(hi
     concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis ) 
 -} 
 
-
+-- this lemma is implemented by opus 4.6 when the annotation is given by me. it took 10 mins.
 concatmap-advance-pdi*-with-c-pdis-homgenous* : ∀ { r : RE } { pref : List Char } { c : Char } { pdis : List (PDInstance* r pref) }
   → Homogenous* pdis
   ------------------------------------------------------------------------
   → Homogenous* (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-concatmap-advance-pdi*-with-c-pdis-homgenous* =  {!!}  
+concatmap-advance-pdi*-with-c-pdis-homgenous* {r} {pref} {c} {[]} (homogenous* .[] (d , [])) =
+  homogenous* [] (r , [])
+concatmap-advance-pdi*-with-c-pdis-homgenous* {r} {pref} {c} {pdi₀ ∷ pdis₀}
+  (homogenous* .(pdi₀ ∷ pdis₀) (d , (hide* .{d} .{r} .{pref} in₀ s-ev₀) ∷ hide-d-pdis₀))
+  with pdU[ d , c ] in pdU-eq | pdU-Homogenous {d} {c}
+... | [] | _ =
+  homogenous* _
+              (r , subst (All (Inhabit* r))
+                         (sym (empty-helper pdis₀ hide-d-pdis₀))
+                         [])
+  where
+    empty-helper : (xs : List (PDInstance* r pref)) → All (Inhabit* d) xs
+                 → concatMap (advance-pdi*-with-c {r} {pref} {c}) xs ≡ []
+    empty-helper [] [] = refl
+    empty-helper (pdinstance* in' s-ev' ∷ xs) (hide* .(in') .(s-ev') ∷ ihs)
+      rewrite pdU-eq = empty-helper xs ihs
+... | (pdj₀ ∷ pdjs₀) | homogenous .(pdj₀ ∷ pdjs₀) (p , hide-p-pdj₀ ∷ hide-p-pdjs₀) =
+  homogenous* _
+              (p , all-concat (map-helper in₀ s-ev₀ (pdj₀ ∷ pdjs₀) (hide-p-pdj₀ ∷ hide-p-pdjs₀))
+                              (nonempty-helper pdis₀ hide-d-pdis₀))
+  where
+    map-helper : (in' : U d → U r)
+              → (s-ev' : ∀ (u : U d) → proj₁ (flat (in' u)) ≡ pref ++ proj₁ (flat u))
+              → (qjs : List (PDInstance d c)) → All (Inhabit p) qjs
+              → All (Inhabit* {r} {pref ∷ʳ c} p) (List.map (compose-pdi-with in' s-ev') qjs)
+    map-helper in' s-ev' [] [] = []
+    map-helper in' s-ev' (pdinstance pj-inj pj-sev ∷ qjs) (hide .(pj-inj) .(pj-sev) ∷ ihs) =
+      hide* {p} {r} {pref ∷ʳ c} (in' ∘ pj-inj) (compose-pdi-with-soundEv in' s-ev' pj-inj pj-sev)
+        ∷ map-helper in' s-ev' qjs ihs
+
+    nonempty-helper : (xs : List (PDInstance* r pref)) → All (Inhabit* d) xs
+                    → All (Inhabit* {r} {pref ∷ʳ c} p) (concatMap (advance-pdi*-with-c {r} {pref} {c}) xs)
+    nonempty-helper [] [] = []
+    nonempty-helper (pdinstance* in' s-ev' ∷ xs) (hide* .(in') .(s-ev') ∷ ihs)
+      rewrite pdU-eq = all-concat (map-helper in' s-ev' (pdj₀ ∷ pdjs₀) (hide-p-pdj₀ ∷ hide-p-pdjs₀))
+                                  (nonempty-helper xs ihs)
 
 
 pdUMany-aux-lattice : ∀ { r : RE }  { pref : List Char } -- pref is the prefixed has been consumed so far. 

@@ -2694,5 +2694,35 @@ pdUMany-aux-lattice {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (homogenous* (.(pdi
   -- not {d}, should be d/c
   where
     concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) 
-    concatmap-advance-pdi*-with-c-pdis-lattice =  concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis)  
+    concatmap-advance-pdi*-with-c-pdis-lattice =  concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis)
+
+
+
+pdUMany-lattice : ∀ { r : RE } { w : List Char }
+  → Ex*≥-lattice {r} {w} pdUMany[ r , w ]
+pdUMany-lattice {r} {[]} = ex*-join
+                            (pdinstance* PartialDerivative.injId PartialDerivative.injId-sound)
+                            [] [] 
+pdUMany-lattice {r} {c ∷ cs} = pdUMany-aux-lattice {r}  {[]} c cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (homogenous* [ pdinstance* (λ u → u) (λ u → refl) ]
+                                                                                                                             (r , hide* (λ u → u) (λ u → refl) ∷ [])) (ex*-join (pdinstance* (λ u → u) (λ u → refl)) [] []) (*>-inc (λ u₁ u₂ z → z) ∷ []) 
+
+
+
+
+data ≥-lattice : ∀ { r : RE } ( us : List ( U r ) ) → Set where
+  ≥-empty : ∀ { r : RE } → ≥-lattice {r} []
+  ≥-join : ∀ { r : RE }
+    → ( top : U r )
+    → ( us : List (U r ) )
+    → All ( λ x → r ⊢ top > x ⊎ top ≡ x ) us
+    -----------------------------------------------
+    → ≥-lattice {r} (top ∷ us ) 
+
+concatMap-buildU-lattice : ∀ { r : RE } { w : List Char }
+  → ( pdis : List (PDInstance* r w) )
+  → Ex*≥-lattice pdis
+  → All *>-Inc pdis
+  → ≥-lattice{r} (concatMap buildU pdis)
+concatMap-buildU-lattice {r} {w} [] ex*-empty [] = ≥-empty   
+
 ```

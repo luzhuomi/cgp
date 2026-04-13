@@ -2,7 +2,7 @@ This module contains the implementation of regular expression parsing algorithm 
 
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.lne.PartialDerivative where
+module cgp.lnegen.PartialDerivative where
 
 import cgp.RE as RE
 open RE using (RE ; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ;  ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? ; first ;  ε∉r→¬first-r≡[]  )
@@ -122,22 +122,15 @@ without (1), the ex_ys example will be the counter example showing it is not lne
 ```agda
 
 pd[_,_] : RE →  Char → List RE
-pdConcat : ( l :  RE )  → ( r :  RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char)  → List RE
-
 pd[ ε , c ]    = []
 pd[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                      | yes refl = [ ε ]
 ...                      | no  _    = []
 pd[ l ● r ` loc , c ] with ε∈? l
-...                      | yes ε∈l =  pdConcat  l r ε∈l loc c
+...                      | yes ε∈l = (List.map (λ l' → l' ● r ` loc ) pd[ l , c ]) ++ pd[ r , c ]
 ...                      | no ¬ε∈l =  List.map (λ l' → l' ● r ` loc ) pd[ l , c ]
 pd[ l + r ` loc , c ]               = pd[ l , c ] ++ pd[ r , c ]
 pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` loc ) ` loc ) pd[ r , c ]
-{-# TERMINATING #-}
-pdConcat ε  r  ε∈ε loc c  = pd[ r  , c ]
-pdConcat (l * ε∉l ` loc₂ ) r ε∈*             loc c = (List.map (λ l' → l' ● r ` loc ) pd[ l * ε∉l ` loc₂ , c ]) ++ pd[ r , c ]
-pdConcat (l ● s ` loc₂ )   r (ε∈ ε∈l ● ε∈s)  loc c = pd[ l ● ( s ● r  ` loc ) ` loc₂ , c ]
-pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p ● r ` loc ) pd[ l + s ` loc₂ , c ]) ++ pd[ r , c ]
 
 ```
 
@@ -153,8 +146,6 @@ pdConcat (l + s ` loc₂ )   r (ε∈l+s)         loc c = (List.map (λ p → p 
 
 
 pdU[_,_] :  ( r : RE ) → ( c :  Char ) →  List (PDInstance r c)
-pdUConcat : ( l r : RE ) → ( ε∈l : ε∈ l ) → ( loc : ℕ ) → ( c : Char ) → List (PDInstance (l ● r ` loc ) c)
-
 pdU[ ε , c ] = []
 pdU[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                       | yes refl = [  pdinstance {ε} {$ c ` loc} {c}
@@ -178,23 +169,12 @@ pdU[ r * nε ` loc , c ] =
   List.map pdinstance-star  pdU[ r , c ]
 
 pdU[ l ● r ` loc , c ] with ε∈? l
-...                       | no ¬ε∈l = List.map pdinstance-fst  pdU[ l , c ]
-...                       | yes ε∈l = pdUConcat l r ε∈l loc c 
+...                       | no ¬ε∈l =  List.map pdinstance-fst  pdU[ l , c ]
+...                       | yes ε∈l =
+  ( List.map pdinstance-fst pdU[ l , c ] )
+  ++
+  concatmap-pdinstance-snd {l}   {r} {ε∈l} {loc} {c} pdU[ r , c ]
 
-{-# TERMINATING #-}
-pdUConcat ε r ε∈ε loc c                   = concatmap-pdinstance-snd {ε}              {r} {ε∈ε}   {loc} {c} pdU[ r , c ]
-pdUConcat (l * ε∉l ` loc₁)  r ε∈*   loc₂ c =
-  ( List.map pdinstance-fst pdU[ (l * ε∉l ` loc₁) , c ] )
-  ++
-  concatmap-pdinstance-snd {l * ε∉l ` loc₁} {r} {ε∈*}   {loc₂} {c} pdU[ r , c ]
-pdUConcat (l ● s ` loc₁)    r ε∈l●s loc₂ c = List.map pdinstance-assoc pdU[ ( l ● ( s ● r ` loc₂ ) ` loc₁ ) , c ]
---  ( List.map pdinstance-fst pdU[ (l ● s ` loc₁) , c ] )
---  ++
---   concatmap-pdinstance-snd {l ● s ` loc₁}   {r} {ε∈l●s} {loc₂} {c} pdU[ r , c ]
-pdUConcat (l + s ` loc₁)    r ε∈l+s loc₂ c =
-  ( List.map pdinstance-fst pdU[ (l + s ` loc₁) , c ] )
-  ++
-   concatmap-pdinstance-snd {l + s ` loc₁}   {r} {ε∈l+s} {loc₂} {c} pdU[ r , c ]
 ```
 
 
@@ -268,12 +248,6 @@ pdU-complete : ∀ { r : RE  } { c : Char } { w : List Char }
   → ( proj₁ (flat {r} u) ≡ c ∷ w )
   → Any (Recons {r} {c} u) pdU[ r , c ]
 
-pdUConcat-complete : ∀ { l s : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { w : List Char }
-    → ( u : U l )
-    → ( v : U s ) 
-    → ( proj₁ (flat { l ● s ` loc } (PairU u v)) ≡ c ∷ w )
-    → Any (Recons { l ● s ` loc } (PairU u v)) (pdUConcat l s ε∈l loc c)
-
 
 -- intuition: give a parse tree u of r, flat u = c :: w;
 -- we must be able to find a PDInstance record in pdU such that u can be reconstruct from w and c.
@@ -322,76 +296,25 @@ pdU-complete {l ● s ` loc} {c}  {w} (PairU u v) proj1-flat-pair-u-v≡cw    | 
     ys : Any (Recons { l ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l , c ])
     ys = any-recons-fst {l} {s} {loc} {c} {w} {u} {v} pdU[ l , c ] xs 
  
-pdU-complete {l ● s ` loc} {c}  {w} (PairU u v) proj1-flat-pair-u-v≡cw       | yes ε∈l  =  pdUConcat-complete {l} {s} {ε∈l} {loc} {c} {w} u v  proj1-flat-pair-u-v≡cw
-
-{-# TERMINATING #-}    
-pdUConcat-complete {ε} {s} {ε∈ε} {loc} {c} {w} u@EmptyU v proj1-flat-pair-u-v≡cw  = prove e1-e2-e3 
+pdU-complete {l ● s ` loc} {c}  {w} (PairU u v) proj1-flat-pair-u-v≡cw       | yes ε∈l  = prove e1-e2-e3 
   where
     e1-e2-e3 :  ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ w ) ) 
               ⊎ ( ∃[ xs ]  ∃[ ys ] (proj₁ (flat u) ≡ c ∷ xs) × (proj₁ (flat v) ≡ ys) × ( xs ++ ys ≡ w ) ) 
-    e1-e2-e3 = inv-flat-pair-snd {ε} {s} {ε∈ε} {loc} {u} {v} {c} {w} proj1-flat-pair-u-v≡cw 
+    e1-e2-e3 = inv-flat-pair-snd {l} {s} {ε∈l} {loc} {u} {v} {c} {w} proj1-flat-pair-u-v≡cw 
     prove : ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ w ) ) ⊎ ( ∃[ xs ]  ∃[ ys ] (proj₁ (flat u) ≡ c ∷ xs) × (proj₁ (flat v) ≡ ys) × ( xs ++ ys ≡ w ) )
-           → Any (Recons {ε ● s ` loc} {c} (PairU u v)) (List.map (pdinstance-fst {ε} {s} {loc} {c}) pdU[ ε , c ] ++ (concatmap-pdinstance-snd {ε} {s} {ε∈ε} {loc} {c} pdU[ s , c ])) 
+           → Any (Recons {l ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l  , c ] ++ (concatmap-pdinstance-snd  {l} {s} {ε∈l} {loc} {c}   pdU[ s , c ])) 
     prove (inj₂ ( xs , ys , proj1-flat-u≡cxs , proj1-flat-v≡ys , refl ) )  = any-left-concat bs
       where 
-        as : Any (Recons {ε} {c} u) pdU[ ε , c ]
-        as = pdU-complete {ε} {c} {xs} u proj1-flat-u≡cxs   
-        bs : Any (Recons { ε ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ ε , c ])
-        bs = any-recons-fst {ε} {s} {loc} {c} {w} {u} {v} pdU[ ε , c ] as 
-    prove (inj₁ ( ys , proj1-flat-u≡[] , proj1-flat-v≡cys , refl ) ) = any-right-concat {PDInstance (ε ● s ` loc) c} {(Recons { ε ● s ` loc} {c} (PairU u v))} {(List.map pdinstance-fst pdU[ ε , c ])}  bs
+        as : Any (Recons {l} {c} u) pdU[ l , c ]
+        as = pdU-complete {l} {c} {xs} u proj1-flat-u≡cxs   
+        bs : Any (Recons { l ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l , c ])
+        bs = any-recons-fst {l} {s} {loc} {c} {w} {u} {v} pdU[ l , c ] as 
+    prove (inj₁ ( ys , proj1-flat-u≡[] , proj1-flat-v≡cys , refl ) ) = any-right-concat  {PDInstance ( l ● s ` loc) c} {(Recons { l ● s ` loc} {c} (PairU u v))} {(List.map pdinstance-fst pdU[ l  , c ])}  bs
       where 
         as : Any (Recons {s} {c} v) pdU[ s , c ] 
         as = pdU-complete {s} {c} {ys} v proj1-flat-v≡cys
-        bs : Any (Recons { ε ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {ε} {s} {ε∈ε} {loc} {c} pdU[ s , c ]) 
-        bs = any-recons-concatmap-pdinstance-snd {ε} {s} {ε∈ε} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as
-pdUConcat-complete {l * ε∉l ` loc₁} {s} {ε∈*} {loc} {c} {w} u@(ListU us) v proj1-flat-pair-u-v≡cw  = prove e1-e2-e3 
-  where
-    e1-e2-e3 :  ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ w ) ) 
-              ⊎ ( ∃[ xs ]  ∃[ ys ] (proj₁ (flat u) ≡ c ∷ xs) × (proj₁ (flat v) ≡ ys) × ( xs ++ ys ≡ w ) ) 
-    e1-e2-e3 = inv-flat-pair-snd {l * ε∉l ` loc₁} {s} {ε∈*} {loc} {u} {v} {c} {w} proj1-flat-pair-u-v≡cw 
-    prove : ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ w ) ) ⊎ ( ∃[ xs ]  ∃[ ys ] (proj₁ (flat u) ≡ c ∷ xs) × (proj₁ (flat v) ≡ ys) × ( xs ++ ys ≡ w ) )
-           → Any (Recons {(l * ε∉l ` loc₁) ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l * ε∉l ` loc₁ , c ] ++ (concatmap-pdinstance-snd  {l * ε∉l ` loc₁} {s} {ε∈*} {loc} {c}   pdU[ s , c ])) 
-    prove (inj₂ ( xs , ys , proj1-flat-u≡cxs , proj1-flat-v≡ys , refl ) )  = any-left-concat bs
-      where 
-        as : Any (Recons {l * ε∉l ` loc₁} {c} u) pdU[ l * ε∉l ` loc₁ , c ]
-        as = pdU-complete {l * ε∉l ` loc₁} {c} {xs} u proj1-flat-u≡cxs   
-        bs : Any (Recons { (l * ε∉l ` loc₁) ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l * ε∉l ` loc₁ , c ])
-        bs = any-recons-fst {l * ε∉l ` loc₁} {s} {loc} {c} {w} {u} {v} pdU[ l * ε∉l ` loc₁ , c ] as 
-    prove (inj₁ ( ys , proj1-flat-u≡[] , proj1-flat-v≡cys , refl ) ) = any-right-concat  {PDInstance ( (l * ε∉l ` loc₁) ● s ` loc) c} {(Recons { (l * ε∉l ` loc₁)  ● s ` loc} {c} (PairU u v))} {(List.map pdinstance-fst pdU[ l * ε∉l ` loc₁ , c ])}  bs
-      where 
-        as : Any (Recons {s} {c} v) pdU[ s , c ] 
-        as = pdU-complete {s} {c} {ys} v proj1-flat-v≡cys
-        bs : Any (Recons { (l * ε∉l ` loc₁) ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {l * ε∉l ` loc₁} {s} {ε∈*} {loc} {c} pdU[ s , c ]) 
-        bs = any-recons-concatmap-pdinstance-snd {l * ε∉l ` loc₁} {s} {ε∈*} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as
-
-pdUConcat-complete {l ● t ` loc₁} {s} {ε∈l●t} {loc} {c} {w} u@(PairU u₁ u₂) v proj1-flat-pair-u-v≡cw  = any-recons-assoc {l} {t} {s} {loc₁} {loc} {c} {w} {u₁} {u₂} {v}  pdU[ l ● (t ● s ` loc) ` loc₁ , c ] xs  
-  where
-    proj₁-flat-pair-u₁-pair-u₂-v≡cw : proj₁ (flat (PairU {l} { t ● s ` loc } {loc₁} u₁ (PairU u₂ v))) ≡ c ∷ w
-    proj₁-flat-pair-u₁-pair-u₂-v≡cw with flat u₁   | flat u₂     | flat v
-    ... | w₁ , w₁∈⟦l⟧ | w₂ , w₂∈⟦t⟧  | w₃ , w₃∈⟦s⟧ rewrite ++-assoc w₁ w₂ w₃ = proj1-flat-pair-u-v≡cw
-    
-    xs : Any (Recons {l ● (t ● s ` loc) ` loc₁} {c} (PairU u₁ (PairU u₂ v))) pdU[ l ● (t ● s ` loc) ` loc₁ , c ]
-    xs  = pdU-complete {l ● (t ● s ` loc) ` loc₁} {c} {w}  (PairU u₁ (PairU u₂ v)) proj₁-flat-pair-u₁-pair-u₂-v≡cw 
-  
-pdUConcat-complete {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} u v proj1-flat-pair-u-v≡cw  = prove e1-e2-e3 
-  where
-    e1-e2-e3 :  ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ w ) ) 
-              ⊎ ( ∃[ xs ]  ∃[ ys ] (proj₁ (flat u) ≡ c ∷ xs) × (proj₁ (flat v) ≡ ys) × ( xs ++ ys ≡ w ) ) 
-    e1-e2-e3 = inv-flat-pair-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {u} {v} {c} {w} proj1-flat-pair-u-v≡cw 
-    prove : ( ∃[ ys ] (proj₁ (flat u) ≡ []) × (proj₁ (flat v) ≡ c ∷ ys ) × ( ys ≡ w ) ) ⊎ ( ∃[ xs ]  ∃[ ys ] (proj₁ (flat u) ≡ c ∷ xs) × (proj₁ (flat v) ≡ ys) × ( xs ++ ys ≡ w ) )
-           → Any (Recons {(l + t ` loc₁) ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l + t ` loc₁ , c ] ++ (concatmap-pdinstance-snd  {l + t ` loc₁} {s} {ε∈l+t} {loc} {c}   pdU[ s , c ])) 
-    prove (inj₂ ( xs , ys , proj1-flat-u≡cxs , proj1-flat-v≡ys , refl ) )  = any-left-concat bs
-      where 
-        as : Any (Recons {l + t ` loc₁} {c} u) pdU[ l + t ` loc₁ , c ]
-        as = pdU-complete {l + t ` loc₁} {c} {xs} u proj1-flat-u≡cxs   
-        bs : Any (Recons { (l + t ` loc₁) ● s ` loc} {c} (PairU u v)) (List.map pdinstance-fst pdU[ l + t ` loc₁ , c ])
-        bs = any-recons-fst {l + t ` loc₁} {s} {loc} {c} {w} {u} {v} pdU[ l + t ` loc₁ , c ] as 
-    prove (inj₁ ( ys , proj1-flat-u≡[] , proj1-flat-v≡cys , refl ) ) = any-right-concat  {PDInstance ( (l + t ` loc₁) ● s ` loc) c} {(Recons { (l + t ` loc₁)  ● s ` loc} {c} (PairU u v))} {(List.map pdinstance-fst pdU[ l + t ` loc₁ , c ])}  bs
-      where 
-        as : Any (Recons {s} {c} v) pdU[ s , c ] 
-        as = pdU-complete {s} {c} {ys} v proj1-flat-v≡cys
-        bs : Any (Recons { (l + t ` loc₁) ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} pdU[ s , c ]) 
-        bs = any-recons-concatmap-pdinstance-snd {l + t ` loc₁} {s} {ε∈l+t} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as
+        bs : Any (Recons { l ● s ` loc} {c} (PairU u v)) (concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c} pdU[ s , c ]) 
+        bs = any-recons-concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c} {w} {u} {v} proj1-flat-u≡[] pdU[ s , c ] as
 
 
 ```
@@ -588,6 +511,7 @@ any-recons*-concatmap-advance-with-c {r} {pref} {c} {cs} u proj1-flatu≡pref++c
 -------------------------------------------------------------------------------------------------------------
 -- Sub Lemma 23.1 - 23.3 END 
 -------------------------------------------------------------------------------------------------------------
+
 
 ```
 
@@ -1108,10 +1032,6 @@ first≢[]→¬pdU≡[] : ∀ { r : RE } { c : Char } { cs : List Char }
     → ( first r ≡ c ∷ cs )
     ------------------------
     → ¬ ( pdU[ r , c ] ≡ [] )
-first≢[]→¬pdUConcat≡[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { cs : List Char } 
-  → first l ++ first r ≡ c ∷ cs
-  --------------------------------------------------------------------
-  → ¬ ( pdUConcat l r ε∈l loc c ≡ [] ) 
 
 
 first≢[]→¬pdU≡[] {ε} {c} {cs} = λ()
@@ -1160,9 +1080,41 @@ first≢[]→¬pdU≡[] { l ● r ` loc } {c} {cs} first-l●r≡c∷cs with ε�
     ind-hyp = first≢[]→¬pdU≡[] {l} {c} {cs} first-l●r≡c∷cs
 ... | yes ε∈l = prf
   where
-    prf : ¬ ( pdUConcat l r ε∈l loc c ≡ [] )
-    prf = first≢[]→¬pdUConcat≡[] first-l●r≡c∷cs
+    prf : ¬ ( List.map (pdinstance-fst {l} {r} {loc})  pdU[ l , c ] ++  concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdU[ r , c ]  ≡ [] ) 
+    prf with first l in first-l-eq  | first r in first-r-eq 
+    ... | []                      | []        =  λ x → ¬∷≡[] (sym first-l●r≡c∷cs)
+    ... | []                      | c₁ ∷ cs₁  = sub_prf 
+      where
+        c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ≡ cs)
+        c₁≡c×cs₁≡cs = (∷-inj first-l●r≡c∷cs)
+        ind-hyp : ¬ ( pdU[ r , c₁ ] ≡ [] )
+        ind-hyp =  first≢[]→¬pdU≡[] first-r-eq
+        sub_prf : ¬ ( List.map (pdinstance-fst {l} {r} {loc}) pdU[ l , c ] ++
+                               (concatMap (λ x → List.map (mk-snd-pdi x) pdU[ r , c ])
+                                                 (zip-es-flat-[]-es {l} {ε∈l}   (mkAllEmptyU ε∈l) (mkAllEmptyU-sound ε∈l))) ≡ [] )
+        sub_prf = {!!} 
+    ... | c₁ ∷ cs₁                              | cs₂      = sub_prf
+      where
+        c₁≡c×cs₁≡cs : (c₁ ≡ c) × (cs₁ ++ cs₂ ≡ cs)
+        c₁≡c×cs₁≡cs = (∷-inj first-l●r≡c∷cs)
+        ind-hyp : ¬ ( pdU[ l , c ] ≡ [] )
+        ind-hyp rewrite sym (proj₁ c₁≡c×cs₁≡cs) =  first≢[]→¬pdU≡[] first-l-eq
+        sub_prf : ¬ ( ( List.map pdinstance-fst  pdU[ l , c ] ) ++ 
+                        (concatMap (λ x₁ → List.map (mk-snd-pdi x₁) pdU[ r , c ]) (zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU ε∈l)
+                                                                                         (mkAllEmptyU-sound ε∈l))) )
+                    ≡ []
+        sub_prf x = ind-hyp pdu-l-c≡[] 
+          where
+            y : List.map pdinstance-fst  pdU[ l , c ]  ≡ []
+            y = ++-conicalˡ (List.map pdinstance-fst pdU[ l , c ] )
+                            (concatMap (λ x₁ → List.map (mk-snd-pdi x₁) pdU[ r , c ]) (zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU ε∈l) (mkAllEmptyU-sound ε∈l))) x
+            pdu-l-c≡[] : (pdU[ l , c ] ≡ [])
+            pdu-l-c≡[] = inv-map-[] y
 
+
+
+
+{-
 {-# TERMINATING #-}
 first≢[]→¬pdUConcat≡[] {ε} {r} {ε∈ε} {loc} {c} {cs} first-r≡c∷cs
   with (zip-es-flat-[]-es {ε} {ε∈ε} (mkAllEmptyU {ε} ε∈ε) (mkAllEmptyU-sound {ε} ε∈ε)) in eq 
@@ -1254,6 +1206,7 @@ first≢[]→¬pdUConcat≡[] {l ● s ` loc₁} {r} {ε∈ ε∈l ● ε∈s} {
         ∎  
       ind-hyp : ¬ (pdUConcat l ( s ● r ` loc₂) ε∈l loc₁ c ≡ [] )
       ind-hyp  = first≢[]→¬pdUConcat≡[] {l}  {s ● r ` loc₂} {ε∈l} {loc₁} {c} {cs}   first-l●s-●r≡first-l-●s●r
+-}
 ```
 
 
@@ -1336,7 +1289,10 @@ recons-v→¬proj₁flat-v≡[] {r} {c} v pdi  (recons {p} {l} {c} {w} {inj} {s-
         c ∷ w 
       ∎ 
     prf : ¬  proj₁ (flat v) ≡ [] 
-    prf rewrite ( proj₁-flat-v≡c∷w ) = λ () 
+    prf rewrite ( proj₁-flat-v≡c∷w ) = λ ()
+
+
+
 ```
 
 

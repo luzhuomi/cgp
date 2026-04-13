@@ -311,7 +311,7 @@ module Example-Left-NonEmpty where
 ```
 
 ```agda
-{-
+
 ```
 
 Note : The > order is transitive. 
@@ -322,6 +322,8 @@ Note : The > order is transitive.
   → r ⊢ u₂ > u₃
   -----------------
   → r ⊢ u₁ > u₃
+>-trans  = ?   
+{-  
 >-trans {ε} = λ()
 >-trans {$ c ` loc} = λ()
 >-trans {r * ε∉r ` loc} star-cons-nil = λ()
@@ -403,14 +405,15 @@ Note : The > order is transitive.
 >-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
 >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
 >-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃
-
+-} 
 
 
 ```
-Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
+Lemma (irrefl) u₁ > u₂ implies ¬ u₁ ≡ u₂
 
 
 ```agda
+{- 
 >→¬≡ : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ > u₂ 
   -----------------
@@ -482,12 +485,14 @@ Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
       where
         proj₁flatu≡[] : proj₁ (flat u) ≡ []
         proj₁flatu≡[] rewrite proj₁flat-u≡proj₁flat-v = proj₁flatv≡[]
+-}        
 ```
 
 ### Definition 30: >-sortedness 
 
 
 ```agda
+{-
 data >-maybe : ∀ { r : RE } ( u : U r ) → ( mv : Maybe (U r) ) → Set where 
   >-nothing : ∀ { r : RE }
     → { u : U r } 
@@ -528,7 +533,7 @@ concat-sorted (u₁ ∷ u₁' ∷ us₁) (u₂ ∷ us₂) (>-cons u₁'us₁-sor
   where
     ind-hyp = concat-sorted (u₁' ∷ us₁) (u₂ ∷ us₂) u₁'us₁-sorted u₂us₂-sorted pxs
 
-
+-}
 ```
 
 
@@ -543,6 +548,7 @@ Then (mkAllEmptyU ε∈r) is greedily sorted.
 #### Sub Lemma 31.1 - 31.4 : >-sortedness is preserved inductively over the parse tree constructors and construction operations.
 
 ```agda
+{-
 -----------------------------------------------------------------------------
 -- Sub Lemma 31.1 - 31.4  BEGIN
 ----------------------------------------------------------------------------
@@ -660,13 +666,14 @@ map-pairU-empty-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (flat-[] u flat-u≡
 -----------------------------------------------------------------------------
 -- Sub Lemma 31.1 - 31.4  END
 ----------------------------------------------------------------------------
+-}
 
 ```
 
 #### Main proof for Lemma 31
 
 ```agda
-
+{-
 -- main lemma and its proof
 mkAllEmptyU-sorted : ∀ { r : RE }
   → ( ε∈r : ε∈ r)
@@ -709,6 +716,7 @@ mkAllEmptyU-sorted {l ● r ` loc }  (ε∈ ε∈l ● ε∈r ) = map-pairU-empt
     l-es = mkAllEmptyU ε∈l
     l-ind-hyp : >-sorted  (mkAllEmptyU ε∈l)
     l-ind-hyp = mkAllEmptyU-sorted {l} ε∈l
+-}    
 ```
 
 
@@ -725,13 +733,14 @@ We say pdi is >-inc (strict increasing) iff,
   Then r ⊢ inj u₁ > inj u₂ 
 
 ```agda
-
+{-
 data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( (u₁ : U p) → (u₂ : U p)
         →  p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
     → >-Inc {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+-}    
 ```
 
 ### Lemma 33: all pdinstances from pdU[ r , c ] are >-strict increasing .
@@ -745,6 +754,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 #### Sub Lemma 33.1 - 33.9 : >-Inc is preserved inductively by the pdinstance operations. 
 
 ```agda
+{-
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9  BEGIN
 ----------------------------------------------------------------------------
@@ -933,6 +943,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
 ----------------------------------------------------------------------------
+-}
 
 ```
 
@@ -940,7 +951,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 #### Main proof for Lemma 33
 
 ```agda
-
+{-
 -- main lemma proof
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc {r} {c}) pdU[ r , c ]
@@ -1048,7 +1059,7 @@ pdUConcat->-inc { l + s ` loc₂ } {r} {ε∈l+s} {loc} {c} =  all-concat all->-
     all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd {l + s ` loc₂} {r} {ε∈l+s} {loc} {c}  pdU[ r , c ] ind-hyp-r
 
 
-
+-}
 ```
 
 
@@ -1065,13 +1076,13 @@ We say pdi is >-inc (strict increasing) iff,
   Then r ⊢ inj u₁ > inj u₂
 
 ```agda
-
+{-
 data *>-Inc : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set where
   *>-inc : ∀ { p r : RE } { w : List Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → (proj₁ ( flat {r} (inj x ) ) ≡ w ++ (proj₁ (flat {p} x))) }
     → ( (u₁ : U p) → (u₂ : U p ) → p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence
     → *>-Inc {r} {w} (pdinstance* {p} {r} {w} inj sound-ev) 
-
+-}
 ```
 
 
@@ -1087,6 +1098,7 @@ Then for all pdi ∈ pdUMany[ r , w ], pdi is >-strict increasing.
 #### Sub Lemma 35.1 - 35.3 : *>-Inc is preserved inductively over pdinstance*'s operations
 
 ```agda
+{-
 -----------------------------------------------------------------------------
 -- Sub Lemma 35.1 - 35.3 BEGIN 
 ----------------------------------------------------------------------------
@@ -1138,6 +1150,7 @@ concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} (pdi ∷ pdis) (pdi-*>-inc �
 -----------------------------------------------------------------------------
 -- Sub Lemma 35.1 - 35.3 END
 ----------------------------------------------------------------------------
+-}
 
 ```
 
@@ -1145,7 +1158,7 @@ concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} (pdi ∷ pdis) (pdi-*>-inc �
 #### Main proof for Lemma 35
 
 ```agda
-
+{-
 pdUMany-aux-*>-inc : ∀ { r : RE } { pref : List Char} 
   → (suff : List Char )
   → (pdis : List (PDInstance* r pref))

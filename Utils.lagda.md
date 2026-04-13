@@ -138,12 +138,9 @@ length≡0→[] {A} {[]} refl = refl
 []→length≡0 {A} {[]} refl = refl   
 
 
-¬≡[]→¬length≡0 : ∀ { A : Set } { xs : List A }
-  → ¬ xs ≡ []
-  -----------------------
-  → ¬ List.length xs ≡ 0
-¬≡[]→¬length≡0 {A} {xs} = contraposition length≡0→[] 
-  
+n≡0→¬n>0 : ∀ {n} → n ≡ 0 → ¬ (n Nat.> 0)
+n≡0→¬n>0 refl ()
+
 
 ¬≡0→>0 :  ∀ { n : ℕ }
   → ¬ n ≡ 0
@@ -151,6 +148,23 @@ length≡0→[] {A} {[]} refl = refl
   → n > 0
 ¬≡0→>0 {0} ¬0≡0 = Nullary.contradiction refl ¬0≡0
 ¬≡0→>0 {suc n} ¬suc-n≡0 = Nat.s≤s Nat.z≤n 
+
+
+¬≡[]→¬length≡0 : ∀ { A : Set } { xs : List A }
+  → ¬ xs ≡ []
+  -----------------------
+  → ¬ List.length xs ≡ 0
+¬≡[]→¬length≡0 {A} {xs} = contraposition length≡0→[] 
+  
+
+¬≡[]→length>0 : ∀ { A : Set } { xs : List A }
+  → ¬ xs ≡ []
+  -----------------------
+  → List.length xs > 0
+¬≡[]→length>0 {A} {xs} ¬xs≡[] = ¬≡0→>0   (¬≡[]→¬length≡0 ¬xs≡[] ) 
+
+
+
 
 
 

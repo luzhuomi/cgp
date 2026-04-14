@@ -815,8 +815,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
 
 
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 pair-u₁v₁>ⁱpair-u₂v₂) = {!!} -- we need a contradiction
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = {!!} -- we need a contradiction     
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂)) =
+      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
+      in bne {!!} {!!} (seq₁ inj-u₁>inj-u₂)
+      
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₂ u₁≡u₂ v₁>v₂)) =
+      bne {!!} {!!} (seq₂ inj-u₁≡inj-u₂ v₁>v₂)
+        where
+          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
+          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = {!!} -- hm this case is tricky. do we have a counter example here ? after the injection, 
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
       in bne {!!} {!!} (seq₁ inj-u₁>inj-u₂) 

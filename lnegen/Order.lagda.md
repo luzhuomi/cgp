@@ -825,7 +825,11 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
 
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = {!!} -- hm this case is tricky. do we have a counter example here ? after the injection, 
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = {!!} -- hm this case is tricky.
+    -- do we have a counter example here ? after the injection, len|injFst-pair-u₁v₁|>0 and len|pair-u₂v₂|>0, but how do we get injFst (PairU u₁ v₁) >ⁱ injFst (PairU u₂ v₂)
+    -- we definitely don't have inj u₁ ≡ inj u₂ since len|u₁|>0 len|u₂|≡0, why?
+    -- so must be seq₁ (in u₁ > in u₂) if it is valid,
+    -- how do we get in u₁ > in u₂ ?  3 cases u₁ > u₂ 
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
       in bne {!!} {!!} (seq₁ inj-u₁>inj-u₂) 

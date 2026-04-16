@@ -795,17 +795,13 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
         ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
 
-
-
->-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-               → ( pdis : List (PDInstance l c ) )
-               → All (>-Inc {l} {c}) pdis
-               → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
->-inc-map-fst [] [] = []
-
->-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = (>-inc >-inc-ev)  ∷  >-inc-map-fst pdis pxs
-  where
+>-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+               → ( pdi : PDInstance l c )
+               → >-Inc {l} {c} pdi
+               ------------------------
+               → >-Inc {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+>-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev)(>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc >-inc-ev 
+  where 
     injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
     injFst = mkinjFst inj
     >-inc-ev : ∀ (uv₁ : U ( p ● r ` loc ))
@@ -839,6 +835,15 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+
+>-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+               → ( pdis : List (PDInstance l c ) )
+               → All (>-Inc {l} {c}) pdis
+               → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+>-inc-map-fst [] [] = []
+
+>-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+  = (>-inc-fst (pdinstance inj sound-ev) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂))    ∷  >-inc-map-fst pdis pxs
 
 {-
 

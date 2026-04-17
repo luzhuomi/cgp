@@ -809,7 +809,7 @@ Is Glushkov Greedy or LNE, some paper said PD NFA is a quotient of Glushkov? wha
 
 
 
-#### Update on 20 March 2026
+## Update on 20 March 2026
 
 
 Here is the issue:
@@ -1035,3 +1035,14 @@ parseAllU r [a] = app buildU pdU[ r . a ]
 				  , Right (Left Empty, Letter a )   -- not sorted
 				  , Right (Right Empty, Letter a ) ]
 				 
+
+
+## Update on 17 April 2026
+
+1. The correctness of POSIX parsing implementation using PD is is done.
+2. The theorem 43 (the last one in `posix/ExtendedOrder.lagda.md`.)
+3. Actually, we are building derivatives from partial derivatives, by aggregating them using ⊕.
+   As a result, the list of parse trees coming from parseAll function are bounded by the left-most element, which should be the top of the lattice. 
+   
+4. Work in progress, adjusting the one level definition of the LNE order into the two level version (search for BothEmpty, BothNonEmpty, LeftNonEmpty in this document).
+  4.1. The two level definition is not exactly the same as the one level, counter example

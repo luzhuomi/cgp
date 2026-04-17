@@ -1039,10 +1039,10 @@ parseAllU r [a] = app buildU pdU[ r . a ]
 
 ## Update on 17 April 2026
 
-1. The correctness of POSIX parsing implementation using PD is is done.
+1. The correctness of POSIX parsing implementation using PD is done. (Issues from 20 March 2026 updated were fixed.)
 2. The theorem 43 (the last one in `posix/ExtendedOrder.lagda.md`.)
 3. Actually, we are building derivatives from partial derivatives, by aggregating them using ⊕.
-   As a result, the list of parse trees coming from parseAll function are bounded by the left-most element, which should be the top of the lattice. 
+   As a result, the list of parse trees coming out from parseAll function are bounded by the left-most element, which should be the top of the lattice, i.e. the posix parse tree. This again coincides with Urban's proof. 
    
 4. Work in progress, adjusting the one level definition of the LNE order into the two level version (search for BothEmpty, BothNonEmpty, LeftNonEmpty in this document).
   4.1. The two level definition is not exactly the same as the one level, counter example

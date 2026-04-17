@@ -1046,3 +1046,6 @@ parseAllU r [a] = app buildU pdU[ r . a ]
    
 4. Work in progress, adjusting the one level definition of the LNE order into the two level version (search for BothEmpty, BothNonEmpty, LeftNonEmpty in this document).
   4.1. The two level definition is not exactly the same as the one level, counter example
+	  refer to the `t13 t14` in `lnegen/Order.lagda.md`. 
+  4.2. The parsing policy described by single level definition in `lne/Order.lagda.md` has a verified implementation `lne/PartialDerivative.lagda.md`, which is antimirov's algo + associative rule.
+  4.3. The parsing policy described by two level definition in `lnegen/Order.lagda.md`, its accompanied impelemntation `lnegen/PartialDerivative.lagda.md`, which is antimirov's algo without associative rule nor distributivity rule. yet need to be verified. 

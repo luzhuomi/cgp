@@ -825,7 +825,20 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     -- do we have a counter example here ? after the injection, len|injFst-pair-u₁v₁|>0 and len|pair-u₂v₂|>0, but how do we get injFst (PairU u₁ v₁) >ⁱ injFst (PairU u₂ v₂)
     -- we definitely don't have inj u₁ ≡ inj u₂ since len|u₁|>0 len|u₂|≡0, why?
     -- so must be seq₁ (in u₁ > in u₂) if it is valid,
-    -- how do we get in u₁ > in u₂ ?  3 cases u₁ > u₂ 
+    -- how do we get in u₁ > in u₂ ?  3 cases u₁ > u₂
+
+    -- counter examples the t13 t14 above.
+    -- t13>t14
+    -- injFst t13 = PairU (PairU (RightU (ListU (LetterU 'a' ∷ []))         (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))
+    -- injFst t14 = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ []))          (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+    -- injFst t14 > injFst t13
+
+
+    -- the left most element should be the maximal element
+    -- t_top = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
+    -- injFst t_top =  PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷  LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
+    -- the inject preserve the maximaility, lattice
+    
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
       in bne {!!} {!!} (seq₁ inj-u₁>inj-u₂) 

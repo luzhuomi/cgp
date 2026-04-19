@@ -1045,7 +1045,33 @@ parseAllU r [a] = app buildU pdU[ r . a ]
    As a result, the list of parse trees coming out from parseAll function are bounded by the left-most element, which should be the top of the lattice, i.e. the posix parse tree. This again coincides with Urban's proof. 
    
 4. Work in progress, adjusting the one level definition of the LNE order into the two level version (search for BothEmpty, BothNonEmpty, LeftNonEmpty in this document).
-  4.1. The two level definition is not exactly the same as the one level, counter example
-	  refer to the `t13 t14` in `lnegen/Order.lagda.md`. 
+  4.1. The two level definition is not exactly the same as the one level,
+   	   counter example
+	  refer to the `t13 t14` in `lnegen/Order.lagda.md`.
   4.2. The parsing policy described by single level definition in `lne/Order.lagda.md` has a verified implementation `lne/PartialDerivative.lagda.md`, which is antimirov's algo + associative rule.
   4.3. The parsing policy described by two level definition in `lnegen/Order.lagda.md`, its accompanied impelemntation `lnegen/PartialDerivative.lagda.md`, which is antimirov's algo without associative rule nor distributivity rule. yet need to be verified. 
+  4.4. The issue is that with the two level definition, we conjecture that the partial derivative operation (with vanilla antimirov's algo) with produce parse trees in this order.
+  4.4.1 However, the partial derivative operation (w/o assoc rule) do not preserve  >-Inc property.
+  4.4.2. counter examples:
+  ```
+     t13 t14 : U a*+a*●a*+a*●a*
+     t13 = PairU (PairU (RightU (ListU []))                                       (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))  
+     t14 = PairU (PairU (LeftU (ListU []))                                        (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+  ```   
+    We note  a*+a*●a*+a*●a*  ⊢ t13 > t14
+    However
+    ```
+    injFst t13 = PairU (PairU (RightU (ListU (LetterU 'a' ∷ []))         (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))
+    injFst t14 = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ []))          (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+    a*+a*●a*+a*●a* ⊢ injFst t14 > injFst t13
+    ```
+    injFst does not preserve >, because we don't apply assoc rule to Pairs.
+    
+    The good news is that the left most parse tree should be the maximal element
+    namely
+    ```
+    t_top = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
+    injFst t_top =  PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷  LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
+    ```
+    Conjecture: the partial derivative inject preserves the maximaility, i.e. preserves the lattice property 
+  

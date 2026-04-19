@@ -49,6 +49,11 @@ open Char using (Char )
 import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero )
 
+import Data.Nat.Properties as NatProperties
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ )
+
+
+
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
 
@@ -68,6 +73,9 @@ import Data.Product as Product
 open Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_ )
 open Σ using (proj₁ ; proj₂)
 
+import Data.Sum as Sum
+open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
+
 import Data.List.Relation.Unary.All as All
 open All using (All ; _∷_ ; [] ; map)
 
@@ -80,6 +88,7 @@ open Decidable using
   ( Dec; yes; no; ⌊_⌋; True; toWitness; fromWitness; _×-dec_; _⊎-dec_; ¬?)
 
 open import Function using (_∘_ ; flip)
+
 
 ```
 
@@ -362,24 +371,43 @@ Note : The > order is transitive.
 
 
 ```
-Lemma (irrefl) u₁ > u₂ implies ¬ u₁ ≡ u₂
 
+### Irreflexivity for strict > among parse trees
+
+Let r be a non problematic regular expression, 
+Let u₁ and u₂ be parse tree of r such that r ⊢ u₁ > u₂
+Then ¬ u₁ ≡ u₂ 
 
 ```agda
-{- 
+
 >→¬≡ : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ > u₂ 
   -----------------
-  → ¬ u₁ ≡ u₂ 
->→¬≡ {ε} {EmptyU}    {EmptyU} = λ() 
->→¬≡ {$ c ` loc}     {LetterU _} {LetterU _} = λ()
--- >→¬≡ {r * ε∉r ` loc} {ListU []} {_} = λ()
->→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
->→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs)) 
+  → ¬ u₁ ≡ u₂
+
+
+>ⁱ→¬≡ : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ >ⁱ u₂ 
+  -----------------
+  → ¬ u₁ ≡ u₂
+
+>→¬≡ (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) = >ⁱ→¬≡ u₁>ⁱu₂
+>→¬≡ (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) = >ⁱ→¬≡ u₁>ⁱu₂
+>→¬≡ (lne len|u₁|>0 len|u₂|≡0) u₁≡u₂ rewrite sym u₁≡u₂ = (<-irrefl (sym len|u₂|≡0)) len|u₁|>0 
+
+
+
+>ⁱ→¬≡ {ε} {EmptyU}    {EmptyU} = λ() 
+>ⁱ→¬≡ {$ c ` loc}     {LetterU _} {LetterU _} = λ()
+-- >ⁱ→¬≡ {r * ε∉r ` loc} {ListU []} {_} = λ()
+
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs)) 
   where
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
->→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs))
+
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs))
   where
     ¬list-us≡list-vs : ¬ (ListU us) ≡ (ListU vs)
     ¬list-us≡list-vs = >→¬≡ {r * ε∉r ` loc} {ListU us} {ListU vs} list-us>list-vs
@@ -388,58 +416,48 @@ Lemma (irrefl) u₁ > u₂ implies ¬ u₁ ≡ u₂
     ¬us≡vs us≡vs = ¬list-us≡list-vs list-us≡list-vs
       where
         list-us≡list-vs : (ListU {r} {ε∉r} {loc} us) ≡ (ListU {r} {ε∉r} {loc} vs)
-        list-us≡list-vs rewrite (cong (λ x → ListU {r} {ε∉r} {loc} x) us≡vs ) = refl 
->→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+        list-us≡list-vs rewrite (cong (λ x → ListU {r} {ε∉r} {loc} x) us≡vs ) = refl
+
+>ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
   where
     ¬u₁≡v₁ : ¬ u₁ ≡ v₁
     ¬u₁≡v₁ = >→¬≡ {l} {u₁} {v₁} u₁>v₁
->→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+
+>ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
   where
     ¬u₂≡v₂ : ¬ u₂ ≡ v₂
     ¬u₂≡v₂ = >→¬≡ {r} {u₂} {v₂} u₂>v₂
->→¬≡ {l + r ` loc} {LeftU u} {RightU v} _  = λ ()
->→¬≡ {l + r ` loc} {RightU u} {LeftU v} _  = λ ()
->→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll-bothempty _ _ u>v)  = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
-  where 
-    ¬u≡v : ¬ u ≡ v
-    ¬u≡v = >→¬≡ {l} {u} {v} u>v
->→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll-notempty _ _ u>v)  = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
-  where 
-    ¬u≡v : ¬ u ≡ v
-    ¬u≡v = >→¬≡ {l} {u} {v} u>v
->→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll-empty ¬proj₁flatu≡[] proj₁flatv≡[])  left-u≡left-v = ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v 
-  where 
-    u≡v :  u ≡ v
-    u≡v = (ParseTree.inv-leftU u v left-u≡left-v)
-    proj₁flat-u≡proj₁flat-v : proj₁ (flat u) ≡ proj₁ (flat v)
-    proj₁flat-u≡proj₁flat-v rewrite (cong (λ x → proj₁ (flat x)) u≡v) = refl
-    ¬proj₁flat-u≡proj₁flat-v : ¬ proj₁ (flat u) ≡ proj₁ (flat v)
-    ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v = ¬proj₁flatu≡[] proj₁flatu≡[]
-      where
-        proj₁flatu≡[] : proj₁ (flat u) ≡ []
-        proj₁flatu≡[] rewrite proj₁flat-u≡proj₁flat-v = proj₁flatv≡[]
 
->→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr-bothempty _ _ u>v)  = λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
+>ⁱ→¬≡ {l + r ` loc} {LeftU u} {RightU v} _  = λ ()
+>ⁱ→¬≡ {l + r ` loc} {RightU u} {LeftU v} _  = λ ()
+
+>ⁱ→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v)  = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
+  where 
+    ¬u≡v : ¬ u ≡ v
+    ¬u≡v = >→¬≡ {l} {u} {v} u>v
+>ⁱ→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v)  = λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
   where 
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
->→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr-notempty _ _ u>v)  =  λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
-  where 
-    ¬u≡v : ¬ u ≡ v
-    ¬u≡v = >→¬≡ {r} {u} {v} u>v
->→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr-empty ¬proj₁flatu≡[] proj₁flatv≡[]) right-u≡right-v = ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v 
-  where 
-    u≡v :  u ≡ v
-    u≡v = (ParseTree.inv-rightU u v right-u≡right-v)
-    proj₁flat-u≡proj₁flat-v : proj₁ (flat u) ≡ proj₁ (flat v)
-    proj₁flat-u≡proj₁flat-v rewrite (cong (λ x → proj₁ (flat x)) u≡v) = refl
-    ¬proj₁flat-u≡proj₁flat-v : ¬ proj₁ (flat u) ≡ proj₁ (flat v)
-    ¬proj₁flat-u≡proj₁flat-v proj₁flat-u≡proj₁flat-v = ¬proj₁flatu≡[] proj₁flatu≡[]
-      where
-        proj₁flatu≡[] : proj₁ (flat u) ≡ []
-        proj₁flatu≡[] rewrite proj₁flat-u≡proj₁flat-v = proj₁flatv≡[]
--}        
 ```
+
+
+### Asymmetric for >
+
+
+```agda
+>→¬< : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ > u₂ 
+  -----------------
+  → ¬ r ⊢  u₂ > u₁
+
+
+>ⁱ→¬<ⁱ : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ >ⁱ u₂ 
+  -----------------
+  → ¬ r ⊢ u₂ >ⁱ u₁  
+```
+
 
 ### Definition 30: >-sortedness 
 
@@ -703,8 +721,58 @@ mkAllEmptyU-sorted {l ● r ` loc }  (ε∈ ε∈l ● ε∈r ) = map-pairU-empt
     l-es = mkAllEmptyU ε∈l
     l-ind-hyp : >-sorted  (mkAllEmptyU ε∈l)
     l-ind-hyp = mkAllEmptyU-sorted {l} ε∈l
-
+ 
 ```
+
+```agda
+infix 4 _⊢_≥_
+
+{-
+data _⊢_≥_ : ∀ ( r : RE ) → U r → U r → Set where
+  ≥-lt : ∀ { r : RE } { v : U r } { u : U r } 
+       → r ⊢ v > u
+       -----------       
+       → r ⊢ v ≥ u
+  ≥-eq : ∀ { r : RE } { v : U r } { u : U r }
+       → v ≡ u
+       -----------
+       → r ⊢ v ≥ u
+-}
+-- type alias
+_⊢_≥_ : (r : RE) → U r → U r → Set 
+_⊢_≥_ r u v = (r ⊢ u > v) ⊎  ( u ≡ v  )
+
+
+≥-refl : ∀ { r : RE } { u : U r }
+  → r ⊢ u ≥ u
+≥-refl {r} {u} = inj₂ refl
+
+≥-trans : ∀ { r : RE } { v₁ v₂ v₃ : U r }
+  → r ⊢ v₁ ≥ v₂
+  → r ⊢ v₂ ≥ v₃
+  ---------------------
+  → r ⊢ v₁ ≥ v₃
+≥-trans {r} {v₁} {v₂} {v₃} (inj₂ v₁≡v₂) (inj₂ v₂≡v₃) rewrite v₁≡v₂ = inj₂ v₂≡v₃
+≥-trans {r} {v₁} {v₂} {v₃} (inj₂ v₁≡v₂) (inj₁ v₂>v₃) rewrite v₁≡v₂ = inj₁ v₂>v₃
+≥-trans {r} {v₁} {v₂} {v₃} (inj₁ v₁>v₂) (inj₂ v₂≡v₃) rewrite sym v₂≡v₃ = inj₁ v₁>v₂
+≥-trans {r} {v₁} {v₂} {v₃} (inj₁ v₁>v₂) (inj₁ v₂>v₃) = inj₁ (>-trans v₁>v₂ v₂>v₃ )
+
+
+≥-anti : ∀ { r : RE } {u v : U r }
+  → r ⊢ u ≥ v
+  → r ⊢ v ≥ u
+  ------------------
+  → u ≡ v
+≥-anti {r} {u} {v} (inj₂ u≡v) (inj₂ v≡u) = u≡v
+≥-anti {r} {u} {v} (inj₂ u≡v) (inj₁ v>u) = Nullary.contradiction (sym u≡v) (>→¬≡  v>u )
+≥-anti {r} {u} {v} (inj₁ u>v) (inj₁ v>u) = {!!}
+```  
+
+
+
+Update >-Inc is not preserved by PDInstance, we need a lattice.
+
+The following are not working 
 
 
 

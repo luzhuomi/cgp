@@ -765,12 +765,47 @@ _⊢_≥_ r u v = (r ⊢ u > v) ⊎  ( u ≡ v  )
   → u ≡ v
 ≥-anti {r} {u} {v} (inj₂ u≡v) (inj₂ v≡u) = u≡v
 ≥-anti {r} {u} {v} (inj₂ u≡v) (inj₁ v>u) = Nullary.contradiction (sym u≡v) (>→¬≡  v>u )
-≥-anti {r} {u} {v} (inj₁ u>v) (inj₁ v>u) = {!!}
+≥-anti {r} {u} {v} (inj₁ u>v) (inj₁ v>u) = Nullary.contradiction u>v (>→¬< v>u)
+≥-anti {r} {u} {v} (inj₁ u>v) (inj₂ v≡u) = Nullary.contradiction (sym v≡u) (>→¬≡  u>v )
 ```  
 
 
 
-Update >-Inc is not preserved by PDInstance, we need a lattice.
+Update >-Inc is not preserved by PDInstance, we need a lattice. We only care about the upperbound
+
+
+Definition 32
+
+```agda
+data ≥-maximal : ∀ { r : RE } ( us : List ( U r ) ) → Set where
+  ≥-empty : ∀ { r : RE } → ≥-maximal {r} []
+  ≥-join : ∀ { r : RE }
+    → ( top : U r )
+    → ( us : List (U r ) )
+    → All ( λ x → r ⊢ top ≥ x )  us
+    -----------------------------------------------
+    → ≥-maximal {r} (top ∷ us ) 
+```
+
+
+Then we need to show that all the pdinstance operations are preserving 
+
+
+Definition 33
+
+```agda
+data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
+  ≥-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( us : List (U p) ) → ( us-maximal : ≥-maximal {p} us )
+       → ( ≥-maximal {r} (List.map inj us) ) ) -- preserve ≥-maximality 
+    → ≥-Max-Preserve {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+
+
+```
+
+
+
 
 The following are not working 
 
@@ -788,7 +823,7 @@ We say pdi is >-inc (strict increasing) iff,
   Then r ⊢ inj u₁ > inj u₂ 
 
 ```agda
-
+{-
 data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -925,6 +960,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = (>-inc-fst (pdinstance inj sound-ev) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂))    ∷  >-inc-map-fst pdis pxs
+
+-} 
 
 {-
 

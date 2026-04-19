@@ -236,14 +236,14 @@ data Ex≥-maybe₂ : ∀ { r : RE } { c : Char } ( mpdi : Maybe (PDInstance r c
 
 
 
-### Lemma 38: the list of pdinstances from pdU[ r , c] is a complete lattice over the partial order r , c ⊢_≥_  
+### Lemma 38: the list of pdinstances from pdU[ r , c] is a complete lattice over the partial order r , c ⊢_≥_ with the maximal item as the head of the list.   
 
 
 Let r be a non problematic regular expression.
 
 Let c be a letter.
 
-Then pdU[r , c] is a complete lattice. 
+Then pdU[r , c] is a complete lattice, and the head of the list is maximal 
 
 ### Definition 37 : (Extended) POSIX order lattice
 ```agda
@@ -425,18 +425,18 @@ ex≥-anti  {r} {p} {c}
              \  |  /
                 y' 
 -}
-data Ex≥-lattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
-  ex-empty : ∀ { r : RE } { c : Char } → Ex≥-lattice {r} {c} []
+data Ex≥-maximal : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
+  ex-empty : ∀ { r : RE } { c : Char } → Ex≥-maximal {r} {c} []
   -- we don't need singleton 
-  -- ex-singleton : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r  c ) → Ex≥-lattice {r} {c} ( pdi  ∷ [])
+  -- ex-singleton : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r  c ) → Ex≥-maximal {r} {c} ( pdi  ∷ [])
   ex-join : ∀ { r : RE } { c : Char }
     → ( top : PDInstance r c )
     → ( pdis : List (PDInstance r c ) )
     →  All ( λ x → r , c ⊢ top ≥ x ) pdis   -- top is the join
     -----------------------------------------
-    → Ex≥-lattice {r} {c} (top ∷ pdis )
+    → Ex≥-maximal {r} {c} (top ∷ pdis )
     -- → ( bot : PDInstance r c ) -- don't care about meet for now
-    -- → ( Ex≥-semilattice {r} {c} pdis ) -- no we don't have this.
+    -- → ( Ex≥-maximal {r} {c} pdis ) -- no we don't have this.
     -- to make the data inductive, we need to define two kinds of lattice combination above
     -- 1) linear-sum == append  (two sub lists can be of diffrent lengths, but in our case, the should be same.)
     --   for linear sum == the first sub lattice's meet ≥ the 2nd sub lattice's join.
@@ -445,7 +445,7 @@ data Ex≥-lattice : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) 
     -- →  All ( λ x → r , c ⊢ top ≥ x ) (top ∷ pdis ∷ʳ bot)  -- top is the join
     -- →  All ( λ x → r , c ⊢ x ≥ bot ) (top ∷ pdis ∷ʳ bot)  -- bot is the meet
     -----------------------------------------
-    -- → Ex≥-lattice {r} {c} (top ∷ pdis ∷ʳ bot)
+    -- → Ex≥-maximal {r} {c} (top ∷ pdis ∷ʳ bot)
 ```
 
 
@@ -703,7 +703,7 @@ fst-ex-order {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} in₁ s-ev₁) (pdinst
 -------------------------------------------------------------
 ```
 
-Sub Lemma 38.3 - 38.14: shows that lattice property is preserved by pd operations. 
+Sub Lemma 38.3 - 38.14: shows that maximal property is preserved by pd operations. 
 
 ```agda
 -------------------------------------------------------------
@@ -720,12 +720,12 @@ map-left-all-ex-≥ pdi [] [] = []
 map-left-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = left-ex-order pdi p pdi≥p ∷ (map-left-all-ex-≥ pdi ps all-pdi≥ps)
 
 -- 38.4
-map-left-ex-lattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
+map-left-ex-maximal : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance l c ) )
-  → Ex≥-lattice {l} {c} pdis
-  → Ex≥-lattice {l + r ` loc } {c} (List.map pdinstance-left pdis)
-map-left-ex-lattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
-map-left-ex-lattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {l} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-left pdi) (List.map pdinstance-left pdis) (map-left-all-ex-≥ pdi pdis all-pdi≥pdis) 
+  → Ex≥-maximal {l} {c} pdis
+  → Ex≥-maximal {l + r ` loc } {c} (List.map pdinstance-left pdis)
+map-left-ex-maximal {l} {r} {loc} {c} []                  ex-empty = ex-empty
+map-left-ex-maximal {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {l} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-left pdi) (List.map pdinstance-left pdis) (map-left-all-ex-≥ pdi pdis all-pdi≥pdis) 
 -- 38.5
 map-right-all-ex-≥ : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
@@ -737,20 +737,20 @@ map-right-all-ex-≥ pdi [] [] = []
 map-right-all-ex-≥ pdi (p ∷ ps) (pdi≥p ∷ all-pdi≥ps) = right-ex-order pdi p pdi≥p ∷ (map-right-all-ex-≥ pdi ps all-pdi≥ps)
 
 -- 38.6
-map-right-ex-lattice : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
+map-right-ex-maximal : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
   → ( pdis : List (PDInstance r c ) )
-  → Ex≥-lattice {r} {c} pdis
-  → Ex≥-lattice {l + r ` loc } {c} (List.map pdinstance-right pdis)
-map-right-ex-lattice {l} {r} {loc} {c} []                  ex-empty = ex-empty
-map-right-ex-lattice {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis)  (map-right-all-ex-≥ pdi pdis all-pdi≥pdis) 
+  → Ex≥-maximal {r} {c} pdis
+  → Ex≥-maximal {l + r ` loc } {c} (List.map pdinstance-right pdis)
+map-right-ex-maximal {l} {r} {loc} {c} []                  ex-empty = ex-empty
+map-right-ex-maximal {l} {r} {loc} {c} ( pdi ∷ pdis ) (ex-join {r} {c} .(pdi) .(pdis) all-pdi≥pdis) = ex-join (pdinstance-right pdi) (List.map pdinstance-right pdis)  (map-right-all-ex-≥ pdi pdis all-pdi≥pdis) 
 
 -- 38.7
-map-fst-ex-lattice : ∀ { l r : RE } { loc : ℕ } { c : Char }
+map-fst-ex-maximal : ∀ { l r : RE } { loc : ℕ } { c : Char }
                     → ( pdis : List (PDInstance l c) )
-                    → Ex≥-lattice {l} pdis
-                    → Ex≥-lattice {l ● r ` loc } (List.map pdinstance-fst pdis)
-map-fst-ex-lattice {l} {r} {loc} {c} []          ex-empty                        = ex-empty
-map-fst-ex-lattice {l} {r} {loc} {c} (pdi@(pdinstance {p} {l} {c} in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥all-pdis ) = ex-join (pdinstance-fst pdi) (List.map pdinstance-fst pdis) (prf pdis pdi≥all-pdis )
+                    → Ex≥-maximal {l} pdis
+                    → Ex≥-maximal {l ● r ` loc } (List.map pdinstance-fst pdis)
+map-fst-ex-maximal {l} {r} {loc} {c} []          ex-empty                        = ex-empty
+map-fst-ex-maximal {l} {r} {loc} {c} (pdi@(pdinstance {p} {l} {c} in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥all-pdis ) = ex-join (pdinstance-fst pdi) (List.map pdinstance-fst pdis) (prf pdis pdi≥all-pdis )
   where
     prf : ( qdis : List (PDInstance l c ) )
       → All (_,_⊢_≥_ l c pdi) qdis 
@@ -819,19 +819,19 @@ map-fst-ex-lattice {l} {r} {loc} {c} (pdi@(pdinstance {p} {l} {c} in₁ s-ev₁)
 -- 38.8
 -- concatenation of two ex lub bounded lists of pdis are lub bounded
 -- if the lub of the first list exists then it is ≥ than the 2nd list's lub if it exists
-concat-ex-lattice : ∀ { r p : RE } { c }
+concat-ex-maximal : ∀ { r p : RE } { c }
     → ( pdis₁ : List ( PDInstance r c ))
     → ( pdis₂ : List ( PDInstance r c ))
-    → Ex≥-lattice { r } { c } pdis₁
-    → Ex≥-lattice { r } { c } pdis₂
+    → Ex≥-maximal { r } { c } pdis₁
+    → Ex≥-maximal { r } { c } pdis₂
     → All (Inhabit {r} {c} p) pdis₁
     → All (Inhabit {r} {c} p) pdis₂    
     → Ex≥-maybe₂ {r} {c} (head pdis₁) (head pdis₂)
     -------------------------------------------------------
-    → Ex≥-lattice { r } {c } (pdis₁ ++ pdis₂)
-concat-ex-lattice []           pdis₂ ex-empty      ex-lattice-pdis₂ _ _ _  =  ex-lattice-pdis₂
-concat-ex-lattice pdis₁        []    ex-lattice-pdis₁ ex-empty _ _ _ rewrite (++-identityʳ pdis₁) = ex-lattice-pdis₁
-concat-ex-lattice {r} {p} {c} (pdi₁ ∷ pdis₁)  (pdi₂ ∷ pdis₂)  (ex-join .(pdi₁) .(pdis₁) all-pdi₁≥pdis₁ ) (ex-join .(pdi₂) .(pdis₂) all-pdi₂≥pdis₂ ) (i₁ ∷ is₁) (i₂ ∷ is₂) (ex≥-just₂ pdi₁≥pdi₂) 
+    → Ex≥-maximal { r } {c } (pdis₁ ++ pdis₂)
+concat-ex-maximal []           pdis₂ ex-empty      ex-maximal-pdis₂ _ _ _  =  ex-maximal-pdis₂
+concat-ex-maximal pdis₁        []    ex-maximal-pdis₁ ex-empty _ _ _ rewrite (++-identityʳ pdis₁) = ex-maximal-pdis₁
+concat-ex-maximal {r} {p} {c} (pdi₁ ∷ pdis₁)  (pdi₂ ∷ pdis₂)  (ex-join .(pdi₁) .(pdis₁) all-pdi₁≥pdis₁ ) (ex-join .(pdi₂) .(pdis₂) all-pdi₂≥pdis₂ ) (i₁ ∷ is₁) (i₂ ∷ is₂) (ex≥-just₂ pdi₁≥pdi₂) 
   = ex-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)
     (all-concat all-pdi₁≥pdis₁ (pdi₁≥pdi₂ ∷ ex≥-trans-map {r} {p} {c} {pdi₁} {pdi₂} {pdis₂} {i₁} {i₂} {is₂} pdi₁≥pdi₂ all-pdi₂≥pdis₂ ) )  -- we need to apply ex≥-trans to all pdis₂
 
@@ -840,23 +840,23 @@ concat-ex-lattice {r} {p} {c} (pdi₁ ∷ pdis₁)  (pdi₂ ∷ pdis₂)  (ex-jo
 
 
 -- 38.9
-map-fuse-+-ex-lattice :  ∀ { l r : RE } {loc : ℕ } { c : Char }
+map-fuse-+-ex-maximal :  ∀ { l r : RE } {loc : ℕ } { c : Char }
   → ( pdi₁ : PDInstance l c )
   → ( pdis₂ : List (PDInstance r c ))
-  → Ex≥-lattice { r } {c}  pdis₂
+  → Ex≥-maximal { r } {c}  pdis₂
   → >-Inc pdi₁
   → All >-Inc pdis₂ 
   → Homogenous pdis₂
   ------------------------------------------------------------
-  → Ex≥-lattice { l + r ` loc } (List.map (fuse {l + r ` loc} {loc} {c} (pdinstance-left pdi₁)) (List.map pdinstance-right pdis₂))
-map-fuse-+-ex-lattice {l} {r} {loc} {c}  pdi₁ [] ex-empty _ _ _ = ex-empty 
-map-fuse-+-ex-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ [] ) (ex-join .{r} .{c} .(pdi₂) [] [] ) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) (>-inc-pdi₂@(>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ∷ []) homo-pdi₂∷[] =
+  → Ex≥-maximal { l + r ` loc } (List.map (fuse {l + r ` loc} {loc} {c} (pdinstance-left pdi₁)) (List.map pdinstance-right pdis₂))
+map-fuse-+-ex-maximal {l} {r} {loc} {c}  pdi₁ [] ex-empty _ _ _ = ex-empty 
+map-fuse-+-ex-maximal {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ [] ) (ex-join .{r} .{c} .(pdi₂) [] [] ) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) (>-inc-pdi₂@(>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ∷ []) homo-pdi₂∷[] =
   ex-join
     (fuse (pdinstance-left (pdinstance in₁ s-ev₁))
           (pdinstance-right (pdinstance in₂ s-ev₂)))
           (List.map (fuse {l + r ` loc } {loc } (pdinstance-left (pdinstance in₁ s-ev₁)))
             (List.map pdinstance-right [])) []
-map-fuse-+-ex-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁)
+map-fuse-+-ex-maximal {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁ s-ev₁)
                                       (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdi₂' ∷ pdis₂ )
                                       (ex-join .{r} .{c} .(pdi₂) ( .(pdi₂') ∷ .(pdis₂)) (pdi₂>pdi₂' ∷ all-pdi₂>pdis₂) )
                                       (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ )
@@ -982,21 +982,21 @@ map-fuse-+-ex-lattice {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁
           prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
 
 -- 38.10
-oplus-+-ex-lattice : ∀ { l r : RE } {loc : ℕ } { c : Char }
+oplus-+-ex-maximal : ∀ { l r : RE } {loc : ℕ } { c : Char }
     → ( pdis₁ : List ( PDInstance l c ))
     → ( pdis₂ : List ( PDInstance r c ))
-    → Ex≥-lattice { l } {c} pdis₁
-    → Ex≥-lattice { r } {c} pdis₂
+    → Ex≥-maximal { l } {c} pdis₁
+    → Ex≥-maximal { r } {c} pdis₂
     → All >-Inc pdis₁
     → All >-Inc pdis₂
     → Homogenous pdis₁
     → Homogenous pdis₂
     ---------------------------------------
-    → Ex≥-lattice  { l + r ` loc } (pdinstance-oplus {l + r ` loc } {loc} {c}  (List.map pdinstance-left pdis₁) (List.map pdinstance-right pdis₂))
-oplus-+-ex-lattice {l} {r} {loc} {c} [] pdis₂ ex-empty ex-lattice [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = map-right-ex-lattice pdis₂ ex-lattice 
-oplus-+-ex-lattice {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-lattice ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ = map-left-ex-lattice (pdi₁ ∷ pdis₁) ex-lattice
+    → Ex≥-maximal  { l + r ` loc } (pdinstance-oplus {l + r ` loc } {loc} {c}  (List.map pdinstance-left pdis₁) (List.map pdinstance-right pdis₂))
+oplus-+-ex-maximal {l} {r} {loc} {c} [] pdis₂ ex-empty ex-maximal [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = map-right-ex-maximal pdis₂ ex-maximal 
+oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁ ∷ pdis₁) [] ex-maximal ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ = map-left-ex-maximal (pdi₁ ∷ pdis₁) ex-maximal
 
-oplus-+-ex-lattice {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂)
+oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s-ev₁) ∷ pdis₁) (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂)
                                                            (ex-join .(pdi₁) .(pdis₁) pdi₁≥pdis₁)
                                                            (ex-join .(pdi₂) .(pdis₂) pdi₂≥pdis₂)                                                            
                                                            (>-inc-pdi₁@(>-inc  v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)  ∷ >-inc-pdis₁ )
@@ -1364,15 +1364,15 @@ mk-snd-≥-pdi-order {l} {r} {p} {loc} {c} e (flat-[] .(e) |e|≡[]  ) (pdinstan
 
     
 -- 38.12     
-concatmap-snd-ex-lattice : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+concatmap-snd-ex-maximal : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance r c ) )
   → All >-Inc pdis
   → Homogenous pdis
-  → Ex≥-lattice {r} pdis  
+  → Ex≥-maximal {r} pdis  
   -------------------------------------------------------------------------------------
-  → Ex≥-lattice { l ● r ` loc } (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
-concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} [] []  homo-pdis  ex-empty rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c}  =  ex-empty
-concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c} in₁ s-ev₁) ∷ pdis) (>-inc-pdi ∷ >-inc-pdis) (homogenous (.(pdi) ∷ .(pdis)) ( .(p) , (hide-p-pdi@(hide .{p} .{r} .{c} .(in₁) .(s-ev₁)) ∷ hide-p-pdis)) ) (ex-join .(pdi) .(pdis) pdi≥pdis) with mkAllEmptyU {l} ε∈l in mkAllEmpty-eq  | mkAllEmptyU-sound ε∈l | mkAllEmptyU-sorted ε∈l 
+  → Ex≥-maximal { l ● r ` loc } (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
+concatmap-snd-ex-maximal {l} {r} {ε∈l} {loc} {c} [] []  homo-pdis  ex-empty rewrite concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c}  =  ex-empty
+concatmap-snd-ex-maximal {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c} in₁ s-ev₁) ∷ pdis) (>-inc-pdi ∷ >-inc-pdis) (homogenous (.(pdi) ∷ .(pdis)) ( .(p) , (hide-p-pdi@(hide .{p} .{r} .{c} .(in₁) .(s-ev₁)) ∷ hide-p-pdis)) ) (ex-join .(pdi) .(pdis) pdi≥pdis) with mkAllEmptyU {l} ε∈l in mkAllEmpty-eq  | mkAllEmptyU-sound ε∈l | mkAllEmptyU-sorted ε∈l 
 ... | []     | _                      | _ = Nullary.contradiction mkAllEmpty-eq (mkAllEmptyU≢[] {l} ε∈l) -- we need a contradiction here 
 ... | e ∷ es | flat-[]-e@(flat-[] .(e) |e|≡[]) ∷ flat-[]-es | >-cons es->-sorted e>head-es =
   ex-join (mk-snd-pdi (e , flat-[]-e) pdi) (List.map (mk-snd-pdi (e , flat-[]-e)) pdis ++
@@ -1463,20 +1463,20 @@ concatmap-snd-ex-lattice {l} {r} {ε∈l} {loc} {c} (pdi@(pdinstance {p} {r} {c}
     
 
 -- 38.13
-oplus-+●-ex-lattice : ∀ { l+s r : RE } { ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char }
+oplus-+●-ex-maximal : ∀ { l+s r : RE } { ε∈l+s : ε∈ l+s } { loc : ℕ } { c : Char }
     → ( pdis₁ : List ( PDInstance l+s c ))
     → ( pdis₂ : List ( PDInstance r c ))
-    → Ex≥-lattice { l+s } {c} pdis₁
-    → Ex≥-lattice { r } {c} pdis₂
+    → Ex≥-maximal { l+s } {c} pdis₁
+    → Ex≥-maximal { r } {c} pdis₂
     → All >-Inc pdis₁
     → All >-Inc pdis₂
     → Homogenous pdis₁
     → Homogenous pdis₂
     ---------------------------------------
-    → Ex≥-lattice  { l+s ● r ` loc } (pdinstance-oplus {l+s ● r ` loc } {loc} {c}  (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdis₁) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdis₂))
-oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = concatmap-snd-ex-lattice pdis₂ all->-inc-pdis₂ homo-pdis₂  ex-semi       
-oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁ ∷ pdis₁) []             ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ rewrite concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c} =  map-fst-ex-lattice (pdi₁ ∷ pdis₁) ex-semi
-oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} .{l+s} .{c} in₁ s-ev₁) ∷ pdis₁)
+    → Ex≥-maximal  { l+s ● r ` loc } (pdinstance-oplus {l+s ● r ` loc } {loc} {c}  (List.map (pdinstance-fst {l+s} {r} {loc} {c}) pdis₁) (concatmap-pdinstance-snd {l+s} {r} {ε∈l+s} {loc} {c} pdis₂))
+oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} [] pdis₂ ex-empty ex-semi [] all->-inc-pdis₂ homo-pdis₁ homo-pdis₂ = concatmap-snd-ex-maximal pdis₂ all->-inc-pdis₂ homo-pdis₂  ex-semi       
+oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁ ∷ pdis₁) []             ex-semi ex-empty all->-inc-pdi₁pdis₁ [] homo-pdis₁ homo-pdis₂ rewrite concatmap-pdinstance-snd-[]≡[] {l+s} {r} {ε∈l+s} {loc} {c} =  map-fst-ex-maximal (pdi₁ ∷ pdis₁) ex-semi
+oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} .{l+s} .{c} in₁ s-ev₁) ∷ pdis₁)
                                                 (pdi₂@(pdinstance {p₂} .{r} .{c} in₂ s-ev₂) ∷ pdis₂)
                                                 (ex-join .(pdi₁) .(pdis₁) pdi₁≥pdis₁)
                                                 (ex-join .(pdi₂) .(pdis₂) pdi₂≥pdis₂)
@@ -1894,15 +1894,15 @@ oplus-+●-ex-lattice {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
 
 
 -- 38.14
-map-star-lattice : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+map-star-maximal : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
   → (pdis : List ( PDInstance r c ) )
-  → Ex≥-lattice {r} {c} pdis
+  → Ex≥-maximal {r} {c} pdis
   → All >-Inc pdis
   → Homogenous pdis
   --------------------------------------------------------------------------  
-  → Ex≥-lattice (List.map (pdinstance-star {r} {ε∉r} {loc}) pdis)
-map-star-lattice {r} {ε∉r} {loc} {c} []           ex-empty [] _ = ex-empty
-map-star-lattice {r} {ε∉r} {loc} {c} (pdi@(pdinstance in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) ((>-inc v₁→v₂→v₁>v₂→in₁v₁>in₂v₂) ∷ all->-inc-pdis) (homogenous (.(pdi) ∷ .(pdis)) ( p , ((hide .(in₁) .(s-ev₁)) ∷ hide-p-pdis ) ) ) = ex-join (pdinstance-star (pdinstance in₁ s-ev₁)) (List.map pdinstance-star pdis) (prf pdis hide-p-pdis pdi≥pdis )  
+  → Ex≥-maximal (List.map (pdinstance-star {r} {ε∉r} {loc}) pdis)
+map-star-maximal {r} {ε∉r} {loc} {c} []           ex-empty [] _ = ex-empty
+map-star-maximal {r} {ε∉r} {loc} {c} (pdi@(pdinstance in₁ s-ev₁) ∷ pdis) (ex-join .(pdi) .(pdis) pdi≥pdis) ((>-inc v₁→v₂→v₁>v₂→in₁v₁>in₂v₂) ∷ all->-inc-pdis) (homogenous (.(pdi) ∷ .(pdis)) ( p , ((hide .(in₁) .(s-ev₁)) ∷ hide-p-pdis ) ) ) = ex-join (pdinstance-star (pdinstance in₁ s-ev₁)) (List.map pdinstance-star pdis) (prf pdis hide-p-pdis pdi≥pdis )  
   where
     inject₁ :  U ( p ● (r * ε∉r ` loc ) ` loc )  → U (r * ε∉r ` loc )
     inject₁ =  mkinjList in₁
@@ -1977,10 +1977,10 @@ map-star-lattice {r} {ε∉r} {loc} {c} (pdi@(pdinstance in₁ s-ev₁) ∷ pdis
 
 ```agda
 -- main lemma 38: 
-pdU-ex-lattice : ∀ { r : RE } { c : Char }
-  → Ex≥-lattice {r} {c} pdU[ r , c ]
-pdU-ex-lattice {ε} {c} = ex-empty 
-pdU-ex-lattice {$ c ` loc } {c'} with c Char.≟ c'
+pdU-ex-maximal : ∀ { r : RE } { c : Char }
+  → Ex≥-maximal {r} {c} pdU[ r , c ]
+pdU-ex-maximal {ε} {c} = ex-empty 
+pdU-ex-maximal {$ c ` loc } {c'} with c Char.≟ c'
 ...                              | no _ = ex-empty
 ...                              | yes refl = ex-join pdi [] []
   where
@@ -1996,28 +1996,28 @@ pdU-ex-lattice {$ c ` loc } {c'} with c Char.≟ c'
                              ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
                                c ∷ (proj₁ (flat EmptyU))
                              ∎)
-pdU-ex-lattice {l + r ` loc } {c} =   oplus-+-ex-lattice pdU[ l , c ] pdU[ r , c ] ind-hyp-l ind-hyp-r (pdU->-inc {l} {c}) (pdU->-inc {r} {c}) (pdU-Homogenous {l} {c}) (pdU-Homogenous {r} {c}) 
+pdU-ex-maximal {l + r ` loc } {c} =   oplus-+-ex-maximal pdU[ l , c ] pdU[ r , c ] ind-hyp-l ind-hyp-r (pdU->-inc {l} {c}) (pdU->-inc {r} {c}) (pdU-Homogenous {l} {c}) (pdU-Homogenous {r} {c}) 
   where
-    ind-hyp-l : Ex≥-lattice pdU[ l , c ]
-    ind-hyp-l = pdU-ex-lattice {l} {c}
-    ind-hyp-r : Ex≥-lattice pdU[ r , c ]
-    ind-hyp-r = pdU-ex-lattice {r} {c}  
+    ind-hyp-l : Ex≥-maximal pdU[ l , c ]
+    ind-hyp-l = pdU-ex-maximal {l} {c}
+    ind-hyp-r : Ex≥-maximal pdU[ r , c ]
+    ind-hyp-r = pdU-ex-maximal {r} {c}  
 
-pdU-ex-lattice {l ● r ` loc } {c} with ε∈? l
-... | no ¬ε∈l = map-fst-ex-lattice  pdU[ l , c ] ind-hyp-l 
+pdU-ex-maximal {l ● r ` loc } {c} with ε∈? l
+... | no ¬ε∈l = map-fst-ex-maximal  pdU[ l , c ] ind-hyp-l 
   where
-    ind-hyp-l : Ex≥-lattice pdU[ l , c ]
-    ind-hyp-l = pdU-ex-lattice {l} {c}
-... | yes ε∈l = oplus-+●-ex-lattice pdU[ l , c ] pdU[ r , c ]  ind-hyp-l ind-hyp-r (pdU->-inc {l} {c}) (pdU->-inc {r} {c}) (pdU-Homogenous {l} {c}) (pdU-Homogenous {r} {c}) 
+    ind-hyp-l : Ex≥-maximal pdU[ l , c ]
+    ind-hyp-l = pdU-ex-maximal {l} {c}
+... | yes ε∈l = oplus-+●-ex-maximal pdU[ l , c ] pdU[ r , c ]  ind-hyp-l ind-hyp-r (pdU->-inc {l} {c}) (pdU->-inc {r} {c}) (pdU-Homogenous {l} {c}) (pdU-Homogenous {r} {c}) 
   where
-    ind-hyp-l : Ex≥-lattice pdU[ l , c ]
-    ind-hyp-l = pdU-ex-lattice {l} {c}
-    ind-hyp-r : Ex≥-lattice pdU[ r , c ]
-    ind-hyp-r = pdU-ex-lattice {r} {c}
-pdU-ex-lattice {r * ε∉r ` loc } {c} = map-star-lattice  pdU[ r , c ] ind-hyp-r (pdU->-inc {r} {c}) (pdU-Homogenous {r} {c})
+    ind-hyp-l : Ex≥-maximal pdU[ l , c ]
+    ind-hyp-l = pdU-ex-maximal {l} {c}
+    ind-hyp-r : Ex≥-maximal pdU[ r , c ]
+    ind-hyp-r = pdU-ex-maximal {r} {c}
+pdU-ex-maximal {r * ε∉r ` loc } {c} = map-star-maximal  pdU[ r , c ] ind-hyp-r (pdU->-inc {r} {c}) (pdU-Homogenous {r} {c})
   where
-    ind-hyp-r : Ex≥-lattice pdU[ r , c ]
-    ind-hyp-r = pdU-ex-lattice {r} {c}
+    ind-hyp-r : Ex≥-maximal pdU[ r , c ]
+    ind-hyp-r = pdU-ex-maximal {r} {c}
   
 ```
 
@@ -2106,33 +2106,33 @@ Let r be a non problematic regular expression.
 
 Let w be a word.
 
-Then pdUMany[r , w] is complete lattice. 
+Then pdUMany[r , w] is a lattice with a maximal. 
 
 ```agda
-data Ex*≥-lattice : ∀ { r : RE } { w : List Char } (pdis : List (PDInstance* r w) ) → Set where
-  ex*-empty :  ∀ { r : RE } { w : List Char } → Ex*≥-lattice {r} {w} []
+data Ex*≥-maximal : ∀ { r : RE } { w : List Char } (pdis : List (PDInstance* r w) ) → Set where
+  ex*-empty :  ∀ { r : RE } { w : List Char } → Ex*≥-maximal {r} {w} []
   ex*-join :  ∀ { r : RE } { w : List Char }
     → ( top : PDInstance* r w )
     → ( pdis : List (PDInstance* r w ) )
     →  All ( λ x → r , w ⊢* top ≥ x ) pdis   -- top is the join
     -----------------------------------------
-    → Ex*≥-lattice {r} {w} (top ∷ pdis )
+    → Ex*≥-maximal {r} {w} (top ∷ pdis )
 
 ```
 
 
 
-### Lemma 41: the list of pdinstance*'s from pdUMany[ r , c] is a lattice in extended POSIX order
+### Lemma 41: the list of pdinstance*'s from pdUMany[ r , c] is a lattice with a maximal in extended POSIX order
 
 
 Let r be a non problematic regular expression.
 
 Let w be a word.
 
-Then pdUMany[r , w] is a lattice in extended POSIX order. 
+Then pdUMany[r , w] is a lattice with a  maximal in extended POSIX order. 
 
 
-#### Sub Lemma 41.1 - 41.6 : Ex*>-lattice is inductively preserved over pdinstance*'s operations 
+#### Sub Lemma 41.1 - 41.6 : Ex*≥-maximal is inductively preserved over pdinstance*'s operations 
 
 ```agda
 -------------------------------------------------------------
@@ -2192,23 +2192,23 @@ ex*≥-trans-map pd₁≥pd₂ [] = []
 ex*≥-trans-map {r} {p} {w} {pd₁} {pd₂} {pd₃ ∷ pds₃} {i₁} {i₂} {i₃ ∷ is₃} pd₁≥pd₂ (pd₂≥pd₃ ∷ pd₂≥pds₃) = ex*≥-trans {r} {p} {w} {pd₁} {pd₂} {pd₃} {i₁} {i₂} {i₃}  pd₁≥pd₂ pd₂≥pd₃ ∷  ex*≥-trans-map {r} {p} {w} {pd₁} {pd₂} {pds₃} {i₁} {i₂} {is₃}  pd₁≥pd₂ pd₂≥pds₃ 
   
 -- Lemma 41.4
--- Let pdis₁ and pdis₂ be lattices
+-- Let pdis₁ and pdis₂ be lattices bounded by maximals
 --  such that head of pdis₁ and head of pdis₂  are in r , w ⊢ _ ≥ _ relation,
--- Then pdis₁ ++ pdis₂ is a lattice.
+-- Then pdis₁ ++ pdis₂ is a lattice with a maximal.
 
-concat-ex*-lattice : ∀ { r p : RE } { w : List Char }
+concat-ex*-maximal : ∀ { r p : RE } { w : List Char }
     → ( pdis₁ : List ( PDInstance* r w ))
     → ( pdis₂ : List ( PDInstance* r w ))
-    → Ex*≥-lattice { r } { w } pdis₁
-    → Ex*≥-lattice { r } { w } pdis₂
+    → Ex*≥-maximal { r } { w } pdis₁
+    → Ex*≥-maximal { r } { w } pdis₂
     → All (Inhabit* {r} {w} p) pdis₁
     → All (Inhabit* {r} {w} p) pdis₂    
     → Ex*≥-maybe₂  {r} {w} (head pdis₁) (head pdis₂)
     -------------------------------------------------------
-    → Ex*≥-lattice { r } {w}  (pdis₁ ++ pdis₂)
-concat-ex*-lattice []    pdis₂   ex*-empty  ex*-lattice-pdi₂ _ _ _ = ex*-lattice-pdi₂
-concat-ex*-lattice pdis₁ []      ex*-lattice-pdi₁ ex*-empty  _ _  _ rewrite  (++-identityʳ pdis₁) = ex*-lattice-pdi₁
-concat-ex*-lattice {r} {p} {w} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*-join .(pdi₁) .(pdis₁) all-pdi₁≥pdis₁ ) (ex*-join .(pdi₂) .(pdis₂) all-pdi₂≥pdis₂ ) (i₁ ∷ is₁) (i₂ ∷ is₂ ) (ex*≥-just₂ pdi₁≥pdi₂)
+    → Ex*≥-maximal { r } {w}  (pdis₁ ++ pdis₂)
+concat-ex*-maximal []    pdis₂   ex*-empty  ex*-maximal-pdi₂ _ _ _ = ex*-maximal-pdi₂
+concat-ex*-maximal pdis₁ []      ex*-maximal-pdi₁ ex*-empty  _ _  _ rewrite  (++-identityʳ pdis₁) = ex*-maximal-pdi₁
+concat-ex*-maximal {r} {p} {w} (pdi₁ ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*-join .(pdi₁) .(pdis₁) all-pdi₁≥pdis₁ ) (ex*-join .(pdi₂) .(pdis₂) all-pdi₂≥pdis₂ ) (i₁ ∷ is₁) (i₂ ∷ is₂ ) (ex*≥-just₂ pdi₁≥pdi₂)
   = ex*-join pdi₁ (pdis₁ ++ pdi₂ ∷ pdis₂)  (all-concat all-pdi₁≥pdis₁ (pdi₁≥pdi₂ ∷ ex*≥-trans-map {r} {p} {w} {pdi₁} {pdi₂} {pdis₂} {i₁} {i₂} {is₂} pdi₁≥pdi₂ all-pdi₂≥pdis₂ ) ) 
 
 -- Lemma 41.5
@@ -2262,30 +2262,30 @@ compose-pdi-with-ex*≥-map-compose-pdi-with  {p} {d} {r} {pref} {c} d→r s-ev-
 
 -- do we need this?
 {-
-map-compose-pdi-with-lattice : ∀ { p d r : RE } { pref : List Char} { c : Char }
+map-compose-pdi-with-maximal : ∀ { p d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
   → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
   → ( pdis : List (PDInstance d c) )
   → All (Inhabit p) pdis
-  → Ex≥-lattice pdis
+  → Ex≥-maximal pdis
   -------------------------------------------------------------
-  → Ex*≥-lattice {r}  (List.map (compose-pdi-with d→r s-ev-d-r) pdis )
-map-compose-pdi-with-lattice {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r []           []  ex-empty = ex*-empty
-map-compose-pdi-with-lattice {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r (pdi ∷ pdis) (hide-p-pdi ∷ hide-p-pdis)  (ex-join .(pdi) .(pdis) pdi≥pdis) =  ex*-join (compose-pdi-with d→r s-ev-d-r pdi) (List.map (compose-pdi-with d→r s-ev-d-r) pdis) prf
+  → Ex*≥-maximal {r}  (List.map (compose-pdi-with d→r s-ev-d-r) pdis )
+map-compose-pdi-with-maximal {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r []           []  ex-empty = ex*-empty
+map-compose-pdi-with-maximal {p} {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r (pdi ∷ pdis) (hide-p-pdi ∷ hide-p-pdis)  (ex-join .(pdi) .(pdis) pdi≥pdis) =  ex*-join (compose-pdi-with d→r s-ev-d-r pdi) (List.map (compose-pdi-with d→r s-ev-d-r) pdis) prf
   where
     prf :  All (_,_⊢*_≥_ r (pref ∷ʳ c) (compose-pdi-with d→r s-ev-d-r pdi))
            (List.map (compose-pdi-with d→r s-ev-d-r) pdis)
     prf = compose-pdi-with-ex*≥-map-compose-pdi-with  d→r s-ev-d-r >-inc-d→r pdi pdis hide-p-pdi hide-p-pdis pdi≥pdis  
 
 
-advance-pdi*-with-c-lattice : ∀ { r : RE } { pref : List Char} { c : Char }
+advance-pdi*-with-c-maximal : ∀ { r : RE } { pref : List Char} { c : Char }
   → (pdi : PDInstance* r pref)
   → *>-Inc pdi
   ----------------------------------------------------------
-  → Ex*≥-lattice (advance-pdi*-with-c {r} {pref} {c} pdi)
-advance-pdi*-with-c-lattice {r} {pref} {c}  pdi@(pdinstance* {d} {r} {pref} d→r s-ev-d-r) (*>-inc d→r-inc-ev) 
-  with pdU[ d , c ]    | pdU-ex-lattice { d } {c}         | pdU-Homogenous {d } {c} 
+  → Ex*≥-maximal (advance-pdi*-with-c {r} {pref} {c} pdi)
+advance-pdi*-with-c-maximal {r} {pref} {c}  pdi@(pdinstance* {d} {r} {pref} d→r s-ev-d-r) (*>-inc d→r-inc-ev) 
+  with pdU[ d , c ]    | pdU-ex-maximal { d } {c}         | pdU-Homogenous {d } {c} 
 ... | []               | _                                | _  = ex*-empty
 ... | (pdi ∷ pdis )    | ex-join  .(pdi) .(pdis) pdi≥pdis | homogenous _ ( p , hide-p-pdi ∷ hide-p-pdis) = ex*-join (compose-pdi-with d→r s-ev-d-r pdi) (List.map (compose-pdi-with d→r s-ev-d-r) pdis) (compose-pdi-with-ex*≥-map-compose-pdi-with  d→r s-ev-d-r d→r-inc-ev pdi pdis hide-p-pdi hide-p-pdis pdi≥pdis )
 -} 
@@ -2329,21 +2329,21 @@ compose-pdi-with-cross {p} {d} {r} {pref} {c}
     ... | inj₂ pkv≡pjv rewrite pkv≡pjv = in₁-eqorgt (pj-inj v)
 
 -- Lemma 41.7
--- Ex*≥-lattice property is preserved by `concatMap advance-pdi*-with-c`. 
-concatmap-advance-pdi*-with-c-lattice : ∀ { d  r : RE } { pref : List Char } { c : Char }
+-- Ex*≥-maximal property is preserved by `concatMap advance-pdi*-with-c`. 
+concatmap-advance-pdi*-with-c-maximal : ∀ { d  r : RE } { pref : List Char } { c : Char }
   → (pdis : List (PDInstance* r pref) )
-  → Ex*≥-lattice pdis
+  → Ex*≥-maximal pdis
   → All *>-Inc pdis
   → All (Inhabit* d) pdis
   -------------------------------------------------------------------------------------
-  → Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} [] ex*-empty [] [] =  ex*-empty
-concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} (pdi@(pdinstance* .{d} .{r} .{pref} in₁ s-ev₁) ∷ pdis) (ex*-join .(pdi) .(pdis) pdi≥pdis)
+  → Ex*≥-maximal (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+concatmap-advance-pdi*-with-c-maximal {d} {r} {pref} {c} [] ex*-empty [] [] =  ex*-empty
+concatmap-advance-pdi*-with-c-maximal {d} {r} {pref} {c} (pdi@(pdinstance* .{d} .{r} .{pref} in₁ s-ev₁) ∷ pdis) (ex*-join .(pdi) .(pdis) pdi≥pdis)
   ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂) ∷ all-*>-inc-pdis)
   ((hide* .{d} .(in₁) .(s-ev₁)) ∷ hide*-d-pdis )
-  with pdU[ d , c ] in pdU-eq  | pdU-ex-lattice { d } {c}             |   pdU-Homogenous {d } {c}                  | pdU->-inc {d} {c}
+  with pdU[ d , c ] in pdU-eq  | pdU-ex-maximal { d } {c}             |   pdU-Homogenous {d } {c}                  | pdU->-inc {d} {c}
 ... | []               | _                                    |   _                                              | _
-  = subst Ex*≥-lattice (sym (empty-helper pdis hide*-d-pdis)) ex*-empty -- this sub case is generated by opus 4.6
+  = subst Ex*≥-maximal (sym (empty-helper pdis hide*-d-pdis)) ex*-empty -- this sub case is generated by opus 4.6
   where
     -- every pdi' in pdis has inner type d (via Inhabit* d), so advance-pdi*-with-c pdi'
     -- reduces to List.map (compose-pdi-with ...) pdU[ d , c ] which is [] by pdU-eq.
@@ -2411,29 +2411,29 @@ concatmap-advance-pdi*-with-c-lattice {d} {r} {pref} {c} (pdi@(pdinstance* .{d} 
 
 
 Leamm 41.8
-The next two sub lemma shows that the Ex*≥-lattice property is maintained by `pdUMany-aux` and `pdUMany`.
+The next two sub lemma shows that the Ex*≥-maximal property is maintained by `pdUMany-aux` and `pdUMany`.
 
 ```agda
-pdUMany-aux-lattice : ∀ { r : RE }  { pref : List Char } -- pref is the prefixed has been consumed so far. 
+pdUMany-aux-maximal : ∀ { r : RE }  { pref : List Char } -- pref is the prefixed has been consumed so far. 
   → ( c : Char )
   → ( cs : List Char )
   → ( pdis : List (PDInstance* r pref ) )
   → Homogenous* pdis 
-  → Ex*≥-lattice pdis
+  → Ex*≥-maximal pdis
   → All *>-Inc pdis -- we need to thread through *>-Inc for all the sub lemmas so that we can use it in compose-pdi-with-ex*>-head-map-compose-pdi-with 
   -------------------------------------------------------
-  → Ex*≥-lattice (pdUMany-aux (c ∷ cs) pdis)
-pdUMany-aux-lattice {r}  {pref} c [] pdis (homogenous* .(pdis) ( d , hide-d-pdis) ) pdis-ex*>-lattice *>-inc-pdis  rewrite (++-identityʳ (pref ∷ʳ c) )   = concatmap-advance-pdi*-with-c-pdis-lattice
+  → Ex*≥-maximal (pdUMany-aux (c ∷ cs) pdis)
+pdUMany-aux-maximal {r}  {pref} c [] pdis (homogenous* .(pdis) ( d , hide-d-pdis) ) pdis-ex*>-maximal *>-inc-pdis  rewrite (++-identityʳ (pref ∷ʳ c) )   = concatmap-advance-pdi*-with-c-pdis-maximal
   where
-    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-    concatmap-advance-pdi*-with-c-pdis-lattice = concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} pdis  pdis-ex*>-lattice *>-inc-pdis hide-d-pdis 
-pdUMany-aux-lattice {r}  {pref} c cs        []           homo-[] ex*-empty [] rewrite pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs)  = ex*-empty  
-pdUMany-aux-lattice {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , hide-d-pdi ∷ hide-d-pdis ) )  pdis-ex*>-lattice *>-inc-pdis  -- with pdU[ d , c ]
-  = pdUMany-aux-lattice   {r}  {pref ∷ʳ c}  c' cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) (concatmap-advance-pdi*-with-c-pdis-homgenous* (homogenous* (pdi ∷ pdis) (d , hide-d-pdi ∷ hide-d-pdis)) )  concatmap-advance-pdi*-with-c-pdis-lattice (concatmap-advance-pdi*-with-c-*>inc (pdi ∷ pdis)  *>-inc-pdis)
+    concatmap-advance-pdi*-with-c-pdis-maximal : Ex*≥-maximal (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    concatmap-advance-pdi*-with-c-pdis-maximal = concatmap-advance-pdi*-with-c-maximal {d} {r}  {pref} {c} pdis  pdis-ex*>-maximal *>-inc-pdis hide-d-pdis 
+pdUMany-aux-maximal {r}  {pref} c cs        []           homo-[] ex*-empty [] rewrite pdUMany-aux-cs-[]≡[] {r} {pref} (c ∷ cs)  = ex*-empty  
+pdUMany-aux-maximal {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , hide-d-pdi ∷ hide-d-pdis ) )  pdis-ex*>-maximal *>-inc-pdis  -- with pdU[ d , c ]
+  = pdUMany-aux-maximal   {r}  {pref ∷ʳ c}  c' cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) (concatmap-advance-pdi*-with-c-pdis-homgenous* (homogenous* (pdi ∷ pdis) (d , hide-d-pdi ∷ hide-d-pdis)) )  concatmap-advance-pdi*-with-c-pdis-maximal (concatmap-advance-pdi*-with-c-*>inc (pdi ∷ pdis)  *>-inc-pdis)
   -- not {d}, should be d/c
   where
-    concatmap-advance-pdi*-with-c-pdis-lattice : Ex*≥-lattice (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) 
-    concatmap-advance-pdi*-with-c-pdis-lattice =  concatmap-advance-pdi*-with-c-lattice {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-lattice *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis)
+    concatmap-advance-pdi*-with-c-pdis-maximal : Ex*≥-maximal (concatMap (advance-pdi*-with-c {r} {pref} {c}) (pdi ∷ pdis)) 
+    concatmap-advance-pdi*-with-c-pdis-maximal =  concatmap-advance-pdi*-with-c-maximal {d} {r}  {pref} {c} (pdi ∷ pdis) pdis-ex*>-maximal *>-inc-pdis (hide-d-pdi ∷ hide-d-pdis)
 
 -------------------------------------------------------------
 -- Sub Lemma 41.1 - 41.8 END 
@@ -2443,15 +2443,15 @@ pdUMany-aux-lattice {r}  {pref} c (c' ∷ cs) (pdi ∷ pdis) (homogenous* (.(pdi
 
 #### Main proof for Lemma 41
 Let r be a non problematic regular expression and w be word.
-Then the list of partial derivative descendant instances pdUMany[ r , w ] is an ex*≥ lattice. 
+Then the list of partial derivative descendant instances pdUMany[ r , w ] is an ex*≥ lattice, the head is the maximal. 
 
 ```agda
-pdUMany-lattice : ∀ { r : RE } { w : List Char }
-  → Ex*≥-lattice {r} {w} pdUMany[ r , w ]
-pdUMany-lattice {r} {[]} = ex*-join
+pdUMany-maximal : ∀ { r : RE } { w : List Char }
+  → Ex*≥-maximal {r} {w} pdUMany[ r , w ]
+pdUMany-maximal {r} {[]} = ex*-join
                             (pdinstance* PartialDerivative.injId PartialDerivative.injId-sound)
                             [] [] 
-pdUMany-lattice {r} {c ∷ cs} = pdUMany-aux-lattice {r}  {[]} c cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (homogenous* [ pdinstance* (λ u → u) (λ u → refl) ]
+pdUMany-maximal {r} {c ∷ cs} = pdUMany-aux-maximal {r}  {[]} c cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (homogenous* [ pdinstance* (λ u → u) (λ u → refl) ]
                                                                                                                              (r , hide* (λ u → u) (λ u → refl) ∷ [])) (ex*-join (pdinstance* (λ u → u) (λ u → refl)) [] []) (*>-inc (λ u₁ u₂ z → z) ∷ []) 
 
 ```
@@ -2462,36 +2462,35 @@ pdUMany-lattice {r} {c ∷ cs} = pdUMany-aux-lattice {r}  {[]} c cs [  ( pdinsta
 
 ```agda
 -- Definition 42
--- The following data type defines the lattice property among parse trees. It is defined over the total order > 
-data ≥-lattice : ∀ { r : RE } ( us : List ( U r ) ) → Set where
-  ≥-empty : ∀ { r : RE } → ≥-lattice {r} []
+-- The following data type defines the maximal property among parse trees. It is defined over the total order > 
+data ≥-maximal : ∀ { r : RE } ( us : List ( U r ) ) → Set where
+  ≥-empty : ∀ { r : RE } → ≥-maximal {r} []
   ≥-join : ∀ { r : RE }
     → ( top : U r )
     → ( us : List (U r ) )
     → All ( λ x → r ⊢ top > x ⊎ top ≡ x ) us
     -----------------------------------------------
-    → ≥-lattice {r} (top ∷ us ) 
+    → ≥-maximal {r} (top ∷ us ) 
 ```
 
 ### Theorem 43:
 Let r be a non problematic regular expression and w be a word.
 Let the pdis be the list of parse trees produced by parseAll[ r , w ]
-Then the list of parse trees computed by `parseAll[ r , w ]` is a lattice and the left most element
-is the top. 
+Then the list of parse trees computed by `parseAll[ r , w ]` is a lattice and the left most element is the maximal. 
 
 ```agda 
--- the next lemma shows that the list of parse trees generated by concatMap buildU is a lattice.
+-- the next lemma shows that the list of parse trees generated by concatMap buildU is a maximal.
 -- this lemma is proven by opus 4.6
-concatMap-buildU-lattice : ∀ { r : RE } { w : List Char }
+concatMap-buildU-maximal : ∀ { r : RE } { w : List Char }
   → ( pdis : List (PDInstance* r w) )
   → Homogenous* pdis 
-  → Ex*≥-lattice pdis
+  → Ex*≥-maximal pdis
   → All *>-Inc pdis
-  → ≥-lattice {r} (concatMap buildU pdis)
-concatMap-buildU-lattice {r} {w} [] _  ex*-empty [] = ≥-empty
-concatMap-buildU-lattice {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , ((hide* .(in₁) .(s-ev₁)) ∷ hide-d-pdis) ) )(ex*-join .(pdi) .(pdis) pdi≥pdis) ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) ∷ >-inc-pdis )
+  → ≥-maximal {r} (concatMap buildU pdis)
+concatMap-buildU-maximal {r} {w} [] _  ex*-empty [] = ≥-empty
+concatMap-buildU-maximal {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (homogenous* (.(pdi) ∷ .(pdis)) ( d , ((hide* .(in₁) .(s-ev₁)) ∷ hide-d-pdis) ) )(ex*-join .(pdi) .(pdis) pdi≥pdis) ((*>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂ ) ∷ >-inc-pdis )
   with ε∈? d in ε∈?d-eq
-... | no ε∉d = subst ≥-lattice (sym (empty-helper pdis hide-d-pdis)) ≥-empty
+... | no ε∉d = subst ≥-maximal (sym (empty-helper pdis hide-d-pdis)) ≥-empty
   where
     empty-helper : (xs : List (PDInstance* r w)) → All (Inhabit* d) xs
                  → concatMap buildU xs ≡ []
@@ -2546,7 +2545,7 @@ concatMap-buildU-lattice {r} {w} (pdi@(pdinstance* in₁ s-ev₁)  ∷ pdis) (ho
 #### Main proof for Theorem 43
 
 ```agda
-parseAll-is-posix-lattice : ∀ { r : RE } { w : List Char }
-  →  ≥-lattice {r} (parseAll[ r , w ])
-parseAll-is-posix-lattice {r} {w} = concatMap-buildU-lattice pdUMany[ r , w ] (pdUMany-homogenous* {r} {w}) pdUMany-lattice  pdUMany-*>-inc 
+parseAll-is-posix-maximal : ∀ { r : RE } { w : List Char }
+  →  ≥-maximal {r} (parseAll[ r , w ])
+parseAll-is-posix-maximal {r} {w} = concatMap-buildU-maximal pdUMany[ r , w ] (pdUMany-homogenous* {r} {w}) pdUMany-maximal  pdUMany-*>-inc 
 ```

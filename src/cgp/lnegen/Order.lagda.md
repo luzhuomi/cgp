@@ -847,7 +847,15 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 
 The next few sub lemmas show that ≥-maximal is preserved by pdinstance operations. 
 ```agda
-
+-- leftU is monotonic 
+left-mono : ∀ { l r : RE } { loc : ℕ } { u v : U l }
+  → l ⊢ u ≥ v
+  ------------------
+  → l + r ` loc ⊢ LeftU u ≥ LeftU v
+left-mono {l} {r} {loc} {u} {v} (inj₂ u≡v) = inj₂ (cong LeftU u≡v ) 
+left-mono {l} {r} {loc} {u} {v} (inj₁ (be len|u|≡len|v| len|v|≡0 u>ⁱv)) = inj₁ (be len|u|≡len|v| len|v|≡0 (choice-ll (be len|u|≡len|v| len|v|≡0 u>ⁱv)) )   
+left-mono {l} {r} {loc} {u} {v} (inj₁ (bne len|u|>0 len|v|>0 u>ⁱv))  =  inj₁ (bne len|u|>0 len|v|>0 (choice-ll (bne len|u|>0 len|v|>0 u>ⁱv)) )
+left-mono {l} {r} {loc} {u} {v} (inj₁ (lne len|u|>0 len|v|≡0)) = inj₁ (lne len|u|>0 len|v|≡0) 
 
 ≥-max-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdi : PDInstance l c )
@@ -859,18 +867,27 @@ The next few sub lemmas show that ≥-maximal is preserved by pdinstance operati
       → ≥-maximal us
       → ≥-maximal (List.map (λ u → LeftU {l} {r} {loc} (in₁ u)) us)
     prf [] ≥-empty = ≥-empty
-    prf ( u ∷ us ) (≥-join .(u) .(us) all-u≥us) = ≥-join (LeftU (in₁ u)) (List.map (λ u₁ → LeftU (in₁ u₁)) us) (sub us prf all-u≥us)
-      where 
-        sub_prf : (vs : List (U p ))
-          → All (_⊢_≥_ p u) vs 
+    prf ( u ∷ us ) m@(≥-join .(u) .(us) all-u≥us) with  us→max-us→max-map-in₁-us (u ∷ us) m
+    ... | ≥-join in₁u map-in₁us all-in₁u>map-in₁us = ≥-join (LeftU (in₁ u)) (List.map (λ u₁ → LeftU (in₁ u₁)) us) (sub-prf us all-in₁u>map-in₁us ) 
+      where
+        sub-prf : (vs : List (U p ))
+          → All (_⊢_≥_ l (in₁ u)) (List.map in₁ vs)
           → All (_⊢_≥_ (l + r ` loc) (LeftU (in₁ u)))
                     (List.map (λ u₁ → LeftU (in₁ u₁)) vs)
-        sub_prf [] [] = []
-        sub_prf (v ∷ vs) ((inj₂ u≡v) ∷ all-u≥vs) rewrite (sym u≡v) = inj₂ refl ∷ sub vs prf all-u≥vs
-        sub_prf (v ∷ vs) ((inj₁ (be len|u|≡len|v| len|v|≡0 u>ⁱv)) ∷ all-u≥vs) = inj₁ left-in₁u>left-in₁v ∷ sub vs prf all-u≥vs
-          where
-            left-in₁u>left-in₁v  : (l + r ` loc) ⊢ LeftU (in₁ u) > LeftU (in₁ v)
-            left-in₁u>left-in₁v = bne {!!} {!!} {! !}  
+        sub-prf [] [] = []
+        sub-prf (v ∷ vs) ( in₁u≥in₁v ∷ xs ) = left-mono in₁u≥in₁v  ∷ sub-prf vs  xs 
+
+
+
+≥-max-preserve-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( pdi : PDInstance r c )
+    → ≥-Max-Preserve {r} {c} pdi
+    → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
+≥-max-preserve-right = {!!}
+
+
+
+-- next 
 ```
 
 
@@ -901,7 +918,7 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
     → ( (u₁ : U p) → (u₂ : U p)
         →  p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
     → >-Inc {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
-
+-}
 ```
 
 ### Lemma 33: all pdinstances from pdU[ r , c ] are >-strict increasing .
@@ -916,7 +933,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 ```agda
 
-
+{-
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9  BEGIN

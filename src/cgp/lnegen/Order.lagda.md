@@ -878,6 +878,11 @@ left-mono {l} {r} {loc} {u} {v} (inj₁ (lne len|u|>0 len|v|≡0)) = inj₁ (lne
         sub-prf (v ∷ vs) ( in₁u≥in₁v ∷ xs ) = left-mono in₁u≥in₁v  ∷ sub-prf vs  xs 
 
 
+right-mono : ∀ { l r : RE } { loc : ℕ } { u v : U r }
+  → r ⊢ u ≥ v
+  ------------------
+  → l + r ` loc ⊢ RightU u ≥ RightU v
+right-mono = ? 
 
 ≥-max-preserve-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdi : PDInstance r c )

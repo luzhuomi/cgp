@@ -870,7 +870,7 @@ The next few sub lemmas show that ≥-maximal is preserved by pdinstance operati
         sub_prf (v ∷ vs) ((inj₁ (be len|u|≡len|v| len|v|≡0 u>ⁱv)) ∷ all-u≥vs) = inj₁ left-in₁u>left-in₁v ∷ sub vs prf all-u≥vs
           where
             left-in₁u>left-in₁v  : (l + r ` loc) ⊢ LeftU (in₁ u) > LeftU (in₁ v)
-            left-in₁u>left-in₁v = bne {!!} {!!} {!choice-ll ? !}  
+            left-in₁u>left-in₁v = bne {!!} {!!} {! !}  
 ```
 
 

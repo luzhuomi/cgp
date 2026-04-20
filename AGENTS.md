@@ -63,7 +63,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
 ## 5. Development Commands
-- Build: `cd ~/git/ &&  agda <filename>`
+- Build: `cd ./src &&  agda <filename>`
 
 ## 6. Project Structure
 - `./*.lagda.md`: Shared Utility

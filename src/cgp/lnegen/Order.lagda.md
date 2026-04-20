@@ -882,13 +882,37 @@ right-mono : ∀ { l r : RE } { loc : ℕ } { u v : U r }
   → r ⊢ u ≥ v
   ------------------
   → l + r ` loc ⊢ RightU u ≥ RightU v
-right-mono = ? 
+right-mono {l} {r} {loc} {u} {v} (inj₂ u≡v) = inj₂ (cong RightU u≡v)
+right-mono {l} {r} {loc} {u} {v} (inj₁ (be len|u|≡len|v| len|v|≡0 u>ⁱv)) = inj₁ (be len|u|≡len|v| len|v|≡0 (choice-rr (be len|u|≡len|v| len|v|≡0 u>ⁱv)))
+right-mono {l} {r} {loc} {u} {v} (inj₁ (bne len|u|>0 len|v|>0 u>ⁱv)) = inj₁ (bne len|u|>0 len|v|>0 (choice-rr (bne len|u|>0 len|v|>0 u>ⁱv)))
+right-mono {l} {r} {loc} {u} {v} (inj₁ (lne len|u|>0 len|v|≡0)) = inj₁ (lne len|u|>0 len|v|≡0)
 
 ≥-max-preserve-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdi : PDInstance r c )
     → ≥-Max-Preserve {r} {c} pdi
     → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
-≥-max-preserve-right = {!!}
+≥-max-preserve-right {l} {r} {loc} {c} (pdinstance {p} {r} {c} in₁ s-ev₁) (≥-pres us→max-us→max-map-in₁-us) = ≥-pres prf
+  where
+    prf : (us : List (U p))
+      → ≥-maximal us
+      → ≥-maximal (List.map (λ u → RightU {l} {r} {loc} (in₁ u)) us)
+    prf [] ≥-empty = ≥-empty
+    prf ( u ∷ us ) m@(≥-join .(u) .(us) all-u≥us) with us→max-us→max-map-in₁-us (u ∷ us) m
+    ... | ≥-join in₁u map-in₁us all-in₁u>map-in₁us = ≥-join (RightU (in₁ u)) (List.map (λ u₁ → RightU (in₁ u₁)) us) (sub-prf us all-in₁u>map-in₁us)
+      where
+        sub-prf : (vs : List (U p))
+          → All (_⊢_≥_ r (in₁ u)) (List.map in₁ vs)
+          → All (_⊢_≥_ (l + r ` loc) (RightU (in₁ u)))
+                    (List.map (λ u₁ → RightU (in₁ u₁)) vs)
+        sub-prf [] [] = []
+        sub-prf (v ∷ vs) ( in₁u≥in₁v ∷ xs ) = right-mono in₁u≥in₁v ∷ sub-prf vs xs
+
+
+≥-max-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c )
+  → ≥-Max-Preserve {l} {c} pdi
+  → ≥-Max-Preserve { l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+≥-max-preserve-fst = {!!}   
 
 
 

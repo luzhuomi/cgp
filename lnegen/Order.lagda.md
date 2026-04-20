@@ -804,6 +804,36 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 
 ```
 
+The next few sub lemmas show that ≥-maximal is preserved by pdinstance operations. 
+```agda
+
+
+≥-max-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( pdi : PDInstance l c )
+    → ≥-Max-Preserve {l} {c} pdi
+    → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi) 
+≥-max-preserve-left {l} {r} {loc} {c} (pdinstance {p} {l} {c} in₁ s-ev₁) (≥-pres us→max-us→max-map-in₁-us) =  ≥-pres prf
+  where
+    prf : (us : List (U p))
+      → ≥-maximal us
+      → ≥-maximal (List.map (λ u → LeftU {l} {r} {loc} (in₁ u)) us)
+    prf [] ≥-empty = ≥-empty
+    prf ( u ∷ us ) (≥-join .(u) .(us) all-u≥us) = ≥-join (LeftU (in₁ u)) (List.map (λ u₁ → LeftU (in₁ u₁)) us) (sub us prf all-u≥us)
+      where 
+        sub_prf : (vs : List (U p ))
+          → All (_⊢_≥_ p u) vs 
+          → All (_⊢_≥_ (l + r ` loc) (LeftU (in₁ u)))
+                    (List.map (λ u₁ → LeftU (in₁ u₁)) vs)
+        sub_prf [] [] = []
+        sub_prf (v ∷ vs) ((inj₂ u≡v) ∷ all-u≥vs) rewrite (sym u≡v) = inj₂ refl ∷ sub vs prf all-u≥vs
+        sub_prf (v ∷ vs) ((inj₁ (be len|u|≡len|v| len|v|≡0 u>ⁱv)) ∷ all-u≥vs) = inj₁ left-in₁u>left-in₁v ∷ sub vs prf all-u≥vs
+          where
+            left-in₁u>left-in₁v  : (l + r ` loc) ⊢ LeftU (in₁ u) > LeftU (in₁ v)
+            left-in₁u>left-in₁v = bne {!!} {!!} {!choice-ll ? !}  
+```
+
+
+
 
 
 

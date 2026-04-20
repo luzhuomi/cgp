@@ -66,11 +66,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Build: `cd ./src &&  agda <filename>`
 
 ## 6. Project Structure
-- `./*.lagda.md`: Shared Utility
-- `./posix/*.lagda.md`: Two level POSIX order proof
-- `./greedy/*.lagda.md`: Greedy order proof
-- `./lne/*.lagda.md`: Single level LNE order proof
-- `./lnegen/*.lagda.md`: Two level LNE order proof 
+- `./src/cgp/*.lagda.md`: Shared Utility
+- `./src/cgp/posix/*.lagda.md`: Two level POSIX order proof
+- `./src/cgp/greedy/*.lagda.md`: Greedy order proof
+- `./src/cgp/lne/*.lagda.md`: Single level LNE order proof
+- `./src/cgp/lnegen/*.lagda.md`: Two level LNE order proof 
 
 
 ## 7. Workflow

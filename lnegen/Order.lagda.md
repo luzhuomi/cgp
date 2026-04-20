@@ -439,24 +439,65 @@ Then ¬ u₁ ≡ u₂
   where 
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
-```
+``` 
 
 
 ### Asymmetric for >
 
-
 ```agda
+>ⁱ-asym : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ >ⁱ u₂
+  → ¬ ( r ⊢ u₂ >ⁱ u₁ )
+
+
+>-asym : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ > u₂
+  → ¬ ( r ⊢ u₂ > u₁ ) 
+
+
+>ⁱ-asym (seq₁ u₁>u₂) (seq₁ u₂>u₁) = >-asym u₁>u₂ u₂>u₁
+>ⁱ-asym (seq₁ u₁>u₂) (seq₂ u₂≡u₁ v₂>v₁) = >→¬≡ u₁>u₂ (sym u₂≡u₁) 
+>ⁱ-asym (seq₂ u₁≡u₂ v₁>v₂) (seq₁ u₂>u₁) = >→¬≡ u₂>u₁ (sym u₁≡u₂)  
+>ⁱ-asym (seq₂ refl u₁>u₂) (seq₂ _ u₂>u₁) = >-asym u₁>u₂ u₂>u₁
+>ⁱ-asym choice-lr () 
+>ⁱ-asym (choice-ll u₁>u₂) (choice-ll u₂>u₁) = >-asym u₁>u₂ u₂>u₁
+>ⁱ-asym (choice-rr u₁>u₂) (choice-rr u₂>u₁) = >-asym u₁>u₂ u₂>u₁
+>ⁱ-asym star-cons-nil ()
+>ⁱ-asym (star-head u₁>u₂) (star-head u₂>u₁) = >-asym u₁>u₂ u₂>u₁
+>ⁱ-asym (star-head u₁>u₂) (star-tail u₂≡u₁ us₂>us₁) = >→¬≡ u₁>u₂ (sym u₂≡u₁)   
+>ⁱ-asym (star-tail u₁≡u₂ us₁>us₂) (star-head u₂>u₁) = >→¬≡ u₂>u₁ (sym u₁≡u₂)   
+>ⁱ-asym (star-tail refl us₁>us₂) (star-tail _ us₂>us₁) = >-asym us₁>us₂ us₂>us₁
+
+
+>-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = >ⁱ-asym u₁>ⁱu₂ u₂>ⁱu₁
+>-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (bne len|u₂|>0 len|u₁|>0 u₂>ⁱu₁) = <-irrefl (sym len|u₂|≡0) len|u₂|>0 
+>-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (lne len|u₂|>0 len|u₁|≡0) = <-irrefl (sym len|u₂|≡0) len|u₂|>0 
+>-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = <-irrefl (sym len|u₁|≡0) len|u₁|>0 
+>-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (bne _ _  u₂>ⁱu₁) = >ⁱ-asym u₁>ⁱu₂ u₂>ⁱu₁
+>-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (lne _ len|u₁|≡0) = <-irrefl (sym len|u₁|≡0) len|u₁|>0
+>-asym (lne len|u₁|>0 len|u₂|≡0) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = <-irrefl (sym len|u₁|≡0)  len|u₁|>0
+>-asym (lne len|u₁|>0 len|u₂|≡0) (bne len|u₂|>0 _ u₂>ⁱu₁) = <-irrefl (sym len|u₂|≡0) len|u₂|>0
+>-asym (lne len|u₁|>0 len|u₂|≡0) (lne len|u₂|>0 len|u₁|≡0) = <-irrefl (sym len|u₂|≡0) len|u₂|>0
+
+
 >→¬< : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ > u₂ 
   -----------------
   → ¬ r ⊢  u₂ > u₁
+>→¬<  = >-asym 
 
 
 >ⁱ→¬<ⁱ : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ >ⁱ u₂ 
   -----------------
   → ¬ r ⊢ u₂ >ⁱ u₁  
+>ⁱ→¬<ⁱ  = >ⁱ-asym 
 ```
+
+
+
+
+
 
 
 ### Definition 30: >-sortedness 

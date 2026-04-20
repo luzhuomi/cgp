@@ -447,57 +447,71 @@ Then ¬ u₁ ≡ u₂
 ```agda
 >ⁱ-asym : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ >ⁱ u₂
-  → ¬ ( r ⊢ u₂ >ⁱ u₁ )
-
+  → r ⊢ u₂ >ⁱ u₁
+  -----------------
+  → ⊥
 
 >-asym : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ > u₂
-  → ¬ ( r ⊢ u₂ > u₁ ) 
-
-
->ⁱ-asym (seq₁ u₁>u₂) (seq₁ u₂>u₁) = >-asym u₁>u₂ u₂>u₁
->ⁱ-asym (seq₁ u₁>u₂) (seq₂ u₂≡u₁ v₂>v₁) = >→¬≡ u₁>u₂ (sym u₂≡u₁) 
->ⁱ-asym (seq₂ u₁≡u₂ v₁>v₂) (seq₁ u₂>u₁) = >→¬≡ u₂>u₁ (sym u₁≡u₂)  
->ⁱ-asym (seq₂ refl u₁>u₂) (seq₂ _ u₂>u₁) = >-asym u₁>u₂ u₂>u₁
->ⁱ-asym choice-lr () 
->ⁱ-asym (choice-ll u₁>u₂) (choice-ll u₂>u₁) = >-asym u₁>u₂ u₂>u₁
->ⁱ-asym (choice-rr u₁>u₂) (choice-rr u₂>u₁) = >-asym u₁>u₂ u₂>u₁
->ⁱ-asym star-cons-nil ()
->ⁱ-asym (star-head u₁>u₂) (star-head u₂>u₁) = >-asym u₁>u₂ u₂>u₁
->ⁱ-asym (star-head u₁>u₂) (star-tail u₂≡u₁ us₂>us₁) = >→¬≡ u₁>u₂ (sym u₂≡u₁)   
->ⁱ-asym (star-tail u₁≡u₂ us₁>us₂) (star-head u₂>u₁) = >→¬≡ u₂>u₁ (sym u₁≡u₂)   
->ⁱ-asym (star-tail refl us₁>us₂) (star-tail _ us₂>us₁) = >-asym us₁>us₂ us₂>us₁
-
-
->-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = >ⁱ-asym u₁>ⁱu₂ u₂>ⁱu₁
->-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (bne len|u₂|>0 len|u₁|>0 u₂>ⁱu₁) = <-irrefl (sym len|u₂|≡0) len|u₂|>0 
->-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (lne len|u₂|>0 len|u₁|≡0) = <-irrefl (sym len|u₂|≡0) len|u₂|>0 
->-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = <-irrefl (sym len|u₁|≡0) len|u₁|>0 
->-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (bne _ _  u₂>ⁱu₁) = >ⁱ-asym u₁>ⁱu₂ u₂>ⁱu₁
->-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (lne _ len|u₁|≡0) = <-irrefl (sym len|u₁|≡0) len|u₁|>0
->-asym (lne len|u₁|>0 len|u₂|≡0) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = <-irrefl (sym len|u₁|≡0)  len|u₁|>0
->-asym (lne len|u₁|>0 len|u₂|≡0) (bne len|u₂|>0 _ u₂>ⁱu₁) = <-irrefl (sym len|u₂|≡0) len|u₂|>0
->-asym (lne len|u₁|>0 len|u₂|≡0) (lne len|u₂|>0 len|u₁|≡0) = <-irrefl (sym len|u₂|≡0) len|u₂|>0
-
+  → r ⊢ u₂ > u₁
+  -----------------
+  → ⊥
 
 >→¬< : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ > u₂ 
   -----------------
   → ¬ r ⊢  u₂ > u₁
->→¬<  = >-asym 
 
 
 >ⁱ→¬<ⁱ : { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ >ⁱ u₂ 
   -----------------
   → ¬ r ⊢ u₂ >ⁱ u₁  
->ⁱ→¬<ⁱ  = >ⁱ-asym 
+
+>ⁱ-asym (seq₁ u₁>u₂) (seq₁ u₂>u₁) = >ⁱ-asym u₁>u₂ u₂>u₁
+>ⁱ-asym (seq₁ u₁>u₂) (seq₂ _ u₂>u₁) = >ⁱ-asym u₁>u₂ (seq₁ u₂>u₁)
+>ⁱ-asym (seq₂ _ u₁>u₂) (seq₁ u₂>u₁) = >ⁱ-asym (seq₁ u₁>u₂) u₂>u₁
+>ⁱ-asym (seq₂ refl u₁>u₂) (seq₂ _ u₂>u₁) = >ⁱ-asym u₁>u₂ u₂>u₁
+>ⁱ-asym choice-lr () 
+>ⁱ-asym (choice-ll u₁>u₂) (choice-ll u₂>u₁) = >ⁱ-asym u₁>u₂ u₂>u₁
+>ⁱ-asym (choice-rr u₁>u₂) (choice-rr u₂>u₁) = >ⁱ-asym u₁>u₂ u₂>u₁
+>ⁱ-asym star-cons-nil ()
+>ⁱ-asym (star-head u₁>u₂) (star-head u₂>u₁) = >ⁱ-asym u₁>u₂ u₂>u₁
+>ⁱ-asym (star-head u₁>u₂) (star-tail _ u₂>u₁) = >ⁱ-asym u₁>u₂ (star-head u₂>u₁)
+>ⁱ-asym (star-tail _ u₁>u₂) (star-head u₂>u₁) = >ⁱ-asym (star-head u₁>u₂) u₂>u₁
+>ⁱ-asym (star-tail refl u₁>u₂) (star-tail _ u₂>u₁) = >ⁱ-asym u₁>u₂ u₂>u₁
+
+>-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = >ⁱ-asym u₁>ⁱu₂ u₂>ⁱu₁
+>-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (bne len|u₂|>0 len|u₁|>0 u₂>ⁱu₁) = len|u₂|>0 (sym len|u₂|≡0)
+>-asym (be len|u₁|≡len|u₂| len|u₂|≡0 u₁>ⁱu₂) (lne len|u₂|>0 len|u₁|≡0) = len|u₂|>0 (sym len|u₂|≡0)
+>-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = len|u₁|>0 (sym len|u₂|>0)
+>-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (bne len|u₂|>0 len|u₁|>0 u₂>ⁱu₁) = >ⁱ-asym u₁>ⁱu₂ u₂>ⁱu₁
+>-asym (bne len|u₁|>0 len|u₂|>0 u₁>ⁱu₂) (lne len|u₂|>0 len|u₁|≡0) = Nullary.contradiction len|u₁|≡0 (n≡0→¬n>0 len|u₁|>0)
+>-asym (lne len|u₁|>0 len|u₂|≡0) (be len|u₂|≡len|u₁| len|u₁|≡0 u₂>ⁱu₁) = len|u₂|≡0 (sym len|u₁|>0)
+>-asym (lne len|u₁|>0 len|u₂|≡0) (bne len|u₂|>0 len|u₁|>0 u₂>ⁱu₁) = len|u₂|≡0 (sym len|u₁|>0)
+>-asym (lne len|u₁|>0 len|u₂|≡0) (lne len|u₂|>0 len|u₁|≡0) = len|u₂|≡0 (sym len|u₁|>0)
+
+>→¬< u₁>u₂ u₂>u₁ = Nullary.contradiction u₁>u₂ (>ⁱ-asym (>-trans u₁>u₂ u₂>u₁) u₂>u₁)
+
+>ⁱ→¬<ⁱ u₁>ⁱu₂ u₂>ⁱu₁ = Nullary.contradiction u₁>ⁱu₂ (>ⁱ-asym u₁>ⁱu₂ u₂>ⁱu₁)
 ```
 
 
+### Asymmetric for >
 
 
+```agda
+>→¬< : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ > u₂ 
+  -----------------
+  → ¬ r ⊢  u₂ > u₁
 
+
+>ⁱ→¬<ⁱ : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ >ⁱ u₂ 
+  -----------------
+  → ¬ r ⊢ u₂ >ⁱ u₁  
+```
 
 
 ### Definition 30: >-sortedness 
@@ -844,36 +858,6 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 
 
 ```
-
-The next few sub lemmas show that ≥-maximal is preserved by pdinstance operations. 
-```agda
-
-
-≥-max-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ( pdi : PDInstance l c )
-    → ≥-Max-Preserve {l} {c} pdi
-    → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi) 
-≥-max-preserve-left {l} {r} {loc} {c} (pdinstance {p} {l} {c} in₁ s-ev₁) (≥-pres us→max-us→max-map-in₁-us) =  ≥-pres prf
-  where
-    prf : (us : List (U p))
-      → ≥-maximal us
-      → ≥-maximal (List.map (λ u → LeftU {l} {r} {loc} (in₁ u)) us)
-    prf [] ≥-empty = ≥-empty
-    prf ( u ∷ us ) (≥-join .(u) .(us) all-u≥us) = ≥-join (LeftU (in₁ u)) (List.map (λ u₁ → LeftU (in₁ u₁)) us) (sub us prf all-u≥us)
-      where 
-        sub_prf : (vs : List (U p ))
-          → All (_⊢_≥_ p u) vs 
-          → All (_⊢_≥_ (l + r ` loc) (LeftU (in₁ u)))
-                    (List.map (λ u₁ → LeftU (in₁ u₁)) vs)
-        sub_prf [] [] = []
-        sub_prf (v ∷ vs) ((inj₂ u≡v) ∷ all-u≥vs) rewrite (sym u≡v) = inj₂ refl ∷ sub vs prf all-u≥vs
-        sub_prf (v ∷ vs) ((inj₁ (be len|u|≡len|v| len|v|≡0 u>ⁱv)) ∷ all-u≥vs) = inj₁ left-in₁u>left-in₁v ∷ sub vs prf all-u≥vs
-          where
-            left-in₁u>left-in₁v  : (l + r ` loc) ⊢ LeftU (in₁ u) > LeftU (in₁ v)
-            left-in₁u>left-in₁v = bne {!!} {!!} {!choice-ll ? !}  
-```
-
-
 
 
 

@@ -956,6 +956,9 @@ pdU[ r , c ] is a list of pdis, whose inhabiting ps are different.
 
 Hence the the ≥-Max could hold for each different p, for the same w, they are incomparable.
 
+>-Inc is not true for the pdinstance-fst case.
+≥-Max-preserve is not true for the pdinstance-fst case. 
+
 They are compariable after the injections are applied, shall we make use of the Recons? . 
 
 a digression

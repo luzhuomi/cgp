@@ -76,6 +76,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 7. Workflow
 - Generate proof according to user request
 - Do not change existing given type annotations
-- Ensure all new types are added. 
+- Ensure all new types are added
 - Always run `agda` to verify type safety during implementation
+- If you think the given goal is unprovable, provide a counter example
 

@@ -916,9 +916,26 @@ right-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|
 -}
 
 
+-- this is not true, see CounterExample
+{- 
+l = ($ 'a') + (($ 'a') ● ($ 'b'))
+r = ($ 'b') + ε
+l / a = [ ε , $ 'b' ] = [ p₁ , p₂ ] 
+Let u of type p₂ 
+u₂ = b
+u₂ is maximal w.r.t p₂ and b
 
+in₁ u₂ = $ 'a' ● $ 'b', maximal w.r.t to l and "ab"
+
+u₁ = $ 'a'
+v₁ = L ($ 'b')
+v₂ = R Empty
+
+injFst in₁ (Pair u₂ v₂) is **not** maximal w.r.t l ● r and "ab"
+because Pair u₁ v₁ > Pair u₂ v₂
+-}
 >-max-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  → ( pdi : PDInstance l c )
+  → ( pdi : PDInstance l c ) -- this pdi must be max among all the pdi too ? 
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve { l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
 >-max-preserve-fst = {!!}   
@@ -933,7 +950,36 @@ right-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|
 
 
 
+perhaps we should look at what property we want at the pdU end ?
 
+pdU[ r , c ] is a list of pdis, whose inhabiting ps are different.
+
+Hence the the ≥-Max could hold for each different p, for the same w, they are incomparable.
+
+They are compariable after the injections are applied, shall we make use of the Recons? . 
+
+a digression
+is it true that if a word is fixed, only one parse tree is reconstructable from a pdi?
+
+
+```agda
+
+
+```
+
+```agda
+-- this one requires order among PDInstance should go to ExtendedOrder .
+{-
+data Ex≥-Max : ∀ { r : RE } { c : Char } ( PDInstance r c ) → Set where 
+  ex≥-max : ∀ { p r : RE } { c : Char }
+    { in₁ : U p → U r }
+    { s-ev₁ : ∀ ( x : U p ) → ( proj₁ ( flat {r} (in₁ x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( u₁ : U r )
+      → ( w : List Char )
+      → Recons u (pdinstance in₁ s-ev₁)
+      →
+-}      
+```
 
 
 The following are not working 

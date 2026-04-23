@@ -818,8 +818,7 @@ Update >-Inc is not preserved by PDInstance, we need a lattice. We only care abo
 Definition 32 (maximality)
 
 ```agda
--- this defintion of maxilality is too weak, because it is limited to the given set of parse tree `us`, which might not be all parse trees under r.
-
+-- parse tree u is absolute maximal w.r.t to r and w
 data ≥-Max : ∀ { r : RE } ( w : List Char ) ( u : U r ) → Set where
   ≥-max : ∀ { r : RE } { w : List Char } 
     → ( top : U r )
@@ -828,7 +827,137 @@ data ≥-Max : ∀ { r : RE } ( w : List Char ) ( u : U r ) → Set where
        → proj₁ (flat {r} u) ≡ w 
        → r ⊢ top ≥ u )
     -----------------
-    → ≥-Max {r} w top  
+    → ≥-Max {r} w top
+```
+
+
+too strong? individual pdi from pdU [ r , c ]  might not be producing all the parse trees of r and c ∷ w. hence ≥-Max is not true for individual pdi.
+but it should be true if  all of them append together.
+
+what about individual pdi? what properties do they have?
+ - each pdi will be fed a set of parse trees of individual p which should be a lattice,
+ - the output will be concatenated together and passed to the next level (parent pd)
+ - each pdi is >-Inc? no, see the counterexample in t13 vs t14, but are t13 and t14 from the same p? yes, they are
+ - the each pdi output list is a local maximal? 
+ 
+
+We need to bring back the local (bounded maximality), it's been now indexed additionally by a word `w`. to avoid the 1st counter example in the CounterExample.lagda
+
+```agda
+
+data >-LocalMaximal : ∀ { r : RE } { w : List Char } ( us : List ( U r ) ) → Set where
+  >-empty : ∀ { r : RE } { w : List Char }  → >-LocalMaximal {r} {w} []
+  >-join : ∀ { r : RE } { w : List Char }
+    → ( top : U r )
+    → ( us : List (U r ) )
+    → All (λ x → proj₁ (flat x) ≡ w) ( top ∷ us )
+    → All (λ x → r ⊢ top > x) us 
+    -----------------------------------------------
+    → >-LocalMaximal {r} {w} (top ∷ us )
+
+
+data >-LocalMaxPreserve : ∀ { r : RE } { c : Char } { w : List Char }  → PDInstance r c → Set where
+  >-locpres : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p →  U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( us : List (U p) )
+        → (w : List Char)
+        → ( us-maximal : >-LocalMaximal {p} {w} us ) 
+        → ( >-LocalMaximal {r} { c ∷ w } (List.map inj us) ) ) -- preserve >-localmaximality 
+    → >-LocalMaxPreserve {r} {c} {w} (pdinstance {p} {r} {c} inj sound-ev)
+
+
+-- leftU is monotonic
+
+left-mono : ∀ { l r : RE } { loc : ℕ } { u v : U l }
+  → l ⊢ u > v
+  ------------------
+  → l + r ` loc ⊢ LeftU u > LeftU v
+left-mono {l} {r} {loc} {u} {v} (be len|u|≡len|v| len|v|≡0 u>ⁱv) = be len|u|≡len|v| len|v|≡0 (choice-ll (be len|u|≡len|v| len|v|≡0 u>ⁱv))    
+left-mono {l} {r} {loc} {u} {v} (bne len|u|>0 len|v|>0 u>ⁱv)  = bne len|u|>0 len|v|>0 (choice-ll (bne len|u|>0 len|v|>0 u>ⁱv)) 
+left-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|≡0
+
+
+right-mono : ∀ { l r : RE } { loc : ℕ } { u v : U r }
+  → r ⊢ u > v
+  ------------------
+  → l + r ` loc ⊢ RightU u > RightU v
+right-mono {l} {r} {loc} {u} {v} (be len|u|≡len|v| len|v|≡0 u>ⁱv) = be len|u|≡len|v| len|v|≡0 (choice-rr (be len|u|≡len|v| len|v|≡0 u>ⁱv))    
+right-mono {l} {r} {loc} {u} {v} (bne len|u|>0 len|v|>0 u>ⁱv)  = bne len|u|>0 len|v|>0 (choice-rr (bne len|u|>0 len|v|>0 u>ⁱv)) 
+right-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|≡0
+
+
+
+>-locmax-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
+    → ( pdi : PDInstance l c )
+    → >-LocalMaxPreserve {l} {c} {w} pdi
+    → >-LocalMaxPreserve {l + r ` loc} {c} {w} (pdinstance-left pdi) 
+>-locmax-preserve-left {l} {r} {loc} {c} {w} (pdinstance {p} {l} {c} in₁ s-ev₁) (>-locpres us→w→max-us→max-map-in₁-us) =  >-locpres prf
+  where
+    prf : (us : List (U p))
+      → (w : List Char)
+      → >-LocalMaximal {p} {w} us
+      → >-LocalMaximal (List.map (λ u → LeftU {l} {r} {loc} (in₁ u)) us)
+    prf [] w >-empty = >-empty
+    prf ( u ∷ us ) w  m@(>-join .(u) .(us) (|u|≡w ∷ |us|≡w ) u≥us) with  us→w→max-us→max-map-in₁-us (u ∷ us) w  m
+    ... | >-join in₁u map-in₁us (|in₁u|≡cw ∷ map-in₁us-all≡|cw|) all-in₁u>map-in₁us =
+      >-join (LeftU (in₁ u)) (List.map (λ u₁ → LeftU (in₁ u₁)) us) (|in₁u|≡cw  ∷  sub-prf' us |us|≡w ) (sub-prf us all-in₁u>map-in₁us ) 
+      where
+        sub-prf' : (vs : List (U p))
+                 → All (λ x → Product.proj₁ (flat x) ≡ w) vs 
+                 → All (λ x → Product.proj₁ (flat x) ≡ c ∷ w)
+                   (List.map (λ u₁ → LeftU {l} {r} {loc} (in₁ u₁)) vs)
+        sub-prf' [] [] =  []
+        sub-prf' ( v ∷ vs) (|v|≡w ∷ all-|vs|≡w)  = |left-in₁v|≡cw  ∷ sub-prf' vs all-|vs|≡w
+          where
+            |left-in₁v|≡cw : proj₁ (flat (LeftU {l} {r} {loc} (in₁ v))) ≡ c ∷ w
+            |left-in₁v|≡cw rewrite (s-ev₁ v) =  cong (λ x → (c ∷ x )) |v|≡w  
+        sub-prf : (vs : List (U p ))
+          → All (_⊢_>_ l (in₁ u)) (List.map in₁ vs)
+          → All (_⊢_>_ (l + r ` loc) (LeftU (in₁ u)))
+                    (List.map (λ u₁ → LeftU (in₁ u₁)) vs)
+        sub-prf [] [] = []
+        sub-prf (v ∷ vs) ( in₁u>in₁v ∷ xs ) = left-mono in₁u>in₁v  ∷ sub-prf vs  xs 
+
+
+>-locmax-preserve-right : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
+    → ( pdi : PDInstance r c )
+    → >-LocalMaxPreserve {r} {c} {w} pdi
+    → >-LocalMaxPreserve {l + r ` loc} {c} {w} (pdinstance-right pdi) 
+>-locmax-preserve-right {l} {r} {loc} {c} {w} (pdinstance {p} {r} {c} in₁ s-ev₁) (>-locpres us→w→max-us→max-map-in₁-us) =  >-locpres prf
+  where
+    prf : (us : List (U p))
+      → (w : List Char)
+      → >-LocalMaximal {p} {w} us
+      → >-LocalMaximal (List.map (λ u → RightU {l} {r} {loc} (in₁ u)) us)
+    prf [] w >-empty = >-empty
+    prf ( u ∷ us ) w  m@(>-join .(u) .(us) (|u|≡w ∷ |us|≡w ) u≥us) with  us→w→max-us→max-map-in₁-us (u ∷ us) w  m
+    ... | >-join in₁u map-in₁us (|in₁u|≡cw ∷ map-in₁us-all≡|cw|) all-in₁u>map-in₁us =
+      >-join (RightU (in₁ u)) (List.map (λ u₁ → RightU (in₁ u₁)) us) (|in₁u|≡cw  ∷  sub-prf' us |us|≡w ) (sub-prf us all-in₁u>map-in₁us ) 
+      where
+        sub-prf' : (vs : List (U p))
+                 → All (λ x → Product.proj₁ (flat x) ≡ w) vs 
+                 → All (λ x → Product.proj₁ (flat x) ≡ c ∷ w)
+                   (List.map (λ u₁ → RightU {l} {r} {loc} (in₁ u₁)) vs)
+        sub-prf' [] [] =  []
+        sub-prf' ( v ∷ vs) (|v|≡w ∷ all-|vs|≡w)  = |right-in₁v|≡cw  ∷ sub-prf' vs all-|vs|≡w
+          where
+            |right-in₁v|≡cw : proj₁ (flat (RightU {l} {r} {loc} (in₁ v))) ≡ c ∷ w
+            |right-in₁v|≡cw rewrite (s-ev₁ v) =  cong (λ x → (c ∷ x )) |v|≡w  
+        sub-prf : (vs : List (U p ))
+          → All (_⊢_>_ r (in₁ u)) (List.map in₁ vs)
+          → All (_⊢_>_ (l + r ` loc) (RightU (in₁ u)))
+                    (List.map (λ u₁ → RightU (in₁ u₁)) vs)
+        sub-prf [] [] = []
+        sub-prf (v ∷ vs) ( in₁u>in₁v ∷ xs ) = right-mono in₁u>in₁v  ∷ sub-prf vs  xs 
+
+
+>-locmax-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char} 
+  → ( pdi : PDInstance l c ) -- this pdi must be max among all the pdi too ? 
+  → >-LocalMaxPreserve {l} {c} {w} pdi
+  → >-LocalMaxPreserve { l ● r ` loc} {c} {w} (pdinstance-fst {l} {r} {loc} {c} pdi)
+>-locmax-preserve-fst = {!!}   
+
+
 ```
 
 
@@ -854,16 +983,6 @@ The next few sub lemmas show that ≥-maximal is preserved by pdinstance operati
 ```agda
 
   
--- leftU is monotonic
-{-
-left-mono : ∀ { l r : RE } { loc : ℕ } { u v : U l }
-  → l ⊢ u > v
-  ------------------
-  → l + r ` loc ⊢ LeftU u > LeftU v
-left-mono {l} {r} {loc} {u} {v} (be len|u|≡len|v| len|v|≡0 u>ⁱv) = be len|u|≡len|v| len|v|≡0 (choice-ll (be len|u|≡len|v| len|v|≡0 u>ⁱv))    
-left-mono {l} {r} {loc} {u} {v} (bne len|u|>0 len|v|>0 u>ⁱv)  = bne len|u|>0 len|v|>0 (choice-ll (bne len|u|>0 len|v|>0 u>ⁱv)) 
-left-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|≡0
--}
 
 ≥-max-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdi : PDInstance l c )
@@ -904,17 +1023,6 @@ left-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|�
             len-|left-v|>0 rewrite |left-v|≡c∷w  = Nat.s≤s Nat.z≤n 
 
 
-{-
-right-mono : ∀ { l r : RE } { loc : ℕ } { u v : U r }
-  → r ⊢ u > v
-  ------------------
-  → l + r ` loc ⊢ RightU u > RightU v
-right-mono {l} {r} {loc} {u} {v} (be len|u|≡len|v| len|v|≡0 u>ⁱv) = be len|u|≡len|v| len|v|≡0 (choice-rr (be len|u|≡len|v| len|v|≡0 u>ⁱv))    
-right-mono {l} {r} {loc} {u} {v} (bne len|u|>0 len|v|>0 u>ⁱv)  = bne len|u|>0 len|v|>0 (choice-rr (bne len|u|>0 len|v|>0 u>ⁱv)) 
-right-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|≡0
-
--}
-
 
 -- this is not true, see CounterExample
 {- 
@@ -933,13 +1041,13 @@ v₂ = R Empty
 
 injFst in₁ (Pair u₂ v₂) is **not** maximal w.r.t l ● r and "ab"
 because Pair u₁ v₁ > Pair u₂ v₂
--}
 >-max-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c ) -- this pdi must be max among all the pdi too ? 
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve { l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
 >-max-preserve-fst = {!!}   
 
+-}
 
 
 

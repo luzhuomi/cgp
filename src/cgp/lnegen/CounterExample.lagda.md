@@ -214,7 +214,6 @@ Therefore `≥-max-preserve-fst` is false as stated.
     ¬inju₂≡inju₁ refl
 ```
 
-```
 
 ---
 Counterexample for the new definition
@@ -237,3 +236,46 @@ But in U (l ● r), the tree PairU (LeftU (LetterU 'a')) (LeftU (LetterU 'b')) a
 Therefore ≥-Max {l ● r} ['a', 'b'] (mkinjFst inj (PairU u v)) is false, even though ≥-Max {p ● r} ['b'] (PairU u v) is true and pdi satisfies ≥-Max-Preserve.
 ---
 
+
+
+
+The Counterexample
+Regular expressions:
+l = ($ 'c') + (($ 'c') ● ($ 'c') ` 2) ` 1
+r = ε + ($ 'c' ` 4) ` 3
+p = ε + ($ 'c' ` 6) ` 5
+Injection inj : U p → U l with c = 'c':
+inj (LeftU EmptyU)          = LeftU (LetterU 'c')                           -- flat [] ↦ flat ['c']
+inj (RightU (LetterU 'c'))  = RightU (PairU (LetterU 'c') (LetterU 'c'))   -- flat ['c'] ↦ flat ['c','c']
+Soundness verified:
+- flat (inj (LeftU EmptyU)) = ['c'] = 'c' :: [] = 'c' :: flat (LeftU EmptyU) ✓
+- flat (inj (RightU (LetterU 'c'))) = ['c','c'] = 'c' :: ['c'] = 'c' :: flat (RightU (LetterU 'c')) ✓
+>-LocalMaxPreserve holds for this pdi:
+- The only locally maximal lists in U p are singletons [LeftU EmptyU] (for w = []) and [RightU (LetterU 'c')] (for w = ['c']).
+- These map to [LeftU (LetterU 'c')] and [RightU (PairU 'c' 'c')], which are trivially maximal in U l for their respective words.
+---
+The locally maximal list in U (p ● r) that breaks
+top = PairU (RightU (LetterU 'c')) (RightU EmptyU)   -- flat = ['c'] ++ []      = ['c']
+x   = PairU (LeftU EmptyU)          (LeftU (LetterU 'c')) -- flat = [] ++ ['c']      = ['c']
+[top, x] is >-LocalMaximal {p ● r} {['c']} because:
+- Both flatten to ['c']
+- p ● r ⊢ top > x via bne + seq₁ (both non-empty, and p ⊢ RightU (LetterU 'c') > LeftU EmptyU via lne)
+---
+After pdinstance-fst
+mkinjFst inj top = PairU (RightU (PairU 'c' 'c')) (RightU EmptyU)  -- flat = ['c','c'] ++ [] = ['c','c']
+mkinjFst inj x   = PairU (LeftU (LetterU 'c'))     (LeftU (LetterU 'c')) -- flat = ['c']    ++ ['c'] = ['c','c']
+Both flatten to ['c','c'], but l ● r ⊢ mkinjFst inj top ≯ mkinjFst inj x:
+- seq₁ would require l ⊢ RightU (PairU 'c' 'c') > LeftU (LetterU 'c') — impossible because choice-lr only gives LeftU > RightU, never the reverse.
+- seq₂ would require RightU (PairU 'c' 'c') ≡ LeftU (LetterU 'c') — false.
+Therefore the mapped list is not >-LocalMaximal {l ● r} {['c','c']}.
+---
+Why this keeps happening
+The root cause is structural: >-LocalMaxPreserve only guarantees ordering preservation when all p-trees in the list flatten to the same word. But in a sequential composition p ● r, a locally maximal list can contain pairs (u₁, v₁) and (u₂, v₂) where:
+- flat u₁ ++ flat v₁ ≡ flat u₂ ++ flat v₂ (same total word)
+- flat u₁ ≢ flat u₂ (different first-component words)
+- p ⊢ u₁ > u₂ via seq₁
+Since [u₁, u₂] is not locally maximal in U p (different words), the hypothesis gives us no control over l ⊢ inj u₁ > inj u₂. After mkinjFst, the ordering can disappear or reverse.
+---
+Conclusion: >-locmax-preserve-fst is unprovable as stated. The local maximality constraint on the first component alone is insufficient to make the lemma true. You would need either:
+1. A stronger preservation property that also covers p-trees with different flat words, or
+2. An additional structural invariant about pdU-generated instances that prevents the problematic case.

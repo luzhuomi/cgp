@@ -241,29 +241,40 @@ Therefore ≥-Max {l ● r} ['a', 'b'] (mkinjFst inj (PairU u v)) is false, even
 
 The Counterexample
 Regular expressions:
+```agda
 l = ($ 'c') + (($ 'c') ● ($ 'c') ` 2) ` 1
 r = ε + ($ 'c' ` 4) ` 3
 p = ε + ($ 'c' ` 6) ` 5
+```
 Injection inj : U p → U l with c = 'c':
+```agda
 inj (LeftU EmptyU)          = LeftU (LetterU 'c')                           -- flat [] ↦ flat ['c']
 inj (RightU (LetterU 'c'))  = RightU (PairU (LetterU 'c') (LetterU 'c'))   -- flat ['c'] ↦ flat ['c','c']
+``` 
 Soundness verified:
+```agda
 - flat (inj (LeftU EmptyU)) = ['c'] = 'c' :: [] = 'c' :: flat (LeftU EmptyU) ✓
 - flat (inj (RightU (LetterU 'c'))) = ['c','c'] = 'c' :: ['c'] = 'c' :: flat (RightU (LetterU 'c')) ✓
+```
 >-LocalMaxPreserve holds for this pdi:
+
 - The only locally maximal lists in U p are singletons [LeftU EmptyU] (for w = []) and [RightU (LetterU 'c')] (for w = ['c']).
 - These map to [LeftU (LetterU 'c')] and [RightU (PairU 'c' 'c')], which are trivially maximal in U l for their respective words.
 ---
 The locally maximal list in U (p ● r) that breaks
+```agda
 top = PairU (RightU (LetterU 'c')) (RightU EmptyU)   -- flat = ['c'] ++ []      = ['c']
 x   = PairU (LeftU EmptyU)          (LeftU (LetterU 'c')) -- flat = [] ++ ['c']      = ['c']
+```
 [top, x] is >-LocalMaximal {p ● r} {['c']} because:
 - Both flatten to ['c']
 - p ● r ⊢ top > x via bne + seq₁ (both non-empty, and p ⊢ RightU (LetterU 'c') > LeftU EmptyU via lne)
 ---
 After pdinstance-fst
+```agda
 mkinjFst inj top = PairU (RightU (PairU 'c' 'c')) (RightU EmptyU)  -- flat = ['c','c'] ++ [] = ['c','c']
 mkinjFst inj x   = PairU (LeftU (LetterU 'c'))     (LeftU (LetterU 'c')) -- flat = ['c']    ++ ['c'] = ['c','c']
+```
 Both flatten to ['c','c'], but l ● r ⊢ mkinjFst inj top ≯ mkinjFst inj x:
 - seq₁ would require l ⊢ RightU (PairU 'c' 'c') > LeftU (LetterU 'c') — impossible because choice-lr only gives LeftU > RightU, never the reverse.
 - seq₂ would require RightU (PairU 'c' 'c') ≡ LeftU (LetterU 'c') — false.

@@ -950,6 +950,26 @@ right-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|
         sub-prf [] [] = []
         sub-prf (v ∷ vs) ( in₁u>in₁v ∷ xs ) = right-mono in₁u>in₁v  ∷ sub-prf vs  xs 
 
+{-
+
+top = PairU (RightU (LetterU 'c')) (RightU EmptyU)   -- flat = ['c'] ++ []      = ['c']
+x   = PairU (LeftU EmptyU)          (LeftU (LetterU 'c')) -- flat = [] ++ ['c']      = ['c']
+
+[top, x] is >-LocalMaximal {p ● r} {['c']} because:
+- Both flatten to ['c']
+- p ● r ⊢ top > x via bne + seq₁ (both non-empty, and p ⊢ RightU (LetterU 'c') > LeftU EmptyU via lne)
+---
+After pdinstance-fst
+
+mkinjFst inj top = PairU (RightU (PairU 'c' 'c')) (RightU EmptyU)  -- flat = ['c','c'] ++ [] = ['c','c']
+mkinjFst inj x   = PairU (LeftU (LetterU 'c'))     (LeftU (LetterU 'c')) -- flat = ['c']    ++ ['c'] = ['c','c']
+
+Both flatten to ['c','c'], but l ● r ⊢ mkinjFst inj top ≯ mkinjFst inj x:
+- seq₁ would require l ⊢ RightU (PairU 'c' 'c') > LeftU (LetterU 'c') — impossible because choice-lr only gives LeftU > RightU, never the reverse.
+- seq₂ would require RightU (PairU 'c' 'c') ≡ LeftU (LetterU 'c') — false.
+Therefore the mapped list is not >-LocalMaximal {l ● r} {['c','c']}.
+
+-}
 
 >-locmax-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char} 
   → ( pdi : PDInstance l c ) -- this pdi must be max among all the pdi too ? 

@@ -28,7 +28,7 @@ import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ; 
   pdinstance-left ; pdinstance-right ;
   pdinstance-star ; mkinjList ;
-  pdinstance-fst ; mkinjFst ;
+  pdinstance-fst ; mkinjFst ; mkinjFstSoundEv ;
   pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
   concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
   pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ;
@@ -979,7 +979,158 @@ pdinstance-fst preserves local maximality.
   → ( pdi : PDInstance l c ) -- this pdi must be max among all the pdi too ? 
   → ≥-MaxPreserve {l} {c} {w} pdi
   → >-LocalMaxPreserve { l ● r ` loc} {c} {w} (pdinstance-fst {l} {r} {loc} {c} pdi)
->-locmax-preserve-fst = {!!}   
+>-locmax-preserve-fst {l} {r} {loc} {c} {w} (pdinstance {p} {l} {c} inj s-ev) (≥-pres u→max→max-inj) = >-locpres prf
+  where
+    injFst = mkinjFst {p} {l} {r} {loc} inj
+
+    flat-injFst≡c∷flat : ∀ (t : U (p ● r ` loc)) → proj₁ (flat (injFst t)) ≡ c ∷ proj₁ (flat t)
+    flat-injFst≡c∷flat (PairU u v) =
+      begin
+        proj₁ (flat (PairU (inj u) v))
+      ≡⟨⟩
+        proj₁ (flat (inj u)) ++ proj₁ (flat v)
+      ≡⟨ cong (_++ proj₁ (flat v)) (s-ev u) ⟩
+        (c ∷ proj₁ (flat u)) ++ proj₁ (flat v)
+      ≡⟨⟩
+        c ∷ (proj₁ (flat u) ++ proj₁ (flat v))
+      ≡⟨⟩
+        c ∷ proj₁ (flat (PairU u v))
+      ∎
+
+    prf : (ts : List (U (p ● r ` loc)))
+      → >-LocalMaximal {p ● r ` loc} {w} ts
+      → >-LocalMaximal {l ● r ` loc} {c ∷ w} (List.map injFst ts)
+    prf [] >-empty = >-empty
+    prf (PairU u₀ v₀ ∷ ts) (>-join .(PairU u₀ v₀) .ts (|pair-u₀v₀|≡w ∷ |ts|≡w) pair-u₀v₀>ts) =
+      >-join (PairU (inj u₀) v₀) (List.map injFst ts)
+        (|pair-inju₀v₀|≡cw ∷ all-flat-map-injFst-ts)
+        (all->-map-injFst-ts)
+      where
+        |pair-inju₀v₀|≡cw : proj₁ (flat (PairU (inj u₀) v₀)) ≡ c ∷ w
+        |pair-inju₀v₀|≡cw =
+          begin
+            proj₁ (flat (PairU (inj u₀) v₀))
+          ≡⟨⟩
+            proj₁ (flat (inj u₀)) ++ proj₁ (flat v₀)
+          ≡⟨ cong (_++ proj₁ (flat v₀)) (s-ev u₀) ⟩
+            (c ∷ proj₁ (flat u₀)) ++ proj₁ (flat v₀)
+          ≡⟨⟩
+            c ∷ (proj₁ (flat u₀) ++ proj₁ (flat v₀))
+          ≡⟨ cong (c ∷_) |pair-u₀v₀|≡w ⟩
+            c ∷ w
+          ∎
+
+        all-flat-map-injFst-ts : All (λ x → proj₁ (flat x) ≡ c ∷ w) (List.map injFst ts)
+        all-flat-map-injFst-ts = aux ts |ts|≡w
+          where
+            aux : (us : List (U (p ● r ` loc)))
+              → All (λ x → proj₁ (flat x) ≡ w) us
+              → All (λ x → proj₁ (flat x) ≡ c ∷ w) (List.map injFst us)
+            aux [] [] = []
+            aux (PairU u v ∷ us) (|pair-uv|≡w ∷ rest) =
+              |pair-injuv|≡cw ∷ aux us rest
+              where
+                |pair-injuv|≡cw : proj₁ (flat (PairU (inj u) v)) ≡ c ∷ w
+                |pair-injuv|≡cw =
+                  begin
+                    proj₁ (flat (PairU (inj u) v))
+                  ≡⟨⟩
+                    proj₁ (flat (inj u)) ++ proj₁ (flat v)
+                  ≡⟨ cong (_++ proj₁ (flat v)) (s-ev u) ⟩
+                    (c ∷ proj₁ (flat u)) ++ proj₁ (flat v)
+                  ≡⟨⟩
+                    c ∷ (proj₁ (flat u) ++ proj₁ (flat v))
+                  ≡⟨ cong (c ∷_) |pair-uv|≡w ⟩
+                    c ∷ w
+                  ∎
+
+        all->-map-injFst-ts : All (λ x → (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > x) (List.map injFst ts)
+        all->-map-injFst-ts = aux ts |ts|≡w pair-u₀v₀>ts
+          where
+            len|pair-inju₀v₀|≡suc|w| : length (proj₁ (flat (PairU (inj u₀) v₀))) ≡ suc (length w)
+            len|pair-inju₀v₀|≡suc|w| =
+              begin
+                length (proj₁ (flat (PairU (inj u₀) v₀)))
+              ≡⟨ cong length |pair-inju₀v₀|≡cw ⟩
+                length (c ∷ w)
+              ≡⟨⟩
+                suc (length w)
+              ∎
+
+            len|pair-inju₀v₀|>0 : length (proj₁ (flat (PairU (inj u₀) v₀))) Nat.> 0
+            len|pair-inju₀v₀|>0 rewrite len|pair-inju₀v₀|≡suc|w| = Nat.s≤s Nat.z≤n
+
+            aux : (us : List (U (p ● r ` loc)))
+              → All (λ x → proj₁ (flat x) ≡ w) us
+              → All (λ x → (p ● r ` loc) ⊢ PairU u₀ v₀ > x) us
+              → All (λ x → (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > x) (List.map injFst us)
+            aux [] [] [] = []
+            aux (PairU u v ∷ us) (|pair-uv|≡w ∷ |us|≡w) (pair-u₀v₀>uv ∷ rest) =
+              pair-inju₀v₀>injuv ∷ aux us |us|≡w rest
+              where
+                |pair-injuv|≡cw : proj₁ (flat (PairU (inj u) v)) ≡ c ∷ w
+                |pair-injuv|≡cw =
+                  begin
+                    proj₁ (flat (PairU (inj u) v))
+                  ≡⟨⟩
+                    proj₁ (flat (inj u)) ++ proj₁ (flat v)
+                  ≡⟨ cong (_++ proj₁ (flat v)) (s-ev u) ⟩
+                    (c ∷ proj₁ (flat u)) ++ proj₁ (flat v)
+                  ≡⟨⟩
+                    c ∷ (proj₁ (flat u) ++ proj₁ (flat v))
+                  ≡⟨ cong (c ∷_) |pair-uv|≡w ⟩
+                    c ∷ w
+                  ∎
+
+                len|pair-injuv|≡suc|w| : length (proj₁ (flat (PairU (inj u) v))) ≡ suc (length w)
+                len|pair-injuv|≡suc|w| =
+                  begin
+                    length (proj₁ (flat (PairU (inj u) v)))
+                  ≡⟨ cong length |pair-injuv|≡cw ⟩
+                    length (c ∷ w)
+                  ≡⟨⟩
+                    suc (length w)
+                  ∎
+
+                len|pair-injuv|>0 : length (proj₁ (flat (PairU (inj u) v))) Nat.> 0
+                len|pair-injuv|>0 rewrite len|pair-injuv|≡suc|w| = Nat.s≤s Nat.z≤n
+
+                pair-inju₀v₀>injuv : (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > PairU (inj u) v
+                pair-inju₀v₀>injuv = >-case pair-u₀v₀>uv |pair-uv|≡w
+                  where
+                    >-case : (p ● r ` loc) ⊢ PairU u₀ v₀ > PairU u v
+                           → proj₁ (flat (PairU u v)) ≡ w
+                           → (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > PairU (inj u) v
+                    >-case (be _ len|pair-uv|≡0 (seq₂ u₀≡u v₀>v)) _ =
+                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0
+                        (seq₂ (cong inj u₀≡u) v₀>v)
+                    >-case (bne _ _ (seq₂ u₀≡u v₀>v)) _ =
+                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0
+                        (seq₂ (cong inj u₀≡u) v₀>v)
+                    >-case (be _ len|pair-uv|≡0 (seq₁ u₀>u)) _ =
+                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0 (seq₁ l⊢inju₀>inju)
+                      where
+                        l⊢inju₀>inju : l ⊢ inj u₀ > inj u
+                        l⊢inju₀>inju = {!!}
+                    >-case (bne len|pair-u₀v₀|>0 len|pair-uv|>0 (seq₁ u₀>u)) _ =
+                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0 (seq₁ l⊢inju₀>inju)
+                      where
+                        l⊢inju₀>inju : l ⊢ inj u₀ > inj u
+                        l⊢inju₀>inju = {!!}
+                    >-case (lne len|pair-u₀v₀|>0 len|pair-uv|≡0) _ =
+                      Nullary.contradiction len|pair-uv|>0 (n≡0→¬n>0 len|pair-uv|≡0)
+                      where
+                        len|pair-uv|≡len|pair-u₀v₀| : length (proj₁ (flat (PairU u v))) ≡ length (proj₁ (flat (PairU u₀ v₀)))
+                        len|pair-uv|≡len|pair-u₀v₀| =
+                          begin
+                            length (proj₁ (flat (PairU u v)))
+                          ≡⟨ cong length |pair-uv|≡w ⟩
+                            length w
+                          ≡⟨ sym (cong length |pair-u₀v₀|≡w) ⟩
+                            length (proj₁ (flat (PairU u₀ v₀)))
+                          ∎
+                        len|pair-uv|>0 : length (proj₁ (flat (PairU u v))) Nat.> 0
+                        len|pair-uv|>0 rewrite len|pair-uv|≡len|pair-u₀v₀| = len|pair-u₀v₀|>0
 
 
 ```

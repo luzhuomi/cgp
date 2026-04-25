@@ -1565,22 +1565,23 @@ Lemma: all the pdinstances from pdU is ≅-preserving
 
 ```agda
 
-pdU-preserve : ∀ { r : RE } { c : Char }
+pdU-≅-preserve : ∀ { r : RE } { c : Char }
   → All (≅-Preserve {r} {c}) pdU[ r , c ]
-pdU-preserve = ?   
+pdU-≅-preserve {ε} {c} = []
+
 
 ```
 
 
 ```agda
 
-data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
+data >-Inc-≅ : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( (u₁ : U p) → (u₂ : U p)
         → p ⊢ u₁ ≅ u₂ 
         → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
-    → >-Inc {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+    → >-Inc-≅ {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 ```
 
 ### Lemma 33: all pdinstances from pdU[ r , c ] are >-strict increasing .
@@ -1591,7 +1592,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 
 
-#### Sub Lemma 33.1 - 33.9 : >-Inc is preserved inductively by the pdinstance operations. 
+#### Sub Lemma 33.1 - 33.9 : >-Inc-≅ is preserved inductively by the pdinstance operations. 
 
 ```agda
 
@@ -1601,8 +1602,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 ----------------------------------------------------------------------------
 >-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdis : List (PDInstance l c) )
-    → All (>-Inc {l} {c}) pdis
-    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-left pdis)
+    → All (>-Inc-≅ {l} {c}) pdis
+    → All (>-Inc-≅ {l + r ` loc } {c}) (List.map pdinstance-left pdis)
 >-inc-map-left [] [] = []
 >-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis)
   (>-inc u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
@@ -1626,8 +1627,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdis : List (PDInstance r c) )
-    → All (>-Inc {r} {c}) pdis
-    → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-right pdis)
+    → All (>-Inc-≅ {r} {c}) pdis
+    → All (>-Inc-≅ {l + r ` loc } {c}) (List.map pdinstance-right pdis)
 >-inc-map-right [] [] = []
 >-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c} inj sound-ev) ∷ pdis)
   (>-inc  u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
@@ -1651,9 +1652,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdi : PDInstance l c )
-               → >-Inc {l} {c} pdi
+               → >-Inc-≅ {l} {c} pdi
                ------------------------
-               → >-Inc {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+               → >-Inc-≅ {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
 >-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev)(>-inc u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc >-inc-ev 
   where 
     injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
@@ -1753,8 +1754,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdis : List (PDInstance l c ) )
-               → All (>-Inc {l} {c}) pdis
-               → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+               → All (>-Inc-≅ {l} {c}) pdis
+               → All (>-Inc-≅ {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
 >-inc-map-fst [] [] = []
 
 >-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)

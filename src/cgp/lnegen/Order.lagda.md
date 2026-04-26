@@ -820,10 +820,12 @@ Update >-Inc is not preserved by PDInstance, we need a lattice. We only care abo
 
 the maximality defintion is ok
 
+Update 2: we fix >-Inc by introducing a weaker version >-Inc-≅, we don't need global maximality nor local maximality for now. 
 Definition 32 (global maximality)
 
 ```agda
 -- parse tree u is absolute maximal w.r.t to r and w
+{-
 data ≥-Maximal : ∀ { r : RE } { w : List Char } ( u : U r ) → Set where
   ≥-max : ∀ { r : RE } { w : List Char } 
     → ( top : U r )
@@ -833,6 +835,7 @@ data ≥-Maximal : ∀ { r : RE } { w : List Char } ( u : U r ) → Set where
        → r ⊢ top ≥ u )
     -----------------
     → ≥-Maximal {r} {w} top
+-}    
 ```
 
 
@@ -852,7 +855,7 @@ data ≥-MaxPreserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set wh
     → ≥-MaxPreserve {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 -}
 
-
+{-
 data ≥-MaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDInstance r c → Set where
   ≥-pres : ∀ { p r : RE } { c : Char } { w : List Char }  { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -860,7 +863,7 @@ data ≥-MaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDInsta
         → ≥-Maximal {p} {w} u  
         → ≥-Maximal {r} { c ∷ w } (inj u) )
     → ≥-MaxPreserve {r} {c} {w} (pdinstance {p} {r} {c} inj sound-ev)
-
+-}
 -- the same as above
 {-
 data ≥-MaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDInstance r c → Set where
@@ -890,7 +893,7 @@ We need to bring back the local (bounded maximality), it's been now indexed addi
 Definition 34 (local maximality)
 
 ```agda
-
+{-
 data >-LocalMaximal : ∀ { r : RE } { w : List Char } ( us : List ( U r ) ) → Set where
   >-empty : ∀ { r : RE } { w : List Char }  → >-LocalMaximal {r} {w} []
   >-join : ∀ { r : RE } { w : List Char }
@@ -900,10 +903,11 @@ data >-LocalMaximal : ∀ { r : RE } { w : List Char } ( us : List ( U r ) ) →
     → All (λ x → r ⊢ top > x) us 
     -----------------------------------------------
     → >-LocalMaximal {r} {w} (top ∷ us )
+-}     
 ```
 Definition 35 (local maximality preservation)
 ```agda
-
+{-
 data >-LocalMaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDInstance r c → Set where
   >-locpres : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -911,7 +915,7 @@ data >-LocalMaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDIn
         → ( us-maximal : >-LocalMaximal {p} {w} us ) 
         → ( >-LocalMaximal {r} { c ∷ w } (List.map inj us) ) ) -- preserve >-localmaximality 
     → >-LocalMaxPreserve {r} {c} {w} (pdinstance {p} {r} {c} inj sound-ev)
-
+-} 
 
 -- leftU is monotonic
 
@@ -938,6 +942,7 @@ Lemma:
 pdinstance-left and pdinstance-right preserve local maximality.
 
 ```agda
+{-
 >-locmax-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } 
     → ( pdi : PDInstance l c )
     → >-LocalMaxPreserve {l} {c} {w} pdi
@@ -997,7 +1002,8 @@ pdinstance-left and pdinstance-right preserve local maximality.
           → All (_⊢_>_ (l + r ` loc) (RightU (in₁ u)))
                     (List.map (λ u₁ → RightU (in₁ u₁)) vs)
         sub-prf [] [] = []
-        sub-prf (v ∷ vs) ( in₁u>in₁v ∷ xs ) = right-mono in₁u>in₁v  ∷ sub-prf vs  xs 
+        sub-prf (v ∷ vs) ( in₁u>in₁v ∷ xs ) = right-mono in₁u>in₁v  ∷ sub-prf vs  xs
+-}        
 ```
 Lemma:
 pdinstance-fst preserves local maximality.
@@ -1328,7 +1334,7 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 The next few sub lemmas show that global maximal is preserved by pdinstance operations. 
 ```agda
 
-  
+{-  
 
 ≥-max-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } 
     → ( pdi : PDInstance l c )
@@ -1367,7 +1373,7 @@ The next few sub lemmas show that global maximal is preserved by pdinstance oper
             len-|left-v|>0 : length (proj₁ (flat v)) Nat.> 0
             len-|left-v|>0 rewrite |left-v|≡c∷w  = Nat.s≤s Nat.z≤n 
 
-
+-}
 
 -- this is not true, see CounterExample
 {- 
@@ -1423,6 +1429,7 @@ So mkinjFst inj t is not globally maximal in U (l ● r) for word ['c', 'd', 'e'
 
 -}
 
+{-
 ≥-max-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } 
   → ( pdi : PDInstance l c ) 
   → ≥-MaxPreserve {l} {c} {w}  pdi -- this need to be stronger, 
@@ -1431,7 +1438,7 @@ So mkinjFst inj t is not globally maximal in U (l ● r) for word ['c', 'd', 'e'
 
 -- if >-Inc is valid, many of these issues will be gone.
 -- let's revisit why >-Inc is invalid. Maybe we can figure out a better definition/invariant. 
-
+-} 
 
 -- next 
 ```
@@ -1554,7 +1561,7 @@ Prefix structural equivalence implies flatten word equivalence.
 
 ```agda
 
--- ≅ relation is preserved 
+-- ≅ relation is preserved by PDI
 data ≅-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
   ≅-pres : ∀ { p r : RE } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -1721,6 +1728,23 @@ pdU-≅-preserve {l ● r ` loc} {c} with ε∈? l
               ≅-pres-map-snd e (flat-[] e ev) pdU[ r , c ] all-preserve-r ∷ aux es'' flat-[]-es''
 
 ```
+
+```agda
+
+-- do we need this ? 
+-- ≅ relation is preserved by PDInstance*
+data ≅-Preserve* : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set where
+  ≅-pres* : ∀ { p r : RE } { w : List Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ w ++ ( proj₁ (flat {p} x) )) }
+    → ( ( u₁ u₂  : U p )
+      → p ⊢ u₁ ≅ u₂
+      → r ⊢ inj u₁ ≅ inj u₂ )
+    → ≅-Preserve* {r} {w} (pdinstance* {p} {r} {w} inj sound-ev)
+```
+
+
+
+
 
 
 ```agda
@@ -2250,6 +2274,15 @@ data *>-Inc : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set where
     → ( (u₁ : U p) → (u₂ : U p ) → p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence
     → *>-Inc {r} {w} (pdinstance* {p} {r} {w} inj sound-ev) 
 -}
+
+data *>-Inc-≅ : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set where
+  *>-inc : ∀ { p r : RE } { w : List Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → (proj₁ ( flat {r} (inj x ) ) ≡ w ++ (proj₁ (flat {p} x))) }
+    → ( (u₁ : U p) → (u₂ : U p )
+      → p ⊢ u₁ ≅ u₂ 
+      → p ⊢ u₁ > u₂
+      → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence
+    → *>-Inc-≅ {r} {w} (pdinstance* {p} {r} {w} inj sound-ev) 
 ```
 
 
@@ -2265,59 +2298,62 @@ Then for all pdi ∈ pdUMany[ r , w ], pdi is >-strict increasing.
 #### Sub Lemma 35.1 - 35.3 : *>-Inc is preserved inductively over pdinstance*'s operations
 
 ```agda
-{-
+
 -----------------------------------------------------------------------------
 -- Sub Lemma 35.1 - 35.3 BEGIN 
 ----------------------------------------------------------------------------
 compose-pdi-with-*>-inc : { r d : RE } { pref : List Char } { c : Char }
                    → ( d→r : U d → U r )
-                   → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+                   → ( s-ev-d→r : ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
                    → (pdi : PDInstance d c)
-                   → >-Inc pdi
-                   → ( (x₁ : U d) → (x₂ : U d) → (d ⊢ x₁ > x₂) → r ⊢ d→r x₁ > d→r x₂ )
+                   → ≅-Preserve pdi 
+                   → >-Inc-≅ pdi
+                   → ( (x₁ : U d) → (x₂ : U d) →  (d ⊢ x₁ ≅ x₂) → (d ⊢ x₁ > x₂) → r ⊢ d→r x₁ > d→r x₂ )
                    ---------------------------------------------------------------
-                   → *>-Inc (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r pdi)
-compose-pdi-with-*>-inc {r} {d} {pref} {c} d→r s-ev-d→r pdi@(pdinstance {p} {d} {c}  p→d s-ev-p→d) (>-inc u₁→u₂→u₁>u₂→pd-u₁>pd-u₂ ) x₁→x₂→x₁>x₂→dr-x₁>dr-x₂ = *>-inc ev-*>-inc 
+                   → *>-Inc-≅ (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r pdi)
+compose-pdi-with-*>-inc {r} {d} {pref} {c} d→r s-ev-d→r pdi@(pdinstance {p} {d} {c}  p→d s-ev-p→d) (≅-pres u₁→u₂→u₁≅u₂→p→du₁≅p→du₂) (>-inc u₁→u₂→u₁≅u₂→u₁>u₂→pd-u₁>pd-u₂ ) x₁→x₂→x₁≅x₂→x₁>x₂→dr-x₁>dr-x₂ = *>-inc ev-*>-inc 
   where
     ev-*>-inc : (v₁ v₂ : U p)
+      → p ⊢ v₁ ≅ v₂
       → p ⊢ v₁ > v₂
       → r ⊢ d→r (p→d v₁) > d→r (p→d v₂)
-    ev-*>-inc v₁ v₂ v₁>v₂ = x₁→x₂→x₁>x₂→dr-x₁>dr-x₂ (p→d v₁) (p→d v₂) (u₁→u₂→u₁>u₂→pd-u₁>pd-u₂ v₁ v₂ v₁>v₂)   
+    ev-*>-inc v₁ v₂ v₁≅v₂ v₁>v₂ = x₁→x₂→x₁≅x₂→x₁>x₂→dr-x₁>dr-x₂ (p→d v₁) (p→d v₂) (u₁→u₂→u₁≅u₂→p→du₁≅p→du₂  v₁ v₂ v₁≅v₂ )  (u₁→u₂→u₁≅u₂→u₁>u₂→pd-u₁>pd-u₂ v₁ v₂ v₁≅v₂ v₁>v₂)   
 
 
 advance-pdi*-with-c-*>-inc : ∀ { r : RE } { pref : List Char } { c : Char}
   → (pdi : PDInstance* r pref)
-  → *>-Inc pdi
+  → *>-Inc-≅ pdi
   ----------------------------------------------------------
-  → All *>-Inc (advance-pdi*-with-c {r} {pref} {c} pdi)
-advance-pdi*-with-c-*>-inc {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r s-ev-d→r) (*>-inc u₁→u₂→u₁>u₂→dr-u₁>dr-u₂)= go pdU[ d , c ]  (pdU->-inc {d} {c}) 
+  → All *>-Inc-≅ (advance-pdi*-with-c {r} {pref} {c} pdi)
+advance-pdi*-with-c-*>-inc {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r s-ev-d→r) (*>-inc u₁→u₂→u₁>u₂→dr-u₁>dr-u₂)= go pdU[ d , c ] (pdU-≅-preserve {d} {c})  (pdU->-inc {d} {c}) 
   where
     go : ( pdis : List (PDInstance d c) )
-       → All >-Inc pdis
-       → All *>-Inc (List.map (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r) pdis)
-    go [] [] = []
-    go (pdi ∷ pdis) (pdi->-inc ∷ all->-inc-pdis) = ( compose-pdi-with-*>-inc {r} {d} {pref} {c} d→r s-ev-d→r pdi pdi->-inc u₁→u₂→u₁>u₂→dr-u₁>dr-u₂ ) ∷ go pdis all->-inc-pdis 
+       → All ≅-Preserve pdis 
+       → All >-Inc-≅ pdis
+       → All *>-Inc-≅ (List.map (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r) pdis)
+    go [] [] [] = []
+    go (pdi ∷ pdis) (pdi-≅-pres ∷ all-≅-pres-pdis) (pdi->-inc ∷ all->-inc-pdis) = ( compose-pdi-with-*>-inc {r} {d} {pref} {c} d→r s-ev-d→r pdi pdi-≅-pres pdi->-inc u₁→u₂→u₁>u₂→dr-u₁>dr-u₂ ) ∷ go pdis all-≅-pres-pdis  all->-inc-pdis 
 
 
 concatmap-advance-pdi*-with-c-*>inc : ∀ { r : RE } { pref : List Char } { c : Char}
   → (pdis : List (PDInstance* r pref) )
-  → All *>-Inc pdis
+  → All *>-Inc-≅ pdis
   ----------------------------------------------------------
-  → All *>-Inc (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+  → All *>-Inc-≅ (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
 concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} [] [] = []
 concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} (pdi ∷ pdis) (pdi-*>-inc ∷ all-*>-inc-pdis) = all-concat all-*>-inc-advance-pdi*-with-c-pdi ind-hyp 
 
   where
-    all-*>-inc-advance-pdi*-with-c-pdi : All *>-Inc (advance-pdi*-with-c {r} {pref} {c} pdi)
+    all-*>-inc-advance-pdi*-with-c-pdi : All *>-Inc-≅ (advance-pdi*-with-c {r} {pref} {c} pdi)
     all-*>-inc-advance-pdi*-with-c-pdi = advance-pdi*-with-c-*>-inc pdi pdi-*>-inc
 
-    ind-hyp : All *>-Inc (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    ind-hyp : All *>-Inc-≅ (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
     ind-hyp = concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} pdis all-*>-inc-pdis
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 35.1 - 35.3 END
 ----------------------------------------------------------------------------
--}
+
 
 ```
 
@@ -2325,31 +2361,32 @@ concatmap-advance-pdi*-with-c-*>inc {r} {pref} {c} (pdi ∷ pdis) (pdi-*>-inc �
 #### Main proof for Lemma 35
 
 ```agda
-{-
+
 pdUMany-aux-*>-inc : ∀ { r : RE } { pref : List Char} 
   → (suff : List Char )
   → (pdis : List (PDInstance* r pref))
-  → All *>-Inc pdis
+  → All *>-Inc-≅ pdis
   ----------------------------------------------------
-  → All *>-Inc (pdUMany-aux suff pdis)
+  → All *>-Inc-≅ (pdUMany-aux suff pdis)
 pdUMany-aux-*>-inc {r} {pref} [] pdis all-*>-inc-pdis rewrite (++-identityʳ pref) = all-*>-inc-pdis
 pdUMany-aux-*>-inc {r} {pref} ( c ∷ cs) pdis all-*>-inc-pdis = pdUMany-aux-*>-inc {r} {pref ∷ʳ c} cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) concatmap-advance-pdi*-with-c-pdis-all-*>inc
 
   where
-    concatmap-advance-pdi*-with-c-pdis-all-*>inc : All *>-Inc (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    concatmap-advance-pdi*-with-c-pdis-all-*>inc : All *>-Inc-≅ (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
     concatmap-advance-pdi*-with-c-pdis-all-*>inc = concatmap-advance-pdi*-with-c-*>inc pdis all-*>-inc-pdis 
 
 
 
 pdUMany-*>-inc : ∀ { r : RE } { w : List Char }
-  → All (*>-Inc {r} {w}) pdUMany[ r  , w ]
+  → All (*>-Inc-≅ {r} {w}) pdUMany[ r  , w ]
 pdUMany-*>-inc {r} {w} = pdUMany-aux-*>-inc w  [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (*>-inc ev-*>-inc  ∷ [] )
   where
     ev-*>-inc : (u₁ : U r)
       → (u₂ : U r)
+      → r ⊢ u₁ ≅ u₂ 
       → r ⊢ u₁ > u₂
       --------------------------------
       → r ⊢ (λ u → u) u₁ > (λ u → u) u₂ 
-    ev-*>-inc u₁ u₂ u₁>u₂ = u₁>u₂ 
--}  
+    ev-*>-inc u₁ u₂ u₁≅u₂ u₁>u₂ = u₁>u₂ 
+
 ```

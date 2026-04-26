@@ -143,13 +143,30 @@ pd[ r * nε ` loc , c ]              = List.map (λ r' → r' ● ( r * nε ` lo
 ------------------------------------------------------------------------------------
 -- pdU[_,_] and pdUConcat
 
+-- these two should be move to PDInstance.lagda.md
+mkinjLetter : { c : Char } { loc : ℕ } →  U ε  → U ($ c ` loc)
+mkinjLetter {c} {loc} EmptyU = LetterU {loc} c
 
+mkinjLetterSound : { c : Char } { loc : ℕ } 
+  → ( u : U ε )
+  → proj₁ (flat (mkinjLetter {c} {loc} u)) ≡ c ∷ (proj₁ (flat u))
+mkinjLetterSound {c} {loc}  EmptyU = 
+  begin
+    [ c ]
+  ≡⟨⟩
+    c ∷ []
+  ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+    c ∷ (proj₁ (flat EmptyU))
+  ∎
+ 
 
 pdU[_,_] :  ( r : RE ) → ( c :  Char ) →  List (PDInstance r c)
 pdU[ ε , c ] = []
 pdU[ $ c ` loc  , c' ] with c Char.≟ c'
 ...                       | yes refl = [  pdinstance {ε} {$ c ` loc} {c}
-                                                 (λ u → LetterU {loc} c)
+                                                 mkinjLetter --  (λ u → LetterU {loc} c)
+                                                 mkinjLetterSound 
+                                                 {-
                                                  (λ EmptyU →                 -- ^ soundness ev
                                                    begin
                                                      [ c ]
@@ -157,7 +174,8 @@ pdU[ $ c ` loc  , c' ] with c Char.≟ c'
                                                      c ∷ []
                                                     ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
                                                      c ∷ (proj₁ (flat EmptyU))
-                                                    ∎)
+                                                    ∎) -}
+                                                  
                                                  ] 
 ...                       | no _     = []
            

@@ -36,10 +36,11 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   ) 
 
 
-import cgp.lne.PartialDerivative as PartialDerivative
-open PartialDerivative using ( pdU[_,_] ; pdUConcat ;
+import cgp.lnegen.PartialDerivative as PartialDerivative
+open PartialDerivative using ( pdU[_,_] ; 
   advance-pdi*-with-c ; 
-  pdUMany[_,_]; pdUMany-aux 
+  pdUMany[_,_]; pdUMany-aux ;
+  mkinjLetter ; mkinjLetterSound 
   ) 
 
 
@@ -65,7 +66,7 @@ open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++
 
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
+open Eq using (_≡_; _≢_; refl; trans; sym; cong; cong-app; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 
 
@@ -79,9 +80,11 @@ open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 import Data.List.Relation.Unary.All as All
 open All using (All ; _∷_ ; [] ; map)
 
-import Relation.Nullary as Nullary 
+import Relation.Nullary as Nullary
 import Relation.Nullary.Negation using (contradiction; contraposition)
 open Nullary using (¬_)
+
+import Data.Empty using (⊥-elim)
 
 import Relation.Nullary.Decidable as Decidable
 open Decidable using
@@ -1565,10 +1568,145 @@ Lemma: all the pdinstances from pdU is ≅-preserving
 
 ```agda
 
+≅-refl : ∀ { r : RE } { u : U r } → r ⊢ u ≅ u
+≅-refl {ε} {EmptyU} = ε⊢≅
+≅-refl {$ c ` loc} {LetterU c} = $⊢≅
+≅-refl {l ● r ` loc} {PairU u v} = ●⊢≅ (≅-refl {l} {u}) (≅-refl {r} {v})
+≅-refl {l + r ` loc} {u} = +⊢≅ refl
+≅-refl {r * ε∉r ` loc} {u} = *⊢≅ refl
+
+≅-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c )
+  → ≅-Preserve {l} {c} pdi
+  → ≅-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
+≅-pres-left {l} {r} {loc} {c} (pdinstance {p} inj s-ev) (≅-pres ev) = ≅-pres prf
+  where
+    prf : (u₁ u₂ : U p) → p ⊢ u₁ ≅ u₂ → (l + r ` loc) ⊢ LeftU (inj u₁) ≅ LeftU (inj u₂)
+    prf u₁ u₂ u₁≅u₂ = +⊢≅ (trans (s-ev u₁) (trans (cong (c ∷_) (≅→||≡|| u₁≅u₂)) (sym (s-ev u₂))))
+
+≅-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance r c )
+  → ≅-Preserve {r} {c} pdi
+  → ≅-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
+≅-pres-right {l} {r} {loc} {c} (pdinstance {p} inj s-ev) (≅-pres ev) = ≅-pres prf
+  where
+    prf : (u₁ u₂ : U p) → p ⊢ u₁ ≅ u₂ → (l + r ` loc) ⊢ RightU (inj u₁) ≅ RightU (inj u₂)
+    prf u₁ u₂ u₁≅u₂ = +⊢≅ (trans (s-ev u₁) (trans (cong (c ∷_) (≅→||≡|| u₁≅u₂)) (sym (s-ev u₂))))
+
+≅-pres-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List ( PDInstance l c ) )
+  → All (≅-Preserve {l} {c}) pdis
+  → All (≅-Preserve {l + r ` loc} {c}) (List.map pdinstance-left pdis)
+≅-pres-map-left {l} {r} {loc} {c} [] [] = []
+≅-pres-map-left {l} {r} {loc} {c} (pdi ∷ pdis) (≅-pres-pdi ∷ ≅-pres-pdis ) = ≅-pres-left pdi ≅-pres-pdi  ∷ ≅-pres-map-left pdis ≅-pres-pdis 
+
+
+≅-pres-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List ( PDInstance r c ) )
+  → All (≅-Preserve {r} {c}) pdis
+  → All (≅-Preserve {l + r ` loc} {c}) (List.map pdinstance-right pdis)
+≅-pres-map-right {l} {r} {loc} {c} [] [] = [] 
+≅-pres-map-right {l} {r} {loc} {c} (pdi ∷ pdis) (≅-pres-pdi ∷ ≅-pres-pdis ) = ≅-pres-right pdi ≅-pres-pdi  ∷ ≅-pres-map-right pdis ≅-pres-pdis 
+
+≅-pres-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c )
+  → ≅-Preserve {l} {c} pdi
+  → ≅-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
+≅-pres-fst {l} {r} {loc} {c} (pdinstance inj s-ev) (≅-pres ev) = ≅-pres (λ where
+  (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ v₁≅v₂) → ●⊢≅ (ev u₁ u₂ u₁≅u₂) v₁≅v₂)
+
+≅-pres-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance r c )
+  → ≅-Preserve {r} {c} pdi
+  → ≅-Preserve {r * ε∉r ` loc} {c} (pdinstance-star pdi)
+≅-pres-star {r} {ε∉r} {loc} {c} (pdinstance {p} inj s-ev) (≅-pres ev) = ≅-pres prf
+  where
+    prf : (u₁ u₂ : U (p ● (r * ε∉r ` loc) ` loc)) → _ ⊢ u₁ ≅ u₂ → _ ⊢ PDI.mkinjList inj u₁ ≅ PDI.mkinjList inj u₂
+    prf (PairU u₁ (ListU vs₁)) (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ (*⊢≅ flat-vs₁≡flat-vs₂)) = *⊢≅ (begin
+        proj₁ (flat (PDI.mkinjList inj (PairU u₁ (ListU vs₁))))
+      ≡⟨ PDI.mkinjListSoundEv inj s-ev (PairU u₁ (ListU vs₁)) ⟩
+        c ∷ (proj₁ (flat u₁) ++ proj₁ (flat (ListU vs₁)))
+      ≡⟨ cong (λ x → c ∷ x) (Eq.cong₂ _++_ (≅→||≡|| u₁≅u₂) flat-vs₁≡flat-vs₂) ⟩
+        c ∷ (proj₁ (flat u₂) ++ proj₁ (flat (ListU vs₂)))
+      ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₂ (ListU vs₂))) ⟩
+        proj₁ (flat (PDI.mkinjList inj (PairU u₂ (ListU vs₂))))
+      ∎)
+
+≅-pres-map-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  → ( pdis : List ( PDInstance r c ) )
+  → All (≅-Preserve {r} {c}) pdis
+  → All (≅-Preserve {r * ε∉r ` loc} {c}) (List.map pdinstance-star pdis)
+≅-pres-map-star {r} {ε∉r} {loc} {c} [] [] = []
+≅-pres-map-star {r} {ε∉r} {loc} {c} (pdi ∷ pdis) (≅-pres-pdi ∷ ≅-pres-pdis ) = ≅-pres-star pdi ≅-pres-pdi  ∷ ≅-pres-map-star pdis ≅-pres-pdis 
+
+
+≅-pres-snd : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → (e : U l) → (flat-[]-e : Flat-[] l e)
+  → ( pdi : PDInstance r c )
+  → ≅-Preserve {r} {c} pdi
+  → ≅-Preserve {l ● r ` loc} {c} (mk-snd-pdi (e , flat-[]-e) pdi)
+≅-pres-snd {l} {r} {loc} {c} e (flat-[] .(e) ev) (pdinstance {p} inj s-ev) (≅-pres prf) = ≅-pres (λ u₁ u₂ u₁≅u₂ → ●⊢≅ (≅-refl {l} {e}) (prf u₁ u₂ u₁≅u₂))
+
+
+all-concatMap : ∀ {A B : Set} {P : B → Set} (f : A → List B) (xs : List A)
+  → All (λ x → All P (f x)) xs
+  → All P (concatMap f xs)
+all-concatMap f [] [] = []
+all-concatMap f (x ∷ xs) (px ∷ pxs) = all-concat px (all-concatMap f xs pxs)
+
 pdU-≅-preserve : ∀ { r : RE } { c : Char }
   → All (≅-Preserve {r} {c}) pdU[ r , c ]
 pdU-≅-preserve {ε} {c} = []
+pdU-≅-preserve {$ c ` loc} {c'} with c Char.≟ c'
+... | yes refl =  ≅-pres {ε} {$ c ` loc} {c} {[]} {mkinjLetter} {mkinjLetterSound}  ev  ∷ []
+    where
+      ev :  (u₁ u₂ : U ε) →  ε ⊢ u₁ ≅ u₂ → ($ c ` loc) ⊢ mkinjLetter u₁ ≅ mkinjLetter u₂
+      ev EmptyU EmptyU ε⊢≅ = ≅-refl  
+... | no ¬c≡c = [] 
 
+pdU-≅-preserve {l + r ` loc} {c} = all-concat map-ind-hyp-l map-ind-hyp-r
+  where
+    ind-hyp-l : All (≅-Preserve {l} {c}) pdU[ l , c ]
+    ind-hyp-l = pdU-≅-preserve {l} {c}
+    
+    ind-hyp-r : All (≅-Preserve {r} {c}) pdU[ r , c ]
+    ind-hyp-r = pdU-≅-preserve {r} {c}
+
+    map-ind-hyp-l : All (≅-Preserve {l + r ` loc} {c}) (List.map pdinstance-left pdU[ l , c ])
+    map-ind-hyp-l = ≅-pres-map-left pdU[ l , c ]  ind-hyp-l
+
+    map-ind-hyp-r : All (≅-Preserve {l + r ` loc} {c}) (List.map pdinstance-right pdU[ r , c ])
+    map-ind-hyp-r = ≅-pres-map-right pdU[ r , c ]  ind-hyp-r
+
+pdU-≅-preserve {r * ε∉r ` loc} {c} = map-ind-hyp-r
+  where
+    ind-hyp-r : All (≅-Preserve {r} {c}) pdU[ r , c ]
+    ind-hyp-r = pdU-≅-preserve {r} {c}
+
+    map-ind-hyp-r : All ≅-Preserve pdU[ r * ε∉r ` loc , c ]
+    map-ind-hyp-r = ≅-pres-map-star pdU[ r , c ] ind-hyp-r 
+{-  
+pdU-≅-preserve {l ● r ` loc} {c} with ε∈? l
+... | no ¬ε∈l = All.map (≅-pres-fst) (pdU-≅-preserve {l} {c})
+... | yes ε∈l = all-concat (All.map (≅-pres-fst) (pdU-≅-preserve {l} {c}))
+                            (all-snd-pdis (pdU-≅-preserve {r} {c}))
+  where
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    e-flats = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+    all-snd-pdis : All (≅-Preserve {r} {c}) pdU[ r , c ]
+      → All (≅-Preserve {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])
+    all-snd-pdis all-preserve-r = all-concatMap (λ e-flat → List.map (mk-snd-pdi e-flat) pdU[ r , c ]) e-flats all-for-each-e
+      where
+        all-for-each-e : All (λ e-flat → All (≅-Preserve {l ● r ` loc} {c}) (List.map (mk-snd-pdi e-flat) pdU[ r , c ])) e-flats
+        all-for-each-e = aux es flat-[]-es
+          where
+            aux : (es' : List (U l)) → All (Flat-[] l) es'
+              → All (λ e-flat → All (≅-Preserve {l ● r ` loc} {c}) (List.map (mk-snd-pdi e-flat) pdU[ r , c ])) (zip-es-flat-[]-es {l} {ε∈l} es' _)
+            aux [] [] = []
+            aux (e ∷ es'') (flat-[] .(e) ev ∷ flat-[]-es'') =
+              All.map (≅-pres-snd e (flat-[] e ev)) all-preserve-r ∷ aux es'' flat-[]-es''
+-}
 
 ```
 

@@ -1556,7 +1556,7 @@ Prefix structural equivalence implies flatten word equivalence.
 
 -- ≅ relation is preserved 
 data ≅-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
-  ≅-pres : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p → U r }
+  ≅-pres : ∀ { p r : RE } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( ( u₁ u₂  : U p )
       → p ⊢ u₁ ≅ u₂
@@ -1647,6 +1647,20 @@ Lemma: all the pdinstances from pdU is ≅-preserving
   → ≅-Preserve {l ● r ` loc} {c} (mk-snd-pdi (e , flat-[]-e) pdi)
 ≅-pres-snd {l} {r} {loc} {c} e (flat-[] .(e) ev) (pdinstance {p} inj s-ev) (≅-pres prf) = ≅-pres (λ u₁ u₂ u₁≅u₂ → ●⊢≅ (≅-refl {l} {e}) (prf u₁ u₂ u₁≅u₂))
 
+≅-pres-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List ( PDInstance l c ) )
+  → All (≅-Preserve {l} {c}) pdis
+  → All (≅-Preserve {l ● r ` loc} {c}) (List.map pdinstance-fst pdis)
+≅-pres-map-fst [] [] = []
+≅-pres-map-fst (pdi ∷ pdis) (≅-pres-pdi ∷ ≅-pres-pdis) = ≅-pres-fst pdi ≅-pres-pdi ∷ ≅-pres-map-fst pdis ≅-pres-pdis
+
+≅-pres-map-snd : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → (e : U l) → (flat-[]-e : Flat-[] l e)
+  → ( pdis : List ( PDInstance r c ) )
+  → All (≅-Preserve {r} {c}) pdis
+  → All (≅-Preserve {l ● r ` loc} {c}) (List.map (mk-snd-pdi (e , flat-[]-e)) pdis)
+≅-pres-map-snd e flat-[]-e [] [] = []
+≅-pres-map-snd e flat-[]-e (pdi ∷ pdis) (≅-pres-pdi ∷ ≅-pres-pdis) = ≅-pres-snd e flat-[]-e pdi ≅-pres-pdi ∷ ≅-pres-map-snd e flat-[]-e pdis ≅-pres-pdis
 
 all-concatMap : ∀ {A B : Set} {P : B → Set} (f : A → List B) (xs : List A)
   → All (λ x → All P (f x)) xs
@@ -1658,7 +1672,7 @@ pdU-≅-preserve : ∀ { r : RE } { c : Char }
   → All (≅-Preserve {r} {c}) pdU[ r , c ]
 pdU-≅-preserve {ε} {c} = []
 pdU-≅-preserve {$ c ` loc} {c'} with c Char.≟ c'
-... | yes refl =  ≅-pres {ε} {$ c ` loc} {c} {[]} {mkinjLetter} {mkinjLetterSound}  ev  ∷ []
+... | yes refl =  ≅-pres {ε} {$ c ` loc} {c}  {mkinjLetter} {mkinjLetterSound}  ev  ∷ []
     where
       ev :  (u₁ u₂ : U ε) →  ε ⊢ u₁ ≅ u₂ → ($ c ` loc) ⊢ mkinjLetter u₁ ≅ mkinjLetter u₂
       ev EmptyU EmptyU ε⊢≅ = ≅-refl  
@@ -1685,10 +1699,9 @@ pdU-≅-preserve {r * ε∉r ` loc} {c} = map-ind-hyp-r
 
     map-ind-hyp-r : All ≅-Preserve pdU[ r * ε∉r ` loc , c ]
     map-ind-hyp-r = ≅-pres-map-star pdU[ r , c ] ind-hyp-r 
-{-  
 pdU-≅-preserve {l ● r ` loc} {c} with ε∈? l
-... | no ¬ε∈l = All.map (≅-pres-fst) (pdU-≅-preserve {l} {c})
-... | yes ε∈l = all-concat (All.map (≅-pres-fst) (pdU-≅-preserve {l} {c}))
+... | no ¬ε∈l = ≅-pres-map-fst pdU[ l , c ] (pdU-≅-preserve {l} {c})
+... | yes ε∈l = all-concat (≅-pres-map-fst pdU[ l , c ] (pdU-≅-preserve {l} {c}))
                             (all-snd-pdis (pdU-≅-preserve {r} {c}))
   where
     es = mkAllEmptyU {l} ε∈l
@@ -1701,12 +1714,11 @@ pdU-≅-preserve {l ● r ` loc} {c} with ε∈? l
         all-for-each-e : All (λ e-flat → All (≅-Preserve {l ● r ` loc} {c}) (List.map (mk-snd-pdi e-flat) pdU[ r , c ])) e-flats
         all-for-each-e = aux es flat-[]-es
           where
-            aux : (es' : List (U l)) → All (Flat-[] l) es'
-              → All (λ e-flat → All (≅-Preserve {l ● r ` loc} {c}) (List.map (mk-snd-pdi e-flat) pdU[ r , c ])) (zip-es-flat-[]-es {l} {ε∈l} es' _)
+            aux : (es' : List (U l)) → (flat-[]-es' : All (Flat-[] l) es')
+              → All (λ e-flat → All (≅-Preserve {l ● r ` loc} {c}) (List.map (mk-snd-pdi e-flat) pdU[ r , c ])) (zip-es-flat-[]-es {l} {ε∈l} es' flat-[]-es')
             aux [] [] = []
             aux (e ∷ es'') (flat-[] .(e) ev ∷ flat-[]-es'') =
-              All.map (≅-pres-snd e (flat-[] e ev)) all-preserve-r ∷ aux es'' flat-[]-es''
--}
+              ≅-pres-map-snd e (flat-[] e ev) pdU[ r , c ] all-preserve-r ∷ aux es'' flat-[]-es''
 
 ```
 
@@ -1846,23 +1858,22 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
         prf :  (l ● r ` loc) ⊢ injFst (PairU u₁ v₁) > injFst (PairU u₂ v₂)
         prf = Nullary.contradiction len|pair-u₂v₂|>0 (n≡0→¬n>0 len|pair-u₂v₂|≡0) 
-        
-    -- do we have a counter example here ? after the injection, len|injFst-pair-u₁v₁|>0 and len|pair-u₂v₂|>0, but how do we get injFst (PairU u₁ v₁) >ⁱ injFst (PairU u₂ v₂)
-    -- we definitely don't have inj u₁ ≡ inj u₂ since len|u₁|>0 len|u₂|≡0, why?
-    -- so must be seq₁ (in u₁ > in u₂) if it is valid,
-    -- how do we get in u₁ > in u₂ ?  3 cases u₁ > u₂
+        -- there was an issue here with the counter example t13 t14 above.
+        -- it is addres with the additional constraint (●⊢≅ u₁≅u₂ v₁≅v₂), hence maximality is not needed .
+        -- old issue
+        -- t13>t14
 
-    -- counter examples the t13 t14 above.
-    -- t13>t14
-    -- injFst t13 = PairU (PairU (RightU (ListU (LetterU 'a' ∷ []))         (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))
-    -- injFst t14 = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ []))          (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-    -- injFst t14 > injFst t13
+        -- counter examples the t13 t14 above.
+        -- t13>t14
+        -- injFst t13 = PairU (PairU (RightU (ListU (LetterU 'a' ∷ []))         (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))
+        -- injFst t14 = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ []))          (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
+        -- injFst t14 > injFst t13
 
 
-    -- the left most element should be the maximal element
-    -- t_top = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
-    -- injFst t_top =  PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷  LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
-    -- the inject preserve the maximaility, lattice
+        -- the left most element should be the maximal element
+        -- t_top = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
+        -- injFst t_top =  PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷  LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
+
     
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ v₁≅v₂)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁≅u₂  u₁>u₂
@@ -1901,29 +1912,53 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
  
 
-{-
+
 
 -----------------------------------------------------------------------------------------
 -- aux lemma to show that injSnd is >-strict increasing
->-inc-injSnd : ∀ {l r p : RE } { loc : ℕ }
+>-inc-injSnd : ∀ {l r p : RE } { loc : ℕ } { c : Char } 
          → ( v : U l )
-         → ( inj : U p → U r )         
+         → ( Flat-[] l v )         
+         → ( inj : U p → U r )
+         → ( s-ev : ( u :  U p )  → proj₁ (flat (inj u )) ≡ c ∷ proj₁ (flat u ))
          → ( u₁ : U p )
          → ( u₂ : U p )
          → r ⊢ inj u₁ > inj u₂
          --------------------------------------------------------------------------
          → ( l ● r ` loc ) ⊢  (mkinjSnd inj v u₁) > (mkinjSnd inj v u₂) 
->-inc-injSnd {l} {r} {p} {loc} v inj u₁ u₂ inj-u₁>inj-u₂ = seq₂ refl inj-u₁>inj-u₂
+>-inc-injSnd {l} {r} {p} {loc} {c} v (flat-[] .v |v|≡[]) inj s-ev u₁ u₂ (bne |inj-u₁|>0 |inj-u₂|>0 inj-u₁>ⁱinj-u₂) = (bne len|pair-v-inj-u₁|>0 len|pair-v-inj-u₂|>0 (seq₂ refl (bne |inj-u₁|>0 |inj-u₂|>0 inj-u₁>ⁱinj-u₂)))
+  where
+    ¬|pair-v-inj-u₁|≡[] : ¬ ((proj₁ (flat (PairU {l} {r} {loc} v (inj u₁)) )) ≡ [] )
+    ¬|pair-v-inj-u₁|≡[] rewrite PDI.mkinjSndSoundEv {p} {l} {r} {loc} {c}  inj s-ev v (flat-[] v |v|≡[]) u₁ = Utils.¬∷≡[]
+    ¬|pair-v-inj-u₂|≡[] : ¬ ((proj₁ (flat (PairU {l} {r} {loc} v (inj u₂)) )) ≡ [] )
+    ¬|pair-v-inj-u₂|≡[] rewrite PDI.mkinjSndSoundEv {p} {l} {r} {loc} {c}  inj s-ev v (flat-[] v |v|≡[]) u₂ = Utils.¬∷≡[]     
+    len|pair-v-inj-u₁|>0 :  length (proj₁ (flat (PairU {l} {r} {loc} v (inj u₁)) )) Nat.> 0
+    len|pair-v-inj-u₁|>0 = ¬≡[]→length>0 ¬|pair-v-inj-u₁|≡[]  
+    len|pair-v-inj-u₂|>0 :  length (proj₁ (flat (PairU {l} {r} {loc} v (inj u₂)) )) Nat.> 0
+    len|pair-v-inj-u₂|>0 = ¬≡[]→length>0 ¬|pair-v-inj-u₂|≡[]   
+>-inc-injSnd {l} {r} {p} {loc} {c} v (flat-[] .v |v|≡[]) inj s-ev u₁ u₂ (be len|inj-u₁|≡len|inj-u₂| len|inj-u₂|≡0 inj-u₁>ⁱinj-u₂) = Nullary.contradiction len|inj-u₂|>0 (n≡0→¬n>0 len|inj-u₂|≡0 ) 
+  where
+    ¬|inj-u₂|≡[] : ¬ ((proj₁ (flat (inj u₂)) )) ≡ []
+    ¬|inj-u₂|≡[] rewrite s-ev u₂ = Utils.¬∷≡[] 
+    len|inj-u₂|>0 :  length (proj₁ (flat (inj u₂)) ) Nat.> 0
+    len|inj-u₂|>0 =  ¬≡[]→length>0 ¬|inj-u₂|≡[]
+>-inc-injSnd {l} {r} {p} {loc} {c} v (flat-[] .v |v|≡[]) inj s-ev u₁ u₂ (lne len|inj-u₁|>0 len|inj-u₂|≡0) = Nullary.contradiction len|inj-u₂|>0 (n≡0→¬n>0 len|inj-u₂|≡0 ) 
+  where
+    ¬|inj-u₂|≡[] : ¬ ((proj₁ (flat (inj u₂)) )) ≡ []
+    ¬|inj-u₂|≡[] rewrite s-ev u₂ = Utils.¬∷≡[] 
+    len|inj-u₂|>0 :  length (proj₁ (flat (inj u₂)) ) Nat.> 0
+    len|inj-u₂|>0 =  ¬≡[]→length>0 ¬|inj-u₂|≡[] 
+    
 
 -- aux lemma to show that mk-snd-pdi is >-strict increasing
 >-inc-mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
    → ( e-flat-[]-e : (∃[ e ] Flat-[] l e)  )
    → ( pdi : PDInstance r c )
-   → >-Inc {r} {c} pdi 
+   → >-Inc-≅ {r} {c} pdi 
    -------------------------------------------------------------------
-   → >-Inc (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi) 
->-inc-mk-snd-pdi {l} {r} {loc} {c} (e , flat-[] e' proj₁∘flate≡[]) (pdinstance {p} {r} {c} inj s-ev) (>-inc >-inc-inj) =
-  >-inc (λ u₁ u₂ u₁>u₂ → ( >-inc-injSnd {l} {r} {p} {loc} e inj u₁ u₂  (>-inc-inj u₁ u₂ u₁>u₂))  )
+   → >-Inc-≅ (mk-snd-pdi {l} {r} {loc} {c} e-flat-[]-e pdi) 
+>-inc-mk-snd-pdi {l} {r} {loc} {c} (e , flat-[] .e proj₁∘flate≡[]) (pdinstance {p} {r} {c} inj s-ev) (>-inc >-inc-inj) =
+  >-inc (λ u₁ u₂ u₁≅u₂ u₁>u₂ → ( >-inc-injSnd {l} {r} {p} {loc} {c} e (flat-[] e proj₁∘flate≡[]) inj s-ev u₁ u₂  (>-inc-inj u₁ u₂ u₁≅u₂ u₁>u₂))  )
   where
     -- duplicated from mk-snd-pdi from PartialDerivativeParseTree so that the PDInstance can be inferred
     -- this is needed because p is an existential type `hidden` inside PDInstance r c 
@@ -1949,18 +1984,19 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 >-inc-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
   → ( pdis : List (PDInstance r c ) )
-  → All (>-Inc {r} {c}) pdis
+  → All (>-Inc-≅ {r} {c}) pdis
   ---------------------------------------------------------------------------
-  → All  (>-Inc {l ● r ` loc} {c}) (List.map  (mk-snd-pdi e-flat-[]-e ) pdis )
+  → All  (>-Inc-≅ {l ● r ` loc} {c}) (List.map  (mk-snd-pdi e-flat-[]-e ) pdis )
 >-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e []           [] = [] 
 >-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e (pdi ∷ pdis) (>-inc-pdi ∷ all>-inc-pdis) = (>-inc-mk-snd-pdi e-flat-[]-e pdi >-inc-pdi) ∷ >-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e pdis all>-inc-pdis
+
 
 >-inc-concatmap-pdinstance-snd-sub :  ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( e-flat-[]-es  : List ( ∃[ e ] Flat-[] l e ) )
   → ( pdis : List (PDInstance r c ) )
-  → All (>-Inc {r} {c}) pdis
+  → All (>-Inc-≅ {r} {c}) pdis
   -----------------------------------------------------------------------------------------------------
-  → All (>-Inc {l ● r ` loc} {c}) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) e-flat-[]-es)
+  → All (>-Inc-≅ {l ● r ` loc} {c}) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) e-flat-[]-es)
 >-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} [] _ _ = []
 >-inc-concatmap-pdinstance-snd-sub {l} {r} {ε∈l} {loc} {c} ( e-flat-[]-e ∷ e-flat-[]-es ) pdis all>-inc-pdis =
   all-concat  (>-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  e-flat-[]-e  pdis all>-inc-pdis)
@@ -1969,8 +2005,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
                → ( pdis : List (PDInstance r c ) )
-               → All (>-Inc {r} {c}) pdis
-               → All (>-Inc {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
+               → All (>-Inc-≅ {r} {c}) pdis
+               → All (>-Inc-≅ {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdis)
 >-inc-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis all>-inc-pdis = >-inc-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es) pdis all>-inc-pdis
   where
     es : List (U l)
@@ -1983,8 +2019,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-map-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
                → ( pdis : List (PDInstance r c)  )
-               → All (>-Inc {r} {c}) pdis
-               → All (>-Inc {r * ε∉r ` loc} {c}) (List.map (pdinstance-star {r} {ε∉r} {loc} {c}) pdis)
+               → All (>-Inc-≅ {r} {c}) pdis
+               → All (>-Inc-≅ {r * ε∉r ` loc} {c}) (List.map (pdinstance-star {r} {ε∉r} {loc} {c}) pdis)
 >-inc-map-star {r} {ε∉r} {loc} {c} [] [] = []
 >-inc-map-star {r} {ε∉r} {loc} {c} (pdinstance {p} {r} {c} inj s-ev ∷ pdis) (>-inc >-ev ∷ pxs)  =
   >-inc >-inc-ev ∷ >-inc-map-star pdis pxs
@@ -1994,16 +2030,22 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
     >-inc-ev : ∀ (uv₁ : U ( p ● (r * ε∉r ` loc ) ` loc ))
               → (uv₂ : U ( p ● (r * ε∉r ` loc ) ` loc ))
+              → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ ≅ uv₂              
               → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (r * ε∉r ` loc) ⊢ (injList uv₁) > (injList uv₂)
 
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁  u₁>u₂) = 
-      let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
-      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
-
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₂  u₁≡u₂ list-vs₁>list-vs₂ ) =
-      (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (bne len|u₁-vs₁|>0 len|u₂-vs₂|>0 (seq₁ u₁>u₂)) = 
+      let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁≅u₂ u₁>u₂
+      in bne {!!} {!!} (star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂)
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (lne len|u₁-vs₁|>0 len|u₂-vs₂|≡0) = Nullary.contradiction {!!} {!!} -- create a contradiction with u₁≅u₂
+      where
+        |u₂-vs₂|≡[] : proj₁ (flat (PairU {p} {r * ε∉r ` loc } {loc} u₂ (ListU vs₂))) ≡ []
+        |u₂-vs₂|≡[] = Utils.length≡0→[] len|u₂-vs₂|≡0 
+        |u₂|≡[] :  proj₁ (flat  u₂) ≡ []
+        |u₂|≡[] = ++-conicalˡ (proj₁ (flat u₂))  (proj₁ (flat (ListU vs₂))) |u₂-vs₂|≡[]
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (bne len|u₁-vs₁|>0 len|u₂-vs₂|>0 (seq₂  u₁≡u₂ list-vs₁>list-vs₂ )) =
+      bne {!!} {!!} (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
@@ -2011,7 +2053,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END
 ----------------------------------------------------------------------------
--}
+
 
 ```
 

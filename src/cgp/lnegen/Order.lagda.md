@@ -2169,115 +2169,64 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 #### Main proof for Lemma 33
 
 ```agda
-{-
+
 -- main lemma proof
 pdU->-inc : ∀ { r : RE } { c : Char }
-  → All (>-Inc {r} {c}) pdU[ r , c ]
-
-pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
-    → All (>-Inc {l ● r ` loc } {c}) (pdUConcat l r ε∈l loc c)
+  → All (>-Inc-≅ {r} {c}) pdU[ r , c ]
 
 
 pdU->-inc {ε} {c} = []
 pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
 ...  | no ¬c≡c' = []
-...  | yes refl =  ( >-inc (λ { EmptyU EmptyU  →  λ() } ) ) ∷ []
+...  | yes refl =  ( >-inc ev  ) ∷ []
+  where
+    ev :  (u₁ u₂ : U ε) →
+      ε ⊢ u₁ ≅ u₂ →
+      ε ⊢ u₁ > u₂ → ($ c ` loc) ⊢ mkinjLetter u₁ > mkinjLetter u₂
+    ev EmptyU EmptyU ε⊢≅ (be refl refl ())
 pdU->-inc {l + r ` loc} {c} = all-concat map-ind-hyp-l map-ind-hyp-r 
   where
-    ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
+    ind-hyp-l : All (>-Inc-≅ {l} {c}) pdU[ l , c ]
     ind-hyp-l = pdU->-inc {l} {c}
     
-    ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
+    ind-hyp-r : All (>-Inc-≅ {r} {c}) pdU[ r , c ]
     ind-hyp-r = pdU->-inc {r} {c}     
 
-    map-ind-hyp-l : All (>-Inc {l + r ` loc} {c}) (List.map pdinstance-left pdU[ l , c ])
+    map-ind-hyp-l : All (>-Inc-≅ {l + r ` loc} {c}) (List.map pdinstance-left pdU[ l , c ])
     map-ind-hyp-l = >-inc-map-left pdU[ l , c ]  ind-hyp-l
 
-    map-ind-hyp-r : All (>-Inc {l + r ` loc} {c}) (List.map pdinstance-right pdU[ r , c ])
+    map-ind-hyp-r : All (>-Inc-≅ {l + r ` loc} {c}) (List.map pdinstance-right pdU[ r , c ])
     map-ind-hyp-r = >-inc-map-right pdU[ r , c ]  ind-hyp-r
 pdU->-inc {r * ε∉r ` loc } {c} = all->-inc-map-star
   where
-    ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
+    ind-hyp-r : All (>-Inc-≅ {r} {c}) pdU[ r , c ]
     ind-hyp-r = pdU->-inc {r} {c}
 
-    all->-inc-map-star : All (>-Inc {r * ε∉r ` loc} {c}) (List.map (pdinstance-star {r} {ε∉r} {loc} {c})  pdU[ r , c ])
+    all->-inc-map-star : All (>-Inc-≅ {r * ε∉r ` loc} {c}) (List.map (pdinstance-star {r} {ε∉r} {loc} {c})  pdU[ r , c ])
     all->-inc-map-star  = >-inc-map-star pdU[ r , c ] ind-hyp-r
 
 pdU->-inc {l ● r ` loc} {c} with ε∈? l
 ...                           | no ¬ε∈l = >-inc-map-fst pdU[ l , c ] ind-hyp-l
   where 
-    ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
+    ind-hyp-l : All (>-Inc-≅ {l} {c}) pdU[ l , c ]
     ind-hyp-l = pdU->-inc {l} {c}
     
-pdU->-inc {l ● r ` loc} {c}  | yes ε∈l = pdUConcat->-inc   
-
-
-
-{-# TERMINATING #-}
-pdUConcat->-inc {ε} {r} {ε∈ε} {loc} {c} = all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd 
+pdU->-inc {l ● r ` loc} {c}  | yes ε∈l = all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd 
   where
-    ind-hyp-l : All (>-Inc {ε} {c}) pdU[ ε , c ]
-    ind-hyp-l = pdU->-inc {ε} {c}
+    ind-hyp-l : All (>-Inc-≅ {l} {c}) pdU[ l , c ]
+    ind-hyp-l = pdU->-inc {l} {c}
 
-    all->-inc-pdis-inj-from-l-c : All (>-Inc {ε ● r ` loc} {c}) (List.map (pdinstance-fst {ε} {r} {loc} {c}) pdU[ ε , c ])
-    all->-inc-pdis-inj-from-l-c =  >-inc-map-fst pdU[ ε , c ] ind-hyp-l
+    all->-inc-pdis-inj-from-l-c : All (>-Inc-≅ {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ])
+    all->-inc-pdis-inj-from-l-c =  >-inc-map-fst pdU[ l , c ] ind-hyp-l
     
-    ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
+    ind-hyp-r : All (>-Inc-≅ {r} {c}) pdU[ r , c ]
     ind-hyp-r = pdU->-inc {r} {c}
 
-    all->-inc-concatmap-pdinstance-snd : All (>-Inc {ε ● r ` loc} {c}) (concatmap-pdinstance-snd {ε} {r} {ε∈ε} {loc} {c} pdU[ r , c ])
-    all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd {ε} {r} {ε∈ε} {loc} {c} pdU[ r , c ] ind-hyp-r
-pdUConcat->-inc { l * ε∉l ` loc₂ } {r} {ε∈*} {loc} {c} = all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd 
-  where
-    ind-hyp-l : All (>-Inc {l * ε∉l ` loc₂} {c}) pdU[ l * ε∉l ` loc₂ , c ]
-    ind-hyp-l = pdU->-inc {l * ε∉l ` loc₂} {c}
-
-    all->-inc-pdis-inj-from-l-c : All (>-Inc {(l * ε∉l ` loc₂) ● r ` loc} {c}) (List.map (pdinstance-fst {l * ε∉l ` loc₂} {r} {loc} {c}) pdU[ l * ε∉l ` loc₂ , c ])
-    all->-inc-pdis-inj-from-l-c =  >-inc-map-fst pdU[ l * ε∉l ` loc₂ , c ] ind-hyp-l
-    
-    ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
-    ind-hyp-r = pdU->-inc {r} {c}
-
-    all->-inc-concatmap-pdinstance-snd : All (>-Inc {(l * ε∉l ` loc₂) ● r ` loc} {c}) (concatmap-pdinstance-snd {l * ε∉l ` loc₂} {r} {ε∈*} {loc} {c}  pdU[ r , c ])
-    all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd {l * ε∉l ` loc₂} {r} {ε∈*} {loc} {c}  pdU[ r , c ] ind-hyp-r
-pdUConcat->-inc { l ● s ` loc₂ } {r} {ε∈l●s} {loc} {c} = assoc->-inc pdU[ l ● ( s ● r ` loc ) ` loc₂ , c ] ind-hyp
-  where
-    ind-hyp : All (>-Inc {l ● ( s ● r ` loc)  ` loc₂} {c}) pdU[ l ● ( s ● r ` loc ) ` loc₂ , c ]
-    ind-hyp  = pdU->-inc {l ● ( s ● r ` loc)  ` loc₂} {c} 
-
-    assoc->-inc : (pdis : List (PDInstance (l ● ( s ● r ` loc) ` loc₂)  c) )
-       → All (>-Inc { l ● ( s ● r ` loc) ` loc₂} {c})  pdis
-       → All (>-Inc {( l ●  s ` loc₂) ● r ` loc} {c}) (List.map pdinstance-assoc pdis)
-    assoc->-inc [] [] = []
-    assoc->-inc (pdi ∷ pdis) ((>-inc {p} { l ● ( s ● r ` loc) ` loc₂} {c} {inj} {s-ev}  u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) ∷ all>-inc-pdis) =
-      (>-inc ev->) ∷ (assoc->-inc pdis all>-inc-pdis)
-      where
-        ev-> : (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂
-             → ((l ● s ` loc₂) ● r ` loc) ⊢ (mkinjAssoc inj) u₁ > (mkinjAssoc inj) u₂
-        ev-> u₁ u₂ u₁>u₂ with inj u₁                  | inj u₂                   | u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂ 
-        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₁ v₁>v₄                  = seq₁ (seq₁ v₁>v₄)
-        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₂ refl (seq₁ v₂>v₅)      = seq₁ (seq₂ refl v₂>v₅)
-        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₂ refl (seq₂ refl v₃>v₆) = seq₂ refl v₃>v₆
-
-pdUConcat->-inc { l + s ` loc₂ } {r} {ε∈l+s} {loc} {c} =  all-concat all->-inc-pdis-inj-from-l-c all->-inc-concatmap-pdinstance-snd  
-
-  where
-    ind-hyp-l+s : All (>-Inc {l + s ` loc₂ } {c}) pdU[ l + s ` loc₂ , c ]
-    ind-hyp-l+s = pdU->-inc {l + s ` loc₂ } {c}
+    all->-inc-concatmap-pdinstance-snd : All (>-Inc-≅ {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdU[ r , c ])
+    all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  pdU[ r , c ] ind-hyp-r
 
 
-    all->-inc-pdis-inj-from-l-c : All (>-Inc {(l + s ` loc₂) ● r ` loc} {c}) (List.map (pdinstance-fst {l + s ` loc₂} {r} {loc} {c}) pdU[ l + s ` loc₂ , c ])
-    all->-inc-pdis-inj-from-l-c =  >-inc-map-fst pdU[ l + s ` loc₂ , c ] ind-hyp-l+s
 
-
-    ind-hyp-r : All (>-Inc {r} {c}) pdU[ r , c ]
-    ind-hyp-r = pdU->-inc {r} {c}     
-
-    all->-inc-concatmap-pdinstance-snd : All (>-Inc {(l + s  ` loc₂) ● r ` loc} {c}) (concatmap-pdinstance-snd {l + s ` loc₂} {r} {ε∈l+s} {loc} {c}  pdU[ r , c ])
-    all->-inc-concatmap-pdinstance-snd  = >-inc-concatmap-pdinstance-snd {l + s ` loc₂} {r} {ε∈l+s} {loc} {c}  pdU[ r , c ] ind-hyp-r
-
-
--}
 ```
 
 

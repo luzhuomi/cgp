@@ -2037,18 +2037,126 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
     >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (bne len|u₁-vs₁|>0 len|u₂-vs₂|>0 (seq₁ u₁>u₂)) = 
       let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁≅u₂ u₁>u₂
-      in bne {!!} {!!} (star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂)
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (lne len|u₁-vs₁|>0 len|u₂-vs₂|≡0) = Nullary.contradiction {!!} {!!} -- create a contradiction with u₁≅u₂
+      in bne len|injList-u₁-vs₁|>0 len|injList-u₂-vs₂|>0 (star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂)
+      where
+        len|injList-u₁-vs₁|>0 : length (proj₁ (flat (injList (PairU u₁ (ListU vs₁))))) Nat.> 0
+        len|injList-u₁-vs₁|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+          (c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁))
+          ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₁ (ListU vs₁))) ⟩
+            proj₁ (flat (injList (PairU u₁ (ListU vs₁))))
+          ≡⟨ eq ⟩
+            []
+          ∎)
+          where
+            ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁)) ≡ [])
+            ¬c∷[]≡[] ()
+
+        len|injList-u₂-vs₂|>0 : length (proj₁ (flat (injList (PairU u₂ (ListU vs₂))))) Nat.> 0
+        len|injList-u₂-vs₂|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+          (c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂))
+          ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₂ (ListU vs₂))) ⟩
+            proj₁ (flat (injList (PairU u₂ (ListU vs₂))))
+          ≡⟨ eq ⟩
+            []
+          ∎)
+          where
+            ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂)) ≡ [])
+            ¬c∷[]≡[] ()
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (be len|u₁-vs₁|≡len|u₂-vs₂| len|u₂-vs₂|≡0 (seq₁ u₁>u₂)) =
+      let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁≅u₂ u₁>u₂
+      in bne len|injList-u₁-vs₁|>0 len|injList-u₂-vs₂|>0 (star-head inj-u₁>inj-u₂)
+      where
+        len|injList-u₁-vs₁|>0 : length (proj₁ (flat (injList (PairU u₁ (ListU vs₁))))) Nat.> 0
+        len|injList-u₁-vs₁|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+          (c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁))
+          ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₁ (ListU vs₁))) ⟩
+            proj₁ (flat (injList (PairU u₁ (ListU vs₁))))
+          ≡⟨ eq ⟩
+            []
+          ∎)
+          where
+            ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁)) ≡ [])
+            ¬c∷[]≡[] ()
+
+        len|injList-u₂-vs₂|>0 : length (proj₁ (flat (injList (PairU u₂ (ListU vs₂))))) Nat.> 0
+        len|injList-u₂-vs₂|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+          (c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂))
+          ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₂ (ListU vs₂))) ⟩
+            proj₁ (flat (injList (PairU u₂ (ListU vs₂))))
+          ≡⟨ eq ⟩
+            []
+          ∎)
+          where
+            ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂)) ≡ [])
+            ¬c∷[]≡[] ()
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (be len|u₁-vs₁|≡len|u₂-vs₂| len|u₂-vs₂|≡0 (seq₂ u₁≡u₂ list-vs₁>list-vs₂)) =
+      bne len|injList-u₁-vs₁|>0 len|injList-u₂-vs₂|>0 (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)
+        where
+          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂
+          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+
+          len|injList-u₁-vs₁|>0 : length (proj₁ (flat (injList (PairU u₁ (ListU vs₁))))) Nat.> 0
+          len|injList-u₁-vs₁|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+            (c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁))
+            ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₁ (ListU vs₁))) ⟩
+              proj₁ (flat (injList (PairU u₁ (ListU vs₁))))
+            ≡⟨ eq ⟩
+              []
+            ∎)
+            where
+              ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁)) ≡ [])
+              ¬c∷[]≡[] ()
+
+          len|injList-u₂-vs₂|>0 : length (proj₁ (flat (injList (PairU u₂ (ListU vs₂))))) Nat.> 0
+          len|injList-u₂-vs₂|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+            (c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂))
+            ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₂ (ListU vs₂))) ⟩
+              proj₁ (flat (injList (PairU u₂ (ListU vs₂))))
+            ≡⟨ eq ⟩
+              []
+            ∎)
+            where
+              ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂)) ≡ [])
+              ¬c∷[]≡[] ()
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (lne len|u₁-vs₁|>0 len|u₂-vs₂|≡0) = Nullary.contradiction len|u₁-vs₁|>0 (n≡0→¬n>0 len|u₁-vs₁|≡0)
       where
         |u₂-vs₂|≡[] : proj₁ (flat (PairU {p} {r * ε∉r ` loc } {loc} u₂ (ListU vs₂))) ≡ []
         |u₂-vs₂|≡[] = Utils.length≡0→[] len|u₂-vs₂|≡0 
+        |u₁-vs₁|≡|u₂-vs₂| : proj₁ (flat (PairU {p} {r * ε∉r ` loc} {loc} u₁ (ListU vs₁))) ≡ proj₁ (flat (PairU {p} {r * ε∉r ` loc} {loc} u₂ (ListU vs₂)))
+        |u₁-vs₁|≡|u₂-vs₂| = Eq.cong₂ _++_ (≅→||≡|| {p} {u₁} {u₂} u₁≅u₂) (≅→||≡|| {r * ε∉r ` loc} {ListU vs₁} {ListU vs₂} list-vs₁≅list-vs₂)
+        len|u₁-vs₁|≡0 : length (proj₁ (flat (PairU {p} {r * ε∉r ` loc} {loc} u₁ (ListU vs₁)))) ≡ 0
+        len|u₁-vs₁|≡0 = cong length (trans |u₁-vs₁|≡|u₂-vs₂| |u₂-vs₂|≡[])
         |u₂|≡[] :  proj₁ (flat  u₂) ≡ []
         |u₂|≡[] = ++-conicalˡ (proj₁ (flat u₂))  (proj₁ (flat (ListU vs₂))) |u₂-vs₂|≡[]
     >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (bne len|u₁-vs₁|>0 len|u₂-vs₂|>0 (seq₂  u₁≡u₂ list-vs₁>list-vs₂ )) =
-      bne {!!} {!!} (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
+      bne len|injList-u₁-vs₁|>0 len|injList-u₂-vs₂|>0 (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
+
+          len|injList-u₁-vs₁|>0 : length (proj₁ (flat (injList (PairU u₁ (ListU vs₁))))) Nat.> 0
+          len|injList-u₁-vs₁|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+            (c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁))
+            ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₁ (ListU vs₁))) ⟩
+              proj₁ (flat (injList (PairU u₁ (ListU vs₁))))
+            ≡⟨ eq ⟩
+              []
+            ∎)
+            where
+              ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₁)) ++ proj₁ (flat (ListU vs₁)) ≡ [])
+              ¬c∷[]≡[] ()
+
+          len|injList-u₂-vs₂|>0 : length (proj₁ (flat (injList (PairU u₂ (ListU vs₂))))) Nat.> 0
+          len|injList-u₂-vs₂|>0 = ¬≡[]→length>0 λ eq → ¬c∷[]≡[] (begin
+            (c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂))
+            ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₂ (ListU vs₂))) ⟩
+              proj₁ (flat (injList (PairU u₂ (ListU vs₂))))
+            ≡⟨ eq ⟩
+              []
+            ∎)
+            where
+              ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂)) ≡ [])
+              ¬c∷[]≡[] ()
 
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9 END

@@ -542,26 +542,30 @@ pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e) (pdi₁ ∷ pdi₂ 
           --------------------------------------------------
           → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂' 
      ev-> v₁ v₁' v₂ v₂' recons1 recons2
-          = bne ? ? ( seq₂ v₁≡v₂ v₁'>v₂' ) 
+          = bne (¬≡[]→length>0 ¬|pair-v₁-v₁'|≡[]) (¬≡[]→length>0 ¬|pair-v₂-v₂'|≡[]) (seq₂ v₁≡v₂ v₁'>v₂')
           where
+            ¬|pair-v₁-v₁'|≡[] : ¬ (proj₁ (flat (PairU {l} {r} {loc} v₁ v₁')) ≡ [])
+            ¬|pair-v₁-v₁'|≡[] = recons-u-pdi→¬|u|≡[] (PairU v₁ v₁') (mk-snd-pdi (e , flat-[]-e) pdi₁) recons1
+            ¬|pair-v₂-v₂'|≡[] : ¬ (proj₁ (flat (PairU {l} {r} {loc} v₂ v₂')) ≡ [])
+            ¬|pair-v₂-v₂'|≡[] = recons-u-pdi→¬|u|≡[] (PairU v₂ v₂') (mk-snd-pdi (e , flat-[]-e) pdi₂) recons2
             v₁≡e : v₁ ≡ e
             v₁≡e = mk-snd-pdi-fst-pair-≡ pdi₁ e flat-[]-e v₁ v₁' recons1
             v₂≡e : v₂ ≡ e
             v₂≡e = mk-snd-pdi-fst-pair-≡ pdi₂ e flat-[]-e v₂ v₂' recons2
-            v₁≡v₂ : v₁ ≡ v₂ 
+            v₁≡v₂ : v₁ ≡ v₂
             v₁≡v₂ rewrite v₁≡e | v₂≡e = refl
             recons1' :  Recons {l ● r ` loc} {c} (PairU e v₁')  ( mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e) pdi₁)
             recons1' rewrite cong (λ x → Recons {l ● r ` loc} {c} (PairU x v₁')  ( mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e ) pdi₁) ) (sym v₁≡e) = recons1
             recons2' :  Recons {l ● r ` loc} {c} (PairU e v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e) pdi₂)
             recons2' rewrite cong (λ x → Recons {l ● r ` loc} {c} (PairU x v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e ) pdi₂) ) (sym v₂≡e) = recons2
             recons-v₁' : Recons v₁' pdi₁
-            recons-v₁' = inv-recons-snd {l} {r} {loc} {c}  e v₁' flat-[]-e pdi₁ recons1' 
+            recons-v₁' = inv-recons-snd {l} {r} {loc} {c}  e v₁' flat-[]-e pdi₁ recons1'
             recons-v₂' : Recons v₂' pdi₂
             recons-v₂' = inv-recons-snd {l} {r} {loc} {c}  e v₂' flat-[]-e pdi₂ recons2'
             v₁'>v₂' = u₁→u₂→recons-u₁→recons-u₂→u₁>u₂ v₁' v₂'  recons-v₁'  recons-v₂'
 
 
-{- 
+
 --------------------------------------------------------------------------------------------
 -- sub lemma: pdinstance-snd-ex>-sorted END
 --------------------------------------------------------------------------------------------
@@ -632,7 +636,7 @@ pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁
                → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (e₂ , flat-[]-e₂ ) pdi )
                --------------------------------------------------
                → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂' 
-          ev-> v₁ v₁' v₂ v₂' recons1 recons2 = seq₁ v₁>v₂
+          ev-> v₁ v₁' v₂ v₂' recons1 recons2 = bne {!!} {!!} (seq₁ v₁>v₂)
             where
               v₁≡e₁ : v₁ ≡ e₁
               v₁≡e₁ = mk-snd-pdi-fst-pair-≡ pdi' e₁ flat-[]-e₁ v₁ v₁' recons1
@@ -642,6 +646,7 @@ pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁
               v₁>v₂ rewrite v₁≡e₁ | v₂≡e₂ = e₁>e₂ 
             
 
+{- 
 concatmap-pdinstance-snd-ex>-sorted-sub : ∀ { l r : RE } {ε∈l : ε∈ l } {loc : ℕ } { c : Char }
                                      → ( es : List (U l) )
                                      → ( flat-[]-es : All ( Flat-[] l ) es ) 

@@ -636,8 +636,12 @@ pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁
                → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (e₂ , flat-[]-e₂ ) pdi )
                --------------------------------------------------
                → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂' 
-          ev-> v₁ v₁' v₂ v₂' recons1 recons2 = bne {!!} {!!} (seq₁ v₁>v₂)
+          ev-> v₁ v₁' v₂ v₂' recons1 recons2 = bne (¬≡[]→length>0 ¬|pair-v₁-v₁'|≡[]) (¬≡[]→length>0 ¬|pair-v₂-v₂'|≡[]) (seq₁ v₁>v₂)
             where
+              ¬|pair-v₁-v₁'|≡[] : ¬ (proj₁ (flat (PairU {l} {r} {loc} v₁ v₁')) ≡ [])
+              ¬|pair-v₁-v₁'|≡[] = recons-u-pdi→¬|u|≡[] (PairU v₁ v₁') (mk-snd-pdi (e₁ , flat-[]-e₁) pdi') recons1
+              ¬|pair-v₂-v₂'|≡[] : ¬ (proj₁ (flat (PairU {l} {r} {loc} v₂ v₂')) ≡ [])
+              ¬|pair-v₂-v₂'|≡[] = recons-u-pdi→¬|u|≡[] (PairU v₂ v₂') (mk-snd-pdi (e₂ , flat-[]-e₂) pdi) recons2
               v₁≡e₁ : v₁ ≡ e₁
               v₁≡e₁ = mk-snd-pdi-fst-pair-≡ pdi' e₁ flat-[]-e₁ v₁ v₁' recons1
               v₂≡e₂ : v₂ ≡ e₂
@@ -646,7 +650,7 @@ pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁
               v₁>v₂ rewrite v₁≡e₁ | v₂≡e₂ = e₁>e₂ 
             
 
-{- 
+
 concatmap-pdinstance-snd-ex>-sorted-sub : ∀ { l r : RE } {ε∈l : ε∈ l } {loc : ℕ } { c : Char }
                                      → ( es : List (U l) )
                                      → ( flat-[]-es : All ( Flat-[] l ) es ) 
@@ -687,7 +691,7 @@ concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c} pdis ex>-sorted-p
 ---------------------------------------------------------------------------------------------------
 -- concatmap-pdinstance-snd-ex>-sorted and its sub lemma END 
 --------------------------------------------------------------------------------------------------
-
+{- 
 ---------------------------------------------------------------------------------------------------
 -- map-pdinstance-assoc-ex>-sorted and its sub lemma 
 ---------------------------------------------------------------------------------------------------

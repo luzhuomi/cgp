@@ -904,6 +904,58 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
 ...  | yes ε∈l = {!!} -- pdUConcat-sorted {l} {r} {ε∈l} {loc} {c} 
+  where
+    ind-hyp-l : Ex>-sorted pdU[ l , c ]
+    ind-hyp-l = pdU-sorted {l} {c}
+    
+    ind-hyp-r : Ex>-sorted pdU[ r , c ]
+    ind-hyp-r = pdU-sorted {r} {c}
+
+    -- we need to concat the following two, but we need to know all fst in map-pdinstance-fst-ex>sorted  >  concatmap-pdinstance-snd-ex>-sorted
+    map-pdinstance-fst-ex>sorted : Ex>-sorted { l ● r ` loc } (List.map pdinstance-fst  pdU[ l , c ] )
+    map-pdinstance-fst-ex>sorted = map-fst-ex-sorted pdU[ l , c ] ind-hyp-l 
+
+    concatmap-pdinstance-snd-is-ex>-sorted : Ex>-sorted { l ● r ` loc } (concatmap-pdinstance-snd { l } {r} {ε∈l} {loc} {c} pdU[ r , c ])
+    concatmap-pdinstance-snd-is-ex>-sorted = concatmap-pdinstance-snd-ex>-sorted {l} {r} {ε∈l} {loc} {c}  pdU[ r , c ] ind-hyp-r 
+
+
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd :
+         (pdis : List (PDInstance l c ))
+      →  (pdis' : List (PDInstance r c))
+      →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd { l } {r} {ε∈l} {loc} {c} pdis'))) (List.map
+      (pdinstance-fst {l} {r} {loc} {c}) pdis )
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd [] _ = []
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) []
+      rewrite ( concatmap-pdinstance-snd-[]≡[] {l } {r} {ε∈l} {loc} {c} )  = ? -- ( ex>-nothing ∷ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] )
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
+       =
+      ex>-just (>-pdi (pdinstance-fst pdi)  (mk-snd-pdi (ListU [] , flat-[] (ListU []) refl) pdi') λ { (PairU v₁ v₁') (PairU v₂ v₂') recons₁ recons₂ → ev-> v₁ v₁' v₂ v₂' recons₁ recons₂ } )  ∷
+        (all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis (pdi' ∷ pdis'))
+
+      where
+        ev-> : (v₁ : U l )
+             → (v₁' : U r )
+             → (v₂ : U l )
+             → (v₂' : U r )
+             → Recons {l ● r ` loc} {c} (PairU v₁ v₁')  ( pdinstance-fst {l} {r} {loc} {c}  pdi )
+             → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (ListU [] ,  flat-[] (ListU []) refl) pdi' )
+             --------------------------------------------------
+             → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
+        ev-> v₁ v₁' v₂ v₂' recons1 recons2  = bne ? ? (seq₁ (lne ? ? ))
+        {-
+          where 
+            v₂≡list-[] : v₂ ≡ (ListU [])
+            v₂≡list-[] = mk-snd-pdi-fst-pair-≡ pdi' (ListU []) (flat-[] (ListU []) refl)  v₂ v₂' recons2
+            v₁-is-cons : ∃[ x ] ∃[ xs ] (v₁ ≡ ListU (x ∷ xs))
+            v₁-is-cons = pdinstance-fst-pair-l*-is-cons pdi v₁ v₁' recons1
+            x  = proj₁ v₁-is-cons
+            xs = proj₁ (proj₂ v₁-is-cons)
+            v₁≡list-x-xs = proj₂ (proj₂ v₁-is-cons)
+            list-x-xs>e : (l * ε∉l ` loc₂) ⊢ ListU (x ∷ xs) > (ListU []) 
+            list-x-xs>e = star-cons-nil
+            v₁>v₂ : (l * ε∉l ` loc₂) ⊢ v₁ > v₂
+            v₁>v₂ rewrite  v₁≡list-x-xs | v₂≡list-[] = list-x-xs>e
+        -} 
 
 {- 
 {-# TERMINATING #-}

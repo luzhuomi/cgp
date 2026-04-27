@@ -993,11 +993,11 @@ We say pdi₁ is LNE greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
 
 ```agda
 
-data _,_⊢*_>_ : ∀ ( r : RE ) → (w : List Char ) → PDInstance* r w → PDInstance* r w → Set where
+data _,_⊢*_>_ : ∀ ( r : RE ) → (w : List Char ) → PDInstance* r w → PDInstance* r w → Set where -- w is prefix
   *>-pdi : ∀ { r : RE } { w : List Char }
     → ( pdi₁ : PDInstance* r w )
     → ( pdi₂ : PDInstance* r w )
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → ( r ⊢ u₁ > u₂) ) -- we need |u₁| ≡ |u₂| ≡ w ++ s ?
     → r , w ⊢* pdi₁ > pdi₂ 
 
 -- transitivity of *>-pdi 

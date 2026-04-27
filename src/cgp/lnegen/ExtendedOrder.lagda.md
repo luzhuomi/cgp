@@ -925,37 +925,34 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
       →  All (λ pdi → Ex>-maybe { l ● r ` loc } pdi (head (concatmap-pdinstance-snd { l } {r} {ε∈l} {loc} {c} pdis'))) (List.map
       (pdinstance-fst {l} {r} {loc} {c}) pdis )
     all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd [] _ = []
-    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) []
-      rewrite ( concatmap-pdinstance-snd-[]≡[] {l } {r} {ε∈l} {loc} {c} )  = ? -- ( ex>-nothing ∷ all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis [] )
-    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi' ∷ pdis')
-       =
-      ex>-just (>-pdi (pdinstance-fst pdi)  (mk-snd-pdi (ListU [] , flat-[] (ListU []) refl) pdi') λ { (PairU v₁ v₁') (PairU v₂ v₂') recons₁ recons₂ → ev-> v₁ v₁' v₂ v₂' recons₁ recons₂ } )  ∷
-        (all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdis (pdi' ∷ pdis'))
-
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) [] rewrite ( concatmap-pdinstance-snd-[]≡[] {l } {r} {ε∈l} {loc} {c} )  = prf (pdi ∷ pdis) 
       where
-        ev-> : (v₁ : U l )
-             → (v₁' : U r )
-             → (v₂ : U l )
-             → (v₂' : U r )
-             → Recons {l ● r ` loc} {c} (PairU v₁ v₁')  ( pdinstance-fst {l} {r} {loc} {c}  pdi )
-             → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (ListU [] ,  flat-[] (ListU []) refl) pdi' )
-             --------------------------------------------------
-             → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
-        ev-> v₁ v₁' v₂ v₂' recons1 recons2  = bne ? ? (seq₁ (lne ? ? ))
-        {-
+        prf : (pdis' : List (PDInstance l c))
+          → All (λ pdi₁ → Ex>-maybe pdi₁ nothing)  (List.map ( pdinstance-fst  {l} {r} {loc} {c} ) pdis' )
+        prf [] = []
+        prf (pdi' ∷ pdis') = ex>-nothing ∷ prf pdis'       
+    all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd (pdi ∷ pdis) (pdi'@(pdinstance inj' s-ev') ∷ pdis')
+       with zip-es-flat-[]-es {l} {ε∈l}  (mkAllEmptyU ε∈l) (mkAllEmptyU-sound {l} (ε∈l)) in eq 
+    ... | []                                  =  Nullary.contradiction (PartialDerivative.zip-es-flat-[]-es≡[]→es≡[] {l} {ε∈l}  (mkAllEmptyU ε∈l) (mkAllEmptyU-sound {l} ε∈l) eq) (mkAllEmptyU≢[] ε∈l) 
+    ... | ( e , flat-[] _ proj₁flat-e≡[] )  ∷ es-flat-[]-es =  ind (pdi ∷ pdis) 
+      where 
+        ind : ( pdis : List (PDInstance l c ) )
+          → All (λ pdi → Ex>-maybe pdi
+                (just (mk-snd-pdi {l} {r} {loc} {c} (e , flat-[] e proj₁flat-e≡[]) pdi')))
+                      (List.map pdinstance-fst pdis)
+        ind [] = []
+        ind ( pdi@(pdinstance inj s-ev) ∷ pdis ) =  ex>-just (>-pdi (pdinstance-fst {l} {r} {loc} {c} (pdinstance inj s-ev)) (mk-snd-pdi (e , flat-[] e proj₁flat-e≡[]) pdi') λ { ( PairU v₁ v₁') (PairU v₂ v₂') r₁ r₂  → ev->  v₁ v₁' v₂ v₂' r₁ r₂  } ) ∷ ind pdis
           where 
-            v₂≡list-[] : v₂ ≡ (ListU [])
-            v₂≡list-[] = mk-snd-pdi-fst-pair-≡ pdi' (ListU []) (flat-[] (ListU []) refl)  v₂ v₂' recons2
-            v₁-is-cons : ∃[ x ] ∃[ xs ] (v₁ ≡ ListU (x ∷ xs))
-            v₁-is-cons = pdinstance-fst-pair-l*-is-cons pdi v₁ v₁' recons1
-            x  = proj₁ v₁-is-cons
-            xs = proj₁ (proj₂ v₁-is-cons)
-            v₁≡list-x-xs = proj₂ (proj₂ v₁-is-cons)
-            list-x-xs>e : (l * ε∉l ` loc₂) ⊢ ListU (x ∷ xs) > (ListU []) 
-            list-x-xs>e = star-cons-nil
-            v₁>v₂ : (l * ε∉l ` loc₂) ⊢ v₁ > v₂
-            v₁>v₂ rewrite  v₁≡list-x-xs | v₂≡list-[] = list-x-xs>e
-        -} 
+            ev-> : (v₁ : U l )
+              → (v₁' : U r )
+              → (v₂ : U l )
+              → (v₂' : U r )
+              → Recons {l ● r ` loc} {c} (PairU v₁ v₁')  ( pdinstance-fst {l} {r} {loc} {c} ( pdinstance inj s-ev ) )
+              → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi (e , flat-[] e proj₁flat-e≡[]) (pdinstance inj' s-ev') )
+              --------------------------------------------------
+              → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
+            ev-> = {!!} 
+
 
 {- 
 {-# TERMINATING #-}

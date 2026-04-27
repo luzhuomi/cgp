@@ -1066,6 +1066,8 @@ Then pdUMany[r , w] is extended LNE sorted.
 
 #### Sub Lemma 41.1 - 41.6 : Ex*>-sortedness is inductively preserved over pdinstance*'s operations 
 
+
+
 ```agda
 
 -------------------------------------------------------------
@@ -1089,7 +1091,37 @@ concat-ex*-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*>-co
     ind-hyp = concat-ex*-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs 
 
 
+{-
+The below does not work
 
+Counterexample: d = ($a ● $c) + ($a ● $d)
+In pdU[d, a], there are two pdis:
+1. pdi₁ from the left branch ($a ● $c):  
+   Reconstructs v₁ = LeftU (PairU (LetterU a) (LetterU c)) with flat v₁ = [a, c].
+2. pdi₂ from the right branch ($a ● $d):  
+   Reconstructs v₂ = RightU (PairU (LetterU a) (LetterU d)) with flat v₂ = [a, d].
+Since pdU-sorted puts all left pdis before right pdis, pdi₁ > pdi₂ holds in Ex>-sorted (via choice-lr).
+Now in compose-pdi-with-ex*>-head-map-compose-pdi-with, d→r is the injection from the outer pdinstance* (say the identity for simplicity). We need to show r ⊢ v₁ > v₂. We know d ⊢ v₁ > v₂ via choice-lr.
+But d→r-inc-ev (from *>-Inc-≅) has type:
+(v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂
+For d = l + r, ≅ is +⊢≅ which requires equal flat words. Since [a, c] ≢ [a, d], we have d ⊢ v₁ ≢ v₂. Therefore the ≅ premise is false, and d→r-inc-ev cannot be applied.
+Why *>-Inc-≅ is too strong here
+The problem is that *>-Inc-≅ requires ≅ between arbitrary trees from different pdis in pdU[d,c]. But pdis in pdU[d,c] can have different source REs and reconstruct trees with different flat words. There is no guarantee they are ≅.
+What about *>-Inc?
+*>-Inc (without the ≅ premise) does hold for every pdinstance* in pdUMany[r,w]. Looking at the proofs in Order.lagda.md:
+- pdinstance-left/right: left-mono / right-mono preserve > directly.
+- pdinstance-fst: uses seq₁ with length proofs from injFstSnd — never needs ≅.
+- pdinstance-star: uses star-head with length proofs from mkinjListSoundEv — never needs ≅.
+- mk-snd-pdi: uses seq₂ with refl on the fixed empty tree — never needs ≅.
+- inv-assoc: preserves > by reassociating seq₁/seq₂.
+All the >-Inc-≅ lemmas in Order.lagda.md actually only use the > evidence; the ≅ evidence is never used meaningfully. They could be rewritten as >-Inc lemmas trivially.
+Options to fix the hole
+1. Use *>-Inc (recommended): Define *>-Inc without ≅, prove all pdi operations satisfy it, thread it through pdUMany-*>-inc, and change compose-pdi-with-ex*>-head-map-compose-pdi-with to take *>-Inc evidence for d→r.
+2. Restructure the proof: Instead of parameterizing by a generic d→r-inc-ev, prove directly inside advance-pdi*-with-c-sorted that for the specific d→r from the current pdinstance*, > is preserved for trees from pdU[d,c]. But this essentially rebuilds the *>-Inc proof inline.
+Would you like me to implement option 1? It requires adding *>-Inc and >-Inc definitions + lemmas to Order.lagda.md and adjusting the call sites in ExtendedOrder.lagda.md.
+
+
+-}
 compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )

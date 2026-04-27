@@ -903,7 +903,12 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
-...  | yes ε∈l = {!!} -- pdUConcat-sorted {l} {r} {ε∈l} {loc} {c} 
+...  | yes ε∈l = concat-ex-sorted {l ● r ` loc} {c}
+                    (List.map pdinstance-fst pdU[ l , c ])
+                    (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])
+                    map-pdinstance-fst-ex>sorted
+                    concatmap-pdinstance-snd-is-ex>-sorted
+                    (all-ex->-maybe-map-pdinstance-fst-concatmap-pdinstance-snd pdU[ l , c ] pdU[ r , c ]) 
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c}
@@ -951,7 +956,21 @@ pdU-sorted {l ● r ` loc } {c} with ε∈? l
               → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi (e , flat-[] e proj₁flat-e≡[]) (pdinstance inj' s-ev') )
               --------------------------------------------------
               → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
-            ev-> = {!!} 
+            ev-> v₁ v₁' v₂ v₂' recons1 recons2 =
+              bne (¬≡[]→length>0 ¬|pair-v₁-v₁'|≡[]) (¬≡[]→length>0 ¬|pair-v₂-v₂'|≡[]) (seq₁ v₁>v₂)
+              where
+                recons-v₁-pdi : Recons v₁ pdi
+                recons-v₁-pdi = inv-recons-fst {l} {r} {loc} v₁ v₁' pdi recons1
+                ¬|v₁|≡[] : ¬ (proj₁ (flat v₁) ≡ [])
+                ¬|v₁|≡[] = recons-v→¬proj₁flat-v≡[] v₁ pdi recons-v₁-pdi
+                v₂≡e : v₂ ≡ e
+                v₂≡e = mk-snd-pdi-fst-pair-≡ pdi' e (flat-[] e proj₁flat-e≡[]) v₂ v₂' recons2
+                |v₂|≡[] : proj₁ (flat v₂) ≡ []
+                |v₂|≡[] = trans (cong (proj₁ ∘ flat) v₂≡e) proj₁flat-e≡[]
+                v₁>v₂ : l ⊢ v₁ > v₂
+                v₁>v₂ = lne (¬≡[]→length>0 ¬|v₁|≡[]) (cong List.length |v₂|≡[])
+                ¬|pair-v₁-v₁'|≡[] = recons-v→¬proj₁flat-v≡[] (PairU v₁ v₁') (pdinstance-fst (pdinstance inj s-ev)) recons1
+                ¬|pair-v₂-v₂'|≡[] = recons-v→¬proj₁flat-v≡[] (PairU v₂ v₂') (mk-snd-pdi (e , flat-[] e proj₁flat-e≡[]) (pdinstance inj' s-ev')) recons2 
 
 
 {- 

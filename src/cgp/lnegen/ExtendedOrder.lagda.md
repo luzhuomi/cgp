@@ -993,35 +993,37 @@ We say pdi₁ is LNE greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
 
 ```agda
 
-data _,_⊢*_>_ : ∀ ( r : RE ) → (w : List Char ) → PDInstance* r w → PDInstance* r w → Set where -- w is prefix
-  *>-pdi : ∀ { r : RE } { w : List Char }
-    → ( pdi₁ : PDInstance* r w )
-    → ( pdi₂ : PDInstance* r w )
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → ( r ⊢ u₁ > u₂) ) -- we need |u₁| ≡ |u₂| ≡ w ++ s ?
-    → r , w ⊢* pdi₁ > pdi₂ 
+data _,_,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char )  → PDInstance* r pf → PDInstance* r pf → Set where -- pf is prefix, sf is suffix
+  *>-pdi : ∀ { r : RE } { pf : List Char } { sf : List Char }
+    → ( pdi₁ : PDInstance* r pf )
+    → ( pdi₂ : PDInstance* r pf )
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) →  proj₁ (flat u₁) ≡ pf ++ sf →  proj₁ (flat u₂) ≡ pf ++ sf →  r ⊢ u₁ > u₂ ) -- we made it stronger. 
+    → r , pf , sf ⊢* pdi₁ > pdi₂ 
 
 -- transitivity of *>-pdi 
-*>-pdi-trans : ∀ { r : RE }  { pref : List Char } 
+*>-pdi-trans : ∀ { r : RE }  { pref : List Char }  { suff : List Char } 
   → { pdi₁ : PDInstance* r pref }
   → { pdi₂ : PDInstance* r pref }
   → { pdi₃ : PDInstance* r pref }
-  → r , pref ⊢* pdi₁ > pdi₂
-  → r , pref ⊢* pdi₂ > pdi₃
+  → r , pref , suff  ⊢* pdi₁ > pdi₂
+  → r , pref , suff ⊢* pdi₂ > pdi₃
   -------------------------------------------  
-  → r , pref ⊢* pdi₁ > pdi₃ 
-*>-pdi-trans {r} {pref}  {pdi₁} {pdi₂} {pdi₃} (*>-pdi pdi₁ pdi₂ u₁→u₂→rec₁→rec₂→u₁>u₂)  (*>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→u₂>u₃)  = *>-pdi pdi₁ pdi₃ *>-ev
+  → r , pref , suff  ⊢* pdi₁ > pdi₃ 
+*>-pdi-trans {r} {pref} {suff} {pdi₁} {pdi₂} {pdi₃} (*>-pdi pdi₁ pdi₂ u₁→u₂→rec₁→rec₂→|u₁|≡p++s→|u₂|≡p++s→u₁>u₂)  (*>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→|u₂|≡p++s→|u₃|≡p++s→u₂>u₃)  = *>-pdi pdi₁ pdi₃ *>-ev
   
   where
     *>-ev : ( u₁ : U r )
           → ( u₃ : U r )
           → Recons* u₁ pdi₁
           → Recons* u₃ pdi₃
+          → proj₁ (flat u₁) ≡ pref ++ suff
+          → proj₁ (flat u₃) ≡ pref ++ suff           
           ------------------------------
           → r ⊢ u₁ > u₃
-    *>-ev u₁ u₃ recons₁ recons₃ =
+    *>-ev u₁ u₃ |u₁|≡p++s |u₃|≡p++s recons₁ recons₃ =
       let u₂-recons₂ = pdi*-∃  {r} {pref} pdi₂ 
-      in  >-trans (u₁→u₂→rec₁→rec₂→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂))
-                  (u₂→u₃→rec₂→rec₃→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃)  -- where to get u₂ and recons₂ ?
+      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡p++s→|u₂|≡p++s→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) ? ? )
+                  (u₂→u₃→rec₂→rec₃→|u₂|≡p++s→|u₃|≡p++s→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ ? ? )  -- where to get u₂ and recons₂ ?
 
 ```
 

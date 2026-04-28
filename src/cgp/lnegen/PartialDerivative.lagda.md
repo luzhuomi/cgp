@@ -1289,6 +1289,12 @@ pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
 
 
 
+pdi*-∃₂ : ∀ { r : RE } { pref : List Char } { suff : List Char }
+       → ( pdi : PDInstance* r pref )
+       → ∃[ u ] ( (Recons* u pdi) × (proj₁ (flat u) ≡ pref ++ suff) )
+       
+pdi*-∃₂ = {!!} 
+
 ```
 
 #### Aux Lemma : A parse tree this reconstructible from a pdinstance should not be flattened to empty word.

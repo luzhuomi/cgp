@@ -2028,7 +2028,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
                → >-Inc-pd {l} {c} pdi
                ------------------------
                → >-Inc-pd {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
->-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev) (>-inc-pd pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-pd {!!} >-inc-ev 
+>-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev) (>-inc-pd pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-pd (pd-● pd-p) >-inc-ev 
   where 
     injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
     injFst = mkinjFst inj

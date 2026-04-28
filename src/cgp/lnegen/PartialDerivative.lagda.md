@@ -1289,12 +1289,6 @@ pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
 
 
 
-pdi*-∃₂ : ∀ { r : RE } { pref : List Char } { suff : List Char }
-       → ( pdi : PDInstance* r pref )
-       → ( pref ++ suff) ∈⟦ r ⟧ 
-       → ∃[ u ] ( (Recons* u pdi) × (proj₁ (flat u) ≡ pref ++ suff) )
-       
-pdi*-∃₂ = {!!} 
 
 ```
 

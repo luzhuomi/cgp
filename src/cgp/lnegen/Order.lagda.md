@@ -1515,6 +1515,7 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 infix 4 _⊢_≅_
 
 -- structural sub-word equivalance
+
 data _⊢_≅_ : ∀ ( r : RE ) → ( u : U r  ) →  ( v : U r  ) → Set where
   ε⊢≅ : ε ⊢ EmptyU ≅ EmptyU
   $⊢≅ : { c : Char } { loc : ℕ } → ($ c ` loc ) ⊢ (LetterU c) ≅ ( LetterU c )
@@ -1756,6 +1757,9 @@ data >-Inc-≅ : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
         → p ⊢ u₁ ≅ u₂ 
         → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
     → >-Inc-≅ {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+
+
+
 ```
 
 ### Lemma 33: all pdinstances from pdU[ r , c ] are >-strict increasing .
@@ -1897,6 +1901,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         -- the left most element should be the maximal element
         -- t_top = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
         -- injFst t_top =  PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷  LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
+        {-
+          Wait do we really have issue here?
+          r = ( (a* + a* ) ● (a* + a*) ) ● a*
+          after pdU[ r , a ] we have 5 pdinstances
+          1) ( (ε ● a*) ● (a* + a*) ) ● a*        in₁ = 
+          2) ( (ε ● a*) ● (a* + a*) ) ● a*        in₂ = 
+          3) ( ε ● a* ) ● a*                      in₃ = 
+          4) ( ε ● a* ) ● a*                      in₄ =
+          5) ε ● a*                               in₅ =
+          each injection should have >-Inc
+        -} 
 
     
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ v₁≅v₂)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  = 

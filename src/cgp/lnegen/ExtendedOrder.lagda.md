@@ -79,7 +79,7 @@ import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_  )
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_  ; length )
 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalˡ ; ++-conicalʳ ;  ++-assoc )
@@ -993,37 +993,41 @@ We say pdi₁ is LNE greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
 
 ```agda
 
-data _,_,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char )  → PDInstance* r pf → PDInstance* r pf → Set where -- pf is prefix, sf is suffix
-  *>-pdi : ∀ { r : RE } { pf : List Char } { sf : List Char }
+data _,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf → PDInstance* r pf → Set where -- pf is prefix
+  *>-pdi : ∀ { r : RE } { pf : List Char }
     → ( pdi₁ : PDInstance* r pf )
     → ( pdi₂ : PDInstance* r pf )
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) →  proj₁ (flat u₁) ≡ pf ++ sf →  proj₁ (flat u₂) ≡ pf ++ sf →  r ⊢ u₁ > u₂ ) -- we made it stronger. 
-    → r , pf , sf ⊢* pdi₁ > pdi₂ 
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂)) → r ⊢ u₁ > u₂ ) 
+    → r , pf ⊢* pdi₁ > pdi₂ 
+
+-- no we don't have transitivity with the above adjust ment
+-- a ● b + a ● c ● d + a ● e
+-- 3 pdis [ b ,  c ● d ,  e ]
+-- b > c● d  and c●d > b
 
 -- transitivity of *>-pdi 
-*>-pdi-trans : ∀ { r : RE }  { pref : List Char }  { suff : List Char } 
+*>-pdi-trans : ∀ { r : RE }  { pref : List Char }  
   → { pdi₁ : PDInstance* r pref }
   → { pdi₂ : PDInstance* r pref }
   → { pdi₃ : PDInstance* r pref }
-  → r , pref , suff  ⊢* pdi₁ > pdi₂
-  → r , pref , suff ⊢* pdi₂ > pdi₃
+  → r , pref  ⊢* pdi₁ > pdi₂
+  → r , pref  ⊢* pdi₂ > pdi₃
   -------------------------------------------  
-  → r , pref , suff  ⊢* pdi₁ > pdi₃ 
-*>-pdi-trans {r} {pref} {suff} {pdi₁} {pdi₂} {pdi₃} (*>-pdi pdi₁ pdi₂ u₁→u₂→rec₁→rec₂→|u₁|≡p++s→|u₂|≡p++s→u₁>u₂)  (*>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→|u₂|≡p++s→|u₃|≡p++s→u₂>u₃)  = *>-pdi pdi₁ pdi₃ *>-ev
+  → r , pref  ⊢* pdi₁ > pdi₃ 
+*>-pdi-trans {r} {pref} {pdi₁} {pdi₂} {pdi₃} (*>-pdi pdi₁ pdi₂ u₁→u₂→rec₁→rec₂→len|u₁|≡len|u₂|→u₁>u₂)  (*>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→len|u₂|≡len|u₃|→u₂>u₃)  = *>-pdi pdi₁ pdi₃ *>-ev
   
   where
     *>-ev : ( u₁ : U r )
           → ( u₃ : U r )
           → Recons* u₁ pdi₁
           → Recons* u₃ pdi₃
-          → proj₁ (flat u₁) ≡ pref ++ suff
-          → proj₁ (flat u₃) ≡ pref ++ suff           
+          → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₃))
           ------------------------------
           → r ⊢ u₁ > u₃
-    *>-ev u₁ u₃ |u₁|≡p++s |u₃|≡p++s recons₁ recons₃ =
+    *>-ev u₁ u₃ recons₁ recons₃ len|u₁|≡len|u₃|  =
       let u₂-recons₂ = pdi*-∃  {r} {pref} pdi₂ 
-      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡p++s→|u₂|≡p++s→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) ? ? )
-                  (u₂→u₃→rec₂→rec₃→|u₂|≡p++s→|u₃|≡p++s→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ ? ? )  -- where to get u₂ and recons₂ ?
+      in  >-trans (u₁→u₂→rec₁→rec₂→len|u₁|≡len|u₂|→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) {!!}  )
+                  (u₂→u₃→rec₂→rec₃→len|u₂|≡len|u₃|→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ {!!} )  -- where to get u₂ and recons₂ ?
 
 ```
 
@@ -1127,7 +1131,8 @@ Would you like me to implement option 1? It requires adding *>-Inc and >-Inc def
 compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
-  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
+  -- → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
+  → ( >-inc-d→r :  (v₁ v₂ : U d) → length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₂)) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
   → ( pdi : PDInstance d c )
   → ( pdis : List (PDInstance d c) )
   → Ex>-maybe pdi (head pdis)
@@ -1154,11 +1159,12 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-
     ex*>-ev : ∀ (u₁ u₂ : U r )
       → Recons* u₁ (compose-pdi-with d→r s-ev-d-r (pdinstance p₁→d s-ev-p₁-d))
       → Recons* u₂ (compose-pdi-with d→r s-ev-d-r (pdinstance p₂→d s-ev-p₂-d))
+      → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
       ----------------------------------------------------------------------------
       → r ⊢ u₁ > u₂
     ex*>-ev u₁ u₂
             rec*₁@(recons* {- {p₁} {r} {w₁} {pref++c} -} u₁ ( w₁∈⟦p₁⟧ , d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ ) )
-            rec*₂@(recons* {- {p₂} {r} {w₂} {pref++c} -} u₂ ( w₂∈⟦p₂⟧ , d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ ) )
+            rec*₂@(recons* {- {p₂} {r} {w₂} {pref++c} -} u₂ ( w₂∈⟦p₂⟧ , d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ ) ) len|u₁|≡len|u₂| 
             with inv-recons*-compose-pdi-with u₁ pdi₁ d→r s-ev-d-r rec*₁     | inv-recons*-compose-pdi-with u₂ pdi₂ d→r s-ev-d-r rec*₂             
     ... | recons* {d} {r} {cw₁} {pref} u₁ ( cw₁∈⟦d⟧ , d→r-unflat-cw₁∈⟦d⟧≡u₁ ) | recons* {d} {r} {cw₂} {pref} u₂ ( cw₂∈⟦d⟧ , d→r-unflat-cw₂∈⟦d⟧≡u₂ ) 
             rewrite sym d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ | sym  d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ = 
@@ -1167,7 +1173,7 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
                                                                                                (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
           
-
+{-
 map-compose-pdi-with-sorted : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
@@ -1197,7 +1203,7 @@ advance-pdi*-with-c-sorted {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r 
 ... | (pdi₁ ∷ pdis₁ ) | ex>-cons ex>-sorted-pdis₁ pdi₁>head-pdis₁  = ex*>-cons (map-compose-pdi-with-sorted d→r s-ev-d-r d→r-inc-ev pdis₁ ex>-sorted-pdis₁)
                                                                                (compose-pdi-with-ex*>-head-map-compose-pdi-with d→r s-ev-d-r d→r-inc-ev pdi₁ pdis₁ pdi₁>head-pdis₁  )
 
-
+-}
 
 
 {- 

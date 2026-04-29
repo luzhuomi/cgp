@@ -1033,7 +1033,51 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
 
 
 
--- transitivity of *>-pdi 
+-- Counterexample showing why *>-pdi-trans is unprovable with the sf index:
+--
+-- The relation r , pf , sf ⊢* pdi₁ > pdi₂ requires:
+--   1) sf ∈ pdi₁ and sf ∈ pdi₂ (membership)
+--   2) For ALL u₁ from pdi₁ and u₂ from pdi₂ with proj₁ (flat u₁) ≡ proj₁ (flat u₂),
+--      we have r ⊢ u₁ > u₂.
+--
+-- The crucial point is that a PDInstance* r pf can reconstruct parse trees with
+-- MANY different suffixes. The sf parameter only guarantees that at least one
+-- parse tree with suffix sf exists; it does NOT restrict the ∀ quantifier to
+-- parse trees with that particular suffix.
+--
+-- Concrete scenario:
+--   Let r = $a ● ($b + $c) and pf = [a].
+--   The partial derivative of r w.r.t. a is $b + $c.
+--   A single PDInstance* for $b + $c with injection (λ u → PairU (LetterU a) u)
+--   reconstructs TWO parse trees:
+--     u_b = PairU (LetterU a) (LeftU (LetterU b))  with flat [a , b]
+--     u_c = PairU (LetterU a) (RightU (LetterU c)) with flat [a , c]
+--
+--   Let pdi₁, pdi₂, pdi₃ be three such PDInstance* objects (possibly identical
+--   or with different injections, as long as they admit both suffixes).
+--   Take sf = [b]. Then sf ∈ pdi₁, sf ∈ pdi₂, sf ∈ pdi₃ all hold.
+--
+--   Suppose we have r , [a] , [b] ⊢* pdi₁ > pdi₂ and r , [a] , [b] ⊢* pdi₂ > pdi₃.
+--   To prove transitivity, we must show that for any u₁ from pdi₁ and u₃ from pdi₃
+--   with equal flats, r ⊢ u₁ > u₃.
+--
+--   Consider u₁ = u_c (flat [a , c]) from pdi₁ and u₃ = u_c (flat [a , c]) from pdi₃.
+--   Their flats are equal. To apply >-trans, we need an intermediate u₂ from pdi₂
+--   with flat [a , c] as well.
+--
+--   The only existential lemma available is pdi*-∃₂ {sf = [b]}, which gives us a
+--   parse tree from pdi₂ with suffix [b], i.e., flat [a , b]. It does NOT give us
+--   a parse tree with suffix [c] (flat [a , c]).
+--
+--   Therefore, there is no way to obtain the required u₂ with flat [a , c] from
+--   pdi₂ using only pdi*-∃₂ {[b]}. The proof gets stuck because the existential
+--   lemma is parameterized by the fixed sf, but the ∀ quantifier in *>-pdi ranges
+--   over ALL pairs of parse trees with equal flats, including those whose common
+--   suffix differs from sf.
+--
+-- Because of this structural mismatch, *>-pdi-trans cannot be proven when the
+-- relation carries the sf index.
+
 *>-pdi-trans : ∀ { r : RE }  { pf : List Char }  { sf : List Char }
   → { pdi₁ : PDInstance* r pf }
   → { pdi₂ : PDInstance* r pf }
@@ -1055,7 +1099,7 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
     *>-ev u₁ u₃ recons₁ recons₃ len|u₁|≡len|u₃|  =
       let u₂-recons₂-|u₂|≡pf++|u₁| = pdi*-∃₂  {r} {pf} {proj₁ (flat u₁)} pdi₂  {!!} 
       in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡|u₂|→u₁>u₂ u₁ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) recons₁ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) {!!}  )
-                  (u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) u₃ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) recons₃ {!!} )  -- where to get u₂ and recons₂ ?
+                  (u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) u₃ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) recons₃ {!!} )
 
 ```
 

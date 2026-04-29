@@ -1006,7 +1006,7 @@ data _,_,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char )
     → ( pdi₂ : PDInstance* r pf )
     → r , pf ⊢* sf ∈ pdi₁
     → r , pf ⊢* sf ∈ pdi₂    
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → proj₁ (flat u₁) ≡ proj₁ (flat u₂) → r ⊢ u₁ > u₂ ) 
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → proj₁ (flat u₁) ≡ sf → proj₁ (flat u₂) ≡ sf → r ⊢ u₁ > u₂ ) 
     → r , pf , sf  ⊢* pdi₁ > pdi₂ 
 
 -- no we don't have transitivity with the above adjust ment
@@ -1086,20 +1086,21 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
   → r , pf , sf  ⊢* pdi₂ > pdi₃
   -------------------------------------------  
   → r , pf , sf  ⊢* pdi₁ > pdi₃ 
-*>-pdi-trans {r} {pf}  {sf} {pdi₁} {pdi₂} {pdi₃} (*>-pdi .{r} .{pf} .{sf} pdi₁ pdi₂ sf∈pdi₁ sf∈pdi₂  u₁→u₂→rec₁→rec₂→|u₁|≡|u₂|→u₁>u₂)  (*>-pdi .{r} .{pf} .{sf} .(pdi₂) pdi₃ sf∈pdi₂' sf∈pdi₃ u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃)  = *>-pdi pdi₁ pdi₃ sf∈pdi₁ sf∈pdi₃  *>-ev
+*>-pdi-trans {r} {pf}  {sf} {pdi₁} {pdi₂} {pdi₃} (*>-pdi .{r} .{pf} .{sf} pdi₁ pdi₂ sf∈pdi₁ sf∈pdi₂  u₁→u₂→rec₁→rec₂→|u₁|≡sf→|u₂|≡sf→u₁>u₂)  (*>-pdi .{r} .{pf} .{sf} .(pdi₂) pdi₃ sf∈pdi₂' sf∈pdi₃ u₂→u₃→rec₂→rec₃→|u₂|≡sf→|u₃|≡sf→u₂>u₃)  = *>-pdi pdi₁ pdi₃ sf∈pdi₁ sf∈pdi₃  *>-ev
   
   where
     *>-ev : ( u₁ : U r )
           → ( u₃ : U r )
           → Recons* u₁ pdi₁
           → Recons* u₃ pdi₃
-          → proj₁ (flat u₁) ≡ proj₁ (flat u₃)
+          → proj₁ (flat u₁) ≡ sf
+          → proj₁ (flat u₃) ≡ sf 
           ------------------------------
           → r ⊢ u₁ > u₃
-    *>-ev u₁ u₃ recons₁ recons₃ len|u₁|≡len|u₃|  =
+    *>-ev u₁ u₃ recons₁ recons₃ |u₁|≡sf |u₃|≡sf  =
       let u₂-recons₂-|u₂|≡pf++|u₁| = pdi*-∃₂  {r} {pf} {proj₁ (flat u₁)} pdi₂  {!!} 
-      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡|u₂|→u₁>u₂ u₁ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) recons₁ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) {!!}  )
-                  (u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) u₃ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) recons₃ {!!} )
+      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡sf→|u₂|≡sf→u₁>u₂ u₁ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) recons₁ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) |u₁|≡sf {!!}  )
+                  (u₂→u₃→rec₂→rec₃→|u₂|≡sf→|u₃|≡sf→u₂>u₃ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) u₃ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) recons₃ {!!} |u₃|≡sf )
 
 ```
 

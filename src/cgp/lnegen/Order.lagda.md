@@ -811,111 +811,7 @@ _⊢_≥_ r u v = (r ⊢ u > v) ⊎  ( u ≡ v  )
 ≥-anti {r} {u} {v} (inj₂ u≡v) (inj₁ v>u) = Nullary.contradiction (sym u≡v) (>→¬≡  v>u )
 ≥-anti {r} {u} {v} (inj₁ u>v) (inj₁ v>u) = Nullary.contradiction u>v (>→¬< v>u)
 ≥-anti {r} {u} {v} (inj₁ u>v) (inj₂ v≡u) = Nullary.contradiction (sym v≡u) (>→¬≡  u>v )
-```  
 
-
-
-Update >-Inc is not preserved by PDInstance, we need a lattice. We only care about the upperbound
-
-
-the maximality defintion is ok
-
-Update 2: we fix >-Inc by introducing a weaker version >-Inc-≅, we don't need global maximality nor local maximality for now. 
-Definition 32 (global maximality)
-
-```agda
--- parse tree u is absolute maximal w.r.t to r and w
-{-
-data ≥-Maximal : ∀ { r : RE } { w : List Char } ( u : U r ) → Set where
-  ≥-max : ∀ { r : RE } { w : List Char } 
-    → ( top : U r )
-    → proj₁ (flat {r} top) ≡ w 
-    → ( ( u : U r )
-       → proj₁ (flat {r} u) ≡ w 
-       → r ⊢ top ≥ u )
-    -----------------
-    → ≥-Maximal {r} {w} top
--}    
-```
-
-
-Definition 33 (global maximality preservation)
-
-```agda
--- the max preserve definition is not ok, it is indexed by a inhabiting parse tree,
--- but not the word prefix.
-{-
-data ≥-MaxPreserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
-  ≥-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( ( u : U p )
-        → (w : List Char)
-        → ≥-Maximal {p} {w} u  
-        → ≥-Maximal {r} { c ∷ w } (inj u) )
-    → ≥-MaxPreserve {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
--}
-
-{-
-data ≥-MaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDInstance r c → Set where
-  ≥-pres : ∀ { p r : RE } { c : Char } { w : List Char }  { inj : U p →  U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( ( u : U p )
-        → ≥-Maximal {p} {w} u  
-        → ≥-Maximal {r} { c ∷ w } (inj u) )
-    → ≥-MaxPreserve {r} {c} {w} (pdinstance {p} {r} {c} inj sound-ev)
--}
--- the same as above
-{-
-data ≥-MaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDInstance r c → Set where
-  ≥-pres : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p →  U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( ( w∈p : w ∈⟦ p ⟧ )
-        → ≥-Maximal {p} {w} (unflat w∈p )
-        → ≥-Maximal {r} { c ∷ w } (inj (unflat w∈p )) )
-    → ≥-MaxPreserve {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
--}    
-```
-
-
-too strong? individual pdi from pdU [ r , c ]  might not be producing all the parse trees of r and c ∷ w. hence ≥-Max is not true for individual pdi.
-but it should be true if  all of them append together.
-
-what about individual pdi? what properties do they have?
- - each pdi will be fed a set of parse trees of individual p which should be a lattice,
- - the output will be concatenated together and passed to the next level (parent pd)
- - each pdi is >-Inc? no, see the counterexample in t13 vs t14, but are t13 and t14 from the same p? yes, they are
- - the each pdi output list is a local maximal? 
- 
-
-We need to bring back the local (bounded maximality), it's been now indexed additionally by a word `w`. to avoid the 1st counter example in the CounterExample.lagda
-
-
-Definition 34 (local maximality)
-
-```agda
-{-
-data >-LocalMaximal : ∀ { r : RE } { w : List Char } ( us : List ( U r ) ) → Set where
-  >-empty : ∀ { r : RE } { w : List Char }  → >-LocalMaximal {r} {w} []
-  >-join : ∀ { r : RE } { w : List Char }
-    → ( top : U r )
-    → ( us : List (U r ) )
-    → All (λ x → proj₁ (flat x) ≡ w) ( top ∷ us )
-    → All (λ x → r ⊢ top > x) us 
-    -----------------------------------------------
-    → >-LocalMaximal {r} {w} (top ∷ us )
--}     
-```
-Definition 35 (local maximality preservation)
-```agda
-{-
-data >-LocalMaxPreserve : ∀ { r : RE } { c : Char } { w : List Char } → PDInstance r c → Set where
-  >-locpres : ∀ { p r : RE } { c : Char } { w : List Char } { inj : U p →  U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( ( us : List (U p) )
-        → ( us-maximal : >-LocalMaximal {p} {w} us ) 
-        → ( >-LocalMaximal {r} { c ∷ w } (List.map inj us) ) ) -- preserve >-localmaximality 
-    → >-LocalMaxPreserve {r} {c} {w} (pdinstance {p} {r} {c} inj sound-ev)
--} 
 
 -- leftU is monotonic
 
@@ -937,551 +833,6 @@ right-mono {l} {r} {loc} {u} {v} (bne len|u|>0 len|v|>0 u>ⁱv)  = bne len|u|>0 
 right-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|≡0
 
 ```
-
-Lemma:
-pdinstance-left and pdinstance-right preserve local maximality.
-
-```agda
-{-
->-locmax-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } 
-    → ( pdi : PDInstance l c )
-    → >-LocalMaxPreserve {l} {c} {w} pdi
-    → >-LocalMaxPreserve {l + r ` loc} {c} {w} (pdinstance-left pdi) 
->-locmax-preserve-left {l} {r} {loc} {c} {w} (pdinstance {p} {l} {c} in₁ s-ev₁) (>-locpres .{p} .{l} .{c}  us→max-us→max-map-in₁-us) =  >-locpres prf
-  where
-    prf : (us : List (U p))
-      → >-LocalMaximal {p} us
-      → >-LocalMaximal (List.map (λ u → LeftU {l} {r} {loc} (in₁ u)) us)
-    prf [] >-empty = >-empty
-    prf ( u ∷ us ) m@(>-join .{p} .{w} .(u) .(us) (|u|≡w ∷ |us|≡w ) u≥us) with  us→max-us→max-map-in₁-us (u ∷ us) m
-    ... | >-join in₁u map-in₁us (|in₁u|≡cw ∷ map-in₁us-all≡|cw|) all-in₁u>map-in₁us =
-      >-join (LeftU (in₁ u)) (List.map (λ u₁ → LeftU (in₁ u₁)) us) (|in₁u|≡cw  ∷  sub-prf' us |us|≡w ) (sub-prf us all-in₁u>map-in₁us ) 
-      where
-        sub-prf' : (vs : List (U p))
-                 → All (λ x → Product.proj₁ (flat x) ≡ w) vs 
-                 → All (λ x → Product.proj₁ (flat x) ≡ c ∷ w)
-                   (List.map (λ u₁ → LeftU {l} {r} {loc} (in₁ u₁)) vs)
-        sub-prf' [] [] =  []
-        sub-prf' ( v ∷ vs) (|v|≡w ∷ all-|vs|≡w)  = |left-in₁v|≡cw  ∷ sub-prf' vs all-|vs|≡w
-          where
-            |left-in₁v|≡cw : proj₁ (flat (LeftU {l} {r} {loc} (in₁ v))) ≡ c ∷ w
-            |left-in₁v|≡cw rewrite (s-ev₁ v) =  cong (λ x → (c ∷ x )) |v|≡w  
-        sub-prf : (vs : List (U p ))
-          → All (_⊢_>_ l (in₁ u)) (List.map in₁ vs)
-          → All (_⊢_>_ (l + r ` loc) (LeftU (in₁ u)))
-                    (List.map (λ u₁ → LeftU (in₁ u₁)) vs)
-        sub-prf [] [] = []
-        sub-prf (v ∷ vs) ( in₁u>in₁v ∷ xs ) = left-mono in₁u>in₁v  ∷ sub-prf vs  xs 
-
-
->-locmax-preserve-right : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
-    → ( pdi : PDInstance r c )
-    → >-LocalMaxPreserve {r} {c} {w}  pdi
-    → >-LocalMaxPreserve {l + r ` loc} {c} {w} (pdinstance-right pdi) 
->-locmax-preserve-right {l} {r} {loc} {c} {w} (pdinstance {p} {r} {c} in₁ s-ev₁) (>-locpres us→max-us→max-map-in₁-us) =  >-locpres prf
-  where
-    prf : (us : List (U p))
-      → >-LocalMaximal {p} us
-      → >-LocalMaximal (List.map (λ u → RightU {l} {r} {loc} (in₁ u)) us)
-    prf [] >-empty = >-empty
-    prf ( u ∷ us )  m@(>-join .{p} .{w} .(u) .(us) (|u|≡w ∷ |us|≡w ) u≥us) with  us→max-us→max-map-in₁-us (u ∷ us)  m
-    ... | >-join in₁u map-in₁us (|in₁u|≡cw ∷ map-in₁us-all≡|cw|) all-in₁u>map-in₁us =
-      >-join (RightU (in₁ u)) (List.map (λ u₁ → RightU (in₁ u₁)) us) (|in₁u|≡cw  ∷  sub-prf' us |us|≡w ) (sub-prf us all-in₁u>map-in₁us ) 
-      where
-        sub-prf' : (vs : List (U p))
-                 → All (λ x → Product.proj₁ (flat x) ≡ w) vs 
-                 → All (λ x → Product.proj₁ (flat x) ≡ c ∷ w)
-                   (List.map (λ u₁ → RightU {l} {r} {loc} (in₁ u₁)) vs)
-        sub-prf' [] [] =  []
-        sub-prf' ( v ∷ vs) (|v|≡w ∷ all-|vs|≡w)  = |right-in₁v|≡cw  ∷ sub-prf' vs all-|vs|≡w
-          where
-            |right-in₁v|≡cw : proj₁ (flat (RightU {l} {r} {loc} (in₁ v))) ≡ c ∷ w
-            |right-in₁v|≡cw rewrite (s-ev₁ v) =  cong (λ x → (c ∷ x )) |v|≡w  
-        sub-prf : (vs : List (U p ))
-          → All (_⊢_>_ r (in₁ u)) (List.map in₁ vs)
-          → All (_⊢_>_ (l + r ` loc) (RightU (in₁ u)))
-                    (List.map (λ u₁ → RightU (in₁ u₁)) vs)
-        sub-prf [] [] = []
-        sub-prf (v ∷ vs) ( in₁u>in₁v ∷ xs ) = right-mono in₁u>in₁v  ∷ sub-prf vs  xs
--}        
-```
-Lemma:
-pdinstance-fst preserves local maximality.
-
-Counterexample
-Let:
-- p = ε + ε (two empty branches)
-- l = $ 'c' + $ 'c' (two identical letter branches)
-- r = ε
-Injection:
-inj (LeftU EmptyU)  = LeftU (LetterU 'c')
-inj (RightU EmptyU) = LeftU (LetterU 'c')   -- same image!
-≥-MaxPreserve holds:
-- LeftU EmptyU is globally maximal for p and [] (it dominates RightU EmptyU via choice-lr)
-- LeftU (LetterU 'c') is globally maximal for l and ['c'] (trivially, as the only left-branch tree for that word)
-Locally maximal list in U (p ● r):
-top = PairU (LeftU EmptyU) EmptyU    -- flat []
-x   = PairU (RightU EmptyU) EmptyU   -- flat []
-[top, x] is >-LocalMaximal {p ● r} {[]}
-because p ● r ⊢ top > x via be + seq₁ + choice-lr.
-After pdinstance-fst:
-mkinjFst inj top = PairU (LeftU (LetterU 'c')) EmptyU
-mkinjFst inj x   = PairU (LeftU (LetterU 'c')) EmptyU  -- identical!
-The mapped list is NOT >-LocalMaximal {l ● r} {['c']} because the two elements are equal, not strictly ordered.
-
-```agda
--- the p is unbound
-{-
->-locmax-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
-  → ( pdi : PDInstance l c ) -- this pdi must be max among all the pdi too ?
-  → ( ( pre : List Char )
-    → ∃[ s ] pre ++ s ≡ w
-    → ≥-MaxPreserve {l} {c} {pre} pdi
-    ) -- not w, should be all the prefix of w.
-  → (∀ {u₁ u₂ : U p} → inj u₁ ≡ inj u₂ → u₁ ≡ u₂)
-  → >-LocalMaxPreserve { l ● r ` loc} {c} {w} (pdinstance-fst {l} {r} {loc} {c} pdi)
->-locmax-preserve-fst {l} {r} {loc} {c} {w} (pdinstance {p} {l} {c} inj s-ev) pdi-max-all-prefix-w inj-inj = >-locpres prf
-  where
-    injFst = mkinjFst {p} {l} {r} {loc} inj
-
-    flat-injFst≡c∷flat : ∀ (t : U (p ● r ` loc)) → proj₁ (flat (injFst t)) ≡ c ∷ proj₁ (flat t)
-    flat-injFst≡c∷flat (PairU u v) =
-      begin
-        proj₁ (flat (PairU (inj u) v))
-      ≡⟨⟩
-        proj₁ (flat (inj u)) ++ proj₁ (flat v)
-      ≡⟨ cong (_++ proj₁ (flat v)) (s-ev u) ⟩
-        (c ∷ proj₁ (flat u)) ++ proj₁ (flat v)
-      ≡⟨⟩
-        c ∷ (proj₁ (flat u) ++ proj₁ (flat v))
-      ≡⟨⟩
-        c ∷ proj₁ (flat (PairU u v))
-      ∎
-
-    prf : (ts : List (U (p ● r ` loc))) 
-      → >-LocalMaximal {p ● r ` loc} {w} ts
-      → >-LocalMaximal {l ● r ` loc} { c ∷ w } (List.map injFst ts)
-    prf [] >-empty = >-empty
-    prf (PairU u₀ v₀ ∷ ts) (>-join .(PairU u₀ v₀) .ts (|pair-u₀v₀|≡w ∷ |ts|≡w) pair-u₀v₀>ts) =
-      >-join (PairU (inj u₀) v₀) (List.map injFst ts)
-        (|pair-inju₀v₀|≡cw ∷ all-flat-map-injFst-ts)
-        (all->-map-injFst-ts)
-      where
-        |pair-inju₀v₀|≡cw : proj₁ (flat (PairU (inj u₀) v₀)) ≡ c ∷ w
-        |pair-inju₀v₀|≡cw =
-          begin
-            proj₁ (flat (PairU (inj u₀) v₀))
-          ≡⟨⟩
-            proj₁ (flat (inj u₀)) ++ proj₁ (flat v₀)
-          ≡⟨ cong (_++ proj₁ (flat v₀)) (s-ev u₀) ⟩
-            (c ∷ proj₁ (flat u₀)) ++ proj₁ (flat v₀)
-          ≡⟨⟩
-            c ∷ (proj₁ (flat u₀) ++ proj₁ (flat v₀))
-          ≡⟨ cong (c ∷_) |pair-u₀v₀|≡w ⟩
-            c ∷ w
-          ∎
-
-        all-flat-map-injFst-ts : All (λ x → proj₁ (flat x) ≡ c ∷ w) (List.map injFst ts)
-        all-flat-map-injFst-ts = aux ts |ts|≡w
-          where
-            aux : (us : List (U (p ● r ` loc)))
-              → All (λ x → proj₁ (flat x) ≡ w) us
-              → All (λ x → proj₁ (flat x) ≡ c ∷ w) (List.map injFst us)
-            aux [] [] = []
-            aux (PairU u v ∷ us) (|pair-uv|≡w ∷ rest) =
-              |pair-injuv|≡cw ∷ aux us rest
-              where
-                |pair-injuv|≡cw : proj₁ (flat (PairU (inj u) v)) ≡ c ∷ w
-                |pair-injuv|≡cw =
-                  begin
-                    proj₁ (flat (PairU (inj u) v))
-                  ≡⟨⟩
-                    proj₁ (flat (inj u)) ++ proj₁ (flat v)
-                  ≡⟨ cong (_++ proj₁ (flat v)) (s-ev u) ⟩
-                    (c ∷ proj₁ (flat u)) ++ proj₁ (flat v)
-                  ≡⟨⟩
-                    c ∷ (proj₁ (flat u) ++ proj₁ (flat v))
-                  ≡⟨ cong (c ∷_) |pair-uv|≡w ⟩
-                    c ∷ w
-                  ∎
-
-        all->-map-injFst-ts : All (λ x → (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > x) (List.map injFst ts)
-        all->-map-injFst-ts = aux ts |ts|≡w pair-u₀v₀>ts
-          where
-            len|pair-inju₀v₀|≡suc|w| : length (proj₁ (flat (PairU (inj u₀) v₀))) ≡ suc (length w)
-            len|pair-inju₀v₀|≡suc|w| =
-              begin
-                length (proj₁ (flat (PairU (inj u₀) v₀)))
-              ≡⟨ cong length |pair-inju₀v₀|≡cw ⟩
-                length (c ∷ w)
-              ≡⟨⟩
-                suc (length w)
-              ∎
-
-            len|pair-inju₀v₀|>0 : length (proj₁ (flat (PairU (inj u₀) v₀))) Nat.> 0
-            len|pair-inju₀v₀|>0 rewrite len|pair-inju₀v₀|≡suc|w| = Nat.s≤s Nat.z≤n
-
-            aux : (us : List (U (p ● r ` loc)))
-              → All (λ x → proj₁ (flat x) ≡ w) us
-              → All (λ x → (p ● r ` loc) ⊢ PairU u₀ v₀ > x) us
-              → All (λ x → (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > x) (List.map injFst us)
-            aux [] [] [] = []
-            aux (PairU u v ∷ us) (|pair-uv|≡w ∷ |us|≡w) (pair-u₀v₀>uv ∷ rest) =
-              pair-inju₀v₀>injuv ∷ aux us |us|≡w rest
-              where
-                |pair-injuv|≡cw : proj₁ (flat (PairU (inj u) v)) ≡ c ∷ w
-                |pair-injuv|≡cw =
-                  begin
-                    proj₁ (flat (PairU (inj u) v))
-                  ≡⟨⟩
-                    proj₁ (flat (inj u)) ++ proj₁ (flat v)
-                  ≡⟨ cong (_++ proj₁ (flat v)) (s-ev u) ⟩
-                    (c ∷ proj₁ (flat u)) ++ proj₁ (flat v)
-                  ≡⟨⟩
-                    c ∷ (proj₁ (flat u) ++ proj₁ (flat v))
-                  ≡⟨ cong (c ∷_) |pair-uv|≡w ⟩
-                    c ∷ w
-                  ∎
-
-                len|pair-injuv|≡suc|w| : length (proj₁ (flat (PairU (inj u) v))) ≡ suc (length w)
-                len|pair-injuv|≡suc|w| =
-                  begin
-                    length (proj₁ (flat (PairU (inj u) v)))
-                  ≡⟨ cong length |pair-injuv|≡cw ⟩
-                    length (c ∷ w)
-                  ≡⟨⟩
-                    suc (length w)
-                  ∎
-
-                len|pair-injuv|>0 : length (proj₁ (flat (PairU (inj u) v))) Nat.> 0
-                len|pair-injuv|>0 rewrite len|pair-injuv|≡suc|w| = Nat.s≤s Nat.z≤n
-
-                pair-inju₀v₀>injuv : (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > PairU (inj u) v
-                pair-inju₀v₀>injuv = >-case pair-u₀v₀>uv |pair-uv|≡w
-                  where
-                    >-case : (p ● r ` loc) ⊢ PairU u₀ v₀ > PairU u v
-                           → proj₁ (flat (PairU u v)) ≡ w
-                           → (l ● r ` loc) ⊢ PairU (inj u₀) v₀ > PairU (inj u) v
-                    >-case (be _ len|pair-uv|≡0 (seq₂ u₀≡u v₀>v)) _ =
-                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0
-                        (seq₂ (cong inj u₀≡u) v₀>v)
-                    >-case (bne _ _ (seq₂ u₀≡u v₀>v)) _ =
-                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0
-                        (seq₂ (cong inj u₀≡u) v₀>v)
-                    >-case (be _ len|pair-uv|≡0 (seq₁ u₀>u)) _ =
-                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0 (seq₁ l⊢inju₀>inju)
-                      where
-                        flat-u₀≡[] : proj₁ (flat u₀) ≡ []
-                        flat-u₀≡[] = len≡0→flat≡[] len|flat-u₀|≡0
-                          where
-                            len|flat-u₀|≡0 : length (proj₁ (flat u₀)) ≡ 0
-                            len|flat-u₀|≡0 = n≡0→¬n>0-helper (trans (sym (cong length len|pair-uv|≡0)) (cong length (sym |pair-uv|≡w)))
-                              where
-                                n≡0→¬n>0-helper : length (proj₁ (flat u₀)) ≡ 0 → length (proj₁ (flat u₀)) ≡ 0
-                                n≡0→¬n>0-helper x = x
-
-                        l⊢inju₀>inju : l ⊢ inj u₀ > inj u
-                        l⊢inju₀>inju with pdi-max-all-prefix-w [] ([] , refl)
-                        ... | ≥-pres u→w'→max→max-inj' = ≥→> l⊢inju₀≥inju inju₀≢inju
-                          where
-                            max-u₀ : ≥-Maximal {p} {[]} u₀
-                            max-u₀ = ≥-max u₀ flat-u₀≡[] (λ u' flat-u'≡[] → inj₁ u₀>u')
-                              where
-                                u₀>u' : p ⊢ u₀ > u'
-                                u₀>u' = {!!}  -- needs all p-trees for [] to be in the list
-
-                            max-inju₀ : ≥-Maximal {l} {[c]} (inj u₀)
-                            max-inju₀ = u→w'→max→max-inj' u₀ [] max-u₀
-
-                            l⊢inju₀≥inju : l ⊢ inj u₀ ≥ inj u
-                            l⊢inju₀≥inju with max-inju₀
-                            ... | ≥-max .(inj u₀) |inju₀|≡[c] ev = ev (inj u)
-                              (begin
-                                proj₁ (flat (inj u))
-                              ≡⟨ s-ev u ⟩
-                                c ∷ proj₁ (flat u)
-                              ≡⟨ cong (c ∷_) (begin
-                                   proj₁ (flat u)
-                                 ≡⟨ sym (++-identityʳ (proj₁ (flat u))) ⟩
-                                   proj₁ (flat u) ++ []
-                                 ≡⟨ cong (proj₁ (flat u) ++_) (sym len|pair-uv|≡0) ⟩
-                                   proj₁ (flat u) ++ proj₁ (flat v)
-                                 ≡⟨⟩
-                                   proj₁ (flat (PairU u v))
-                                 ≡⟨ |pair-uv|≡w ⟩
-                                   w
-                                 ≡⟨ sym |pair-u₀v₀|≡w ⟩
-                                   proj₁ (flat (PairU u₀ v₀))
-                                 ≡⟨⟩
-                                   proj₁ (flat u₀) ++ proj₁ (flat v₀)
-                                 ≡⟨ cong (_++ proj₁ (flat v₀)) flat-u₀≡[] ⟩
-                                   [] ++ proj₁ (flat v₀)
-                                 ≡⟨ ++-identityˡ (proj₁ (flat v₀)) ⟩
-                                   proj₁ (flat v₀)
-                                 ≡⟨ sym len|pair-uv|≡0 ⟩
-                                   []
-                                 ∎) ⟩
-                                c ∷ []
-                              ∎)
-
-                            inju₀≢inju : ¬ (inj u₀ ≡ inj u)
-                            inju₀≢inju inju₀≡inju = >→¬≡ u₀>u (sym (inj-inj u₀≡inju))
-                              where
-                                u₀≢u : ¬ (u₀ ≡ u)
-                                u₀≢u = >→¬≡ u₀>u
-                                inj-inj : inj u₀ ≡ inj u → u₀ ≡ u
-                                inj-inj = inj-inj
-
-                                ≥→> : {r : RE} {v₁ v₂ : U r} → r ⊢ v₁ ≥ v₂ → ¬ (v₁ ≡ v₂) → r ⊢ v₁ > v₂
-                                ≥→> (inj₁ v₁>v₂) _ = v₁>v₂
-                                ≥→> (inj₂ v₁≡v₂) ¬v₁≡v₂ = Nullary.contradiction v₁≡v₂ ¬v₁≡v₂
-
-                    >-case (bne len|pair-u₀v₀|>0 len|pair-uv|>0 (seq₁ u₀>u)) _ =
-                      bne len|pair-inju₀v₀|>0 len|pair-injuv|>0 (seq₁ l⊢inju₀>inju)
-                      where
-                        flat-u₀≡p : proj₁ (flat u₀) ≡ p
-                        flat-u₀≡p = {!!}  -- p is the prefix
-
-                        l⊢inju₀>inju : l ⊢ inj u₀ > inj u
-                        l⊢inju₀>inju with pdi-max-all-prefix-w (proj₁ (flat u₀)) (proj₁ (flat v₀) , {!!})
-                        ... | ≥-pres u→w'→max→max-inj' = ≥→> l⊢inju₀≥inju inju₀≢inju
-                          where
-                            max-u₀ : ≥-Maximal {p} {proj₁ (flat u₀)} u₀
-                            max-u₀ = ≥-max u₀ refl (λ u' flat-u'≡flat-u₀ → inj₁ u₀>u')
-                              where
-                                u₀>u' : p ⊢ u₀ > u'
-                                u₀>u' = {!!}
-
-                            max-inju₀ : ≥-Maximal {l} {c ∷ proj₁ (flat u₀)} (inj u₀)
-                            max-inju₀ = u→w'→max→max-inj' u₀ (proj₁ (flat u₀)) max-u₀
-
-                            l⊢inju₀≥inju : l ⊢ inj u₀ ≥ inj u
-                            l⊢inju₀≥inju with max-inju₀
-                            ... | ≥-max .(inj u₀) |inju₀|≡c∷flat-u₀ ev = ev (inj u)
-                              (begin
-                                proj₁ (flat (inj u))
-                              ≡⟨ s-ev u ⟩
-                                c ∷ proj₁ (flat u)
-                              ≡⟨ cong (c ∷_) (begin
-                                   proj₁ (flat u)
-                                 ≡⟨ sym (++-identityʳ (proj₁ (flat u))) ⟩
-                                   proj₁ (flat u) ++ []
-                                 ≡⟨ cong (proj₁ (flat u) ++_) (sym len|pair-uv|≡0) ⟩
-                                   proj₁ (flat u) ++ proj₁ (flat v)
-                                 ≡⟨⟩
-                                   proj₁ (flat (PairU u v))
-                                 ≡⟨ |pair-uv|≡w ⟩
-                                   w
-                                 ≡⟨ sym |pair-u₀v₀|≡w ⟩
-                                   proj₁ (flat (PairU u₀ v₀))
-                                 ≡⟨⟩
-                                   proj₁ (flat u₀) ++ proj₁ (flat v₀)
-                                 ≡⟨ cong (_++ proj₁ (flat v₀)) flat-u₀≡p ⟩
-                                   p ++ proj₁ (flat v₀)
-                                 ≡⟨ {!!} ⟩
-                                   proj₁ (flat u)
-                                 ∎) ⟩
-                                c ∷ proj₁ (flat u)
-                              ∎)
-
-                            inju₀≢inju : ¬ (inj u₀ ≡ inj u)
-                            inju₀≢inju inju₀≡inju = >→¬≡ u₀>u (sym (inj-inj u₀≡inju))
-                              where
-                                u₀≢u : ¬ (u₀ ≡ u)
-                                u₀≢u = >→¬≡ u₀>u
-                                inj-inj : inj u₀ ≡ inj u → u₀ ≡ u
-                                inj-inj = inj-inj
-
-                                ≥→> : {r : RE} {v₁ v₂ : U r} → r ⊢ v₁ ≥ v₂ → ¬ (v₁ ≡ v₂) → r ⊢ v₁ > v₂
-                                ≥→> (inj₁ v₁>v₂) _ = v₁>v₂
-                                ≥→> (inj₂ v₁≡v₂) ¬v₁≡v₂ = Nullary.contradiction v₁≡v₂ ¬v₁≡v₂
-                    >-case (lne len|pair-u₀v₀|>0 len|pair-uv|≡0) _ =
-                      Nullary.contradiction len|pair-uv|>0 (n≡0→¬n>0 len|pair-uv|≡0)
-                      where
-                        len|pair-uv|≡len|pair-u₀v₀| : length (proj₁ (flat (PairU u v))) ≡ length (proj₁ (flat (PairU u₀ v₀)))
-                        len|pair-uv|≡len|pair-u₀v₀| =
-                          begin
-                            length (proj₁ (flat (PairU u v)))
-                          ≡⟨ cong length |pair-uv|≡w ⟩
-                            length w
-                          ≡⟨ sym (cong length |pair-u₀v₀|≡w) ⟩
-                            length (proj₁ (flat (PairU u₀ v₀)))
-                          ∎
-                        len|pair-uv|>0 : length (proj₁ (flat (PairU u v))) Nat.> 0
-                        len|pair-uv|>0 rewrite len|pair-uv|≡len|pair-u₀v₀| = len|pair-u₀v₀|>0
--}
-```
-
-
-Then we need to show that all the pdinstance operations are preserving 
-
-
-Definition 33
-
-```agda
-{-
-data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
-  ≥-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( ( u : U p )
-        → (w : List Char)
-        → ≥-Maximal {p} {w} u
-        → ≥-Maximal {r} {c ∷ w} (inj u) ) -- preserve ≥-maximality 
-    → ≥-Max-Preserve {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
--}
-```
-
-The next few sub lemmas show that global maximal is preserved by pdinstance operations. 
-```agda
-
-{-  
-
-≥-max-preserve-left : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } 
-    → ( pdi : PDInstance l c )
-    → ≥-MaxPreserve {l} {c} {w} pdi
-    → ≥-MaxPreserve {l + r ` loc} {c} {w} (pdinstance-left pdi)
-≥-max-preserve-left {l} {r} {loc} {c} {w} (pdinstance {p} {l} {c} in₁ s-ev₁) (≥-pres u→w→maxwu→max-cw-in₁u) =  ≥-pres prf
-  where
-    prf : (u : U p) 
-      → ≥-Maximal {p} {w} u
-      → ≥-Maximal {l + r ` loc} { c ∷ w } (LeftU {l} {r} {loc} (in₁ u))
-    prf u (≥-max .{p} .{w} .(u) |u|≡w v→|v|≡w→u≥v ) = ≥-max (LeftU (in₁ u)) |left-in₁u|≡c∷w max-ev
-      where
-        len-|in₁u|>0 : length (proj₁ (flat (in₁ u))) Nat.> 0
-        len-|in₁u|>0 rewrite s-ev₁ u = Nat.s≤s Nat.z≤n
-        max-cw-in₁u : ≥-Maximal {l} { c ∷ w } (in₁ u )
-        max-cw-in₁u = u→w→maxwu→max-cw-in₁u u (≥-max u |u|≡w v→|v|≡w→u≥v)
-        v→|v|≡c∷w→in₁u≥v : ( v : U  l  )
-                         → proj₁ (flat v) ≡ c ∷ w
-                         → l  ⊢ (in₁ u) ≥ v
-        v→|v|≡c∷w→in₁u≥v with max-cw-in₁u
-        ... | ≥-max in₁u |in₁u|≡cw ev = ev
-
-        |left-in₁u|≡c∷w : proj₁ (flat (LeftU {l} {r} {loc}  (in₁ u))) ≡ c ∷ w
-        |left-in₁u|≡c∷w rewrite s-ev₁ u | |u|≡w = refl
-        max-ev : (u' : U (l + r ` loc))
-               → proj₁ (flat {l + r ` loc } u') ≡ c ∷ w
-               → (l + r ` loc) ⊢ LeftU (in₁ u) ≥ u'
-        max-ev (RightU v) |right-v|≡c∷w = inj₁ (bne len-|in₁u|>0 len-|right-v|>0 choice-lr )
-          where
-            len-|right-v|>0 : length (proj₁ (flat v)) Nat.> 0
-            len-|right-v|>0 rewrite |right-v|≡c∷w  = Nat.s≤s Nat.z≤n
-        max-ev (LeftU v) |left-v|≡c∷w  with  v→|v|≡c∷w→in₁u≥v v |left-v|≡c∷w
-        ... | inj₂ in₁u≡v  = inj₂ (cong LeftU in₁u≡v )
-        ... | inj₁ in₁u>v  = inj₁ (bne len-|in₁u|>0  len-|left-v|>0 (choice-ll in₁u>v ) )
-          where
-            len-|left-v|>0 : length (proj₁ (flat v)) Nat.> 0
-            len-|left-v|>0 rewrite |left-v|≡c∷w  = Nat.s≤s Nat.z≤n 
-
--}
-
--- this is not true, see CounterExample
-{- 
-l = ($ 'a') + (($ 'a') ● ($ 'b'))
-r = ($ 'b') + ε
-l / a = [ ε , $ 'b' ] = [ p₁ , p₂ ] 
-Let u of type p₂ 
-u₂ = b
-u₂ is maximal w.r.t p₂ and b
-
-in₁ u₂ = $ 'a' ● $ 'b', maximal w.r.t to l and "ab"
-
-u₁ = $ 'a'
-v₁ = L ($ 'b')
-v₂ = R Empty
-
-injFst in₁ (Pair u₂ v₂) is **not** maximal w.r.t l ● r and "ab"
-because Pair u₁ v₁ > Pair u₂ v₂
->-max-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  → ( pdi : PDInstance l c ) -- this pdi must be max among all the pdi too ? 
-  → ≥-Max-Preserve {l} {c} pdi
-  → ≥-Max-Preserve { l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
->-max-preserve-fst = {!!}   
-
--}
-
-{-
-this lemma is bogus, the fst pdi is only the global maximal iff pdi ls the global maximal on l for all parse trees,  in the following example the pdi is only global maximal for the right parse tree c d but not c
-
-Counterexample
-Partial derivative:
-p = ($ 'c' ● $ 'd')       -- only tree: PairU 'c' 'd' with flat ['c', 'd']
-Target regex:
-l = ($ 'c') + ($ 'c' ● $ 'd')   -- left branch: 'c', right branch: 'c'●'d'
-r = $ 'e'                       -- only tree: 'e' with flat ['e']
-c = 'c'
-Injection:
-inj (PairU 'c' 'd') = RightU (PairU 'c' 'd')
-≥-MaxPreserve holds:
-- u = PairU 'c' 'd' is the only tree of p for word ['c', 'd'], so trivially globally maximal.
-- inj u = RightU (PairU 'c' 'd') is the only tree of l for word ['c', 'd'] (the left branch only has ['c']), so trivially globally maximal.
-Globally maximal tree in U (p ● r):
-t = PairU (PairU 'c' 'd') (LetterU 'e')   -- flat = ['c', 'd', 'e']
-t is globally maximal for p ● r and w = ['c', 'd', 'e'] because it is the only such tree.
-After pdinstance-fst:
-mkinjFst inj t = PairU (RightU (PairU 'c' 'd')) (LetterU 'e')   -- flat = ['c', 'd', 'e']
-But in U (l ● r), there is another tree with the same flat word:
-s = PairU (LeftU (LetterU 'c')) (PairU (LetterU 'd') (LetterU 'e'))   -- flat = ['c', 'd', 'e']
-And l ● r ⊢ mkinjFst inj t ≱ s because:
-- seq₁ would require l ⊢ RightU (PairU 'c' 'd') > LeftU 'c' — false (only LeftU > RightU holds)
-- seq₂ would require RightU (...) ≡ LeftU 'c' — false
-So mkinjFst inj t is not globally maximal in U (l ● r) for word ['c', 'd', 'e'].
-
--}
-
-{-
-≥-max-preserve-fst : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char } 
-  → ( pdi : PDInstance l c ) 
-  → ≥-MaxPreserve {l} {c} {w}  pdi -- this need to be stronger, 
-  → ≥-MaxPreserve { l ● r ` loc} {c} {w} (pdinstance-fst {l} {r} {loc} {c} pdi)
-≥-max-preserve-fst = {!!}   
-
--- if >-Inc is valid, many of these issues will be gone.
--- let's revisit why >-Inc is invalid. Maybe we can figure out a better definition/invariant. 
--} 
-
--- next 
-```
-
-
-
-perhaps we should look at what property we want at the pdU end ?
-
-pdU[ r , c ] is a list of pdis, whose inhabiting ps are different.
-
-Hence the the ≥-Max could hold for each different p, for the same w, they are incomparable.
-
->-Inc is not true for the pdinstance-fst case.
-≥-Max-preserve is not true for the pdinstance-fst case. 
-
-They are compariable after the injections are applied, shall we make use of the Recons? . 
-
-a digression
-is it true that if a word is fixed, only one parse tree is reconstructable from a pdi?
-
-
-```agda
-
-
-```
-
-```agda
--- this one requires order among PDInstance should go to ExtendedOrder .
-{-
-data Ex≥-Max : ∀ { r : RE } { c : Char } ( PDInstance r c ) → Set where 
-  ex≥-max : ∀ { p r : RE } { c : Char }
-    { in₁ : U p → U r }
-    { s-ev₁ : ∀ ( x : U p ) → ( proj₁ ( flat {r} (in₁ x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( ( u₁ : U r )
-      → ( w : List Char )
-      → Recons u (pdinstance in₁ s-ev₁)
-      →
--}      
-```
-
-
-The following are not working 
-
 
 
 ### Definition 32: >-Strict increasing PDInstance
@@ -1747,18 +1098,21 @@ data ≅-Preserve* : ∀ { r : RE } { w : List Char } → PDInstance* r w → Se
 -- Partial Derivative, must be a left-nested expression, whose leftmost innermost expression is ε. 
 
 ```agda
-data PD : RE → Set where
-  pd-ε : PD ε
-  pd-● : { p r : RE } { loc : ℕ }  → PD p → PD (p ● r ` loc )
+data LeftNested : RE → Set where
+  lnest-ε : LeftNested ε
+  lnest-● : { p r : RE } { loc : ℕ }  → LeftNested p → LeftNested (p ● r ` loc )
 
 
-data PDInj : ∀ { p r : RE } ( inj : U p → U r ) → Set where
-  pd-inj-ε : { c : Char } { loc : ℕ }
-    → PDInj {ε} {$ c ` loc} (λ EmptyU → LetterU c )
-  pd-inj-● : { p l r : RE } { loc : ℕ } { inj : U p → U l } 
-    → PDInj {p} {l} inj
-    → PDInj {p ● r ` loc} {l ● r ` loc } ( mkinjFst inj )
-  -- more cases? 
+data LeftNestedInj : ∀ { p r : RE } ( inj : U p → U r ) → Set where
+  lnest-inj-ε : { c : Char } { loc : ℕ }
+    → LeftNestedInj {ε} {$ c ` loc} (λ EmptyU → LetterU c )
+  lnest-inj-● : { p l r : RE } { loc : ℕ } { inj : U p → U l } 
+    → LeftNestedInj {p} {l} inj
+    → LeftNestedInj {p ● r ` loc} {l ● r ` loc } ( mkinjFst inj )
+  -- more cases?
+
+
+-- LeftNestedPreserve does not make sense 
 ```
 
 
@@ -1774,13 +1128,13 @@ data >-Inc-≅ : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
     → >-Inc-≅ {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 
 
-data >-Inc-pd : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
-  >-inc-pd : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+data >-Inc-lnest : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
+  >-inc-lnest : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → PD p 
+    → LeftNested p 
     → ( (u₁ : U p) → (u₂ : U p)
         → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
-    → >-Inc-pd {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+    → >-Inc-lnest {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 
 
 ```
@@ -1829,12 +1183,12 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdis : List (PDInstance l c) )
-    → All (>-Inc-pd {l} {c}) pdis
-    → All (>-Inc-pd {l + r ` loc } {c}) (List.map pdinstance-left pdis)
+    → All (>-Inc-lnest {l} {c}) pdis
+    → All (>-Inc-lnest {l + r ` loc } {c}) (List.map pdinstance-left pdis)
 >-inc-map-left [] [] = []
 >-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis)
-  (>-inc-pd pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = >-inc-pd pd-p >-inc-ev   ∷ >-inc-map-left pdis pxs
+  (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+  = >-inc-lnest pd-p >-inc-ev   ∷ >-inc-map-left pdis pxs
   where
     >-inc-ev : ∀ (u₁ : U p)
               → (u₂ : U p)
@@ -1879,12 +1233,12 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdis : List (PDInstance r c) )
-    → All (>-Inc-pd {r} {c}) pdis
-    → All (>-Inc-pd {l + r ` loc } {c}) (List.map pdinstance-right pdis)
+    → All (>-Inc-lnest {r} {c}) pdis
+    → All (>-Inc-lnest {l + r ` loc } {c}) (List.map pdinstance-right pdis)
 >-inc-map-right [] [] = []
 >-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c}  inj sound-ev) ∷ pdis)
-  (>-inc-pd pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = >-inc-pd pd-p >-inc-ev   ∷ >-inc-map-right pdis pxs
+  (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+  = >-inc-lnest pd-p >-inc-ev   ∷ >-inc-map-right pdis pxs
   where
     >-inc-ev : ∀ (u₁ : U p)
               → (u₂ : U p)
@@ -2025,10 +1379,10 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdi : PDInstance l c )
-               → >-Inc-pd {l} {c} pdi
+               → >-Inc-lnest {l} {c} pdi
                ------------------------
-               → >-Inc-pd {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
->-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev) (>-inc-pd pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-pd (pd-● pd-p) >-inc-ev 
+               → >-Inc-lnest {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+>-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev) (>-inc-lnest ln-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-lnest (lnest-● ln-p) >-inc-ev 
   where 
     injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
     injFst = mkinjFst inj
@@ -2064,28 +1418,19 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
           
 
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 )  =  {!!} -- hm this case is tricky.
-      -- where
-      
-        -- prf :  (l ● r ` loc) ⊢ injFst (PairU u₁ v₁) > injFst (PairU u₂ v₂)
-        -- prf = Nullary.contradiction len|pair-u₂v₂|>0 (n≡0→¬n>0 len|pair-u₂v₂|≡0) 
-        -- there was an issue here with the counter example t13 t14 above.
-        -- it is addres with the additional constraint (●⊢≅ u₁≅u₂ v₁≅v₂), hence maximality is not needed .
-        -- old issue
-        -- t13>t14
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 )  =  prf -- hm this case is tricky.
+      where      
+        prf :  (l ● r ` loc) ⊢ injFst (PairU u₁ v₁) > injFst (PairU u₂ v₂)
+        prf = bne {!!} {!!} {!!} -- how do we make use of the premise that p is left-nested ? 
 
-        -- counter examples the t13 t14 above.
+        -- there was an issue here with the counter example t13 t14 above.
+        -- a counter examples the t13 t14 above.
         -- t13>t14
         -- injFst t13 = PairU (PairU (RightU (ListU (LetterU 'a' ∷ []))         (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))
         -- injFst t14 = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ []))          (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
         -- injFst t14 > injFst t13
-
-
-        -- the left most element should be the maximal element
-        -- t_top = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
-        -- injFst t_top =  PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷  LetterU 'a' ∷ [])))                                        (LeftU (ListU [])))                                (ListU [])
         {-
-          Wait do we really have issue here?
+          Wait! do we really have issue here with t13 t14, it seems not!
           r = ( (a* + a* ) ● (a* + a*) ) ● a*
           after pdU[ r , a ] we have 5 pdinstances
           1) ( (ε ● a*) ● (a* + a*) ) ● a*        in₁ = 
@@ -2093,7 +1438,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           3) ( ε ● a* ) ● a*                      in₃ = 
           4) ( ε ● a* ) ● a*                      in₄ =
           5) ε ● a*                               in₅ =
-          each injection should have >-Inc
+          each injection should have >-Inc (or we should say >-Inc-lnest
           observation: the left most inner most sub exp must be ε, followed by some r.
 
           let's consider another example
@@ -2103,7 +1448,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               v₂ = PairU EmptyU t14
           inj v₁ = PairU (LetterU 'a') t13
           inj v₂ = PairU (LetterU 'a') t14, it does not change the order!
-          So >-Inc might hold. We need to capture this invariant in the >-Inc premise. 
+          So >-Inc-lnest might hold. We need to capture this invariant in the premise. 
         -} 
 
     
@@ -2135,12 +1480,12 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
 >-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdis : List (PDInstance l c ) )
-               → All (>-Inc-pd {l} {c}) pdis
-               → All (>-Inc-pd {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+               → All (>-Inc-lnest {l} {c}) pdis
+               → All (>-Inc-lnest {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
 >-inc-map-fst [] [] = []
 
->-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc-pd pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = (>-inc-fst (pdinstance inj sound-ev) (>-inc-pd pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂))    ∷  >-inc-map-fst pdis pxs
+>-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+  = (>-inc-fst (pdinstance inj sound-ev) (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂))    ∷  >-inc-map-fst pdis pxs
 
  
 

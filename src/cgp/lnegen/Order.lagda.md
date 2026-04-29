@@ -1111,6 +1111,17 @@ data LeftNestedInj : ∀ { p r : RE } ( inj : U p → U r ) → Set where
     → LeftNestedInj {p ● r ` loc} {l ● r ` loc } ( mkinjFst inj )
   -- more cases?
 
+-- lemma left nested injection preserve word length for each nesting
+
+data ||-Preserve : ∀ { r : RE } ( u : U r ) → Set where
+  ||-ε : ||-Preserve {ε} EmptyU 
+  ||-● :  { p r : RE } { loc : ℕ } → ||-Preserve 
+
+-- leftnest-preserve-|| : ∀ { p r : RE } { inj : U p → U r }
+--  → LeftNestedInj {p} {r} inj
+--   → ( x : U p → ●||-Pres x → ●||-Pres (inj x) )
+
+
 
 -- LeftNestedPreserve does not make sense 
 ```

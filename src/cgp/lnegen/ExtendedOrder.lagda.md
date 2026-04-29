@@ -1014,12 +1014,21 @@ data _,_,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char )
 -- 3 pdis [ b ,  c ● d ,  e ]
 -- b > c● d  and c●d > b
 
-{-# TERMINATING #-}
-pdi*-∃₂ : ∀ { r : RE } { pf : List Char } {sf : List Char } 
+pdi*-∃₂ : ∀ { r : RE } { pf : List Char } {sf : List Char }
        → ( pdi : PDInstance* r pf )
-       → r , pf ⊢* sf ∈ pdi 
+       → r , pf ⊢* sf ∈ pdi
        → ∃[ u ] (( Recons* u pdi) × (proj₁ (flat u) ≡ pf ++ sf ))
-pdi*-∃₂ = {!!}        
+pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦p⟧ inj s-ev) =
+  inj (unflat sf∈⟦p⟧) ,
+  recons* (inj (unflat sf∈⟦p⟧)) (sf∈⟦p⟧ , refl) ,
+  (begin
+    proj₁ (flat (inj (unflat sf∈⟦p⟧)))
+  ≡⟨ s-ev (unflat sf∈⟦p⟧) ⟩
+    pf ++ proj₁ (flat (unflat sf∈⟦p⟧))
+  ≡⟨ cong (λ x → pf ++ x) (cong proj₁ (flat∘unflat sf∈⟦p⟧)) ⟩
+    pf ++ sf
+  ∎)
+
 
 
 
@@ -1044,9 +1053,9 @@ pdi*-∃₂ = {!!}
           ------------------------------
           → r ⊢ u₁ > u₃
     *>-ev u₁ u₃ recons₁ recons₃ len|u₁|≡len|u₃|  =
-      let u₂-recons₂ = pdi*-∃  {r} {pf} pdi₂ 
-      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡|u₂|→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) {!!}  )
-                  (u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ {!!} )  -- where to get u₂ and recons₂ ?
+      let u₂-recons₂-|u₂|≡pf++|u₁| = pdi*-∃₂  {r} {pf} {proj₁ (flat u₁)} pdi₂  {!!} 
+      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡|u₂|→u₁>u₂ u₁ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) recons₁ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) {!!}  )
+                  (u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) u₃ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) recons₃ {!!} )  -- where to get u₂ and recons₂ ?
 
 ```
 

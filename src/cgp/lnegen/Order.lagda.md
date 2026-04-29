@@ -1103,24 +1103,26 @@ data LeftNested : RE → Set where
   lnest-● : { p r : RE } { loc : ℕ }  → LeftNested p → LeftNested (p ● r ` loc )
 
 
-data LeftNestedInj : ∀ { p r : RE } ( inj : U p → U r ) → Set where
+data LeftNestedInj : ∀ { p r : RE } { c : Char } ( inj : U p → U r ) → ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ (proj₁ (flat u)))  → Set where
   lnest-inj-ε : { c : Char } { loc : ℕ }
-    → LeftNestedInj {ε} {$ c ` loc} (λ EmptyU → LetterU c )
-  lnest-inj-● : { p l r : RE } { loc : ℕ } { inj : U p → U l } 
-    → LeftNestedInj {p} {l} inj
-    → LeftNestedInj {p ● r ` loc} {l ● r ` loc } ( mkinjFst inj )
+    → LeftNestedInj {ε} {$ c ` loc} {c}  (mkinjLetter {c} {loc}) (mkinjLetterSound {c} {loc})
+  lnest-inj-● : { p l r : RE } { loc : ℕ } { c : Char } { inj : U p → U l } { s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ (proj₁ (flat u))} 
+    → LeftNestedInj {p} {l} inj s-ev
+    → LeftNestedInj {p ● r ` loc} {l ● r ` loc } {c} ( mkinjFst inj ) ( mkinjFstSoundEv inj s-ev )  
   -- more cases?
 
 -- lemma left nested injection preserve word length for each nesting
 
-data ||-Preserve : ∀ { r : RE } ( u : U r ) → Set where
-  ||-ε : ||-Preserve {ε} EmptyU 
-  ||-● :  { p r : RE } { loc : ℕ } → ||-Preserve 
 
--- leftnest-preserve-|| : ∀ { p r : RE } { inj : U p → U r }
---  → LeftNestedInj {p} {r} inj
---   → ( x : U p → ●||-Pres x → ●||-Pres (inj x) )
-
+lnInj→> : ∀ { p r : RE } { c : Char } { ε∈p : ε∈ p }  { inj : U p → U r }
+  {  s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ (proj₁ (flat u)) }
+  → LeftNestedInj {p} {r} {c} inj s-ev
+  → ( u : U p )
+  → ( v : U p ) 
+  → length (proj₁ (flat u) ) Nat.> 0
+  → length (proj₁ (flat v) ) ≡ 0
+  → r ⊢ inj u > inj v
+lnInj→> =  {!!}   
 
 
 -- LeftNestedPreserve does not make sense 

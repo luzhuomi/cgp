@@ -992,42 +992,61 @@ We say pdi₁ is LNE greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
     then r ⊢ u₁ > u₂ 
 
 ```agda
+-- a suffice is a member of a pd inhabiting in a pdinstance 
+data _,_⊢*_∈_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char ) → PDInstance* r pf → Set where -- pf is prefix , sf is suffix
+  *∈-pdi : ∀ { p r : RE } { pf : List Char } { sf : List Char }
+    → sf ∈⟦ p ⟧ 
+    → ( inj : U p → U r )
+    → ( s-ev : ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ pf ++ ( proj₁ (flat {p} u) )) )
+    → r , pf ⊢* sf ∈ (pdinstance* inj s-ev )
 
-data _,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf → PDInstance* r pf → Set where -- pf is prefix
-  *>-pdi : ∀ { r : RE } { pf : List Char }
+data _,_,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char ) → PDInstance* r pf → PDInstance* r pf → Set where -- pf is prefix
+  *>-pdi : ∀ { r : RE } { pf : List Char } { sf : List Char } 
     → ( pdi₁ : PDInstance* r pf )
     → ( pdi₂ : PDInstance* r pf )
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂)) → r ⊢ u₁ > u₂ ) 
-    → r , pf ⊢* pdi₁ > pdi₂ 
+    → r , pf ⊢* sf ∈ pdi₁
+    → r , pf ⊢* sf ∈ pdi₂    
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → proj₁ (flat u₁) ≡ proj₁ (flat u₂) → r ⊢ u₁ > u₂ ) 
+    → r , pf , sf  ⊢* pdi₁ > pdi₂ 
 
 -- no we don't have transitivity with the above adjust ment
 -- a ● b + a ● c ● d + a ● e
 -- 3 pdis [ b ,  c ● d ,  e ]
 -- b > c● d  and c●d > b
 
+{-# TERMINATING #-}
+pdi*-∃₂ : ∀ { r : RE } { pf : List Char } {sf : List Char } 
+       → ( pdi : PDInstance* r pf )
+       → r , pf ⊢* sf ∈ pdi 
+       → ∃[ u ] (( Recons* u pdi) × (proj₁ (flat u) ≡ pf ++ sf ))
+pdi*-∃₂ = {!!}        
+
+
+
+
 -- transitivity of *>-pdi 
-*>-pdi-trans : ∀ { r : RE }  { pref : List Char }  
-  → { pdi₁ : PDInstance* r pref }
-  → { pdi₂ : PDInstance* r pref }
-  → { pdi₃ : PDInstance* r pref }
-  → r , pref  ⊢* pdi₁ > pdi₂
-  → r , pref  ⊢* pdi₂ > pdi₃
+*>-pdi-trans : ∀ { r : RE }  { pf : List Char }  { sf : List Char }
+  → { pdi₁ : PDInstance* r pf }
+  → { pdi₂ : PDInstance* r pf }
+  → { pdi₃ : PDInstance* r pf }
+  → r , pf , sf   ⊢* pdi₁ > pdi₂
+  → r , pf , sf  ⊢* pdi₂ > pdi₃
   -------------------------------------------  
-  → r , pref  ⊢* pdi₁ > pdi₃ 
-*>-pdi-trans {r} {pref} {pdi₁} {pdi₂} {pdi₃} (*>-pdi pdi₁ pdi₂ u₁→u₂→rec₁→rec₂→len|u₁|≡len|u₂|→u₁>u₂)  (*>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→len|u₂|≡len|u₃|→u₂>u₃)  = *>-pdi pdi₁ pdi₃ *>-ev
+  → r , pf , sf  ⊢* pdi₁ > pdi₃ 
+*>-pdi-trans {r} {pf}  {sf} {pdi₁} {pdi₂} {pdi₃} (*>-pdi .{r} .{pf} .{sf} pdi₁ pdi₂ sf∈pdi₁ sf∈pdi₂  u₁→u₂→rec₁→rec₂→|u₁|≡|u₂|→u₁>u₂)  (*>-pdi .{r} .{pf} .{sf} .(pdi₂) pdi₃ sf∈pdi₂' sf∈pdi₃ u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃)  = *>-pdi pdi₁ pdi₃ sf∈pdi₁ sf∈pdi₃  *>-ev
   
   where
     *>-ev : ( u₁ : U r )
           → ( u₃ : U r )
           → Recons* u₁ pdi₁
           → Recons* u₃ pdi₃
-          → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₃))
+          → proj₁ (flat u₁) ≡ proj₁ (flat u₃)
           ------------------------------
           → r ⊢ u₁ > u₃
     *>-ev u₁ u₃ recons₁ recons₃ len|u₁|≡len|u₃|  =
-      let u₂-recons₂ = pdi*-∃  {r} {pref} pdi₂ 
-      in  >-trans (u₁→u₂→rec₁→rec₂→len|u₁|≡len|u₂|→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) {!!}  )
-                  (u₂→u₃→rec₂→rec₃→len|u₂|≡len|u₃|→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ {!!} )  -- where to get u₂ and recons₂ ?
+      let u₂-recons₂ = pdi*-∃  {r} {pf} pdi₂ 
+      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡|u₂|→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) {!!}  )
+                  (u₂→u₃→rec₂→rec₃→|u₂|≡|u₃|→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ {!!} )  -- where to get u₂ and recons₂ ?
 
 ```
 
@@ -1035,17 +1054,17 @@ data _,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf →
 
 ```agda
 
-data Ex*>-maybe : ∀ { r : RE } { w : List Char } ( pdi : PDInstance* r w ) → ( mpdi : Maybe (PDInstance* r w) ) → Set where
-  ex*>-nothing : ∀ { r : RE } { w : List Char }
-    → { pdi : PDInstance* r w } 
+data Ex*>-maybe : ∀ { r : RE } { pf : List Char } { sf : List Char } ( pdi : PDInstance* r pf ) → ( mpdi : Maybe (PDInstance* r pf) ) → Set where
+  ex*>-nothing : ∀ { r : RE } { pf : List Char } { sf : List Char }
+    → { pdi : PDInstance* r pf } 
     ---------------------------
-    → Ex*>-maybe {r} {w} pdi nothing
-  ex*>-just : ∀ { r : RE } { w : List Char }
-    → { pdi : PDInstance* r w }
-    → { pdi' : PDInstance* r w }
-    → r , w ⊢* pdi > pdi' 
+    → Ex*>-maybe {r} {pf} {sf}  pdi nothing
+  ex*>-just : ∀ { r : RE } { pf : List Char } { sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → { pdi' : PDInstance* r pf }
+    → r , pf , sf  ⊢* pdi > pdi' 
     ----------------------------------
-    → Ex*>-maybe {r} {w} pdi (just pdi')
+    → Ex*>-maybe {r} {pf} {sf}  pdi (just pdi')
 
 data Ex*>-sorted : ∀ { r : RE } { w : List Char } ( pdis : List (PDInstance* r w) ) → Set where
   ex*>-nil  : ∀ { r : RE } { w : List Char } → Ex*>-sorted {r} {w} []
@@ -1128,6 +1147,7 @@ Would you like me to implement option 1? It requires adding *>-Inc and >-Inc def
 
 
 -}
+{-
 compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
@@ -1159,7 +1179,7 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-
     ex*>-ev : ∀ (u₁ u₂ : U r )
       → Recons* u₁ (compose-pdi-with d→r s-ev-d-r (pdinstance p₁→d s-ev-p₁-d))
       → Recons* u₂ (compose-pdi-with d→r s-ev-d-r (pdinstance p₂→d s-ev-p₂-d))
-      → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
+      → (proj₁ (flat u₁)) ≡ (proj₁ (flat u₂))
       ----------------------------------------------------------------------------
       → r ⊢ u₁ > u₂
     ex*>-ev u₁ u₂
@@ -1172,7 +1192,7 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-
                                                                                                (p₂→d (unflat w₂∈⟦p₂⟧))
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
                                                                                                (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
-          
+-}           
 {-
 map-compose-pdi-with-sorted : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )

@@ -1289,7 +1289,6 @@ pdi*-∃ {r} {pref} pdi@(pdinstance* {d} {r} {pref}  d→r s-ev-d-r)
 
 
 
-
 ```
 
 #### Aux Lemma : A parse tree this reconstructible from a pdinstance should not be flattened to empty word.

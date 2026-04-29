@@ -1098,6 +1098,7 @@ data ≅-Preserve* : ∀ { r : RE } { w : List Char } → PDInstance* r w → Se
 -- Partial Derivative, must be a left-nested expression, whose leftmost innermost expression is ε. 
 
 ```agda
+{-
 data LeftNested : RE → Set where
   lnest-ε : LeftNested ε
   lnest-● : { p r : RE } { loc : ℕ }  → LeftNested p → LeftNested (p ● r ` loc )
@@ -1124,7 +1125,7 @@ lnInj→> : ∀ { p r : RE } { c : Char } { ε∈p : ε∈ p }  { inj : U p → 
   → r ⊢ inj u > inj v
 lnInj→> =  {!!}   
 
-
+-} 
 -- LeftNestedPreserve does not make sense 
 ```
 
@@ -1139,17 +1140,6 @@ data >-Inc-≅ : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
         → p ⊢ u₁ ≅ u₂ 
         → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
     → >-Inc-≅ {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
-
-
-data >-Inc-lnest : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
-  >-inc-lnest : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → LeftNested p 
-    → ( (u₁ : U p) → (u₂ : U p)
-        → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
-    → >-Inc-lnest {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
-
-
 ```
 
 ### Lemma 33: all pdinstances from pdU[ r , c ] are >-strict increasing .
@@ -1168,7 +1158,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 -----------------------------------------------------------------------------
 -- Sub Lemma 33.1 - 33.9  BEGIN
 ----------------------------------------------------------------------------
-{-
+
 >-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdis : List (PDInstance l c) )
     → All (>-Inc-≅ {l} {c}) pdis
@@ -1192,32 +1182,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
         ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
         ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
--}
 
->-inc-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ( pdis : List (PDInstance l c) )
-    → All (>-Inc-lnest {l} {c}) pdis
-    → All (>-Inc-lnest {l + r ` loc } {c}) (List.map pdinstance-left pdis)
->-inc-map-left [] [] = []
->-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis)
-  (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = >-inc-lnest pd-p >-inc-ev   ∷ >-inc-map-left pdis pxs
-  where
-    >-inc-ev : ∀ (u₁ : U p)
-              → (u₂ : U p)
-              → p ⊢ u₁ > u₂
-              --------------
-              → (l + r ` loc) ⊢ LeftU (inj u₁) > LeftU (inj u₂)
-    >-inc-ev u₁ u₂ u₁>u₂ =
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-      in bne (¬≡[]→length>0 ¬proj₁flat-inj-u₁≡[]) (¬≡[]→length>0 ¬proj₁flat-inj-u₂≡[]) (choice-ll  inj-u₁>inj-u₂)
-      where
-        ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
-        ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
-        ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
-        ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
 
-{-
 >-inc-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdis : List (PDInstance r c) )
     → All (>-Inc-≅ {r} {c}) pdis
@@ -1241,33 +1207,8 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
         ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
         ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
--}
 
 
->-inc-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ( pdis : List (PDInstance r c) )
-    → All (>-Inc-lnest {r} {c}) pdis
-    → All (>-Inc-lnest {l + r ` loc } {c}) (List.map pdinstance-right pdis)
->-inc-map-right [] [] = []
->-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c}  inj sound-ev) ∷ pdis)
-  (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = >-inc-lnest pd-p >-inc-ev   ∷ >-inc-map-right pdis pxs
-  where
-    >-inc-ev : ∀ (u₁ : U p)
-              → (u₂ : U p)
-              → p ⊢ u₁ > u₂
-              --------------
-              → (l + r ` loc) ⊢ RightU (inj u₁) > RightU (inj u₂)
-    >-inc-ev u₁ u₂ u₁>u₂ =
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-      in bne (¬≡[]→length>0 ¬proj₁flat-inj-u₁≡[]) (¬≡[]→length>0 ¬proj₁flat-inj-u₂≡[]) (choice-rr  inj-u₁>inj-u₂)
-      where
-        ¬proj₁flat-inj-u₁≡[] : ¬ (proj₁ (flat (inj u₁)) ≡ [])
-        ¬proj₁flat-inj-u₁≡[] rewrite (sound-ev u₁) = λ proj₁flat-inj-u₁≡[] → Utils.¬∷≡[] proj₁flat-inj-u₁≡[] 
-        ¬proj₁flat-inj-u₂≡[] : ¬ (proj₁ (flat (inj u₂)) ≡ [])
-        ¬proj₁flat-inj-u₂≡[] rewrite (sound-ev u₂) = λ proj₁flat-inj-u₂≡[] → Utils.¬∷≡[] proj₁flat-inj-u₂≡[] 
-
-{-
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdi : PDInstance l c )
                → >-Inc-≅ {l} {c} pdi
@@ -1388,117 +1329,17 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 
           |injFst-pair-u₂-v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂))) Nat.> 0
           |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
--}
-
->-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-               → ( pdi : PDInstance l c )
-               → >-Inc-lnest {l} {c} pdi
-               ------------------------
-               → >-Inc-lnest {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
->-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev) (>-inc-lnest ln-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-lnest (lnest-● ln-p) >-inc-ev 
-  where 
-    injFst : U (p ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
-    injFst = mkinjFst inj
-    injFstSnd :  ( u : U (p ● r ` loc) )  → proj₁ (flat (injFst u))  ≡ c ∷ proj₁ (flat u)
-    injFstSnd = mkinjFstSoundEv inj sound-ev
-    
-    >-inc-ev : ∀ (uv₁ : U ( p ● r ` loc ))
-              → (uv₂ : U ( p ● r ` loc ))
-              → p ● r ` loc  ⊢ uv₁ > uv₂
-              ------------------------------------
-              → l ● r ` loc ⊢ (injFst uv₁) > (injFst uv₂)
-
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂)) =
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-      in bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₁ inj-u₁>inj-u₂)
-        where
-          |injFst-pair-u₁-v₁|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) v₁))) Nat.> 0
-          |injFst-pair-u₁-v₁|>0 rewrite injFstSnd (PairU u₁ v₁) = Nat.s≤s Nat.z≤n 
-
-          |injFst-pair-u₂-v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂))) Nat.> 0
-          |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
 
 
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₂ u₁≡u₂ v₁>v₂)) =
-      bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₂ inj-u₁≡inj-u₂ v₁>v₂)
-        where
-          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
-          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-          |injFst-pair-u₁-v₁|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) v₁))) Nat.> 0
-          |injFst-pair-u₁-v₁|>0 rewrite injFstSnd (PairU u₁ v₁) = Nat.s≤s Nat.z≤n 
-
-          |injFst-pair-u₂-v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂))) Nat.> 0
-          |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
-          
-
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 )  =  prf -- hm this case is tricky.
-      where      
-        prf :  (l ● r ` loc) ⊢ injFst (PairU u₁ v₁) > injFst (PairU u₂ v₂)
-        prf = bne {!!} {!!} {!!} -- how do we make use of the premise that p is left-nested ? 
-
-        -- there was an issue here with the counter example t13 t14 above.
-        -- a counter examples the t13 t14 above.
-        -- t13>t14
-        -- injFst t13 = PairU (PairU (RightU (ListU (LetterU 'a' ∷ []))         (RightU (ListU (LetterU 'a' ∷ []))))               (ListU (LetterU 'a' ∷ []))
-        -- injFst t14 = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ []))          (LeftU (ListU [])))                                (ListU (LetterU 'a' ∷ LetterU 'a' ∷ []))
-        -- injFst t14 > injFst t13
-        {-
-          Wait! do we really have issue here with t13 t14, it seems not!
-          r = ( (a* + a* ) ● (a* + a*) ) ● a*
-          after pdU[ r , a ] we have 5 pdinstances
-          1) ( (ε ● a*) ● (a* + a*) ) ● a*        in₁ = 
-          2) ( (ε ● a*) ● (a* + a*) ) ● a*        in₂ = 
-          3) ( ε ● a* ) ● a*                      in₃ = 
-          4) ( ε ● a* ) ● a*                      in₄ =
-          5) ε ● a*                               in₅ =
-          each injection should have >-Inc (or we should say >-Inc-lnest
-          observation: the left most inner most sub exp must be ε, followed by some r.
-
-          let's consider another example
-          t = a ● r
-          t / a = ε ● r,
-          let v₁ = PairU EmptyU t13
-              v₂ = PairU EmptyU t14
-          inj v₁ = PairU (LetterU 'a') t13
-          inj v₂ = PairU (LetterU 'a') t14, it does not change the order!
-          So >-Inc-lnest might hold. We need to capture this invariant in the premise. 
-        -} 
-
-    
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  = 
-      let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  u₁>u₂
-      in bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₁ inj-u₁>inj-u₂) 
-
-        where
-
-          |injFst-pair-u₁-v₁|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) v₁))) Nat.> 0
-          |injFst-pair-u₁-v₁|>0 rewrite injFstSnd (PairU u₁ v₁) = Nat.s≤s Nat.z≤n 
-
-          |injFst-pair-u₂-v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂))) Nat.> 0
-          |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
-
-
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₂  u₁≡u₂ v₁>v₂ )) =
-      bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
-        where
-          inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
-          inj-u₁≡inj-u₂ = cong inj u₁≡u₂
-
-          |injFst-pair-u₁-v₁|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) v₁))) Nat.> 0
-          |injFst-pair-u₁-v₁|>0 rewrite injFstSnd (PairU u₁ v₁) = Nat.s≤s Nat.z≤n 
-
-          |injFst-pair-u₂-v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₂) v₂))) Nat.> 0
-          |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
 
 
 >-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdis : List (PDInstance l c ) )
-               → All (>-Inc-lnest {l} {c}) pdis
-               → All (>-Inc-lnest {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+               → All (>-Inc-≅ {l} {c}) pdis
+               → All (>-Inc-≅  {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
 >-inc-map-fst [] [] = []
-
->-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
-  = (>-inc-fst (pdinstance inj sound-ev) (>-inc-lnest pd-p u₁→u₂→u₁>u₂→inj-u₁>inj-u₂))    ∷  >-inc-map-fst pdis pxs
+>-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) ((>-inc u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ ) ∷ pxs)
+   = (>-inc-fst (pdinstance inj sound-ev) (>-inc u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂))    ∷  >-inc-map-fst pdis pxs
 
  
 
@@ -1759,7 +1600,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 #### Main proof for Lemma 33
 
 ```agda
-{-
+
 -- main lemma proof
 pdU->-inc : ∀ { r : RE } { c : Char }
   → All (>-Inc-≅ {r} {c}) pdU[ r , c ]
@@ -1954,5 +1795,5 @@ pdUMany-*>-inc {r} {w} = pdUMany-aux-*>-inc w  [  ( pdinstance* {r} {r} {[]} (λ
       --------------------------------
       → r ⊢ (λ u → u) u₁ > (λ u → u) u₂ 
     ev-*>-inc u₁ u₂ u₁≅u₂ u₁>u₂ = u₁>u₂ 
--} 
+
 ```

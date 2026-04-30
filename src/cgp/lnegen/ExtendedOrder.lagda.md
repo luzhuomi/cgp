@@ -1077,62 +1077,62 @@ data Ex*>-maybe : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r
 
 
 data Ex*>-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( r , pf ⊢* sf ∈ pdi ) → ( pdis : List (PDInstance* r pf ) ) → Set where
-  ex*>-first-nil : ∀ { r : RE } { pf sf : List Char } 
+  ex*>-first-nil : ∀ { r : RE } { pf sf : List Char }
     → { pdi : PDInstance* r pf }
-    → { sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) } 
+    → { sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) }
     ---------------------------
     → Ex*>-first {r} {pf} {sf} pdi sf∈pdi []
-  ex*>-first-skip : ∀ { r : RE } { pf sf : List Char } 
+  ex*>-first-skip : ∀ { r : RE } { pf sf : List Char }
     → { pdi : PDInstance* r pf }
     → { pdi' : PDInstance* r pf }
     → { pdis : List (PDInstance* r pf) }
     → { sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) }
     → ¬ ( r , pf ⊢* sf ∈ pdi' )
-    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis 
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis
     ----------------------------------------------------
     → Ex*>-first {r} {pf} {sf} pdi sf∈pdi (pdi' ∷ pdis)
-  ex*>-first-cons : ∀ { r : RE } { pf sf : List Char } 
+  ex*>-first-cons : ∀ { r : RE } { pf sf : List Char }
     → { pdi : PDInstance* r pf }
     → { pdi' : PDInstance* r pf }
     → { pdis : List (PDInstance* r pf) }
     → { sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) }
     → ( r , pf ⊢* sf ∈ pdi' )
-    → r , pf , sf  ⊢* pdi > pdi'    
+    → r , pf , sf  ⊢* pdi > pdi'
     ----------------------------------------------------
     → Ex*>-first {r} {pf} {sf} pdi sf∈pdi (pdi' ∷ pdis)
-    
+
 
 data Ex*>-sorted : ∀ { r : RE } { pf sf : List Char } ( pdis : List (PDInstance* r pf) ) → Set where
   ex*>-sorted-nil  : ∀ { r : RE } { pf sf : List Char } → Ex*>-sorted {r} {pf} {sf} []
-  ex*>-sorted-skip : ∀ { r : RE } { pf sf : List Char } 
+  ex*>-sorted-skip : ∀ { r : RE } { pf sf : List Char }
     → { pdi : PDInstance* r pf }
     → { pdis : List (PDInstance* r pf) }
     → ¬ ( r , pf ⊢* sf ∈ pdi ) -- the head pdi is not accepting sf
-    → Ex*>-sorted  {r} {pf} {sf} pdis 
+    → Ex*>-sorted  {r} {pf} {sf} pdis
     --------------------------------------
     → Ex*>-sorted {r} {pf} {sf} ( pdi ∷ pdis )
-  ex*>-sorted-cons : ∀ { r : RE } { pf sf : List Char } 
+  ex*>-sorted-cons : ∀ { r : RE } { pf sf : List Char }
     → { pdi : PDInstance* r pf }
     → { pdis : List (PDInstance* r pf) }
-    → ( sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) )  -- the head pdi is accepting sf    
-    → Ex*>-sorted  {r} {pf} {sf} pdis 
+    → ( sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) )  -- the head pdi is accepting sf
+    → Ex*>-sorted  {r} {pf} {sf} pdis
     → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis
     --------------------------------------
-    → Ex*>-sorted {r} {pf} {sf} ( pdi ∷ pdis ) 
+    → Ex*>-sorted {r} {pf} {sf} ( pdi ∷ pdis )
 
 
 data Ex*>-weak-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( pdis : List (PDInstance* r pf ) ) → Set where
   ex*>-weak-nonmember : ∀ { r : RE } { pf sf : List Char }
     → ( pdi : PDInstance* r pf )
-    → ( pdis : List (PDInstance* r pf ) )    
+    → ( pdis : List (PDInstance* r pf ) )
     → ¬ ( r , pf ⊢* sf ∈ pdi )
     ----------------------------------
     → Ex*>-weak-first {r} {pf} {sf} pdi pdis
   ex*>-weak-member : ∀ { r : RE } { pf sf : List Char }
     → ( pdi : PDInstance* r pf )
-    → ( pdis : List (PDInstance* r pf ) )    
+    → ( pdis : List (PDInstance* r pf ) )
     → ( sf∈pdi : r , pf ⊢* sf ∈ pdi )
-    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis 
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis
     ----------------------------------
     → Ex*>-weak-first {r} {pf} {sf} pdi pdis
     
@@ -1164,6 +1164,40 @@ Then pdUMany[r , w] is extended LNE sorted.
 -- perhaps we need to define a decidability check r , pf ⊢* sf ∈? pdi which give us (yes (r , pf ⊢* sf ∈ pdi)) or (no ¬ (r , pf ⊢* sf ∈ pdi))
 
 
+-- Ex*>-first-cast : The `Ex*>-first` data type carries a proof `sf∈pdi` that the reference pdi accepts `sf`.
+-- However, the constructors of `Ex*>-first` never inspect this proof (they only check whether subsequent pdis accept `sf`).
+-- Hence, the same `Ex*>-first` witness can be reused with any other proof `sf∈pdi₂` for the same `pdi` and `sf`.
+-- This lemma performs that "cast" by structural recursion over the witness.
+Ex*>-first-cast : ∀ { r : RE } { pf sf : List Char }
+  → { pdi : PDInstance* r pf }
+  → { sf∈pdi₁ sf∈pdi₂ : r , pf ⊢* sf ∈ pdi }
+  → { pdis : List (PDInstance* r pf) }
+  → Ex*>-first pdi sf∈pdi₁ pdis
+  → Ex*>-first pdi sf∈pdi₂ pdis
+Ex*>-first-cast {r} {pf} {sf} {pdi} {sf∈pdi₁} {sf∈pdi₂} {[]} ex*>-first-nil = ex*>-first-nil
+Ex*>-first-cast {r} {pf} {sf} {pdi} {sf∈pdi₁} {sf∈pdi₂} {pdi' ∷ pdis} (ex*>-first-skip ¬sf∈pdi' first) = ex*>-first-skip ¬sf∈pdi' (Ex*>-first-cast first)
+Ex*>-first-cast {r} {pf} {sf} {pdi} {sf∈pdi₁} {sf∈pdi₂} {pdi' ∷ pdis} (ex*>-first-cons sf∈pdi' pdi>pdi') = ex*>-first-cons sf∈pdi' pdi>pdi'
+
+
+-- Ex*>-first-++ : If `pdi` is "first" among `pdis₁` (i.e. every pdi before the first accepting one is skipped),
+-- and also "first" among `pdis₂`, then it is "first" among the concatenation `pdis₁ ++ pdis₂`.
+-- The key insight is that the first accepting pdi in `pdis₁ ++ pdis₂` is either:
+--   1) The first accepting pdi found in `pdis₁` (terminal, via `ex*>-first-cons`), or
+--   2) If `pdis₁` has no accepting pdis, then the first accepting pdi of `pdis₂`.
+Ex*>-first-++ : ∀ { r : RE } { pf sf : List Char }
+  → { pdi : PDInstance* r pf }
+  → { sf∈pdi : r , pf ⊢* sf ∈ pdi }
+  → { pdis₁ pdis₂ : List (PDInstance* r pf) }
+  → Ex*>-first pdi sf∈pdi pdis₁
+  → Ex*>-first pdi sf∈pdi pdis₂
+  → Ex*>-first pdi sf∈pdi (pdis₁ ++ pdis₂)
+Ex*>-first-++ {r} {pf} {sf} {pdi} {sf∈pdi} {[]} {pdis₂} ex*>-first-nil first-pdis₂ = first-pdis₂
+Ex*>-first-++ {r} {pf} {sf} {pdi} {sf∈pdi} {pdi' ∷ pdis₁'} {pdis₂} (ex*>-first-skip ¬sf∈pdi' first-pdis₁') first-pdis₂ =
+  ex*>-first-skip ¬sf∈pdi' (Ex*>-first-++ first-pdis₁' first-pdis₂)
+Ex*>-first-++ {r} {pf} {sf} {pdi} {sf∈pdi} {pdi' ∷ pdis₁'} {pdis₂} (ex*>-first-cons sf∈pdi' pdi>pdi') first-pdis₂ =
+  ex*>-first-cons sf∈pdi' pdi>pdi'
+
+
 concat-ex*-sorted : ∀ { r : RE } { pf sf : List Char }
     → ( pdis₁ : List ( PDInstance* r pf ))
     → ( pdis₂ : List ( PDInstance* r pf ))
@@ -1174,10 +1208,14 @@ concat-ex*-sorted : ∀ { r : RE } { pf sf : List Char }
     → Ex*>-sorted { r } {pf} {sf} (pdis₁ ++ pdis₂)
 concat-ex*-sorted []                       pdis₂          ex*>-sorted-nil                               pdis₂-sorted     []                              = pdis₂-sorted
 concat-ex*-sorted pdis₁                    []             pdis₁-sorted                                  ex*>-sorted-nil           _  rewrite (++-identityʳ pdis₁) = pdis₁-sorted
--- concat-ex*-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-sorted                                  pdi₂pdis₂-sorted         (ex*>-just pdi₁>pdi₂  ∷ [])      = ? --  ex*>-cons pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂) 
--- concat-ex*-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*>-sorted-cons pdi₁'pdis₁-sorted pdi₁>head-pdis₁)  pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂  ∷ pxs)     = ? -- ex*>-cons ind-hyp pdi₁>head-pdis₁
---  where
---     ind-hyp = concat-ex*-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs 
+concat-ex*-sorted (pdi₁ ∷ pdis₁') pdis₂ (ex*>-sorted-skip ¬sf∈pdi₁ pdis₁'-sorted) pdis₂-sorted (p₁ ∷ pxs) =
+  ex*>-sorted-skip ¬sf∈pdi₁ (concat-ex*-sorted pdis₁' pdis₂ pdis₁'-sorted pdis₂-sorted pxs)
+concat-ex*-sorted (pdi₁ ∷ pdis₁') pdis₂ (ex*>-sorted-cons sf∈pdi₁ pdis₁'-sorted pdi₁-first-pdis₁') pdis₂-sorted (ex*>-weak-nonmember pdi₁ pdis₂ ¬sf∈pdi₁ ∷ pxs) =
+  Nullary.contradiction sf∈pdi₁ ¬sf∈pdi₁
+concat-ex*-sorted (pdi₁ ∷ pdis₁') pdis₂ (ex*>-sorted-cons sf∈pdi₁ pdis₁'-sorted pdi₁-first-pdis₁') pdis₂-sorted (ex*>-weak-member pdi₁ pdis₂ sf∈pdi first ∷ pxs) =
+  ex*>-sorted-cons sf∈pdi₁ ind-hyp (Ex*>-first-++ pdi₁-first-pdis₁' (Ex*>-first-cast first))
+  where
+    ind-hyp = concat-ex*-sorted pdis₁' pdis₂ pdis₁'-sorted pdis₂-sorted pxs 
 
 
 {-

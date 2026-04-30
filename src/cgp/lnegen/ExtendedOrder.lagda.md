@@ -992,7 +992,8 @@ We say pdi₁ is LNE greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
     then r ⊢ u₁ > u₂ 
 
 ```agda
--- a suffice is a member of a pd inhabiting in a pdinstance 
+-- a suffice is a member of a pd inhabiting in a pdinstance
+infix 4 _,_⊢*_∈_
 data _,_⊢*_∈_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char ) → PDInstance* r pf → Set where -- pf is prefix , sf is suffix
   *∈-pdi : ∀ { p r : RE } { pf : List Char } { sf : List Char }
     → sf ∈⟦ p ⟧ 
@@ -1000,6 +1001,7 @@ data _,_⊢*_∈_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char )
     → ( s-ev : ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ pf ++ ( proj₁ (flat {p} u) )) )
     → r , pf ⊢* sf ∈ (pdinstance* inj s-ev )
 
+infix 4 _,_,_⊢*_>_
 data _,_,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char ) → PDInstance* r pf → PDInstance* r pf → Set where -- pf is prefix
   *>-pdi : ∀ { r : RE } { pf : List Char } { sf : List Char }
     → ( pdi₁ : PDInstance* r pf )
@@ -1259,8 +1261,11 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pf : List C
   → ( pdis : List (PDInstance d c) )
   → Ex>-maybe pdi (head pdis)
   -------------------------------------------------------------------------------------------------
-  → Ex*>-maybe {r} {pf ∷ʳ c} {sf}   (compose-pdi-with d→r s-ev-d→r pdi) (head (List.map (compose-pdi-with d→r s-ev-d→r) pdis))
+  -- → Ex*>-maybe {r} {pf ∷ʳ c} {sf}   (compose-pdi-with d→r s-ev-d→r pdi) (head (List.map (compose-pdi-with d→r s-ev-d→r) pdis))
+  →  Ex*>-first {r} {pf ∷ʳ c} {sf}  (compose-pdi-with d→r s-ev-d→r pdi) (r ,  pf ∷ʳ c  ⊢* sf ∈ (compose-pdi-with d→r s-ev-d→r pdi) )
+      (List.map (compose-pdi-with d→r s-ev-d→r) pdis)
 compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r pdi []  ex>-nothing = ex*>-nothing
+{-
 compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r
   pdi₁@(pdinstance {p₁} {d} {c} p₁→d s-ev-p₁→d)
   (pdi₂@(pdinstance {p₂} {d} {c} p₂→d s-ev-p₂→d) ∷ pdis )
@@ -1297,8 +1302,8 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈�
                                                                                                (p₂→d (unflat w₂∈⟦p₂⟧))
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
                                                                                                (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
+-}
 
-{-
 map-compose-pdi-with-sorted : ∀ { d r : RE } { pf : List Char} { c : Char } { sf : List Char }
   → ( c ∷ sf ) ∈⟦ d ⟧ 
   → ( d→r : U d → U r )
@@ -1308,14 +1313,15 @@ map-compose-pdi-with-sorted : ∀ { d r : RE } { pf : List Char} { c : Char } { 
   → Ex>-sorted pdis
   -------------------------------------------------------------
   → Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
-map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r [] ex>-nil = ex*>-nil
-map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r (pdi ∷ pdis)  (ex>-cons pdis-sorted pdi>head-pdis) =
-  ex*>-cons ind-hyp
-  (compose-pdi-with-ex*>-head-map-compose-pdi-with c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdi pdis pdi>head-pdis)
+map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r [] ex>-nil = ex*>-sorted-nil 
+map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r (pdi ∷ pdis)  (ex>-cons pdis-sorted pdi>head-pdis) = 
+  ex*>-sorted-cons {!!}  (map-compose-pdi-with-sorted c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis
+                          pdis-sorted) {!!} 
+  {- (compose-pdi-with-ex*>-head-map-compose-pdi-with c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdi pdis pdi>head-pdis)
   where
     ind-hyp : Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
-    ind-hyp = map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis pdis-sorted 
--}
+    ind-hyp = map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis pdis-sorted
+    -} 
 
 {-
 

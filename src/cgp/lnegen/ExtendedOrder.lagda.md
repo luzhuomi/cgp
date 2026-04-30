@@ -1001,12 +1001,12 @@ data _,_⊢*_∈_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char )
     → r , pf ⊢* sf ∈ (pdinstance* inj s-ev )
 
 data _,_,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char ) → PDInstance* r pf → PDInstance* r pf → Set where -- pf is prefix
-  *>-pdi : ∀ { r : RE } { pf : List Char } { sf : List Char } 
+  *>-pdi : ∀ { r : RE } { pf : List Char } { sf : List Char }
     → ( pdi₁ : PDInstance* r pf )
     → ( pdi₂ : PDInstance* r pf )
     → r , pf ⊢* sf ∈ pdi₁
-    → r , pf ⊢* sf ∈ pdi₂    
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → proj₁ (flat u₁) ≡ sf → proj₁ (flat u₂) ≡ sf → r ⊢ u₁ > u₂ ) 
+    → r , pf ⊢* sf ∈ pdi₂
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → proj₁ (flat u₁) ≡ pf ++ sf → proj₁ (flat u₂) ≡ pf ++ sf → r ⊢ u₁ > u₂ )
     → r , pf , sf  ⊢* pdi₁ > pdi₂ 
 
 -- no we don't have transitivity with the above adjust ment
@@ -1033,74 +1033,29 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
 
 
 
--- Counterexample showing why *>-pdi-trans is unprovable with the sf index:
---
--- The relation r , pf , sf ⊢* pdi₁ > pdi₂ requires:
---   1) sf ∈ pdi₁ and sf ∈ pdi₂ (membership)
---   2) For ALL u₁ from pdi₁ and u₂ from pdi₂ with proj₁ (flat u₁) ≡ proj₁ (flat u₂),
---      we have r ⊢ u₁ > u₂.
---
--- The crucial point is that a PDInstance* r pf can reconstruct parse trees with
--- MANY different suffixes. The sf parameter only guarantees that at least one
--- parse tree with suffix sf exists; it does NOT restrict the ∀ quantifier to
--- parse trees with that particular suffix.
---
--- Concrete scenario:
---   Let r = $a ● ($b + $c) and pf = [a].
---   The partial derivative of r w.r.t. a is $b + $c.
---   A single PDInstance* for $b + $c with injection (λ u → PairU (LetterU a) u)
---   reconstructs TWO parse trees:
---     u_b = PairU (LetterU a) (LeftU (LetterU b))  with flat [a , b]
---     u_c = PairU (LetterU a) (RightU (LetterU c)) with flat [a , c]
---
---   Let pdi₁, pdi₂, pdi₃ be three such PDInstance* objects (possibly identical
---   or with different injections, as long as they admit both suffixes).
---   Take sf = [b]. Then sf ∈ pdi₁, sf ∈ pdi₂, sf ∈ pdi₃ all hold.
---
---   Suppose we have r , [a] , [b] ⊢* pdi₁ > pdi₂ and r , [a] , [b] ⊢* pdi₂ > pdi₃.
---   To prove transitivity, we must show that for any u₁ from pdi₁ and u₃ from pdi₃
---   with equal flats, r ⊢ u₁ > u₃.
---
---   Consider u₁ = u_c (flat [a , c]) from pdi₁ and u₃ = u_c (flat [a , c]) from pdi₃.
---   Their flats are equal. To apply >-trans, we need an intermediate u₂ from pdi₂
---   with flat [a , c] as well.
---
---   The only existential lemma available is pdi*-∃₂ {sf = [b]}, which gives us a
---   parse tree from pdi₂ with suffix [b], i.e., flat [a , b]. It does NOT give us
---   a parse tree with suffix [c] (flat [a , c]).
---
---   Therefore, there is no way to obtain the required u₂ with flat [a , c] from
---   pdi₂ using only pdi*-∃₂ {[b]}. The proof gets stuck because the existential
---   lemma is parameterized by the fixed sf, but the ∀ quantifier in *>-pdi ranges
---   over ALL pairs of parse trees with equal flats, including those whose common
---   suffix differs from sf.
---
--- Because of this structural mismatch, *>-pdi-trans cannot be proven when the
--- relation carries the sf index.
-
 *>-pdi-trans : ∀ { r : RE }  { pf : List Char }  { sf : List Char }
   → { pdi₁ : PDInstance* r pf }
   → { pdi₂ : PDInstance* r pf }
   → { pdi₃ : PDInstance* r pf }
   → r , pf , sf   ⊢* pdi₁ > pdi₂
   → r , pf , sf  ⊢* pdi₂ > pdi₃
-  -------------------------------------------  
-  → r , pf , sf  ⊢* pdi₁ > pdi₃ 
-*>-pdi-trans {r} {pf}  {sf} {pdi₁} {pdi₂} {pdi₃} (*>-pdi .{r} .{pf} .{sf} pdi₁ pdi₂ sf∈pdi₁ sf∈pdi₂  u₁→u₂→rec₁→rec₂→|u₁|≡sf→|u₂|≡sf→u₁>u₂)  (*>-pdi .{r} .{pf} .{sf} .(pdi₂) pdi₃ sf∈pdi₂' sf∈pdi₃ u₂→u₃→rec₂→rec₃→|u₂|≡sf→|u₃|≡sf→u₂>u₃)  = *>-pdi pdi₁ pdi₃ sf∈pdi₁ sf∈pdi₃  *>-ev
-  
+  -------------------------------------------
+  → r , pf , sf  ⊢* pdi₁ > pdi₃
+*>-pdi-trans {r} {pf}  {sf} {pdi₁} {pdi₂} {pdi₃} (*>-pdi .{r} .{pf} .{sf} pdi₁ pdi₂ sf∈pdi₁ sf∈pdi₂  u₁>u₂-ev)  (*>-pdi .{r} .{pf} .{sf} .(pdi₂) pdi₃ sf∈pdi₂' sf∈pdi₃ u₂>u₃-ev)  = *>-pdi pdi₁ pdi₃ sf∈pdi₁ sf∈pdi₃  *>-ev
+
   where
     *>-ev : ( u₁ : U r )
           → ( u₃ : U r )
           → Recons* u₁ pdi₁
           → Recons* u₃ pdi₃
-          → proj₁ (flat u₁) ≡ sf
-          → proj₁ (flat u₃) ≡ sf 
+          → proj₁ (flat u₁) ≡ pf ++ sf
+          → proj₁ (flat u₃) ≡ pf ++ sf
           ------------------------------
           → r ⊢ u₁ > u₃
-    *>-ev u₁ u₃ recons₁ recons₃ |u₁|≡sf |u₃|≡sf  =
-      let u₂-recons₂-|u₂|≡pf++|u₁| = pdi*-∃₂  {r} {pf} {proj₁ (flat u₁)} pdi₂  {!!} 
-      in  >-trans (u₁→u₂→rec₁→rec₂→|u₁|≡sf→|u₂|≡sf→u₁>u₂ u₁ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) recons₁ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) |u₁|≡sf {!!}  )
-                  (u₂→u₃→rec₂→rec₃→|u₂|≡sf→|u₃|≡sf→u₂>u₃ (proj₁ u₂-recons₂-|u₂|≡pf++|u₁|) u₃ (proj₁ (proj₂ u₂-recons₂-|u₂|≡pf++|u₁|)) recons₃ {!!} |u₃|≡sf )
+    *>-ev u₁ u₃ recons₁ recons₃ |u₁|≡pfsf |u₃|≡pfsf =
+      let u₂-recons₂ = pdi*-∃₂  {r} {pf} {sf} pdi₂ sf∈pdi₂'
+      in  >-trans (u₁>u₂-ev u₁ (proj₁ u₂-recons₂) recons₁ (proj₁ (proj₂ u₂-recons₂)) |u₁|≡pfsf (proj₂ (proj₂ u₂-recons₂)))
+                  (u₂>u₃-ev (proj₁ u₂-recons₂) u₃ (proj₁ (proj₂ u₂-recons₂)) recons₃ (proj₂ (proj₂ u₂-recons₂)) |u₃|≡pfsf)
 
 ```
 
@@ -1108,17 +1063,17 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
 
 ```agda
 
-data Ex*>-maybe : ∀ { r : RE } { pf : List Char } { sf : List Char } ( pdi : PDInstance* r pf ) → ( mpdi : Maybe (PDInstance* r pf) ) → Set where
-  ex*>-nothing : ∀ { r : RE } { pf : List Char } { sf : List Char }
-    → { pdi : PDInstance* r pf } 
+data Ex*>-maybe : ∀ { r : RE } { w : List Char } ( pdi : PDInstance* r w ) → ( mpdi : Maybe (PDInstance* r w) ) → Set where
+  ex*>-nothing : ∀ { r : RE } { w : List Char }
+    → { pdi : PDInstance* r w }
     ---------------------------
-    → Ex*>-maybe {r} {pf} {sf}  pdi nothing
-  ex*>-just : ∀ { r : RE } { pf : List Char } { sf : List Char } 
-    → { pdi : PDInstance* r pf }
-    → { pdi' : PDInstance* r pf }
-    → r , pf , sf  ⊢* pdi > pdi' 
+    → Ex*>-maybe {r} {w} pdi nothing
+  ex*>-just : ∀ { r : RE } { w : List Char } { sf : List Char }
+    → { pdi : PDInstance* r w }
+    → { pdi' : PDInstance* r w }
+    → r , w , sf  ⊢* pdi > pdi'
     ----------------------------------
-    → Ex*>-maybe {r} {pf} {sf}  pdi (just pdi')
+    → Ex*>-maybe {r} {w} pdi (just pdi')
 
 data Ex*>-sorted : ∀ { r : RE } { w : List Char } ( pdis : List (PDInstance* r w) ) → Set where
   ex*>-nil  : ∀ { r : RE } { w : List Char } → Ex*>-sorted {r} {w} []
@@ -1343,13 +1298,13 @@ concatmap-advance-pdi*-with-c-sorted {r}  {pref} {c} (pdi ∷ pdis) (ex*>-cons p
 -------------------------------------------------------------
 -- Sub Lemma 41.1 - 41.6 BEGIN
 -------------------------------------------------------------
-
-```
-
+-}
+ ```
+ 
 #### Main proof for Lemma 41
-
+ 
 ```agda 
-
+{-
 pdUMany-aux-sorted : ∀ { r : RE }  { pref : List Char }
   → ( c : Char )
   → ( cs : List Char )
@@ -1375,16 +1330,16 @@ pdUMany-sorted : ∀ { r : RE } { w : List Char }
   → Ex*>-sorted {r} {w} pdUMany[ r , w ]
 pdUMany-sorted {r} {[]} = ex*>-cons ex*>-nil ex*>-nothing
 pdUMany-sorted {r} {c ∷ cs} = pdUMany-aux-sorted {r}  {[]} c cs [  ( pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ) ] (ex*>-cons ex*>-nil ex*>-nothing)  pdUMany-*>-inc
-
-
-```
-
+-}
+ ```
+ 
 ### Theorem 42 : ParseAll is LNE sorted
-
-
+ 
+ 
 ### Aux lemmas 
 ```agda
-map-inj-sorted : ∀ { p r : RE } 
+{-
+map-inj-sorted : ∀ { p r : RE }
   → ( us : List ( U p ) )
   → ( inj : U p → U r )
   → ( (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ )
@@ -1486,10 +1441,12 @@ concatMap-buildU-sorted {r} {w} (pdi₁@(pdinstance* {p₁} {r} p₁→r s-ev₁
     map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis : All (λ u₁ → >-maybe u₁ (head (concatMap buildU (pdinstance* p₂→r s-ev₂ ∷ pdis))))
                                                                                           (List.map p₁→r (mkAllEmptyU ε∈p₁))
     map-p₁→r-mkAllEmptyU-ε∈p₁-all>head-concatMap-buildU-pdi₂pdis = buildU-all>head-concatmap-buildU p₁→r s-ev₁ (pdi₂ ∷ pdis) pdi₂pdis-sorted  (ex*>-just pdi₁>pdi₂) 
+-}
 ```
-
+ 
 #### Main proof for Theorem 42 
 ```agda
+{-
 parseAll-is-lne-sorted : ∀ { r : RE } { w : List Char }
   →  >-sorted {r} (parseAll[ r , w ])
 parseAll-is-lne-sorted {r} {w} = concatMap-buildU-sorted pdUMany[ r , w ] pdUMany-sorted  pdUMany-*>-inc

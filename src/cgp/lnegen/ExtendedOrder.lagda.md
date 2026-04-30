@@ -1099,7 +1099,7 @@ data Ex*>-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r
     → ( r , pf ⊢* sf ∈ pdi' )
     → r , pf , sf  ⊢* pdi > pdi'    
     ----------------------------------------------------
-    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi (pdi ∷ pdis)
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi (pdi' ∷ pdis)
     
 
 data Ex*>-sorted : ∀ { r : RE } { pf sf : List Char } ( pdis : List (PDInstance* r pf) ) → Set where

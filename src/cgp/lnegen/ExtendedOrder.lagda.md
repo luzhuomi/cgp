@@ -1063,27 +1063,28 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
 
 ```agda
 
-data Ex*>-maybe : ∀ { r : RE } { w : List Char } ( pdi : PDInstance* r w ) → ( mpdi : Maybe (PDInstance* r w) ) → Set where
-  ex*>-nothing : ∀ { r : RE } { w : List Char }
-    → { pdi : PDInstance* r w }
+data Ex*>-maybe : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( mpdi : Maybe (PDInstance* r pf) ) → Set where
+  ex*>-nothing : ∀ { r : RE } { pf sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → r , pf ⊢* sf ∈ pdi  -- do we need this ?
     ---------------------------
-    → Ex*>-maybe {r} {w} pdi nothing
-  ex*>-just : ∀ { r : RE } { w : List Char } { sf : List Char }
-    → { pdi : PDInstance* r w }
-    → { pdi' : PDInstance* r w }
-    → r , w , sf  ⊢* pdi > pdi'
+    → Ex*>-maybe {r} {pf} {sf} pdi nothing
+  ex*>-just : ∀ { r : RE } { pf sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → { pdi' : PDInstance* r pf }
+    → r , pf , sf  ⊢* pdi > pdi'
     ----------------------------------
-    → Ex*>-maybe {r} {w} pdi (just pdi')
+    → Ex*>-maybe {r} {pf} {sf} pdi (just pdi')
 
-data Ex*>-sorted : ∀ { r : RE } { w : List Char } ( pdis : List (PDInstance* r w) ) → Set where
-  ex*>-nil  : ∀ { r : RE } { w : List Char } → Ex*>-sorted {r} {w} []
-  ex*>-cons : ∀ { r : RE } { w : List Char } 
-    → { pdi : PDInstance* r w }
-    → { pdis : List (PDInstance* r w) } 
-    → Ex*>-sorted  {r} {w} pdis 
-    → Ex*>-maybe {r} {w} pdi (head pdis)
+data Ex*>-sorted : ∀ { r : RE } { pf sf : List Char } ( pdis : List (PDInstance* r pf) ) → Set where
+  ex*>-nil  : ∀ { r : RE } { pf sf : List Char } → Ex*>-sorted {r} {pf} {sf} []
+  ex*>-cons : ∀ { r : RE } { pf sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → { pdis : List (PDInstance* r pf) } 
+    → Ex*>-sorted  {r} {pf} {sf} pdis 
+    → Ex*>-maybe {r} {pf} {sf} pdi (head pdis)
     --------------------------------------
-    → Ex*>-sorted {r} {w} ( pdi ∷ pdis ) 
+    → Ex*>-sorted {r} {pf} {sf} ( pdi ∷ pdis ) 
 
 ```
 
@@ -1109,14 +1110,14 @@ Then pdUMany[r , w] is extended LNE sorted.
 -------------------------------------------------------------
 -- TODO: can we define a "polymoprhic" version of concat-ex-sorted and concat-ex*-sorted? 
 -- concatenation of two ex sorted lists of pdis are sorted if all the pdis from the first list are ex-> than the head of the 2nd list. 
-concat-ex*-sorted : ∀ { r : RE } { w : List Char }
-    → ( pdis₁ : List ( PDInstance* r w ))
-    → ( pdis₂ : List ( PDInstance* r w ))
-    → Ex*>-sorted { r } { w } pdis₁
-    → Ex*>-sorted { r } {w} pdis₂
-    → All (λ pdi₁ → Ex*>-maybe  {r} pdi₁ (head pdis₂)) pdis₁
+concat-ex*-sorted : ∀ { r : RE } { pf sf : List Char }
+    → ( pdis₁ : List ( PDInstance* r pf ))
+    → ( pdis₂ : List ( PDInstance* r pf ))
+    → Ex*>-sorted { r } {pf} {sf} pdis₁
+    → Ex*>-sorted { r } {pf} {sf} pdis₂
+    → All (λ pdi₁ → Ex*>-maybe  {r} {pf} {sf} pdi₁ (head pdis₂)) pdis₁
     -------------------------------------------------------
-    → Ex*>-sorted { r } {w} (pdis₁ ++ pdis₂)
+    → Ex*>-sorted { r } {pf} {sf} (pdis₁ ++ pdis₂)
 concat-ex*-sorted []                       pdis₂          ex*>-nil                                       pdis₂-sorted     []                              = pdis₂-sorted
 concat-ex*-sorted pdis₁                    []             pdis₁-sorted                                  ex*>-nil           _  rewrite (++-identityʳ pdis₁) = pdis₁-sorted
 concat-ex*-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-sorted                                  pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂  ∷ [])      = ex*>-cons pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂) 
@@ -1156,26 +1157,28 @@ Would you like me to implement option 1? It requires adding *>-Inc and >-Inc def
 
 
 -}
-{-
-compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
+
+compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pf : List Char} { c : Char } { sf : List Char }
+  → ( c ∷ sf ) ∈⟦ d ⟧ 
   → ( d→r : U d → U r )
-  → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
-  -- → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
-  → ( >-inc-d→r :  (v₁ v₂ : U d) → length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₂)) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
+  → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pf ++ ( proj₁ (flat {d} v) )) )
+  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
   → ( pdi : PDInstance d c )
   → ( pdis : List (PDInstance d c) )
   → Ex>-maybe pdi (head pdis)
   -------------------------------------------------------------------------------------------------
-  → Ex*>-maybe (compose-pdi-with d→r s-ev-d-r pdi) (head (List.map (compose-pdi-with d→r s-ev-d-r) pdis))
-compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r pdi []  ex>-nothing = ex*>-nothing   
-compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r
-  pdi₁@(pdinstance {p₁} {d} {c} p₁→d s-ev-p₁-d)
-  (pdi₂@(pdinstance {p₂} {d} {c} p₂→d s-ev-p₂-d) ∷ pdis )
+  → Ex*>-maybe {r} {pf ∷ʳ c} {sf}   (compose-pdi-with d→r s-ev-d→r pdi) (head (List.map (compose-pdi-with d→r s-ev-d→r) pdis))
+compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r pdi []  ex>-nothing = ex*>-nothing {!!} 
+compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r
+  pdi₁@(pdinstance {p₁} {d} {c} p₁→d s-ev-p₁→d)
+  (pdi₂@(pdinstance {p₂} {d} {c} p₂→d s-ev-p₂→d) ∷ pdis )
   (ex>-just pdi₁>pdi₂@(>-pdi _ _ u₁→u₂→rec₁→rec₂→u₁>u₂ ) ) = ex*>-just (*>-pdi -- u₁ and u₂ of U d
-                             {r} {pref ∷ʳ c}
-                             (compose-pdi-with d→r s-ev-d-r pdi₁)
-                             (compose-pdi-with d→r s-ev-d-r pdi₂) -- from the same pdinstance* 
-                             ex*>-ev ) 
+                             {r} {pf ∷ʳ c} {sf} 
+                             (compose-pdi-with d→r s-ev-d→r pdi₁)
+                             (compose-pdi-with d→r s-ev-d→r pdi₂)
+                             (*∈-pdi {!!} (λ x → d→r (p₁→d x)) {!!} )
+                             (*∈-pdi {!!} (λ x → d→r (p₂→d x)) {!!})  -- from the same pdinstance* 
+                              ex*>-ev ) 
   where
             -- 1) from inv-recons*-compose-pdi-with we note that
             -- u₁ is reconstructable from pdinstance* d→r s-ev-d-r
@@ -1186,39 +1189,42 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-
             --  if can we show u₁ = d→r v₁ and u₂ = d→ r v₂ ? 
 
     ex*>-ev : ∀ (u₁ u₂ : U r )
-      → Recons* u₁ (compose-pdi-with d→r s-ev-d-r (pdinstance p₁→d s-ev-p₁-d))
-      → Recons* u₂ (compose-pdi-with d→r s-ev-d-r (pdinstance p₂→d s-ev-p₂-d))
-      → (proj₁ (flat u₁)) ≡ (proj₁ (flat u₂))
+      → Recons* u₁ (compose-pdi-with d→r s-ev-d→r (pdinstance p₁→d s-ev-p₁→d))
+      → Recons* u₂ (compose-pdi-with d→r s-ev-d→r (pdinstance p₂→d s-ev-p₂→d))
+      → (proj₁ (flat u₁)) ≡ pf ++ c ∷ sf
+      → (proj₁ (flat u₂)) ≡ pf ++ c ∷ sf
       ----------------------------------------------------------------------------
       → r ⊢ u₁ > u₂
     ex*>-ev u₁ u₂
             rec*₁@(recons* {- {p₁} {r} {w₁} {pref++c} -} u₁ ( w₁∈⟦p₁⟧ , d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ ) )
-            rec*₂@(recons* {- {p₂} {r} {w₂} {pref++c} -} u₂ ( w₂∈⟦p₂⟧ , d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ ) ) len|u₁|≡len|u₂| 
-            with inv-recons*-compose-pdi-with u₁ pdi₁ d→r s-ev-d-r rec*₁     | inv-recons*-compose-pdi-with u₂ pdi₂ d→r s-ev-d-r rec*₂             
+            rec*₂@(recons* {- {p₂} {r} {w₂} {pref++c} -} u₂ ( w₂∈⟦p₂⟧ , d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ ) ) |u₁|≡sf |u₂|≡sf 
+            with inv-recons*-compose-pdi-with u₁ pdi₁ d→r s-ev-d→r rec*₁     | inv-recons*-compose-pdi-with u₂ pdi₂ d→r s-ev-d→r rec*₂             
     ... | recons* {d} {r} {cw₁} {pref} u₁ ( cw₁∈⟦d⟧ , d→r-unflat-cw₁∈⟦d⟧≡u₁ ) | recons* {d} {r} {cw₂} {pref} u₂ ( cw₂∈⟦d⟧ , d→r-unflat-cw₂∈⟦d⟧≡u₂ ) 
             rewrite sym d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ | sym  d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ = 
                 >-inc-d→r (p₁→d (unflat w₁∈⟦p₁⟧) ) (p₂→d (unflat w₂∈⟦p₂⟧)  ) {!!}  (u₁→u₂→rec₁→rec₂→u₁>u₂ (p₁→d (unflat w₁∈⟦p₁⟧))
                                                                                                (p₂→d (unflat w₂∈⟦p₂⟧))
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
                                                                                                (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
--}           
-{-
-map-compose-pdi-with-sorted : ∀ { d r : RE } { pref : List Char} { c : Char }
+
+
+map-compose-pdi-with-sorted : ∀ { d r : RE } { pf : List Char} { c : Char } { sf : List Char }
+  → ( c ∷ sf ) ∈⟦ d ⟧ 
   → ( d→r : U d → U r )
-  → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+  → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pf ++ ( proj₁ (flat {d} v) )) )
   → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅  v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
   → ( pdis : List (PDInstance d c) )
   → Ex>-sorted pdis
   -------------------------------------------------------------
-  → Ex*>-sorted {r}  (List.map (compose-pdi-with d→r s-ev-d-r) pdis )
-map-compose-pdi-with-sorted {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r [] ex>-nil = ex*>-nil
-map-compose-pdi-with-sorted {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r (pdi ∷ pdis)  (ex>-cons pdis-sorted pdi>head-pdis) =
+  → Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
+map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r [] ex>-nil = ex*>-nil
+map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r (pdi ∷ pdis)  (ex>-cons pdis-sorted pdi>head-pdis) =
   ex*>-cons ind-hyp
-  (compose-pdi-with-ex*>-head-map-compose-pdi-with d→r s-ev-d-r >-inc-d→r pdi pdis pdi>head-pdis)
+  (compose-pdi-with-ex*>-head-map-compose-pdi-with c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdi pdis pdi>head-pdis)
   where
-    ind-hyp : Ex*>-sorted {r}  (List.map (compose-pdi-with d→r s-ev-d-r) pdis )
-    ind-hyp = map-compose-pdi-with-sorted {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r pdis pdis-sorted 
+    ind-hyp : Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
+    ind-hyp = map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis pdis-sorted 
 
+{-
 
 -- need
 advance-pdi*-with-c-sorted : ∀ { r : RE } { pref : List Char} { c : Char }

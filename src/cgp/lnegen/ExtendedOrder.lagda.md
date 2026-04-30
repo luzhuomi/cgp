@@ -1066,7 +1066,6 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
 data Ex*>-maybe : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( mpdi : Maybe (PDInstance* r pf) ) → Set where
   ex*>-nothing : ∀ { r : RE } { pf sf : List Char } 
     → { pdi : PDInstance* r pf }
-    → r , pf ⊢* sf ∈ pdi  -- do we need this ?
     ---------------------------
     → Ex*>-maybe {r} {pf} {sf} pdi nothing
   ex*>-just : ∀ { r : RE } { pf sf : List Char } 
@@ -1076,15 +1075,68 @@ data Ex*>-maybe : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r
     ----------------------------------
     → Ex*>-maybe {r} {pf} {sf} pdi (just pdi')
 
-data Ex*>-sorted : ∀ { r : RE } { pf sf : List Char } ( pdis : List (PDInstance* r pf) ) → Set where
-  ex*>-nil  : ∀ { r : RE } { pf sf : List Char } → Ex*>-sorted {r} {pf} {sf} []
-  ex*>-cons : ∀ { r : RE } { pf sf : List Char } 
+
+data Ex*>-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( r , pf ⊢* sf ∈ pdi ) → ( pdis : List (PDInstance* r pf ) ) → Set where
+  ex*>-first-nil : ∀ { r : RE } { pf sf : List Char } 
     → { pdi : PDInstance* r pf }
-    → { pdis : List (PDInstance* r pf) } 
+    → { sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) } 
+    ---------------------------
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi []
+  ex*>-first-skip : ∀ { r : RE } { pf sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → { pdi' : PDInstance* r pf }
+    → { pdis : List (PDInstance* r pf) }
+    → { sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) }
+    → ¬ ( r , pf ⊢* sf ∈ pdi' )
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis 
+    ----------------------------------------------------
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi (pdi' ∷ pdis)
+  ex*>-first-cons : ∀ { r : RE } { pf sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → { pdi' : PDInstance* r pf }
+    → { pdis : List (PDInstance* r pf) }
+    → { sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) }
+    → ( r , pf ⊢* sf ∈ pdi' )
+    → r , pf , sf  ⊢* pdi > pdi'    
+    ----------------------------------------------------
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi (pdi ∷ pdis)
+    
+
+data Ex*>-sorted : ∀ { r : RE } { pf sf : List Char } ( pdis : List (PDInstance* r pf) ) → Set where
+  ex*>-sorted-nil  : ∀ { r : RE } { pf sf : List Char } → Ex*>-sorted {r} {pf} {sf} []
+  ex*>-sorted-skip : ∀ { r : RE } { pf sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → { pdis : List (PDInstance* r pf) }
+    → ¬ ( r , pf ⊢* sf ∈ pdi ) -- the head pdi is not accepting sf
     → Ex*>-sorted  {r} {pf} {sf} pdis 
-    → Ex*>-maybe {r} {pf} {sf} pdi (head pdis)
+    --------------------------------------
+    → Ex*>-sorted {r} {pf} {sf} ( pdi ∷ pdis )
+  ex*>-sorted-cons : ∀ { r : RE } { pf sf : List Char } 
+    → { pdi : PDInstance* r pf }
+    → { pdis : List (PDInstance* r pf) }
+    → ( sf∈pdi : ( r , pf ⊢* sf ∈ pdi ) )  -- the head pdi is accepting sf    
+    → Ex*>-sorted  {r} {pf} {sf} pdis 
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis
     --------------------------------------
     → Ex*>-sorted {r} {pf} {sf} ( pdi ∷ pdis ) 
+
+
+data Ex*>-weak-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( pdis : List (PDInstance* r pf ) ) → Set where
+  ex*>-weak-nonmember : ∀ { r : RE } { pf sf : List Char }
+    → ( pdi : PDInstance* r pf )
+    → ( pdis : List (PDInstance* r pf ) )    
+    → ¬ ( r , pf ⊢* sf ∈ pdi )
+    ----------------------------------
+    → Ex*>-weak-first {r} {pf} {sf} pdi pdis
+  ex*>-weak-member : ∀ { r : RE } { pf sf : List Char }
+    → ( pdi : PDInstance* r pf )
+    → ( pdis : List (PDInstance* r pf ) )    
+    → ( sf∈pdi : r , pf ⊢* sf ∈ pdi )
+    → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis 
+    ----------------------------------
+    → Ex*>-weak-first {r} {pf} {sf} pdi pdis
+    
+
 
 ```
 
@@ -1108,22 +1160,24 @@ Then pdUMany[r , w] is extended LNE sorted.
 -------------------------------------------------------------
 -- Sub Lemma 41.1 - 41.6 BEGIN
 -------------------------------------------------------------
--- TODO: can we define a "polymoprhic" version of concat-ex-sorted and concat-ex*-sorted? 
--- concatenation of two ex sorted lists of pdis are sorted if all the pdis from the first list are ex-> than the head of the 2nd list. 
+
+-- perhaps we need to define a decidability check r , pf ⊢* sf ∈? pdi which give us (yes (r , pf ⊢* sf ∈ pdi)) or (no ¬ (r , pf ⊢* sf ∈ pdi))
+
+
 concat-ex*-sorted : ∀ { r : RE } { pf sf : List Char }
     → ( pdis₁ : List ( PDInstance* r pf ))
     → ( pdis₂ : List ( PDInstance* r pf ))
     → Ex*>-sorted { r } {pf} {sf} pdis₁
     → Ex*>-sorted { r } {pf} {sf} pdis₂
-    → All (λ pdi₁ → Ex*>-maybe  {r} {pf} {sf} pdi₁ (head pdis₂)) pdis₁
+    → All (λ pdi₁ → Ex*>-weak-first {r} {pf} {sf} pdi₁ pdis₂) pdis₁
     -------------------------------------------------------
     → Ex*>-sorted { r } {pf} {sf} (pdis₁ ++ pdis₂)
-concat-ex*-sorted []                       pdis₂          ex*>-nil                                       pdis₂-sorted     []                              = pdis₂-sorted
-concat-ex*-sorted pdis₁                    []             pdis₁-sorted                                  ex*>-nil           _  rewrite (++-identityʳ pdis₁) = pdis₁-sorted
-concat-ex*-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-sorted                                  pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂  ∷ [])      = ex*>-cons pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂) 
-concat-ex*-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*>-cons pdi₁'pdis₁-sorted pdi₁>head-pdis₁)  pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂  ∷ pxs)     = ex*>-cons ind-hyp pdi₁>head-pdis₁
-  where
-    ind-hyp = concat-ex*-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs 
+concat-ex*-sorted []                       pdis₂          ex*>-sorted-nil                               pdis₂-sorted     []                              = pdis₂-sorted
+concat-ex*-sorted pdis₁                    []             pdis₁-sorted                                  ex*>-sorted-nil           _  rewrite (++-identityʳ pdis₁) = pdis₁-sorted
+-- concat-ex*-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-sorted                                  pdi₂pdis₂-sorted         (ex*>-just pdi₁>pdi₂  ∷ [])      = ? --  ex*>-cons pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂) 
+-- concat-ex*-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*>-sorted-cons pdi₁'pdis₁-sorted pdi₁>head-pdis₁)  pdi₂pdis₂-sorted (ex*>-just pdi₁>pdi₂  ∷ pxs)     = ? -- ex*>-cons ind-hyp pdi₁>head-pdis₁
+--  where
+--     ind-hyp = concat-ex*-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs 
 
 
 {-
@@ -1168,7 +1222,7 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pf : List C
   → Ex>-maybe pdi (head pdis)
   -------------------------------------------------------------------------------------------------
   → Ex*>-maybe {r} {pf ∷ʳ c} {sf}   (compose-pdi-with d→r s-ev-d→r pdi) (head (List.map (compose-pdi-with d→r s-ev-d→r) pdis))
-compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r pdi []  ex>-nothing = ex*>-nothing {!!} 
+compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r pdi []  ex>-nothing = ex*>-nothing
 compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r
   pdi₁@(pdinstance {p₁} {d} {c} p₁→d s-ev-p₁→d)
   (pdi₂@(pdinstance {p₂} {d} {c} p₂→d s-ev-p₂→d) ∷ pdis )
@@ -1206,7 +1260,7 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈�
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
                                                                                                (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
 
-
+{-
 map-compose-pdi-with-sorted : ∀ { d r : RE } { pf : List Char} { c : Char } { sf : List Char }
   → ( c ∷ sf ) ∈⟦ d ⟧ 
   → ( d→r : U d → U r )
@@ -1223,6 +1277,7 @@ map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d�
   where
     ind-hyp : Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
     ind-hyp = map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis pdis-sorted 
+-}
 
 {-
 

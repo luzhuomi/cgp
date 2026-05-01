@@ -141,13 +141,24 @@ We say pdi₁ is "left non-empty" greater than pdi₂, r , c  ⊢ pdi₁ > pdi�
 
 
 ```agda
+infix 4 _,_⊢_∈_
+data _,_⊢_∈_ : ∀ ( r : RE ) → ( c : Char ) → ( sf : List Char ) → PDInstance r c → Set where -- c is the leading character , sf is suffix
+  ∈-pdi : ∀ { p r : RE } { c : Char } { sf : List Char }
+    → sf ∈⟦ p ⟧ 
+    → ( inj : U p → U r )
+    → ( s-ev : ( u : U p ) → ( proj₁ ( flat {r} (inj u) ) ≡ c ∷ ( proj₁ (flat {p} u) )) )
+    → r , c ⊢ sf ∈ (pdinstance inj s-ev )
 
-data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
-  >-pdi : ∀ { r : RE } { c : Char }
+infix 4 _,_,_⊢_>_
+
+data _,_,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → ( sf : List Char ) → PDInstance r c → PDInstance r c → Set where
+  >-pdi : ∀ { r : RE } { c : Char } { sf : List Char } 
     → ( pdi₁ : PDInstance r c )
     → ( pdi₂ : PDInstance r c )
-    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → ( r ⊢ u₁ > u₂) )
-    → r , c ⊢ pdi₁ > pdi₂
+    → r , c ⊢ sf ∈ pdi₁
+    → r , c ⊢ sf ∈ pdi₂    
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) → proj₁ (flat u₁) ≡ c ∷ sf → proj₁ (flat u₂) ≡ c ∷ sf →   ( r ⊢ u₁ > u₂) )
+    → r , c , sf ⊢ pdi₁ > pdi₂
 
 
 {- we don't need this? , we have not defined pdi-∃ 
@@ -180,27 +191,80 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
 
 ```agda
 
-data Ex>-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
-  ex>-nothing : ∀ { r : RE } { c : Char }
+data Ex>-maybe : ∀ { r : RE } { c : Char } { sf : List Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
+  ex>-nothing : ∀ { r : RE } { c : Char } { sf : List Char } 
     → { pdi : PDInstance r c } 
     ---------------------------
-    → Ex>-maybe {r} {c} pdi nothing
-  ex>-just : ∀ { r : RE } { c : Char }
+    → Ex>-maybe {r} {c} {sf}  pdi nothing
+  ex>-just : ∀ { r : RE } { c : Char } { sf : List Char }
     → { pdi : PDInstance r c }
     → { pdi' : PDInstance r c }
-    → r , c ⊢ pdi > pdi' 
+    → r , c , sf ⊢ pdi > pdi' 
     ----------------------------------
-    → Ex>-maybe {r} {c} pdi (just pdi')
+    → Ex>-maybe {r} {c} {sf}  pdi (just pdi')
 
-data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
-  ex>-nil  : ∀ { r : RE } { c : Char } → Ex>-sorted {r} {c} []
-  ex>-cons : ∀ { r : RE } { c : Char } 
+
+data Ex>-first : ∀ { r : RE } { c : Char } { sf : List Char } → ( pdi : PDInstance r c ) → ( r , c ⊢ sf ∈ pdi ) → ( pdis : List (PDInstance r c ) ) → Set where
+  ex>-first-nil : ∀ { r : RE } { c : Char } { sf : List Char }
     → { pdi : PDInstance r c }
-    → { pdis : List (PDInstance r c) } 
-    → Ex>-sorted  {r} {c} pdis 
-    → Ex>-maybe {r} {c} pdi (head pdis)
+    → { sf∈pdi : ( r , c ⊢ sf ∈ pdi ) }
+    ---------------------------
+    → Ex>-first {r} {c} {sf} pdi sf∈pdi []
+  ex>-first-skip : ∀ { r : RE } { c : Char } { sf : List Char }
+    → { pdi : PDInstance r c }
+    → { pdi' : PDInstance r c }
+    → { pdis : List (PDInstance r c) }
+    → { sf∈pdi : ( r , c ⊢ sf ∈ pdi ) }
+    → ¬ ( r , c ⊢ sf ∈ pdi' )
+    → Ex>-first {r} {c} {sf} pdi sf∈pdi pdis
+    ----------------------------------------------------
+    → Ex>-first {r} {c} {sf} pdi sf∈pdi (pdi' ∷ pdis)
+  ex*>-first-cons : ∀ { r : RE } { c : Char } { sf : List Char }
+    → { pdi : PDInstance r c }
+    → { pdi' : PDInstance r c }
+    → { pdis : List (PDInstance r c) }
+    → { sf∈pdi : ( r , c ⊢ sf ∈ pdi ) }
+    → ( r , c ⊢ sf ∈ pdi' )
+    → r , c , sf  ⊢ pdi > pdi'
+    ----------------------------------------------------
+    → Ex>-first {r} {c} {sf} pdi sf∈pdi (pdi' ∷ pdis)
+
+
+data Ex>-sorted : ∀ { r : RE } { c : Char } {sf : List Char } ( pdis : List (PDInstance r c) ) → Set where
+  ex>-sorted-nil  : ∀ { r : RE } { c : Char } {sf : List Char} → Ex>-sorted {r} {c} {sf} []
+  ex>-sorted-skip : ∀ { r : RE } { c : Char } { sf : List Char }
+    → { pdi : PDInstance r c }
+    → { pdis : List (PDInstance r c) }
+    → ¬ ( r , c ⊢ sf ∈ pdi ) -- the head pdi is not accepting sf
+    → Ex>-sorted  {r} {c} {sf} pdis
     --------------------------------------
-    → Ex>-sorted {r} {c} ( pdi ∷ pdis ) 
+    → Ex>-sorted {r} {c} {sf} ( pdi ∷ pdis )
+  ex>-sorted-cons : ∀ { r : RE } { c : Char } { sf : List Char }
+    → { pdi : PDInstance r c }
+    → { pdis : List (PDInstance r c) }
+    → ( sf∈pdi : ( r , c ⊢ sf ∈ pdi ) )  -- the head pdi is accepting sf
+    → Ex>-sorted {r} {c} {sf} pdis
+    → Ex>-first {r} {c} {sf} pdi sf∈pdi pdis
+    --------------------------------------
+    → Ex>-sorted {r} {c} {sf} ( pdi ∷ pdis )
+
+
+data Ex>-weak-first : ∀ { r : RE } { c : Char } { sf : List Char } → ( pdi : PDInstance r c ) → ( pdis : List (PDInstance r c ) ) → Set where
+  ex>-weak-nonmember : ∀ { r : RE } { c : Char } { sf : List Char }
+    → ( pdi : PDInstance r c )
+    → ( pdis : List (PDInstance r c ) )
+    → ¬ ( r , c ⊢ sf ∈ pdi )
+    ----------------------------------
+    → Ex>-weak-first {r} {c} {sf} pdi pdis
+  ex>-weak-member : ∀ { r : RE } { c : Char } { sf : List Char }
+    → ( pdi : PDInstance r c)
+    → ( pdis : List (PDInstance r c ) )
+    → ( sf∈pdi : r , c ⊢ sf ∈ pdi )
+    → Ex>-first {r} {c} {sf} pdi sf∈pdi pdis
+    ----------------------------------
+    → Ex>-weak-first {r} {c} {sf} pdi pdis
+    
+
 ```
 
 
@@ -223,15 +287,30 @@ Then pdU[r , c] is LNE sorted.
 -- Sub Lemma 38.1 - 38.22 BEGIN
 -------------------------------------------------------------
 
+left-∈ : ∀ { l r : RE } {loc : ℕ } { c : Char } { sf : List Char }
+  → (pdi : PDInstance l c)
+  → l , c ⊢ sf ∈ pdi
+  --------------------------
+  → l + r ` loc , c ⊢ sf ∈ pdinstance-left pdi
+left-∈ {l} {r} {loc} {c} {sf} (pdinstance {p} {l} {c} inj s-ev) (∈-pdi sf∈⟦p⟧ .inj .s-ev) =
+  ∈-pdi sf∈⟦p⟧ (λ u → LeftU (inj u)) s-ev 
 
 
-left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
+right-∈ : ∀ { l r : RE } {loc : ℕ } { c : Char } { sf : List Char }
+  → (pdi : PDInstance r c)
+  → r , c ⊢ sf ∈ pdi
+  --------------------------
+  → l + r ` loc , c ⊢ sf ∈ pdinstance-right pdi
+right-∈ {l} {r} {loc} {c} {sf} (pdinstance {p} {r} {c} inj s-ev) (∈-pdi sf∈⟦p⟧ .inj .s-ev) =
+  ∈-pdi sf∈⟦p⟧ (λ u → RightU (inj u)) s-ev 
+
+left-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } { sf : List Char }
   → (pdi₁  : PDInstance l c )
   → (pdi₂ : PDInstance l c )
-  → l , c ⊢ pdi₁ > pdi₂ 
+  → l , c , sf ⊢ pdi₁ > pdi₂ 
   -------------------------------------------------
-  → (l + r ` loc) , c ⊢ pdinstance-left pdi₁ > pdinstance-left pdi₂
-left-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi left-pdi₁ left-pdi₂ ev
+  → (l + r ` loc) , c , sf ⊢ pdinstance-left pdi₁ > pdinstance-left pdi₂
+left-ex-sorted {l} {r} {loc} {c} {sf} pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ sf∈pdi₂ pdi₁>-pdi₂-ev ) = >-pdi left-pdi₁ left-pdi₂ (left-∈ pdi₁ sf∈pdi₁) (left-∈ pdi₂ sf∈pdi₂ ) ev
   where
     left-pdi₁ : PDInstance ( l + r ` loc ) c
     left-pdi₁ = pdinstance-left pdi₁
@@ -242,16 +321,18 @@ left-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = 
           → ( u₂ : U  (l + r ` loc) )
           → ( Recons u₁ left-pdi₁ )
           → ( Recons u₂ left-pdi₂ )
+          → proj₁ (flat u₁) ≡ c ∷ sf
+          → proj₁ (flat u₂) ≡ c ∷ sf          
           -------------------------
           → ( (l + r ` loc) ⊢ u₁ > u₂ )
-    ev (LeftU v₁) (LeftU v₂)  recons-left-v₁-pdi-left recons-left-v₂-pdi-left =
+    ev (LeftU v₁) (LeftU v₂)  recons-left-v₁-pdi-left recons-left-v₂-pdi-left |u₁|≡c∷sf |u₂|≡c∷sf =
              {-
              to make use of
               1) pdi₁>-pdi₂-ev : (u₃ u₄ : U l₁) → Recons u₃ pdi₁ → Recons u₄ pdi₂ → l₁ ⊢ u₃ > u₄
               we need to compute recons v pd₁ from recons (Left v) left-pdi₁
               2) then we have l ⊢ v > u , we can apply choice-ll rule to get l + r ` loc ⊢ LeftU v > LeftU u
              -}
-             bne (¬≡[]→length>0 ¬proj₁flat-v₁≡[] ) (¬≡[]→length>0 ¬proj₁flat-v₂≡[]) (choice-ll (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂)) 
+             bne (¬≡[]→length>0 ¬proj₁flat-v₁≡[] ) (¬≡[]→length>0 ¬proj₁flat-v₂≡[]) (choice-ll (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂ |u₁|≡c∷sf |u₂|≡c∷sf )) 
           where
             recons-v₁-pdi₁ : Recons v₁ pdi₁
             recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v₁-pdi-left
@@ -268,13 +349,13 @@ left-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = 
     ev (LeftU _)   (RightU v₂) _  recons-right-v₂-pdi-left =   Nullary.contradiction recons-right-v₂-pdi-left (¬recons-right-from-pdinstance-left v₂ pdi₂  )
 
 
-right-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
+right-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } { sf : List Char }
   → (pdi₁ : PDInstance r c )
   → (pdi₂ : PDInstance r c )
-  → r , c ⊢ pdi₁ > pdi₂ 
+  → r , c , sf ⊢ pdi₁ > pdi₂ 
   -------------------------------------------------
-  → (l + r ` loc) , c ⊢ pdinstance-right pdi₁ > pdinstance-right pdi₂
-right-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi right-pdi₁ right-pdi₂ ev
+  → (l + r ` loc) , c , sf ⊢ pdinstance-right pdi₁ > pdinstance-right pdi₂
+right-ex-sorted {l} {r} {loc} {c} {sf}  pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ sf∈pdi₂ pdi₁>-pdi₂-ev ) = >-pdi right-pdi₁ right-pdi₂ (right-∈ pdi₁ sf∈pdi₁ ) (right-∈ pdi₂ sf∈pdi₂ ) ev
   where
     right-pdi₁ : PDInstance ( l + r ` loc ) c
     right-pdi₁ = pdinstance-right pdi₁
@@ -285,10 +366,12 @@ right-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) =
           → ( u₂ : U  (l + r ` loc) )
           → ( Recons u₁ right-pdi₁ )
           → ( Recons u₂ right-pdi₂ )
+          → proj₁ (flat u₁) ≡ c ∷ sf
+          → proj₁ (flat u₂) ≡ c ∷ sf          
           -------------------------
           → ( (l + r ` loc) ⊢ u₁ > u₂ )
-    ev (RightU v₁) (RightU v₂)  recons-right-v₁-pdi-right recons-right-v₂-pdi-right =
-      bne  (¬≡[]→length>0 ¬proj₁flat-v₁≡[] ) (¬≡[]→length>0 ¬proj₁flat-v₂≡[]) (choice-rr (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂) )  
+    ev (RightU v₁) (RightU v₂)  recons-right-v₁-pdi-right recons-right-v₂-pdi-right |u₁|≡c∷sf |u₂|≡c∷sf =
+      bne  (¬≡[]→length>0 ¬proj₁flat-v₁≡[] ) (¬≡[]→length>0 ¬proj₁flat-v₂≡[]) (choice-rr (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂ |u₁|≡c∷sf |u₂|≡c∷sf ) )  
         where
           recons-v₁-pdi₁ : Recons v₁ pdi₁
           recons-v₁-pdi₁ = inv-recons-right {l} {r} {loc} v₁  pdi₁  recons-right-v₁-pdi-right  
@@ -304,46 +387,45 @@ right-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) =
     ev (RightU _)  (LeftU v₂) _  recons-left-v₂-pdi-right =   Nullary.contradiction recons-left-v₂-pdi-right (¬recons-left-from-pdinstance-right v₂ pdi₂  )
 
 
-
-
 -- the following look like can be combined polymorphically with map-leftU-sorted, map-rightU-sorted, map-leftU-rightU-sorted from Greedy.lagda.md
-map-left-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
+map-left-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } { sf : List Char }
   → ( pdis : List (PDInstance l c ) )
-  → Ex>-sorted {l} pdis
-  → Ex>-sorted {l + r ` loc } (List.map pdinstance-left pdis)
-map-left-ex-sorted []            ex>-nil = ex>-nil
-map-left-ex-sorted ( pdi ∷ [] ) (ex>-cons ex>-nil (ex>-nothing) )
-  = ex>-cons  ex>-nil (ex>-nothing)
-map-left-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons  ex>-sorted-pdis (ex>-just pdi>pdi'))
-  = ex>-cons 
-           (map-left-ex-sorted (pdi' ∷ pdis) ex>-sorted-pdis)
-           (ex>-just (left-ex-sorted pdi pdi'  pdi>pdi'))
+  → Ex>-sorted {l} {c} {sf} pdis
+  → Ex>-sorted {l + r ` loc } {c} {sf}  (List.map pdinstance-left pdis)
+map-left-ex-sorted []            ex>-sorted-nil = ex>-sorted-nil
+map-left-ex-sorted ( pdi ∷ [] ) (ex>-sorted-cons sf∈pdi  ex>-sorted-nil ex>-first-nil)
+  = ex>-sorted-cons  (left-∈ pdi sf∈pdi) ex>-sorted-nil ex>-first-nil 
+map-left-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-sorted-cons sf∈pdi  ex>-sorted-pdis (ex>-first-pdi>pdi'∷pdis))
+  = ex>-sorted-cons (left-∈ pdi sf∈pdi ) 
+           (map-left-ex-sorted (pdi' ∷ pdis) ex>-sorted-pdis) {!!}
 
 
-
-map-right-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } 
+map-right-ex-sorted : ∀ { l r : RE }  { loc : ℕ } { c : Char } {sf : List Char } 
   → ( pdis : List (PDInstance r c ) )
-  → Ex>-sorted {r} pdis
-  → Ex>-sorted {l + r ` loc } (List.map pdinstance-right pdis)
-map-right-ex-sorted []            ex>-nil = ex>-nil
-map-right-ex-sorted ( pdi ∷ [] ) (ex>-cons ex>-nil ex>-nothing)
-  = ex>-cons  ex>-nil ex>-nothing
-map-right-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-cons ex>-sorted-pdis (ex>-just pdi>pdi'))
-  = ex>-cons 
-           (map-right-ex-sorted (pdi' ∷ pdis) ex>-sorted-pdis)
-           (ex>-just (right-ex-sorted pdi pdi'  pdi>pdi'))
+  → Ex>-sorted {r} {c} {sf} pdis
+  → Ex>-sorted {l + r ` loc } {c} {sf}  (List.map pdinstance-right pdis)
+map-right-ex-sorted []            ex>-sorted-nil = ex>-sorted-nil
+map-right-ex-sorted ( pdi ∷ [] ) (ex>-sorted-cons sf∈pdi ex>-sorted-nil ex>-first-nil)
+  = ex>-sorted-cons (right-∈ pdi sf∈pdi )  ex>-sorted-nil ex>-first-nil 
+map-right-ex-sorted ( pdi ∷ (pdi' ∷ pdis) ) (ex>-sorted-cons sf∈pdi ex>-sorted-pdis (ex>-first-pdi>pdi'∷pdis)) 
+  = ex>-sorted-cons (right-∈ pdi sf∈pdi )
+           (map-right-ex-sorted (pdi' ∷ pdis) ex>-sorted-pdis) {!!} 
 
-map-left-right-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char } 
+
+
+map-left-right-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char } { sf : List Char } 
   → ( pdis  : List (PDInstance l c) )
   → ( pdis' : List (PDInstance r c) )
-  → Ex>-sorted {l} pdis
-  → Ex>-sorted {r} pdis'
-  → Ex>-sorted {l + r ` loc } ((List.map pdinstance-left pdis) ++ (List.map pdinstance-right pdis'))
+  → Ex>-sorted {l} {c} {sf} pdis
+  → Ex>-sorted {r} {c} {sf} pdis'
+  → Ex>-sorted {l + r ` loc } {c} {sf}  ((List.map pdinstance-left pdis) ++ (List.map pdinstance-right pdis'))
 map-left-right-ex-sorted               []              pdis'  ex>-sorted-l-[]   ex>-sorted-r-pdis' = map-right-ex-sorted pdis' ex>-sorted-r-pdis'
-map-left-right-ex-sorted {l} {r} {loc} pdis            []     ex>-sorted-l-pdis ex>-sorted-r-[] rewrite (cong (λ x → Ex>-sorted x) (++-identityʳ (List.map (pdinstance-left {l} {r} {loc}) pdis)))
-  = map-left-ex-sorted  pdis ex>-sorted-l-pdis 
-map-left-right-ex-sorted {l} {r} {loc} (pdi ∷ [])      (pdi' ∷ pdis')    ex>-sorted-l-pdis  ex>-sorted-r-pdis'
-  = ex>-cons (map-right-ex-sorted (pdi' ∷ pdis') ex>-sorted-r-pdis') (ex>-just (>-pdi (pdinstance-left pdi) (pdinstance-right pdi')
+map-left-right-ex-sorted {l} {r} {loc} {c} {sf}  pdis            []     ex>-sorted-l-pdis ex>-sorted-r-[] rewrite (cong (λ x → Ex>-sorted {l + r ` loc} {c} {sf} x) (++-identityʳ (List.map (pdinstance-left {l} {r} {loc}) pdis)))
+  = map-left-ex-sorted {l} {r} {loc} {c} {sf} pdis ex>-sorted-l-pdis 
+map-left-right-ex-sorted {l} {r} {loc} (pdi ∷ [])      (pdi' ∷ pdis')  ex>-sorted-l-pdis@(ex>-sorted-cons sf∈pdi ex>-sorted-nil ex>-first-nil) ex>-sorted-r-pdis'
+  = ex>-sorted-cons (left-∈ pdi sf∈pdi )  (map-right-ex-sorted (pdi' ∷ pdis') ex>-sorted-r-pdis') {!!} 
+    {-
+    (ex>-just (>-pdi (pdinstance-left pdi) (pdinstance-right pdi')
     (λ { (LeftU v₁) (RightU v₂) recons-left-u-from-pdinstance-left   recons-right-u-from-pdinstance-right →
                 let  recons-v₁-pdi = inv-recons-left {l} {r} {loc} v₁ pdi recons-left-u-from-pdinstance-left
                      recons-v₂-pdi' = inv-recons-right {l} {r} {loc} v₂ pdi' recons-right-u-from-pdinstance-right
@@ -355,9 +437,11 @@ map-left-right-ex-sorted {l} {r} {loc} (pdi ∷ [])      (pdi' ∷ pdis')    ex>
        ; (LeftU v₁) (LeftU v₂)  _  recons-left-u-from-pdinstance-right              → Nullary.contradiction recons-left-u-from-pdinstance-right  (¬recons-left-from-pdinstance-right v₂ pdi' ) 
        }
     )))
-map-left-right-ex-sorted {l} {r} {loc} (pdi₁ ∷ pdi₂ ∷ pdis)   (pdi' ∷ pdis') ex>-sorted-l-pdi₁pdi₂pdis ex>-sorted-r-pdipdis' with ex>-sorted-l-pdi₁pdi₂pdis
-... | ex>-cons {l} ex>-sorted-pdi₂pdis (ex>-just (>-pdi _ _ pdi₁>pdi₂-ev) ) 
-  = ex>-cons (map-left-right-ex-sorted (pdi₂ ∷ pdis) (pdi' ∷ pdis')   ex>-sorted-pdi₂pdis  ex>-sorted-r-pdipdis' ) ((ex>-just (>-pdi (pdinstance-left pdi₁) (pdinstance-left pdi₂)
+    -}
+map-left-right-ex-sorted {l} {r} {loc} {c} {sf}  (pdi₁ ∷ pdi₂ ∷ pdis)   (pdi' ∷ pdis') ex>-sorted-l-pdi₁pdi₂pdis ex>-sorted-r-pdipdis' with ex>-sorted-l-pdi₁pdi₂pdis
+... | ex>-sorted-cons .{l} .{c} .{sf} .{pdi₁} { .pdi₂ ∷ .pdis } sf∈pdi₁ ex>-sorted-pdi₂pdis ex-first-pdi₁-sf∈pdi₁-pdi₂∷pdis 
+  = ex>-sorted-cons (left-∈ pdi₁ sf∈pdi₁ )  (map-left-right-ex-sorted (pdi₂ ∷ pdis) (pdi' ∷ pdis')   ex>-sorted-pdi₂pdis  ex>-sorted-r-pdipdis' ) {!!} 
+    {- ((ex>-just (>-pdi (pdinstance-left pdi₁) (pdinstance-left pdi₂)
     (λ { (LeftU v₁) (LeftU v₂)  recons-left-v1-from-pdinstance-left-pdi₁ recons-left-v2-from-pdinstance-left-pdi₂ →
          let recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v1-from-pdinstance-left-pdi₁
              recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v2-from-pdinstance-left-pdi₂
@@ -368,17 +452,17 @@ map-left-right-ex-sorted {l} {r} {loc} (pdi₁ ∷ pdi₂ ∷ pdis)   (pdi' ∷ 
        ; (RightU v₁)  _         recons-right-u-from-pdinstance-left-pdi₁ _ → Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₁ ( ¬recons-right-from-pdinstance-left v₁ pdi₁ )
        ; (LeftU v₁) (RightU v₂) _ recons-right-u-from-pdinstance-left-pdi₂ → Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₂ ( ¬recons-right-from-pdinstance-left v₂ pdi₂ )       
        }
-    )))) 
+    )))) -} 
 
+{- 
 
-
-star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } 
+star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { sf : List Char }
   → (pdi₁ : PDInstance r c )
   → (pdi₂ : PDInstance r c )
-  → r , c ⊢ pdi₁ > pdi₂ 
+  → r , c , sf  ⊢ pdi₁ > pdi₂ 
   -------------------------------------------------
-  → (r * ε∉r ` loc) , c ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
-star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ ev
+  → (r * ε∉r ` loc) , c , sf ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
+star-ex-sorted {r} {ε∉r} {loc} {c} {sf} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ ev
   where
     star-pdi₁ : PDInstance ( r * ε∉r ` loc ) c
     star-pdi₁ = pdinstance-star pdi₁
@@ -400,14 +484,14 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
       -- we only need to prove by I.H over the heads. why? because different pdinstances produce different parse tree.
   
 
-map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { sf : List Char }
                      → ( pdis : List (PDInstance r c) )
                      → Ex>-sorted {r} pdis
                      → Ex>-sorted {r * ε∉r ` loc } (List.map pdinstance-star pdis)
-map-star-ex-sorted {r} {ε∉r} {loc} {c} [] ex>-nil = ex>-nil
-map-star-ex-sorted {r} {ε∉r} {loc} {c} (pdi ∷ [])  (ex>-cons ex>-nil ex>-nothing) = ex>-cons ex>-nil ex>-nothing
-map-star-ex-sorted {r} {ε∉r} {loc} {c} (pdi₁ ∷ pdi₂ ∷ pdis)  (ex>-cons ex>-sorted-pdi2pdis (ex>-just pdi1>pdi2))
-  = ex>-cons (map-star-ex-sorted (pdi₂ ∷ pdis) ex>-sorted-pdi2pdis)
+map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} [] ex>-sorted-nil = ex>-sorted-nil
+map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi ∷ [])  (ex>-sorted-cons ex>-sorted-nil ex>-nothing) = ex>-sorted-cons ex>-sorted-nil ex>-nothing
+map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi₁ ∷ pdi₂ ∷ pdis)  (ex>-sorted-cons ex>-sorted-pdi2pdis (ex>-just pdi1>pdi2))
+  = ex>-sorted-cons (map-star-ex-sorted (pdi₂ ∷ pdis) ex>-sorted-pdi2pdis)
              (ex>-just (star-ex-sorted pdi₁ pdi₂ pdi1>pdi2))
 
 
@@ -439,13 +523,13 @@ recons-u-pdi→¬|u|≡[] {r} {c} u pdi recons-u-pdi = ev
 
 
 
-fst-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } 
+fst-ex-sorted : ∀ { l r : RE } {loc : ℕ} { c : Char } { sf : List Char }
   → (pdi₁ : PDInstance l c )
   → (pdi₂ : PDInstance l c )
-  → l , c ⊢ pdi₁ > pdi₂ 
+  → l , c , sf  ⊢ pdi₁ > pdi₂ 
   -------------------------------------------------
-  → (l ● r ` loc) , c ⊢ pdinstance-fst pdi₁ > pdinstance-fst pdi₂
-fst-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi fst-pdi₁ fst-pdi₂ ev
+  → (l ● r ` loc) , c , sf  ⊢ pdinstance-fst pdi₁ > pdinstance-fst pdi₂
+fst-ex-sorted {l} {r} {loc} {c} {sf} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >-pdi fst-pdi₁ fst-pdi₂ ev
   where
     fst-pdi₁ : PDInstance ( l ● r ` loc ) c
     fst-pdi₁ = pdinstance-fst pdi₁
@@ -469,15 +553,15 @@ fst-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >
            ¬|u₂v₂|≡[] = recons-u-pdi→¬|u|≡[] (PairU u₂ v₂) fst-pdi₂ recons-pair-u₂v₂-pdi-fst 
 
 
-map-fst-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char }
+map-fst-ex-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char } { sf : Char }
                     → ( pdis : List (PDInstance l c) )
-                    → Ex>-sorted {l} pdis
-                    → Ex>-sorted {l ● r ` loc } (List.map pdinstance-fst pdis)
-map-fst-ex-sorted {l} {r} {loc} {c} [] ex>-nil = ex>-nil
-map-fst-ex-sorted {l} {r} {loc} {c} (pdi ∷ [])              (ex>-cons ex>-nil ex>-nothing ) =
-  ex>-cons  ex>-nil ex>-nothing 
-map-fst-ex-sorted {l} {r} {loc} {c} (pdi₁  ∷ pdi₂ ∷ pdis ) (ex>-cons pdi₂pdis-sorted@(ex>-cons pdis-sorted pdi₂>head-pdis)  (ex>-just pdi₁>pdi₂ )) =
-  ex>-cons (map-fst-ex-sorted {l} {r} {loc} {c}  (pdi₂ ∷  pdis) pdi₂pdis-sorted) (ex>-just (fst-ex-sorted {l} {r} pdi₁ pdi₂ pdi₁>pdi₂ ))
+                    → Ex>-sorted {l} {c} {sf} pdis
+                    → Ex>-sorted {l ● r ` loc } {c} {sf} (List.map pdinstance-fst pdis)
+map-fst-ex-sorted {l} {r} {loc} {c} {sf} [] ex>-sorted-nil = ex>-sorted-nil
+map-fst-ex-sorted {l} {r} {loc} {c} {sf} (pdi ∷ [])  (ex>-sorted-cons ex>-sorted-nil ex>-nothing ) =
+  ex>-sorted-cons  ex>-sorted-nil ex>-nothing 
+map-fst-ex-sorted {l} {r} {loc} {c} {sf} (pdi₁  ∷ pdi₂ ∷ pdis ) (ex>-sorted-cons pdi₂pdis-sorted@(ex>-sorted-cons pdis-sorted pdi₂>head-pdis)  (ex>-just pdi₁>pdi₂ )) =
+  ex>-sorted-cons (map-fst-ex-sorted {l} {r} {loc} {c} {sf} (pdi₂ ∷  pdis) pdi₂pdis-sorted) (ex>-just (fst-ex-sorted {l} {r} pdi₁ pdi₂ pdi₁>pdi₂ ))
 
 
 
@@ -487,7 +571,7 @@ map-fst-ex-sorted {l} {r} {loc} {c} (pdi₁  ∷ pdi₂ ∷ pdis ) (ex>-cons pdi
 
 
 
-mk-snd-pdi-fst-pair-≡ : ∀ { l r : RE } { loc : ℕ } { c : Char }
+mk-snd-pdi-fst-pair-≡ : ∀ { l r : RE } { loc : ℕ } { c : Char } { sf : List Char }
                       → ( pdi : PDInstance r c ) 
                       → ( e : U l ) -- empty parse tree from l
                       → ( flat-[]-e :  Flat-[] l e )
@@ -496,7 +580,7 @@ mk-snd-pdi-fst-pair-≡ : ∀ { l r : RE } { loc : ℕ } { c : Char }
                       →  Recons (PairU {l} {r} {loc} u v) (mk-snd-pdi ( e , flat-[]-e ) pdi )
                       ----------------------------------------------
                       → u ≡ e 
-mk-snd-pdi-fst-pair-≡ {l} {r} {loc} {c} pdi@(pdinstance inj s-ev) e (flat-[] {l} e proj₁∘flat-e≡[]) u v (recons {p} { l ● r ` loc } {c} {w} {injSnd} {injSnd-s} (PairU _ _) ( w∈⟦p⟧ , injSnd∘unflat-w∈⟦p⟧≡pair-u-v ) )  = proj₁ u≡e×v≡inj-unflat-w∈⟦p⟧                       
+mk-snd-pdi-fst-pair-≡ {l} {r} {loc} {c} {sf} pdi@(pdinstance inj s-ev) e (flat-[] {l} e proj₁∘flat-e≡[]) u v (recons {p} { l ● r ` loc } {c} {w} {injSnd} {injSnd-s} (PairU _ _) ( w∈⟦p⟧ , injSnd∘unflat-w∈⟦p⟧≡pair-u-v ) )  = proj₁ u≡e×v≡inj-unflat-w∈⟦p⟧                       
   where
     injSnd-unflat-w∈⟦p⟧≡pair-u-inj-unflat-w∈⟦p⟧ : mkinjSnd {l} {r} {p} {loc} inj u (unflat w∈⟦p⟧) ≡ PairU u (inj (unflat w∈⟦p⟧))
     injSnd-unflat-w∈⟦p⟧≡pair-u-inj-unflat-w∈⟦p⟧ =
@@ -519,16 +603,16 @@ mk-snd-pdi-fst-pair-≡ {l} {r} {loc} {c} pdi@(pdinstance inj s-ev) e (flat-[] {
 -- main sub lemma :
 -- pdinstances generated by pdinstance-snd is ex>-sorted.
 
-pdinstance-snd-ex>-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char }
+pdinstance-snd-ex>-sorted : ∀ { l r : RE } { loc : ℕ } { c : Char } { sf : List Char }
                 → (e-flat-[]-e : ∃[ e ] Flat-[] l e ) 
                 → (pdis : List (PDInstance r c) )
                 → Ex>-sorted {r} pdis 
-                → Ex>-sorted { l ● r ` loc } (List.map (mk-snd-pdi {l} {r} {loc} {c}  e-flat-[]-e) pdis)
-pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e ) []            ex>-nil                                   = ex>-nil
-pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e ) (pdi ∷ [] ) (ex>-cons ex>-nil ex>-nothing)              = ex>-cons ex>-nil ex>-nothing
+                → Ex>-sorted { l ● r ` loc } (List.map (mk-snd-pdi {l} {r} {loc} {c} {sf} e-flat-[]-e) pdis)
+pdinstance-snd-ex>-sorted {l} {r} {loc} {c} {sf}  (e , flat-[]-e ) []            ex>-sorted-nil                                   = ex>-sorted-nil
+pdinstance-snd-ex>-sorted {l} {r} {loc} {c} {sf}  (e , flat-[]-e ) (pdi ∷ [] ) (ex>-sorted-cons ex>-sorted-nil ex>-nothing)              = ex>-sorted-cons ex>-sorted-nil ex>-nothing
 
-pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e) (pdi₁ ∷ pdi₂ ∷ pdis ) (ex>-cons pdi₂pdis-ex>-sorted (ex>-just (>-pdi pdi₁ pdi₂ u₁→u₂→recons-u₁→recons-u₂→u₁>u₂)))  =
-  ex>-cons (pdinstance-snd-ex>-sorted (e , flat-[]-e) (pdi₂ ∷ pdis) pdi₂pdis-ex>-sorted)
+pdinstance-snd-ex>-sorted {l} {r} {loc} {c} {sf} (e , flat-[]-e) (pdi₁ ∷ pdi₂ ∷ pdis ) (ex>-sorted-cons pdi₂pdis-ex>-sorted (ex>-just (>-pdi pdi₁ pdi₂ u₁→u₂→recons-u₁→recons-u₂→u₁>u₂)))  =
+  ex>-sorted-cons (pdinstance-snd-ex>-sorted (e , flat-[]-e) (pdi₂ ∷ pdis) pdi₂pdis-ex>-sorted)
            (ex>-just (>-pdi (mk-snd-pdi (e , flat-[]-e) pdi₁)
                             (mk-snd-pdi (e , flat-[]-e) pdi₂)
                             (λ { (PairU e₁ u₁) (PairU e₂ u₂)
@@ -577,18 +661,18 @@ pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e) (pdi₁ ∷ pdi₂ 
 
 
 -- concatenation of two ex sorted lists of pdis are sorted if all the pdis from the first list are ex-> than the head of the 2nd list. 
-concat-ex-sorted : ∀ { r : RE } { c }
+concat-ex-sorted : ∀ { r : RE } { c } { sf : List Char }
     → ( pdis₁ : List ( PDInstance r c ))
     → ( pdis₂ : List ( PDInstance r c ))
-    → Ex>-sorted { r } pdis₁
-    → Ex>-sorted { r } pdis₂
+    → Ex>-sorted { r } {c} {sf}  pdis₁
+    → Ex>-sorted { r } {c} {sf} pdis₂
     → All (λ pdi₁ → Ex>-maybe  {r} pdi₁ (head pdis₂)) pdis₁
     -------------------------------------------------------
-    → Ex>-sorted { r } (pdis₁ ++ pdis₂)
+    → Ex>-sorted { r } {c} {sf} (pdis₁ ++ pdis₂)
 concat-ex-sorted []                       pdis₂          ex>-nil                                       pdis₂-sorted     []                              = pdis₂-sorted
 concat-ex-sorted pdis₁                    []             pdis₁-sorted                                  ex>-nil           _  rewrite (++-identityʳ pdis₁) = pdis₁-sorted
-concat-ex-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-sorted                                  pdi₂pdis₂-sorted (ex>-just pdi₁>pdi₂  ∷ [])      = ex>-cons pdi₂pdis₂-sorted (ex>-just pdi₁>pdi₂) 
-concat-ex-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex>-cons pdi₁'pdis₁-sorted pdi₁>head-pdis₁)  pdi₂pdis₂-sorted (ex>-just pdi₁>pdi₂  ∷ pxs)     = ex>-cons ind-hyp pdi₁>head-pdis₁
+concat-ex-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-sorted                                  pdi₂pdis₂-sorted (ex>-just pdi₁>pdi₂  ∷ [])      = ex>-sorted-cons pdi₂pdis₂-sorted (ex>-just pdi₁>pdi₂) 
+concat-ex-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex>-sorted-cons pdi₁'pdis₁-sorted pdi₁>head-pdis₁)  pdi₂pdis₂-sorted (ex>-just pdi₁>pdi₂  ∷ pxs)     = ex>-sorted-cons ind-hyp pdi₁>head-pdis₁
   where
     ind-hyp = concat-ex-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs 
 
@@ -663,7 +747,7 @@ concatmap-pdinstance-snd-ex>-sorted-sub : ∀ { l r : RE } {ε∈l : ε∈ l } {
                                      → Ex>-sorted {r} pdis
                                      ----------------------------------------------------------------
                                      → Ex>-sorted {l ● r ` loc} (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x  pdis) (zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es))
-concatmap-pdinstance-snd-ex>-sorted-sub {l} {r} {ε∈l} {loc} {c} []       []                        >-nil                          _    _              = ex>-nil
+concatmap-pdinstance-snd-ex>-sorted-sub {l} {r} {ε∈l} {loc} {c} []       []                        >-nil                          _    _              = ex>-sorted-nil
 concatmap-pdinstance-snd-ex>-sorted-sub {l} {r} {ε∈l} {loc} {c} (e ∷ es) (flat-[]-e ∷ flat-[]-es)  (>-cons es->-sorted e>head-es) pdis pdis-ex>-sorted =
   concat-ex-sorted
     (List.map (mk-snd-pdi {l} {r} {loc} {c}  (e , flat-[]-e)) pdis)                                          -- ^ curr batch
@@ -869,14 +953,14 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = prf
 
 
 -- main lemma: 
-pdU-sorted : ∀ { r : RE } { c : Char }
-  → Ex>-sorted {r} {c} pdU[ r , c ]
+pdU-sorted : ∀ { r : RE } { c : Char } {sf : List Char } 
+  → Ex>-sorted {r} {c} {sf} pdU[ r , c ]
 
 
-pdU-sorted {ε} {c} = ex>-nil
-pdU-sorted {$ c ` loc } {c'} with c Char.≟ c'
-...                           | no _ = ex>-nil 
-...                           | yes refl = ex>-cons ex>-nil ex>-nothing 
+pdU-sorted {ε} {c} {sf} = ex>-sorted-nil
+pdU-sorted {$ c ` loc } {c'} {sf} with c Char.≟ c'
+...                           | no _ = ex>-sorted-nil 
+...                           | yes refl = ex>-sorted-cons ex>-sorted-nil ex>-nothing 
   where
     -- duplicated from PartialDerivativeParseTree
     pdi : PDInstance ($ c ` loc) c
@@ -1067,7 +1151,7 @@ pdi*-∃₂ {r} {pf} {sf} (pdinstance* {p} {r} {pf} inj s-ev) (*∈-pdi sf∈⟦
 ### Definition 40 : (Extended) LNE sortedness among pdinstance*'s 
 
 ```agda
-
+{-
 data Ex*>-maybe : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( mpdi : Maybe (PDInstance* r pf) ) → Set where
   ex*>-nothing : ∀ { r : RE } { pf sf : List Char } 
     → { pdi : PDInstance* r pf }
@@ -1079,7 +1163,7 @@ data Ex*>-maybe : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r
     → r , pf , sf  ⊢* pdi > pdi'
     ----------------------------------
     → Ex*>-maybe {r} {pf} {sf} pdi (just pdi')
-
+-}
 
 data Ex*>-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( r , pf ⊢* sf ∈ pdi ) → ( pdis : List (PDInstance* r pf ) ) → Set where
   ex*>-first-nil : ∀ { r : RE } { pf sf : List Char }
@@ -1124,7 +1208,7 @@ data Ex*>-sorted : ∀ { r : RE } { pf sf : List Char } ( pdis : List (PDInstanc
     → Ex*>-first {r} {pf} {sf} pdi sf∈pdi pdis
     --------------------------------------
     → Ex*>-sorted {r} {pf} {sf} ( pdi ∷ pdis )
-
+w
 
 data Ex*>-weak-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( pdis : List (PDInstance* r pf ) ) → Set where
   ex*>-weak-nonmember : ∀ { r : RE } { pf sf : List Char }
@@ -1385,7 +1469,7 @@ map-compose-pdi-with-sorted : ∀ { d r : RE } { pf : List Char} { c : Char } { 
   -------------------------------------------------------------
   → Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
 map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r [] ex>-nil [] = ex*>-sorted-nil 
-map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r (pdi ∷ pdis) (ex>-cons pdis-sorted pdi>head-pdis) (sf∈pdi ∷ all-sf) = 
+map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r (pdi ∷ pdis) (ex>-sorted-cons pdis-sorted pdi>head-pdis) (sf∈pdi ∷ all-sf) = 
   ex*>-sorted-cons (compose-pdi-with-∈ d→r s-ev-d→r pdi sf∈pdi) ind-hyp first-proof
   where
     ind-hyp : Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis)
@@ -1399,6 +1483,11 @@ map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d�
             helper : (xs : List (PDInstance d c)) → All (λ pdi → PDInstance-accepts-sf pdi sf) xs → Maybe-PDInstance-accepts-sf (head xs) sf
             helper [] [] = tt
             helper (pdi₂ ∷ _) (sf∈pdi₂ ∷ _) = sf∈pdi₂ 
+
+
+
+-} 
+
 
 {-
 

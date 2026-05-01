@@ -872,7 +872,7 @@ data _⊢_≅_ : ∀ ( r : RE ) → ( u : U r  ) →  ( v : U r  ) → Set where
   $⊢≅ : { c : Char } { loc : ℕ } → ($ c ` loc ) ⊢ (LetterU c) ≅ ( LetterU c )
   ●⊢≅ : { l r : RE  } { loc : ℕ } { u u' : U l } { v v'  : U r } 
     → l ⊢ u ≅ u' 
-    → r ⊢ v ≅ v'
+    → proj₁ (flat u) ++ proj₁ (flat v) ≡ proj₁ (flat u') ++ proj₁ (flat v')
     ----------------------------------------------------------------------
     → l ● r ` loc ⊢ (PairU {l} {r} {loc} u v) ≅ (PairU {l} {r} {loc} u' v')
   +⊢≅ : { l r : RE  } { loc : ℕ } { u u' : U ( l + r ` loc ) }
@@ -896,14 +896,7 @@ Prefix structural equivalence implies flatten word equivalence.
   → proj₁ (flat u) ≡ proj₁ (flat v)
 ≅→||≡|| {ε} {EmptyU} {EmptyU} ε⊢≅ = refl
 ≅→||≡|| {$ c ` loc} {LetterU c} {LetterU .c} $⊢≅ = refl
-≅→||≡|| {l ● r ` loc} {PairU u v} {PairU u' v'} (●⊢≅ u≅u' v≅v') = prf
-  where
-    |u|≡|u'| : proj₁ (flat u) ≡ proj₁ (flat u')
-    |u|≡|u'| = ≅→||≡||  u≅u' 
-    |v|≡|v'| : proj₁ (flat v) ≡ proj₁ (flat v')
-    |v|≡|v'| = ≅→||≡||  v≅v'
-    prf : proj₁ (flat (PairU {l} {r} {loc} u v)) ≡ proj₁ (flat (PairU {l} {r} {loc} u' v'))
-    prf rewrite |u|≡|u'| | |v|≡|v'| =  refl
+≅→||≡|| {l ● r ` loc} {PairU u v} {PairU u' v'} (●⊢≅ u≅u' |u|++|v|≅|u'|++|v'|) = |u|++|v|≅|u'|++|v'| 
 ≅→||≡|| {l + r ` loc} {u} {u'} (+⊢≅ |u|≡|u'|) = |u|≡|u'|
 ≅→||≡|| {r * ε∉r ` loc} {u} {u'} (*⊢≅ |u|≡|u'|) = |u|≡|u'|
 
@@ -930,7 +923,7 @@ Lemma: all the pdinstances from pdU is ≅-preserving
 ≅-refl : ∀ { r : RE } { u : U r } → r ⊢ u ≅ u
 ≅-refl {ε} {EmptyU} = ε⊢≅
 ≅-refl {$ c ` loc} {LetterU c} = $⊢≅
-≅-refl {l ● r ` loc} {PairU u v} = ●⊢≅ (≅-refl {l} {u}) (≅-refl {r} {v})
+≅-refl {l ● r ` loc} {PairU u v} = ●⊢≅ (≅-refl {l} {u})  {!!} 
 ≅-refl {l + r ` loc} {u} = +⊢≅ refl
 ≅-refl {r * ε∉r ` loc} {u} = *⊢≅ refl
 
@@ -972,7 +965,7 @@ Lemma: all the pdinstances from pdU is ≅-preserving
   → ≅-Preserve {l} {c} pdi
   → ≅-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
 ≅-pres-fst {l} {r} {loc} {c} (pdinstance inj s-ev) (≅-pres ev) = ≅-pres (λ where
-  (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ v₁≅v₂) → ●⊢≅ (ev u₁ u₂ u₁≅u₂) v₁≅v₂)
+  (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≅|uv₂|) → ●⊢≅ (ev u₁ u₂ u₁≅u₂) {!!} )
 
 ≅-pres-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
@@ -981,11 +974,11 @@ Lemma: all the pdinstances from pdU is ≅-preserving
 ≅-pres-star {r} {ε∉r} {loc} {c} (pdinstance {p} inj s-ev) (≅-pres ev) = ≅-pres prf
   where
     prf : (u₁ u₂ : U (p ● (r * ε∉r ` loc) ` loc)) → _ ⊢ u₁ ≅ u₂ → _ ⊢ PDI.mkinjList inj u₁ ≅ PDI.mkinjList inj u₂
-    prf (PairU u₁ (ListU vs₁)) (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ (*⊢≅ flat-vs₁≡flat-vs₂)) = *⊢≅ (begin
+    prf (PairU u₁ (ListU vs₁)) (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ flat-u₁vs₁≡flat-u₁vs₂) = *⊢≅ (begin
         proj₁ (flat (PDI.mkinjList inj (PairU u₁ (ListU vs₁))))
       ≡⟨ PDI.mkinjListSoundEv inj s-ev (PairU u₁ (ListU vs₁)) ⟩
         c ∷ (proj₁ (flat u₁) ++ proj₁ (flat (ListU vs₁)))
-      ≡⟨ cong (λ x → c ∷ x) (Eq.cong₂ _++_ (≅→||≡|| u₁≅u₂) flat-vs₁≡flat-vs₂) ⟩
+      ≡⟨ cong (λ x → c ∷ x) (Eq.cong₂ _++_ (≅→||≡|| u₁≅u₂) {!!} ) ⟩
         c ∷ (proj₁ (flat u₂) ++ proj₁ (flat (ListU vs₂)))
       ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₂ (ListU vs₂))) ⟩
         proj₁ (flat (PDI.mkinjList inj (PairU u₂ (ListU vs₂))))
@@ -1004,7 +997,7 @@ Lemma: all the pdinstances from pdU is ≅-preserving
   → ( pdi : PDInstance r c )
   → ≅-Preserve {r} {c} pdi
   → ≅-Preserve {l ● r ` loc} {c} (mk-snd-pdi (e , flat-[]-e) pdi)
-≅-pres-snd {l} {r} {loc} {c} e (flat-[] .(e) ev) (pdinstance {p} inj s-ev) (≅-pres prf) = ≅-pres (λ u₁ u₂ u₁≅u₂ → ●⊢≅ (≅-refl {l} {e}) (prf u₁ u₂ u₁≅u₂))
+≅-pres-snd {l} {r} {loc} {c} e (flat-[] .(e) ev) (pdinstance {p} inj s-ev) (≅-pres prf) = ≅-pres (λ u₁ u₂ u₁≅u₂ → ●⊢≅ (≅-refl {l} {e}) {!!} )
 
 ≅-pres-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdis : List ( PDInstance l c ) )
@@ -1252,16 +1245,10 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
           
 
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ v₁≅v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = prf -- hm this case is tricky.
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≡|uv₂|) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = prf -- hm this case is tricky.
       where
-        |u₁|≡|u₂| : proj₁ (flat u₁) ≡ proj₁ (flat u₂)
-        |u₁|≡|u₂| = ≅→||≡||  u₁≅u₂ 
-
-        |v₁|≡|v₂| : proj₁ (flat v₁) ≡ proj₁ (flat v₂)
-        |v₁|≡|v₂| = ≅→||≡||  v₁≅v₂
-
-        |uv₁|≡|uv₂| : proj₁ (flat (PairU {p} {r} {loc} u₁ v₁)) ≡ proj₁ (flat (PairU  {p} {r} {loc} u₂ v₂))
-        |uv₁|≡|uv₂| rewrite |u₁|≡|u₂| |  |v₁|≡|v₂| = refl
+        -- |u₁|≡|u₂| : proj₁ (flat u₁) ≡ proj₁ (flat u₂)
+        -- |u₁|≡|u₂| = ≅→||≡||  u₁≅u₂ 
 
         len|pair-u₂v₂|>0 : length (proj₁ (flat (PairU {p} {r} {loc} u₂ v₂) )) Nat.> 0
         len|pair-u₂v₂|>0 rewrite sym |uv₁|≡|uv₂| = len|pair-u₁v₁|>0
@@ -1550,12 +1537,10 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
             where
               ¬c∷[]≡[] : ¬ ((c ∷ proj₁ (flat u₂)) ++ proj₁ (flat (ListU vs₂)) ≡ [])
               ¬c∷[]≡[] ()
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ list-vs₁≅list-vs₂) (lne len|u₁-vs₁|>0 len|u₂-vs₂|≡0) = Nullary.contradiction len|u₁-vs₁|>0 (n≡0→¬n>0 len|u₁-vs₁|≡0)
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (●⊢≅ u₁≅u₂ |u₁-vs₁|≡|u₂-vs₂|) (lne len|u₁-vs₁|>0 len|u₂-vs₂|≡0) = Nullary.contradiction len|u₁-vs₁|>0 (n≡0→¬n>0 len|u₁-vs₁|≡0)
       where
         |u₂-vs₂|≡[] : proj₁ (flat (PairU {p} {r * ε∉r ` loc } {loc} u₂ (ListU vs₂))) ≡ []
         |u₂-vs₂|≡[] = Utils.length≡0→[] len|u₂-vs₂|≡0 
-        |u₁-vs₁|≡|u₂-vs₂| : proj₁ (flat (PairU {p} {r * ε∉r ` loc} {loc} u₁ (ListU vs₁))) ≡ proj₁ (flat (PairU {p} {r * ε∉r ` loc} {loc} u₂ (ListU vs₂)))
-        |u₁-vs₁|≡|u₂-vs₂| = Eq.cong₂ _++_ (≅→||≡|| {p} {u₁} {u₂} u₁≅u₂) (≅→||≡|| {r * ε∉r ` loc} {ListU vs₁} {ListU vs₂} list-vs₁≅list-vs₂)
         len|u₁-vs₁|≡0 : length (proj₁ (flat (PairU {p} {r * ε∉r ` loc} {loc} u₁ (ListU vs₁)))) ≡ 0
         len|u₁-vs₁|≡0 = cong length (trans |u₁-vs₁|≡|u₂-vs₂| |u₂-vs₂|≡[])
         |u₂|≡[] :  proj₁ (flat  u₂) ≡ []

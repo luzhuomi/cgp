@@ -305,14 +305,6 @@ right-∈ {l} {r} {loc} {c} {sf} (pdinstance {p} {r} {c} inj s-ev) (∈-pdi sf�
   ∈-pdi sf∈⟦p⟧ (λ u → RightU (inj u)) s-ev
 
 
-star-∈ : ∀ { r : RE } {ε∉r : ε∉ r }  {loc : ℕ } { c : Char } { sf : List Char }
-  → (pdi : PDInstance r c)
-  → r , c ⊢ sf ∈ pdi
-  --------------------------
-  → r * ε∉r ` loc , c ⊢ sf ∈ pdinstance-star pdi
-star-∈ {r} {ε∉r} {loc} {c} {sf} (pdinstance {p} {r} {c} inj s-ev) (∈-pdi sf∈⟦p⟧ .inj .s-ev) =
-  ∈-pdi (sf∈⟦p⟧ ● (((r ● r * ε∉r ` loc ` loc) +L ε) *) ⧺ ++-identityʳ sf) (mkinjList inj) (PDI.mkinjListSoundEv inj s-ev) 
-
 -- Invert membership through pdinstance-left/right:
 -- if the mapped (Left/Right) pdi accepts sf, so does the original.
 inv-left-∈ : ∀ { l r : RE } {loc : ℕ } { c : Char } { sf : List Char }
@@ -324,14 +316,6 @@ inv-left-∈ (pdinstance inj s-ev) (∈-pdi sf∈⟦p⟧ .(λ u → LeftU (inj u
   ∈-pdi sf∈⟦p⟧ inj s-ev
 
 
--- Invert membership through pdinstance-left/right:
--- if the mapped (Left/Right) pdi accepts sf, so does the original.
-inv-star-∈ : ∀ { r : RE } {ε∉r : ε∉ r }  {loc : ℕ } { c : Char } { sf : List Char }
-  → (pdi : PDInstance r c)
-  → r * ε∉r ` loc , c ⊢ sf ∈ pdinstance-star pdi
-  --------------------------
-  → r , c ⊢ sf ∈ pdi
-inv-star-∈ (pdinstance inj s-ev) = {!!} 
 
 inv-right-∈ : ∀ { l r : RE } {loc : ℕ } { c : Char } { sf : List Char }
   → (pdi : PDInstance r c)
@@ -568,13 +552,13 @@ map-left-right-ex-sorted {l} {r} {loc} {c} {sf}  (pdi₁ ∷ pdi₂ ∷ pdis)   
   = ex>-sorted-skip (λ sf∈left-pdi₁ → ¬sf∈pdi₁ (inv-left-∈ pdi₁ sf∈left-pdi₁)) (map-left-right-ex-sorted (pdi₂ ∷ pdis) (pdi' ∷ pdis') ex>-sorted-pdi₂pdis ex>-sorted-r-pdipdis') 
 
 
-star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { sf : List Char }
+star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { sf : List Char } { sf' : List Char }
   → (pdi₁ : PDInstance r c )
   → (pdi₂ : PDInstance r c )
   → r , c , sf  ⊢ pdi₁ > pdi₂ 
   -------------------------------------------------
-  → (r * ε∉r ` loc) , c , sf ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ sf∈pdi₂ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ (star-∈ pdi₁ sf∈pdi₁) (star-∈ pdi₂ sf∈pdi₂ ) ev
+  → (r * ε∉r ` loc) , c , sf ++ sf' ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
+star-ex-sorted {r} {ε∉r} {loc} {c} {sf} {sf'} pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ sf∈pdi₂ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ {!!} {!!}  ev
   where
     star-pdi₁ : PDInstance ( r * ε∉r ` loc ) c
     star-pdi₁ = pdinstance-star pdi₁
@@ -585,8 +569,8 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {sf} pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ 
           → ( t₂ : U  (r * ε∉r ` loc) )
           → ( Recons t₁ star-pdi₁ )
           → ( Recons t₂ star-pdi₂ )
-          → proj₁ (flat t₁) ≡ c ∷ sf
-          → proj₁ (flat t₂) ≡ c ∷ sf 
+          → proj₁ (flat t₁) ≡ c ∷ sf ++ sf' 
+          → proj₁ (flat t₂) ≡ c ∷ sf ++ sf'
           -------------------------
           → ( (r * ε∉r ` loc) ⊢ t₁ > t₂ )
     ev (ListU []) _ recons-[]-star-pdi₁ _ _ _ = Nullary.contradiction  recons-[]-star-pdi₁ (¬recons-[]-from-pdinstance-star pdi₁)
@@ -598,14 +582,14 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {sf} pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ 
       -- we only need to prove by I.H over the heads. why? because different pdinstances produce different parse tree.
   
 
-map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { sf : List Char }
+map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { sf : List Char } { sf' : List Char }
                      → ( pdis : List (PDInstance r c) )
                      → Ex>-sorted {r} {c} {sf} pdis
-                     → Ex>-sorted {r * ε∉r ` loc } {c} {sf}  (List.map pdinstance-star pdis)
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} [] ex>-sorted-nil = ex>-sorted-nil
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi ∷ [])  (ex>-sorted-cons sf∈pdi ex>-sorted-nil ex>-first-nil) = ex>-sorted-cons (star-∈ pdi sf∈pdi ) ex>-sorted-nil ex>-first-nil
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi₁ ∷ pdi₂ ∷ pdis)  (ex>-sorted-cons sf∈pdi₁ ex>-sorted-pdi2pdis ex>-first-pdi₁-pdi₂-pdis)
-  = ex>-sorted-cons (star-∈ pdi₁ sf∈pdi₁ )  (map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi₂ ∷ pdis) ex>-sorted-pdi2pdis)  {!!} 
+                     → Ex>-sorted {r * ε∉r ` loc } {c} {sf ++ sf'}  (List.map pdinstance-star pdis)
+map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} {sf'} [] ex>-sorted-nil = ex>-sorted-nil
+map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} {sf'} (pdi ∷ [])  (ex>-sorted-cons sf∈pdi ex>-sorted-nil ex>-first-nil) = ex>-sorted-cons {!!}  ex>-sorted-nil ex>-first-nil
+map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} {sf'} (pdi₁ ∷ pdi₂ ∷ pdis)  (ex>-sorted-cons sf∈pdi₁ ex>-sorted-pdi2pdis ex>-first-pdi₁-pdi₂-pdis)
+  = ex>-sorted-cons {!!}   (map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} {sf'} (pdi₂ ∷ pdis) ex>-sorted-pdi2pdis)  {!!} 
 
 
 {-

@@ -923,7 +923,7 @@ Lemma: all the pdinstances from pdU is ≅-preserving
 ≅-refl : ∀ { r : RE } { u : U r } → r ⊢ u ≅ u
 ≅-refl {ε} {EmptyU} = ε⊢≅
 ≅-refl {$ c ` loc} {LetterU c} = $⊢≅
-≅-refl {l ● r ` loc} {PairU u v} = ●⊢≅ (≅-refl {l} {u})  {!!} 
+≅-refl {l ● r ` loc} {PairU u v} = ●⊢≅ (≅-refl {l} {u}) refl
 ≅-refl {l + r ` loc} {u} = +⊢≅ refl
 ≅-refl {r * ε∉r ` loc} {u} = *⊢≅ refl
 
@@ -965,7 +965,10 @@ Lemma: all the pdinstances from pdU is ≅-preserving
   → ≅-Preserve {l} {c} pdi
   → ≅-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
 ≅-pres-fst {l} {r} {loc} {c} (pdinstance inj s-ev) (≅-pres ev) = ≅-pres (λ where
-  (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≅|uv₂|) → ●⊢≅ (ev u₁ u₂ u₁≅u₂) {!!} )
+  (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≅|uv₂|) → ●⊢≅ (ev u₁ u₂ u₁≅u₂)
+    (trans (cong (_++ proj₁ (flat v₁)) (s-ev u₁))
+      (trans (cong (c ∷_) |uv₁|≅|uv₂|)
+        (cong (_++ proj₁ (flat v₂)) (sym (s-ev u₂))))) )
 
 ≅-pres-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
@@ -978,7 +981,7 @@ Lemma: all the pdinstances from pdU is ≅-preserving
         proj₁ (flat (PDI.mkinjList inj (PairU u₁ (ListU vs₁))))
       ≡⟨ PDI.mkinjListSoundEv inj s-ev (PairU u₁ (ListU vs₁)) ⟩
         c ∷ (proj₁ (flat u₁) ++ proj₁ (flat (ListU vs₁)))
-      ≡⟨ cong (λ x → c ∷ x) (Eq.cong₂ _++_ (≅→||≡|| u₁≅u₂) {!!} ) ⟩
+      ≡⟨ cong (λ x → c ∷ x) flat-u₁vs₁≡flat-u₁vs₂ ⟩
         c ∷ (proj₁ (flat u₂) ++ proj₁ (flat (ListU vs₂)))
       ≡⟨ sym (PDI.mkinjListSoundEv inj s-ev (PairU u₂ (ListU vs₂))) ⟩
         proj₁ (flat (PDI.mkinjList inj (PairU u₂ (ListU vs₂))))
@@ -997,7 +1000,14 @@ Lemma: all the pdinstances from pdU is ≅-preserving
   → ( pdi : PDInstance r c )
   → ≅-Preserve {r} {c} pdi
   → ≅-Preserve {l ● r ` loc} {c} (mk-snd-pdi (e , flat-[]-e) pdi)
-≅-pres-snd {l} {r} {loc} {c} e (flat-[] .(e) ev) (pdinstance {p} inj s-ev) (≅-pres prf) = ≅-pres (λ u₁ u₂ u₁≅u₂ → ●⊢≅ (≅-refl {l} {e}) {!!} )
+≅-pres-snd {l} {r} {loc} {c} e (flat-[] .(e) ev) (pdinstance {p} inj s-ev) (≅-pres prf) = ≅-pres (λ u₁ u₂ u₁≅u₂ → ●⊢≅ (≅-refl {l} {e})
+    (trans (cong (_++ proj₁ (flat (inj u₁))) ev)
+      (trans (++-identityˡ (proj₁ (flat (inj u₁))))
+        (trans (s-ev u₁)
+          (trans (cong (c ∷_) (≅→||≡|| u₁≅u₂))
+            (trans (sym (s-ev u₂))
+              (trans (sym (++-identityˡ (proj₁ (flat (inj u₂)))))
+                (cong (_++ proj₁ (flat (inj u₂))) (sym ev)))))))) )
 
 ≅-pres-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdis : List ( PDInstance l c ) )
@@ -1088,41 +1098,7 @@ data ≅-Preserve* : ∀ { r : RE } { w : List Char } → PDInstance* r w → Se
 ```
 
 
--- Partial Derivative, must be a left-nested expression, whose leftmost innermost expression is ε. 
-
-```agda
-{-
-data LeftNested : RE → Set where
-  lnest-ε : LeftNested ε
-  lnest-● : { p r : RE } { loc : ℕ }  → LeftNested p → LeftNested (p ● r ` loc )
-
-
-data LeftNestedInj : ∀ { p r : RE } { c : Char } ( inj : U p → U r ) → ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ (proj₁ (flat u)))  → Set where
-  lnest-inj-ε : { c : Char } { loc : ℕ }
-    → LeftNestedInj {ε} {$ c ` loc} {c}  (mkinjLetter {c} {loc}) (mkinjLetterSound {c} {loc})
-  lnest-inj-● : { p l r : RE } { loc : ℕ } { c : Char } { inj : U p → U l } { s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ (proj₁ (flat u))} 
-    → LeftNestedInj {p} {l} inj s-ev
-    → LeftNestedInj {p ● r ` loc} {l ● r ` loc } {c} ( mkinjFst inj ) ( mkinjFstSoundEv inj s-ev )  
-  -- more cases?
-
--- lemma left nested injection preserve word length for each nesting
-
-
-lnInj→> : ∀ { p r : RE } { c : Char } { ε∈p : ε∈ p }  { inj : U p → U r }
-  {  s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ (proj₁ (flat u)) }
-  → LeftNestedInj {p} {r} {c} inj s-ev
-  → ( u : U p )
-  → ( v : U p ) 
-  → length (proj₁ (flat u) ) Nat.> 0
-  → length (proj₁ (flat v) ) ≡ 0
-  → r ⊢ inj u > inj v
-lnInj→> =  {!!}   
-
--} 
--- LeftNestedPreserve does not make sense 
-```
-
-
+-- injection is monotonic if the input parse trees are left-most align u₁ ≅ u₂ 
 
 ```agda
 

@@ -1140,6 +1140,7 @@ data >-Inc-≅ : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
         → p ⊢ u₁ ≅ u₂ 
         → p ⊢ u₁ > u₂  → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
     → >-Inc-≅ {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+
 ```
 
 ### Lemma 33: all pdinstances from pdU[ r , c ] are >-strict increasing .
@@ -1679,7 +1680,7 @@ data *>-Inc : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set where
   *>-inc : ∀ { p r : RE } { w : List Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → (proj₁ ( flat {r} (inj x ) ) ≡ w ++ (proj₁ (flat {p} x))) }
     → ( (u₁ : U p) → (u₂ : U p ) → p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence
-    → *>-Inc {r} {w} (pdinstance* {p} {r} {w} inj sound-ev) 
+    → *>-Inc {r} {w} (pdinstance* {p} {r} {w} inj sound-ev)
 -}
 
 data *>-Inc-≅ : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set where

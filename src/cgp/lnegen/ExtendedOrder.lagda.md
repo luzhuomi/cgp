@@ -34,7 +34,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-snd ; mk-snd-pdi ; mkinjSnd ; 
   concatmap-pdinstance-snd ; zip-es-flat-[]-es  ;
   pdinstance-assoc; inv-assoc ;
-  compose-pdi-with   
+  compose-pdi-with ; compose-pdi-with-soundEv
   ) 
 
 
@@ -77,6 +77,9 @@ open Nat using ( ℕ ; suc ; zero )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
+
+import Data.Unit as Unit
+open Unit using (⊤ ; tt)
 
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_  ; length )
@@ -1252,44 +1255,111 @@ Would you like me to implement option 1? It requires adding *>-Inc and >-Inc def
 
 -}
 
+PDInstance-descendant : ∀ {r c} → PDInstance r c → RE
+PDInstance-descendant (pdinstance {p} inj s-ev) = p
+
+PDInstance-accepts-sf : ∀ {r c} → PDInstance r c → List Char → Set
+PDInstance-accepts-sf pdi sf = sf ∈⟦ PDInstance-descendant pdi ⟧
+
+Maybe-PDInstance-accepts-sf : ∀ {r c} → Maybe (PDInstance r c) → List Char → Set
+Maybe-PDInstance-accepts-sf nothing sf = ⊤
+Maybe-PDInstance-accepts-sf (just pdi) sf = PDInstance-accepts-sf pdi sf
+
+compose-pdi-with-∈ : ∀ { d r : RE } { pf : List Char } { c : Char } { sf : List Char }
+  → ( d→r : U d → U r )
+  → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pf ++ ( proj₁ (flat {d} v) )) )
+  → ( pdi : PDInstance d c )
+  → PDInstance-accepts-sf pdi sf
+  → r , pf ∷ʳ c ⊢* sf ∈ compose-pdi-with d→r s-ev-d→r pdi
+compose-pdi-with-∈ {pf = pf} {c = c} d→r s-ev-d→r (pdinstance p→d s-ev-p→d) sf∈p = *∈-pdi {pf = pf ∷ʳ c} sf∈p (λ x → d→r (p→d x)) (compose-pdi-with-soundEv d→r s-ev-d→r p→d s-ev-p→d)
+
+{-
+Kenny:
+In `lnegen/ExtendedOrder.lagda.md`, the premise `>-inc-d→r` in lemmas `map-compose-pdi-with-sorted` and `compose-pdi-with-ex*>-head-map-compose-pdi-with`, can we add back `d ⊢ v₁ ≅ v₂`? i.e. `( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ )` instead of `( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ )`?
+
+Kimi:
+No — we cannot add it back. It would make compose-pdi-with-ex*>-head-map-compose-pdi-with unprovable. Here is a concrete counterexample.
+The counterexample
+Take d = l ● r where:
+- l = $a + ($a ● $b) (non-problematic, both branches have first-char a)
+- r = $b + ε (accepts ε, so ε∈r)
+- c = 'a'
+Then pdU[l, 'a'] contains two pdis:
+1. pdiₗ₁ with descendant ε (from the left $a branch)
+2. pdiₗ₂ with descendant $b (from the right $a ● $b branch)
+In pdU[d, 'a'] with ε∈l, both appear as fst pdis:
+- pdi₁ = pdinstance-fst pdiₗ₁ with descendant ε ● r. Its reconstructions are v₁ = PairU (LetterU 'a') v₁' for any v₁' : U r.
+- pdi₂ = pdinstance-fst pdiₗ₂ with descendant $b ● r. Its reconstructions are v₂ = PairU (PairU (LetterU 'a') (LetterU 'b')) v₂' for any v₂' : U r.
+Because pdU-sorted puts all left-branch pdis before right-branch pdis, pdi₁ and pdi₂ are adjacent in Ex>-sorted, so d ⊢ v₁ > v₂ holds for all reconstructions.
+Now pick:
+- v₁' = LeftU (LetterU 'b') (the $b branch of r), so flat v₁' = "b"
+- v₂' = RightU EmptyU (the ε branch of r), so flat v₂' = []
+Then:
+- flat v₁ = flat (LetterU 'a') ++ flat v₁' = "a" ++ "b" = "ab"
+- flat v₂ = flat (PairU (LetterU 'a') (LetterU 'b')) ++ flat v₂' = "ab" ++ [] = "ab"
+So flat v₁ ≡ flat v₂, but:
+- l ⊢ LetterU 'a' ≢ PairU (LetterU 'a') (LetterU 'b') because their flat words differ ("a" vs "ab")
+- Therefore l ● r ⊢ v₁ ≢ v₂ by ●⊢≅ — the ≅ relation requires component-wise ≅, which fails.
+Why this matters for ex*>-ev
+In compose-pdi-with-ex*>-head-map-compose-pdi-with, the ex*>-ev function is invoked with exactly these v₁ and v₂. It would need to call:
+>-inc-d→r v₁ v₂ (d ⊢ v₁ ≅ v₂) (d ⊢ v₁ > v₂)
+But d ⊢ v₁ ≅ v₂ is false in this case. There is no way to construct it from the available hypotheses.
+The fix that already works
+The current proof avoids this entirely because >-inc-d→r has type:
+(v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂
+And d ⊢ v₁ > v₂ is already given directly by pdi₁>pdi₂ (via Ex>-maybe). The ≅ premise is simply not needed.
+If your downstream code currently requires *>-Inc-≅, the right fix is to change it to use *>-Inc (without ≅). The file's own comments note that all the >-inc lemmas in Order.lagda.md can be rewritten to use only >, and doing so is exactly what makes this proof go through.
+Would you like me to proceed with updating the downstream commented lemmas to use *>-Inc instead?
+
+
+Kenny:
+
+The above counter example is flaw, e.g.
+1) ε∉l
+2) v₁ and v₂ are not parse trees of d, but
+  u₁ = PairU (LeftU (LetterU 'a')) v₁' ; and 
+  u₂ = PairU (RightU (PairU (LetterU 'a') (LetterU 'b'))) v₂'
+  are.
+3) the counter example still applies
+>-inc-d→r u₁ u₂ as ¬ ( d ⊢ u₁ ≅ u₂ )
+4) in general, we can't apply d ⊢ _ ≅ _  where d is the top level regex (non partial derivative) .
+-}
+
 compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pf : List Char} { c : Char } { sf : List Char }
   → ( c ∷ sf ) ∈⟦ d ⟧ 
   → ( d→r : U d → U r )
   → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pf ++ ( proj₁ (flat {d} v) )) )
-  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
-  → ( pdi : PDInstance d c )
-  → ( pdis : List (PDInstance d c) )
+  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r
+  → ( pdi : PDInstance d c )  -- what if we added the premise that pdi and pdis are ≅-presserving? 
+  → ( pdis : List (PDInstance d c) ) 
   → Ex>-maybe pdi (head pdis)
+  → (sf∈pdi : PDInstance-accepts-sf pdi sf)
+  → (maybe-sf∈head : Maybe-PDInstance-accepts-sf (head pdis) sf)
   -------------------------------------------------------------------------------------------------
-  -- → Ex*>-maybe {r} {pf ∷ʳ c} {sf}   (compose-pdi-with d→r s-ev-d→r pdi) (head (List.map (compose-pdi-with d→r s-ev-d→r) pdis))
-  →  Ex*>-first {r} {pf ∷ʳ c} {sf}  (compose-pdi-with d→r s-ev-d→r pdi) (r ,  pf ∷ʳ c  ⊢* sf ∈ (compose-pdi-with d→r s-ev-d→r pdi) )
+  → Ex*>-first {r} {pf ∷ʳ c} {sf} (compose-pdi-with d→r s-ev-d→r pdi)
+      (compose-pdi-with-∈ d→r s-ev-d→r pdi sf∈pdi)
       (List.map (compose-pdi-with d→r s-ev-d→r) pdis)
-compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r pdi []  ex>-nothing = ex*>-nothing
-{-
-compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧  d→r s-ev-d→r >-inc-d→r
+compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdi [] ex>-nothing sf∈pdi _ = ex*>-first-nil
+compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r
   pdi₁@(pdinstance {p₁} {d} {c} p₁→d s-ev-p₁→d)
   (pdi₂@(pdinstance {p₂} {d} {c} p₂→d s-ev-p₂→d) ∷ pdis )
-  (ex>-just pdi₁>pdi₂@(>-pdi _ _ u₁→u₂→rec₁→rec₂→u₁>u₂ ) ) = ex*>-just (*>-pdi -- u₁ and u₂ of U d
-                             {r} {pf ∷ʳ c} {sf} 
-                             (compose-pdi-with d→r s-ev-d→r pdi₁)
-                             (compose-pdi-with d→r s-ev-d→r pdi₂)
-                             (*∈-pdi {!!} (λ x → d→r (p₁→d x)) {!!} )
-                             (*∈-pdi {!!} (λ x → d→r (p₂→d x)) {!!})  -- from the same pdinstance* 
-                              ex*>-ev ) 
+  (ex>-just pdi₁>pdi₂@(>-pdi _ _ u₁→u₂→rec₁→rec₂→u₁>u₂ ) )
+  sf∈pdi₁
+  sf∈pdi₂
+  = ex*>-first-cons
+      (compose-pdi-with-∈ d→r s-ev-d→r pdi₂ sf∈pdi₂)
+      (*>-pdi {r} {pf ∷ʳ c} {sf}
+        (compose-pdi-with d→r s-ev-d→r pdi₁)
+        (compose-pdi-with d→r s-ev-d→r pdi₂)
+        (compose-pdi-with-∈ d→r s-ev-d→r pdi₁ sf∈pdi₁)
+        (compose-pdi-with-∈ d→r s-ev-d→r pdi₂ sf∈pdi₂)
+        ex*>-ev)
   where
-            -- 1) from inv-recons*-compose-pdi-with we note that
-            -- u₁ is reconstructable from pdinstance* d→r s-ev-d-r
-            -- u₂ is reconstructable from pdinstance* d→r s-ev-d-r
-            --   same pdinstance* but different w∈⟦d⟧
-            -- 2) all pdinstance*s must be *>-inc , namely
-            --    v1 v2 : d,  d |- v1 > v2 → d→r v₁ > d→r v₂
-            --  if can we show u₁ = d→r v₁ and u₂ = d→ r v₂ ? 
-
     ex*>-ev : ∀ (u₁ u₂ : U r )
       → Recons* u₁ (compose-pdi-with d→r s-ev-d→r (pdinstance p₁→d s-ev-p₁→d))
       → Recons* u₂ (compose-pdi-with d→r s-ev-d→r (pdinstance p₂→d s-ev-p₂→d))
       → (proj₁ (flat u₁)) ≡ pf ++ c ∷ sf
-      → (proj₁ (flat u₂)) ≡ pf ++ c ∷ sf
+      → (proj₁ (flat u₂)) ≡ pf ++ c ∷ sf -- do we add u₁ ≅ u₂ ?
       ----------------------------------------------------------------------------
       → r ⊢ u₁ > u₂
     ex*>-ev u₁ u₂
@@ -1298,30 +1368,37 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pf} {c} {sf} c∷sf∈�
             with inv-recons*-compose-pdi-with u₁ pdi₁ d→r s-ev-d→r rec*₁     | inv-recons*-compose-pdi-with u₂ pdi₂ d→r s-ev-d→r rec*₂             
     ... | recons* {d} {r} {cw₁} {pref} u₁ ( cw₁∈⟦d⟧ , d→r-unflat-cw₁∈⟦d⟧≡u₁ ) | recons* {d} {r} {cw₂} {pref} u₂ ( cw₂∈⟦d⟧ , d→r-unflat-cw₂∈⟦d⟧≡u₂ ) 
             rewrite sym d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ | sym  d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ = 
-                >-inc-d→r (p₁→d (unflat w₁∈⟦p₁⟧) ) (p₂→d (unflat w₂∈⟦p₂⟧)  ) {!!}  (u₁→u₂→rec₁→rec₂→u₁>u₂ (p₁→d (unflat w₁∈⟦p₁⟧))
-                                                                                               (p₂→d (unflat w₂∈⟦p₂⟧))
-                                                                                               (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
-                                                                                               (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
--}
+                >-inc-d→r (p₁→d (unflat w₁∈⟦p₁⟧) ) (p₂→d (unflat w₂∈⟦p₂⟧)  )
+                  (u₁→u₂→rec₁→rec₂→u₁>u₂ (p₁→d (unflat w₁∈⟦p₁⟧))
+                                          (p₂→d (unflat w₂∈⟦p₂⟧))
+                                          (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
+                                          (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
 
 map-compose-pdi-with-sorted : ∀ { d r : RE } { pf : List Char} { c : Char } { sf : List Char }
   → ( c ∷ sf ) ∈⟦ d ⟧ 
   → ( d→r : U d → U r )
   → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pf ++ ( proj₁ (flat {d} v) )) )
-  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅  v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
+  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
   → ( pdis : List (PDInstance d c) )
   → Ex>-sorted pdis
+  → All (λ pdi → PDInstance-accepts-sf pdi sf) pdis
   -------------------------------------------------------------
   → Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
-map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r [] ex>-nil = ex*>-sorted-nil 
-map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r (pdi ∷ pdis)  (ex>-cons pdis-sorted pdi>head-pdis) = 
-  ex*>-sorted-cons {!!}  (map-compose-pdi-with-sorted c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis
-                          pdis-sorted) {!!} 
-  {- (compose-pdi-with-ex*>-head-map-compose-pdi-with c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdi pdis pdi>head-pdis)
+map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r [] ex>-nil [] = ex*>-sorted-nil 
+map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r (pdi ∷ pdis) (ex>-cons pdis-sorted pdi>head-pdis) (sf∈pdi ∷ all-sf) = 
+  ex*>-sorted-cons (compose-pdi-with-∈ d→r s-ev-d→r pdi sf∈pdi) ind-hyp first-proof
   where
-    ind-hyp : Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis )
-    ind-hyp = map-compose-pdi-with-sorted {d} {r} {pf} {c} {sf} c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis pdis-sorted
-    -} 
+    ind-hyp : Ex*>-sorted {r} {pf ∷ʳ c} {sf} (List.map (compose-pdi-with d→r s-ev-d→r) pdis)
+    ind-hyp = map-compose-pdi-with-sorted c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdis pdis-sorted all-sf
+    first-proof : Ex*>-first {r} {pf ∷ʳ c} {sf} (compose-pdi-with d→r s-ev-d→r pdi) (compose-pdi-with-∈ d→r s-ev-d→r pdi sf∈pdi) (List.map (compose-pdi-with d→r s-ev-d→r) pdis)
+    first-proof = compose-pdi-with-ex*>-head-map-compose-pdi-with c∷sf∈⟦d⟧ d→r s-ev-d→r >-inc-d→r pdi pdis pdi>head-pdis sf∈pdi maybe-sf∈head
+      where
+        maybe-sf∈head : Maybe-PDInstance-accepts-sf (head pdis) sf
+        maybe-sf∈head = helper pdis all-sf
+          where
+            helper : (xs : List (PDInstance d c)) → All (λ pdi → PDInstance-accepts-sf pdi sf) xs → Maybe-PDInstance-accepts-sf (head xs) sf
+            helper [] [] = tt
+            helper (pdi₂ ∷ _) (sf∈pdi₂ ∷ _) = sf∈pdi₂ 
 
 {-
 

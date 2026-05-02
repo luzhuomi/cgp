@@ -558,22 +558,31 @@ sf∈pdi→sf∈star-pdi {r} {ε∉r} {loc} {c} {sf} (pdinstance inj s-ev) (∈-
 
 
 
-prefixes : List Char → List (List Char )
+prefixes : ∀ {A : Set} → List A → List (List A)
 prefixes = inits 
 
 star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { sf : List Char }
   → (pdi₁ : PDInstance r c )
   → (pdi₂ : PDInstance r c )
-  → All (λ spf → r , c ⊢ spf ∈ pdi₁ → r , c ⊢ spf ∈ pdi₂ → r , c , spf ⊢ pdi₁ > pdi₂) ( prefixes sf ) 
+  → r , c ⊢ sf ∈ pdi₁
+  → r , c ⊢ sf ∈ pdi₂
+  → All (λ spf → r , c ⊢ spf ∈ pdi₁ → r , c ⊢ spf ∈ pdi₂ → r , c , spf ⊢ pdi₁ > pdi₂) ( prefixes sf )
   -------------------------------------------------
   → (r * ε∉r ` loc) , c , sf ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
-star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ sf∈pdi₂ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ sf∈star-pdi₁ sf∈star-pdi₂  ev
+star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  pdi₁ pdi₂ sf∈pdi₁ sf∈pdi₂ all-ev = >-pdi star-pdi₁ star-pdi₂ sf∈star-pdi₁ sf∈star-pdi₂  ev
   where
     star-pdi₁ = pdinstance-star pdi₁
     star-pdi₂ = pdinstance-star pdi₂
 
     sf∈star-pdi₁ = sf∈pdi→sf∈star-pdi pdi₁ sf∈pdi₁
     sf∈star-pdi₂ = sf∈pdi→sf∈star-pdi pdi₂ sf∈pdi₂
+
+    -- Helper: a prefix of sf that is accepted by pdi gives sf ∈ star-pdi
+    prefix∈pdi→sf∈star-pdi : ∀ {spf : List Char}
+      → spf ∈ prefixes sf
+      → r , c ⊢ spf ∈ pdi₁
+      → (r * ε∉r ` loc) , c ⊢ sf ∈ star-pdi₁
+    prefix∈pdi→sf∈star-pdi spf∈prefixes sf∈pdi = {!!}
 
     ev : ∀ ( t₁ : U  (r * ε∉r ` loc) )
           → ( t₂ : U  (r * ε∉r ` loc) )
@@ -586,32 +595,115 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁
     ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ =
       let recons-v₁-pdi₁ = inv-recons-star v₁ vs₁ pdi₁ recons-list-vvs₁-star-pdi₁
           recons-v₂-pdi₂ = inv-recons-star v₂ vs₂ pdi₂ recons-list-vvs₂-star-pdi₂
-      in bne (¬≡[]→length>0 (¬|list-u∷us|≡[] {r} {ε∉r} {loc} {v₁} {vs₁} )) ((¬≡[]→length>0 (¬|list-u∷us|≡[] {r} {ε∉r} {loc} {v₂} {vs₂}))) (star-head (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂))
-      -- we only need to prove by I.H over the heads. why? because different pdinstances produce different parse tree.
+      in {!!}
+      -- Need to find prefix spf where both pdi₁ and pdi₂ accept,
+      -- then apply all-ev to get ordering and use star-head.
 
+
+-- Helper: extract tail Ex>-sorted from cons/skip
+tail-ex>-sorted : ∀ {r c sf pdi pdis}
+  → Ex>-sorted {r} {c} {sf} (pdi ∷ pdis)
+  → Ex>-sorted {r} {c} {sf} pdis
+tail-ex>-sorted (ex>-sorted-cons _ tail _) = tail
+tail-ex>-sorted (ex>-sorted-skip _ tail) = tail
+
+all-tail-ex>-sorted : ∀ {r c pdi pdis spfs}
+  → All (λ spf → Ex>-sorted {r} {c} {spf} (pdi ∷ pdis)) spfs
+  → All (λ spf → Ex>-sorted {r} {c} {spf} pdis) spfs
+all-tail-ex>-sorted [] = []
+all-tail-ex>-sorted (x ∷ xs) = tail-ex>-sorted x ∷ all-tail-ex>-sorted xs
+
+-- Helper: extract membership and ordering from Ex>-sorted for star-ex-sorted
+ex>-sorted→star-premise : ∀ {r c sf pdi₁ pdi₂ pdis}
+  → Ex>-sorted {r} {c} {sf} (pdi₁ ∷ pdi₂ ∷ pdis)
+  → r , c ⊢ sf ∈ pdi₁ → r , c ⊢ sf ∈ pdi₂ → r , c , sf ⊢ pdi₁ > pdi₂
+ex>-sorted→star-premise (ex>-sorted-cons sf∈pdi₁ _ (ex>-first-cons sf∈pdi₂ pdi₁>pdi₂)) _ _ = pdi₁>pdi₂
+ex>-sorted→star-premise (ex>-sorted-cons sf∈pdi₁ _ (ex>-first-skip ¬sf∈pdi₂ _)) _ sf∈pdi₂ = Nullary.contradiction sf∈pdi₂ ¬sf∈pdi₂
+ex>-sorted→star-premise (ex>-sorted-skip ¬sf∈pdi₁ _) sf∈pdi₁ _ = Nullary.contradiction sf∈pdi₁ ¬sf∈pdi₁
+
+all-ex>-sorted→star-premise : ∀ {r c pdi₁ pdi₂ pdis spfs}
+  → All (λ spf → Ex>-sorted {r} {c} {spf} (pdi₁ ∷ pdi₂ ∷ pdis)) spfs
+  → All (λ spf → r , c ⊢ spf ∈ pdi₁ → r , c ⊢ spf ∈ pdi₂ → r , c , spf ⊢ pdi₁ > pdi₂) spfs
+all-ex>-sorted→star-premise [] = []
+all-ex>-sorted→star-premise (x ∷ xs) = ex>-sorted→star-premise x ∷ all-ex>-sorted→star-premise xs
+
+-- Helper: convert All P (map f xs) to All (P ∘ f) xs
+all-map-conv : ∀ {A B} {P : B → Set} {f : A → B} {xs}
+  → All P (List.map f xs)
+  → All (λ x → P (f x)) xs
+all-map-conv {xs = []} [] = []
+all-map-conv {xs = _ ∷ _} (px ∷ pxs) = px ∷ all-map-conv pxs
+
+-- Helper: lookup P sf from All P (prefixes sf)
+all-lookup-sf : ∀ {A} {P : List A → Set} {sf : List A}
+  → All P (prefixes sf)
+  → P sf
+all-lookup-sf {sf = []} (px ∷ []) = px
+all-lookup-sf {A} {P} {sf = x ∷ xs} (_ ∷ pxs) = all-lookup-map P {pref = []} x (all-map-conv pxs)
+  where
+    all-lookup-map : ∀ {A} (P : List A → Set) {pref : List A} (x : A) {ys}
+      → All (λ spf → P (pref ++ x ∷ spf)) (prefixes ys)
+      → P (pref ++ x ∷ ys)
+    all-lookup-map P {pref} x {ys = []} (px ∷ []) = px
+    all-lookup-map P {pref} x {ys = y ∷ ys} (_ ∷ pxs) =
+      all-lookup-map P {pref = pref ++ x ∷ []} y (all-map-conv pxs)
+
+-- Helper: extract membership and first from Ex>-sorted for the head
+ex>-sorted→∈ : ∀ {r c sf pdi pdis}
+  → Ex>-sorted {r} {c} {sf} (pdi ∷ pdis)
+  → r , c ⊢ sf ∈ pdi ⊎ ¬ (r , c ⊢ sf ∈ pdi)
+ex>-sorted→∈ (ex>-sorted-cons sf∈pdi _ _) = inj₁ sf∈pdi
+ex>-sorted→∈ (ex>-sorted-skip ¬sf∈pdi _) = inj₂ ¬sf∈pdi
+
+ex>-first-cong : ∀ {r c sf pdi pdis} {sf∈pdi₁ sf∈pdi₂ : r , c ⊢ sf ∈ pdi}
+  → Ex>-first pdi sf∈pdi₁ pdis → Ex>-first pdi sf∈pdi₂ pdis
+ex>-first-cong ex>-first-nil = ex>-first-nil
+ex>-first-cong (ex>-first-skip ¬sf∈pdi' first) = ex>-first-skip ¬sf∈pdi' (ex>-first-cong first)
+ex>-first-cong (ex>-first-cons sf∈pdi' pdi>pdi') = ex>-first-cons sf∈pdi' pdi>pdi'
+
+ex>-sorted→first : ∀ {r c sf pdi pdis}
+  → (ex-sorted : Ex>-sorted {r} {c} {sf} (pdi ∷ pdis))
+  → ∀ (sf∈pdi : r , c ⊢ sf ∈ pdi) → Ex>-first {r} {c} {sf} pdi sf∈pdi pdis
+ex>-sorted→first ex-sorted sf∈pdi with ex-sorted
+... | ex>-sorted-cons _ _ first = ex>-first-cong first
+... | ex>-sorted-skip ¬sf∈pdi _ = Nullary.contradiction sf∈pdi ¬sf∈pdi
+
+map-star-ex-first : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { sf : List Char }
+  (pdi₁ : PDInstance r c) (pdi₂ : PDInstance r c) (pdis : List (PDInstance r c))
+  (sf∈pdi₁ : r , c ⊢ sf ∈ pdi₁)
+  → All (λ spf → r , c ⊢ spf ∈ pdi₁ → r , c ⊢ spf ∈ pdi₂ → r , c , spf ⊢ pdi₁ > pdi₂) (prefixes sf)
+  → Ex>-first {r} {c} {sf} pdi₁ sf∈pdi₁ (pdi₂ ∷ pdis)
+  → Ex>-first {r * ε∉r ` loc} {c} {sf} (pdinstance-star pdi₁) (sf∈pdi→sf∈star-pdi pdi₁ sf∈pdi₁) (List.map pdinstance-star (pdi₂ ∷ pdis))
+map-star-ex-first pdi₁ pdi₂ pdis sf∈pdi₁ star-premise (ex>-first-skip ¬sf∈pdi₂ ex>-first-rest) =
+  ex>-first-skip (λ sf∈star-pdi₂ → {!!}) (map-star-ex-first pdi₁ pdi₂ pdis sf∈pdi₁ star-premise ex>-first-rest)
+  -- TODO: need to show ¬sf∈star-pdi₂ from ¬sf∈pdi₂, or handle prefix case
+map-star-ex-first pdi₁ pdi₂ pdis sf∈pdi₁ star-premise (ex>-first-cons sf∈pdi₂ pdi₁>pdi₂) =
+  ex>-first-cons (sf∈pdi→sf∈star-pdi pdi₂ sf∈pdi₂)
+    (star-ex-sorted pdi₁ pdi₂ sf∈pdi₁ sf∈pdi₂ star-premise)
 
 map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { sf : List Char }
                      → ( pdis : List (PDInstance r c) )
-                     -- → Ex>-sorted {r} {c} {sf} pdis -- replaced by the premise below
-                     → All ( λ spf →  Ex>-sorted {r} {c} {spf} pdis) (prefixes sf) 
+                     → All ( λ spf →  Ex>-sorted {r} {c} {spf} pdis) (prefixes sf)
                      → Ex>-sorted {r * ε∉r ` loc } {c} {sf}  (List.map pdinstance-star pdis)
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} [] ex>-sorted-nil = ex>-sorted-nil
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi ∷ [])  (ex>-sorted-cons sf∈pdi ex>-sorted-nil ex>-first-nil) =
-  ex>-sorted-cons (sf∈pdi→sf∈star-pdi pdi sf∈pdi)  ex>-sorted-nil ex>-first-nil
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi ∷ []) (ex>-sorted-skip ¬sf∈pdi ex>-sorted-nil) =
-  -- Note: sf ∉ pdi does not imply sf ∉ pdinstance-star pdi, because star-pdi can accept sf via a proper prefix.
-  -- This case requires additional infrastructure (e.g. deciding membership in star-pdi).
-  {!!}
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  (pdi₁ ∷ pdi₂ ∷ pdis)  (ex>-sorted-cons sf∈pdi₁ ex>-sorted-pdi2pdis ex>-first-pdi₁-pdi₂-pdis)
-  = ex>-sorted-cons (sf∈pdi→sf∈star-pdi pdi₁ sf∈pdi₁) (map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  (pdi₂ ∷ pdis) ex>-sorted-pdi2pdis) (map-star-ex-first ex>-first-pdi₁-pdi₂-pdis)
+map-star-ex-sorted [] _ = ex>-sorted-nil
+map-star-ex-sorted (pdi ∷ []) all-ev = {!!}
+  -- Need to check if any prefix of sf is accepted by pdi.
+  -- If yes: ex>-sorted-cons with sf∈star-pdi.
+  -- If no: ex>-sorted-skip with ¬sf∈star-pdi.
+map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi₁ ∷ pdi₂ ∷ pdis) all-ev =
+  helper (all-ex>-sorted→star-premise all-ev) (ex>-sorted→∈ (all-lookup-sf all-ev))
   where
-    map-star-ex-first : Ex>-first {r} {c} {sf} pdi₁ sf∈pdi₁ (pdi₂ ∷ pdis)
-                      → Ex>-first {r * ε∉r ` loc} {c} {sf} (pdinstance-star pdi₁) (sf∈pdi→sf∈star-pdi pdi₁ sf∈pdi₁) (List.map pdinstance-star (pdi₂ ∷ pdis))
-    map-star-ex-first = {!!}
-map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi₁ ∷ pdi₂ ∷ pdis) (ex>-sorted-skip ¬sf∈pdi₁ ex>-sorted-pdi₂pdis) =
-  -- Note: sf ∉ pdi₁ does not imply sf ∉ pdinstance-star pdi₁.
-  -- This case requires additional infrastructure.
-  {!!} 
+    helper : All (λ spf → r , c ⊢ spf ∈ pdi₁ → r , c ⊢ spf ∈ pdi₂ → r , c , spf ⊢ pdi₁ > pdi₂) (prefixes sf)
+           → (r , c ⊢ sf ∈ pdi₁ ⊎ ¬ (r , c ⊢ sf ∈ pdi₁))
+           → Ex>-sorted {r * ε∉r ` loc} {c} {sf} (List.map pdinstance-star (pdi₁ ∷ pdi₂ ∷ pdis))
+    helper star-premise (inj₁ sf∈pdi₁) =
+      ex>-sorted-cons (sf∈pdi→sf∈star-pdi pdi₁ sf∈pdi₁)
+        (map-star-ex-sorted {r} {ε∉r} {loc} {c} {sf} (pdi₂ ∷ pdis) (all-tail-ex>-sorted all-ev))
+        (map-star-ex-first pdi₁ pdi₂ pdis sf∈pdi₁ star-premise (ex>-sorted→first (all-lookup-sf all-ev) sf∈pdi₁))
+    helper _ (inj₂ ¬sf∈pdi₁) =
+      -- sf ∉ pdi₁, but sf might still be in star-pdi₁ via a proper prefix.
+      -- Need to search prefixes for one accepted by pdi₁.
+      {!!} 
 
 
 
@@ -1019,30 +1111,44 @@ concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c} = prf
 
 
 
--- main lemma: 
+-- Helper: build All (λ _ → ex>-sorted-nil) for any list of suffixes
+all-ex>-sorted-nil : ∀ {r c spfs} → All (λ spf → Ex>-sorted {r} {c} {spf} []) spfs
+all-ex>-sorted-nil {spfs = []} = []
+all-ex>-sorted-nil {spfs = _ ∷ _} = ex>-sorted-nil ∷ all-ex>-sorted-nil
+
+-- Helper: pdU-sorted for all prefixes of sf
+pdU-sorted-prefixes : ∀ { r : RE } { c : Char } {sf : List Char }
+  → All (λ spf → Ex>-sorted {r} {c} {spf} pdU[ r , c ]) (prefixes sf)
+pdU-sorted-prefixes {ε} {c} {sf} = all-ex>-sorted-nil
+pdU-sorted-prefixes {$ c' ` loc} {c} {sf} with c' Char.≟ c
+... | no _ = all-ex>-sorted-nil
+... | yes refl = {!!}
+pdU-sorted-prefixes {l + r ` loc} {c} {sf} = {!!}
+pdU-sorted-prefixes {l * ε∉l ` loc} {c} {sf} = {!!}
+pdU-sorted-prefixes {l ● r ` loc} {c} {sf} = {!!}
+
+-- main lemma:
 pdU-sorted : ∀ { r : RE } { c : Char } {sf : List Char }
   → Ex>-sorted {r} {c} {sf} pdU[ r , c ]
-
 
 pdU-sorted {ε} {c} {sf} = ex>-sorted-nil
 pdU-sorted {$ c ` loc } {c'} {[]} with c Char.≟ c'
 ...                           | no _ = ex>-sorted-nil
 ...                           | yes refl = ex>-sorted-cons (∈-pdi ε PartialDerivative.mkinjLetter
-                                                             PartialDerivative.mkinjLetterSound)  ex>-sorted-nil ex>-first-nil
+                                                             PartialDerivative.mkinjLetterSound)  ex>-sorted-nil ex>-first-nil 
 pdU-sorted {$ c ` loc } {c'} {x ∷ sf} with c Char.≟ c'
 ...                           | no _ = ex>-sorted-nil
 ...                           | yes refl = ex>-sorted-skip (λ { (∈-pdi () inj s-ev) }) ex>-sorted-nil
-
 pdU-sorted {l + r ` loc } {c} {sf} =  map-left-right-ex-sorted pdU[ l , c ] pdU[ r , c ] ind-hyp-l ind-hyp-r 
   where
     ind-hyp-l : Ex>-sorted pdU[ l , c ]
     ind-hyp-l = pdU-sorted {l} {c} {sf}
     ind-hyp-r : Ex>-sorted pdU[ r , c ]
     ind-hyp-r = pdU-sorted {r} {c} {sf}
-pdU-sorted {l * ε∉l ` loc } {c} {sf} =  map-star-ex-sorted pdU[ l , c ] ind-hyp-l
-  where
-    ind-hyp-l : Ex>-sorted pdU[ l , c ]
-    ind-hyp-l = pdU-sorted {l} {c}
+pdU-sorted {l * ε∉l ` loc } {c} {sf} =  map-star-ex-sorted pdU[ l , c ] ind-hyp-l 
+  where 
+    ind-hyp-l : All (λ spf → Ex>-sorted {l} {c} {spf} pdU[ l , c ]) (prefixes sf)
+    ind-hyp-l = pdU-sorted-prefixes {l} {c} {sf}
 
 pdU-sorted {l ● r ` loc } {c} {sf} = {!!}
 

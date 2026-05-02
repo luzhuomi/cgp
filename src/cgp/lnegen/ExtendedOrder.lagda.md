@@ -556,10 +556,15 @@ sf∈pdi→sf∈star-pdi : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c
 sf∈pdi→sf∈star-pdi {r} {ε∉r} {loc} {c} {sf} (pdinstance inj s-ev) (∈-pdi sf∈⟦p⟧ .inj .s-ev) =
   ∈-pdi (sf∈⟦p⟧ ● []∈⟦r*⟧ r ε∉r loc ⧺ ++-identityʳ sf) (mkinjList inj) (mkinjListSoundEv inj s-ev)
 
+
+
+prefixes : List Char → List (List Char )
+prefixes = inits 
+
 star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { sf : List Char }
   → (pdi₁ : PDInstance r c )
   → (pdi₂ : PDInstance r c )
-  → r , c , sf ⊢ pdi₁ > pdi₂
+  → All (λ spf → r , c , spf ⊢ pdi₁ > pdi₂) ( prefixes pf ) 
   -------------------------------------------------
   → (r * ε∉r ` loc) , c , sf ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
 star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ sf∈pdi₂ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ sf∈star-pdi₁ sf∈star-pdi₂  ev
@@ -584,8 +589,6 @@ star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁
       in bne (¬≡[]→length>0 (¬|list-u∷us|≡[] {r} {ε∉r} {loc} {v₁} {vs₁} )) ((¬≡[]→length>0 (¬|list-u∷us|≡[] {r} {ε∉r} {loc} {v₂} {vs₂}))) (star-head (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂))
       -- we only need to prove by I.H over the heads. why? because different pdinstances produce different parse tree.
 
-prefixes : List Char → List (List Char )
-prefixes = inits 
 
 map-star-ex-sorted : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { sf : List Char }
                      → ( pdis : List (PDInstance r c) )

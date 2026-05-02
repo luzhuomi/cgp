@@ -564,7 +564,7 @@ prefixes = inits
 star-ex-sorted : ∀ { r : RE }  { ε∉r : ε∉ r } {loc : ℕ} { c : Char } { sf : List Char }
   → (pdi₁ : PDInstance r c )
   → (pdi₂ : PDInstance r c )
-  → All (λ spf → r , c , spf ⊢ pdi₁ > pdi₂) ( prefixes pf ) 
+  → All (λ spf → r , c ⊢ spf ∈ pdi₁ → r , c ⊢ spf ∈ pdi₂ → r , c , spf ⊢ pdi₁ > pdi₂) ( prefixes sf ) 
   -------------------------------------------------
   → (r * ε∉r ` loc) , c , sf ⊢ pdinstance-star pdi₁ > pdinstance-star pdi₂
 star-ex-sorted {r} {ε∉r} {loc} {c} {sf}  pdi₁ pdi₂ (>-pdi _ _ sf∈pdi₁ sf∈pdi₂ pdi₁>-pdi₂-ev ) = >-pdi star-pdi₁ star-pdi₂ sf∈star-pdi₁ sf∈star-pdi₂  ev

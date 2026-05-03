@@ -21,7 +21,7 @@ import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
-open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ; proj₁flat-v≡[]→ε∈r )
+open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU≢[] ; Flat-[] ; flat-[] ; proj₁flat-v≡[]→ε∈r )
 
 
 import cgp.PDInstance as PDI
@@ -1094,14 +1094,136 @@ data All-≅ : ∀ { r : RE } ( us : List (U r) ) → Set where
   all-≅-nil : ∀ { r  : RE } → All-≅ {r} []
   all-≅-cons : ∀ { r : RE }
     → ( u : U r )
-    → ( us : List (U r ) ) 
+    → ( us : List (U r ) )
     → All (λ v → r ⊢ u ≅ v ) us
     ---------------------------------
     → All-≅ {r} ( u ∷ us )
 
+All-≅→All : ∀ { r : RE } { u : U r } { us : List (U r) }
+  → All-≅ (u ∷ us)
+  → All (λ v → r ⊢ u ≅ v) us
+All-≅→All (all-≅-cons _ _ p) = p
+
 mkAllEmptyU-≅  : ∀ { r : RE } { ε∈r : ε∈ r }
   → All-≅ {r} (mkAllEmptyU ε∈r)
-mkAllEmptyU-≅ = {!!} 
+mkAllEmptyU-≅ {ε} {ε∈ε} = all-≅-cons EmptyU [] []
+mkAllEmptyU-≅ {$ c ` loc} {}
+mkAllEmptyU-≅ {r * nε ` loc} {ε∈*} = all-≅-cons (ListU []) [] []
+mkAllEmptyU-≅ {l + r ` loc} {ε∈ ε∈l <+ ε∉r}
+  = go (mkAllEmptyU ε∈l) refl (mkAllEmptyU-sound {l} ε∈l)
+  where
+    go : (es : List (U l)) → mkAllEmptyU ε∈l ≡ es → All (Flat-[] l) es → All-≅ (List.map LeftU es)
+    go [] eq flat-[]-es = Nullary.contradiction eq (mkAllEmptyU≢[] ε∈l)
+    go (u ∷ lus) eq (flat-[] .u u≡[] ∷ flat-[]-lus)
+      = all-≅-cons (LeftU u) (List.map LeftU lus) (all-LeftU-≅ lus flat-[]-lus)
+      where
+        all-LeftU-≅ : (lus : List (U l)) → All (Flat-[] l) lus
+          → All (λ v → l + r ` loc ⊢ LeftU u ≅ v) (List.map LeftU lus)
+        all-LeftU-≅ [] _ = []
+        all-LeftU-≅ (u' ∷ lus) (flat-[] .u' u'≡[] ∷ flat-[]-lus)
+          = +⊢≅ (trans u≡[] (sym u'≡[])) ∷ all-LeftU-≅ lus flat-[]-lus
+mkAllEmptyU-≅ {l + r ` loc} {ε∈ ε∉l +> ε∈r}
+  = go (mkAllEmptyU ε∈r) refl (mkAllEmptyU-sound {r} ε∈r)
+  where
+    go : (es : List (U r)) → mkAllEmptyU ε∈r ≡ es → All (Flat-[] r) es → All-≅ (List.map RightU es)
+    go [] eq flat-[]-es = Nullary.contradiction eq (mkAllEmptyU≢[] ε∈r)
+    go (v ∷ rus) eq (flat-[] .v v≡[] ∷ flat-[]-rus)
+      = all-≅-cons (RightU v) (List.map RightU rus) (all-RightU-≅ rus flat-[]-rus)
+      where
+        all-RightU-≅ : (rus : List (U r)) → All (Flat-[] r) rus
+          → All (λ v' → l + r ` loc ⊢ RightU v ≅ v') (List.map RightU rus)
+        all-RightU-≅ [] _ = []
+        all-RightU-≅ (v' ∷ rus) (flat-[] .v' v'≡[] ∷ flat-[]-rus)
+          = +⊢≅ (trans v≡[] (sym v'≡[])) ∷ all-RightU-≅ rus flat-[]-rus
+mkAllEmptyU-≅ {l + r ` loc} {ε∈ ε∈l + ε∈r}
+  = go (mkAllEmptyU ε∈l) (mkAllEmptyU ε∈r) refl refl (mkAllEmptyU-sound {l} ε∈l) (mkAllEmptyU-sound {r} ε∈r)
+  where
+    go : (lus : List (U l)) (rus : List (U r))
+      → mkAllEmptyU ε∈l ≡ lus → mkAllEmptyU ε∈r ≡ rus
+      → All (Flat-[] l) lus → All (Flat-[] r) rus
+      → All-≅ (List.map LeftU lus ++ List.map RightU rus)
+    go [] _ eq₁ _ _ _ = Nullary.contradiction eq₁ (mkAllEmptyU≢[] ε∈l)
+    go _ [] _ eq₂ _ _ = Nullary.contradiction eq₂ (mkAllEmptyU≢[] ε∈r)
+    go (u ∷ lus) (v ∷ rus) eq₁ eq₂ (flat-[] .u u≡[] ∷ flat-[]-lus) (flat-[] .v v≡[] ∷ flat-[]-rus)
+      = all-≅-cons (LeftU u) (List.map LeftU lus ++ List.map RightU (v ∷ rus)) all-tail
+      where
+        all-left : All (λ v' → l + r ` loc ⊢ LeftU u ≅ v') (List.map LeftU lus)
+        all-left = all-LeftU-≅ lus flat-[]-lus
+          where
+            all-LeftU-≅ : (lus : List (U l)) → All (Flat-[] l) lus
+              → All (λ v' → l + r ` loc ⊢ LeftU u ≅ v') (List.map LeftU lus)
+            all-LeftU-≅ [] _ = []
+            all-LeftU-≅ (u' ∷ lus) (flat-[] .u' u'≡[] ∷ flat-[]-lus)
+              = +⊢≅ (trans u≡[] (sym u'≡[])) ∷ all-LeftU-≅ lus flat-[]-lus
+
+        all-right : All (λ v' → l + r ` loc ⊢ LeftU u ≅ v') (List.map RightU (v ∷ rus))
+        all-right = +⊢≅ (trans u≡[] (sym v≡[])) ∷ all-RightU-≅ rus flat-[]-rus
+          where
+            all-RightU-≅ : (rus : List (U r)) → All (Flat-[] r) rus
+              → All (λ v' → l + r ` loc ⊢ LeftU u ≅ v') (List.map RightU rus)
+            all-RightU-≅ [] _ = []
+            all-RightU-≅ (v' ∷ rus) (flat-[] .v' v'≡[] ∷ flat-[]-rus)
+              = +⊢≅ (trans u≡[] (sym v'≡[])) ∷ all-RightU-≅ rus flat-[]-rus
+
+        all-tail = all-concat all-left all-right
+mkAllEmptyU-≅ {l ● r ` loc} {ε∈ ε∈l ● ε∈r}
+  = go (mkAllEmptyU ε∈l) (mkAllEmptyU ε∈r) refl refl (mkAllEmptyU-sound {l} ε∈l) (mkAllEmptyU-sound {r} ε∈r) (mkAllEmptyU-≅ {l} {ε∈l})
+  where
+    go : (lus : List (U l)) (rus : List (U r))
+      → mkAllEmptyU ε∈l ≡ lus → mkAllEmptyU ε∈r ≡ rus
+      → All (Flat-[] l) lus → All (Flat-[] r) rus
+      → All-≅ lus
+      → All-≅ (concatMap (λ u → List.map (PairU u) rus) lus)
+    go [] _ eq₁ _ _ _ _ = Nullary.contradiction eq₁ (mkAllEmptyU≢[] ε∈l)
+    go _ [] _ eq₂ _ _ _ = Nullary.contradiction eq₂ (mkAllEmptyU≢[] ε∈r)
+    go (u ∷ lus) (v ∷ rus) eq₁ eq₂ (flat-[] .u u≡[] ∷ flat-[]-lus) (flat-[] .v v≡[] ∷ flat-[]-rus) l-ind
+      = all-≅-cons (PairU u v) tail all-tail
+      where
+        tail = List.map (PairU u) rus ++ concatMap (λ u' → List.map (PairU u') (v ∷ rus)) lus
+
+        flat-eq : ∀ (u' : U l) (v' : U r)
+          → proj₁ (flat u') ≡ []
+          → proj₁ (flat v') ≡ []
+          → proj₁ (flat u) ++ proj₁ (flat v) ≡ proj₁ (flat u') ++ proj₁ (flat v')
+        flat-eq u' v' u'≡[] v'≡[] =
+          trans
+            (trans (cong (λ x → x ++ proj₁ (flat v)) u≡[]) v≡[])
+            (sym (trans (cong (λ x → x ++ proj₁ (flat v')) u'≡[]) v'≡[]))
+
+        all-rus : All (λ w → l ● r ` loc ⊢ PairU u v ≅ w) (List.map (PairU u) rus)
+        all-rus = all-map-pairU-u rus flat-[]-rus
+          where
+            all-map-pairU-u : (rus : List (U r)) → All (Flat-[] r) rus
+              → All (λ w → l ● r ` loc ⊢ PairU u v ≅ w) (List.map (PairU u) rus)
+            all-map-pairU-u [] _ = []
+            all-map-pairU-u (v' ∷ rus) (flat-[] .v' v'≡[] ∷ flat-[]-rus)
+              = ●⊢≅ ≅-refl (flat-eq u v' u≡[] v'≡[]) ∷ all-map-pairU-u rus flat-[]-rus
+
+        all-u≅lus : All (λ u' → l ⊢ u ≅ u') lus
+        all-u≅lus = All-≅→All l-ind
+
+        all-lus : All (λ w → l ● r ` loc ⊢ PairU u v ≅ w) (concatMap (λ u' → List.map (PairU u') (v ∷ rus)) lus)
+        all-lus = all-concatMap-pairU lus (v ∷ rus) flat-[]-lus (flat-[] v v≡[] ∷ flat-[]-rus) all-u≅lus
+          where
+            all-concatMap-pairU : (lus : List (U l)) (rus : List (U r))
+              → All (Flat-[] l) lus → All (Flat-[] r) rus
+              → All (λ u' → l ⊢ u ≅ u') lus
+              → All (λ w → l ● r ` loc ⊢ PairU u v ≅ w) (concatMap (λ u' → List.map (PairU u') rus) lus)
+            all-concatMap-pairU [] _ _ _ _ = []
+            all-concatMap-pairU (u' ∷ lus) rus (flat-[] .u' u'≡[] ∷ flat-[]-lus) flat-[]-rus (u≅u' ∷ all-u≅lus)
+              = all-concat
+                  (all-map-pairU-u' rus flat-[]-rus u≅u' u'≡[])
+                  (all-concatMap-pairU lus rus flat-[]-lus flat-[]-rus all-u≅lus)
+              where
+                all-map-pairU-u' : (rus : List (U r)) → All (Flat-[] r) rus
+                  → (u≅u' : l ⊢ u ≅ u')
+                  → (u'≡[] : proj₁ (flat u') ≡ [])
+                  → All (λ w → l ● r ` loc ⊢ PairU u v ≅ w) (List.map (PairU u') rus)
+                all-map-pairU-u' [] _ _ _ = []
+                all-map-pairU-u' (v' ∷ rus) (flat-[] .v' v'≡[] ∷ flat-[]-rus) u≅u' u'≡[]
+                  = ●⊢≅ u≅u' (flat-eq u' v' u'≡[] v'≡[]) ∷ all-map-pairU-u' rus flat-[]-rus u≅u' u'≡[]
+
+        all-tail = all-concat all-rus all-lus 
 ```
 
 

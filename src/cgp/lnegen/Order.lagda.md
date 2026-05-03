@@ -1794,7 +1794,8 @@ data *>-Inc-≅ : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set w
       → p ⊢ u₁ ≅ u₂ 
       → p ⊢ u₁ > u₂
       → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence
-    → *>-Inc-≅ {r} {w} (pdinstance* {p} {r} {w} inj sound-ev) 
+    → *>-Inc-≅ {r} {w} (pdinstance* {p} {r} {w} inj sound-ev)
+ -- if p ≡ r and w ≡ [] , inj is λ x → x, do we need a special case? no. 
 ```
 
 

@@ -84,6 +84,8 @@ open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++
   )
 
 
+
+
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
@@ -687,4 +689,113 @@ intersect-memberʳ {l} {r} {v} |v|∈⟦l⟧ = u , |u|∈⟦l⟧ , sym |u|≡|v|
             len-|list-v∷vs|≡len-|list-u∷us| rewrite (sym |list-v∷vs|≡|list-u∷us|)   = refl 
             len-|u|>len-|v| :  length (proj₁ (flat u)) > length (proj₁ (flat v))
             len-|u|>len-|v| rewrite |u|≡|v|++w₃ = ++-¬[]→> {Char} {proj₁ (flat v)} {w₃}  ¬w₃≡[]           
+```
+
+
+
+
+Okui and Suzuki's POSIX order
+
+
+pos extracts the set of positions in a parse tree. 
+
+```agda
+
+pos : ∀ { r : RE } → U r → List (List ℕ)
+pos {ε} EmptyU = [] ∷ []
+pos {$ c ` loc} (LetterU .c) = [] ∷ []
+pos {l + r ` loc} (LeftU u) = [] ∷ (List.map (λ ps → 0 ∷ ps ) (pos u))
+pos {l + r ` loc} (RightU u) = [] ∷ (List.map (λ ps → 1 ∷ ps ) (pos u))
+pos {l ● r ` loc} (PairU u v) = [] ∷ (List.map (λ ps → 0 ∷ ps ) (pos u)) ++ (List.map (λ ps → 1 ∷ ps ) (pos v))
+pos {r * ε∉r ` loc } (ListU vs) = [] ∷ (go 0 vs)
+  where
+    go : ℕ → List (U r) → List (List ℕ)
+    go id [] = []
+    go id (u ∷ us) = (List.map (λ ps → id ∷ ps ) (pos u)) ++ go (suc id) us
+
+```
+
+```agda
+-- test_e : U ( ($  *
+a*+a*●a* : RE
+a*+a*●a* = ( ( ( $ 'a' ` 1 ) * ε∉$ ` 2 ) + ( ( $ 'a' ` 3 ) * ε∉$ ` 4) ` 5 ) ● ( ( $ 'a' ` 6 ) * ε∉$ ` 7 ) ` 8
+a*+a*●a*●a* : RE
+a*+a*●a*●a* = a*+a*●a* ● ( ( $ 'a' ` 10 ) * ε∉$ ` 11 ) ` 12
+
+test_e : U a*+a*●a*●a*
+test_e = PairU (PairU (LeftU (ListU (LetterU 'a' ∷ LetterU 'a' ∷ LetterU 'a' ∷  [])))       (ListU []))    (ListU [])  
+test_pos : List (List ℕ )
+test_pos = pos test_e 
+```
+
+```agda
+subre : RE → List ℕ → Maybe RE
+subre r           [] = just r
+subre (l + r ` loc) (0 ∷ xs) = subre l xs
+subre (l + r ` loc) (1 ∷ xs) = subre r xs
+subre (l + r ` loc) (_ ∷ xs) = nothing
+subre (l ● r ` loc) (0 ∷ xs) = subre l xs
+subre (l ● r ` loc) (1 ∷ xs) = subre r xs
+subre (l ● r ` loc) (_ ∷ xs) = nothing 
+subre (r * ε∉r ` loc) (n ∷ xs) = subre r xs
+subre ε           (_ ∷ _) = nothing
+subre ($ c ` loc) (_ ∷ _) = nothing
+
+```
+
+Defining a function with a  maybe return type is a bit tricky
+
+shall we consider a relation?
+
+```agda
+
+data IsSubAt : RE → List ℕ → RE → Set where
+  sub-ε : IsSubAt ε [] ε 
+  sub-$ : { c : Char } { loc : ℕ } → IsSubAt ($ c ` loc) [] ($ c ` loc)
+  sub-● : { l r : RE } { loc : ℕ }
+    → IsSubAt (l ● r ` loc) [] (l ● r ` loc)
+  sub-●-0 : { l r s : RE } { loc : ℕ }
+    { xs : List ℕ }
+    → IsSubAt l xs s
+    --------------------
+    → IsSubAt (l ● r ` loc) (0 ∷ xs) s 
+  sub-●-1 : { l r s : RE } { loc : ℕ }
+    { xs : List ℕ }
+    → IsSubAt r xs s
+    --------------------
+    → IsSubAt (l ● r ` loc) (1 ∷ xs) s 
+  sub-+ : { l r : RE } { loc : ℕ }
+    → IsSubAt (l + r ` loc) [] (l + r ` loc)
+  sub-+-0 : { l r s : RE } { loc : ℕ }
+    { xs : List ℕ }
+    → IsSubAt l xs s
+    --------------------
+    → IsSubAt (l + r ` loc) (0 ∷ xs) s 
+  sub-+-1 : { l r s : RE } { loc : ℕ }
+    { xs : List ℕ }
+    → IsSubAt r xs s
+    --------------------
+    → IsSubAt (l + r ` loc) (1 ∷ xs) s 
+  sub-* : { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+    → IsSubAt (r * ε∉r ` loc) [] (r * ε∉r ` loc)
+  sub-*-n : { r s : RE } { ε∉r : ε∉ r } { loc : ℕ }
+    { n : ℕ } 
+    { xs : List ℕ }
+    → IsSubAt r xs s
+    --------------------
+    → IsSubAt (r * ε∉r  ` loc) (n ∷ xs) s 
+
+```
+
+
+
+subval takes a parse tree and a position, extracts the sub parse tree 
+
+
+```agda
+
+subval : ∀ {r s : RE } → (pos : List ℕ) → (IsSubAt r pos s)  → U r → U s
+subval {ε} {ε} [] sub-ε u = u
+subval {$ c ` loc} {$ c ` loc} [] sub-$ u = u 
+
 ```

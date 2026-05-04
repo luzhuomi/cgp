@@ -857,6 +857,9 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 -}
 
 
+
+
+
 ```
 
 ### Definition (Prefix Structural equivalance) this is too strong, we got stuck in ExtendedOrder.lagda.md 
@@ -1448,7 +1451,10 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
 >-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) ((>-inc u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ ) ∷ pxs)
    = (>-inc-fst (pdinstance inj sound-ev) (>-inc u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂))    ∷  >-inc-map-fst pdis pxs
 
- 
+
+
+
+
 
 
 
@@ -1901,5 +1907,68 @@ pdUMany-*>-inc {r} {w} = pdUMany-aux-*>-inc w  [  ( pdinstance* {r} {r} {[]} (λ
       --------------------------------
       → r ⊢ (λ u → u) u₁ > (λ u → u) u₂ 
     ev-*>-inc u₁ u₂ u₁≅u₂ u₁>u₂ = u₁>u₂ 
+
+```
+
+
+```agda
+-- epsilon first normal form 
+
+data Efn : ∀ (r : RE ) → Set where
+  efn-ε : Efn ε
+  efn-● : ∀ { p r : RE } { loc : ℕ }
+    → Efn p
+    ----------------------
+    → Efn (p ● r ` loc)
+
+data EfnPDInstance : ∀ {r : RE } { c : Char } → PDInstance r c → Set where
+  efn-pdi : ∀ { p r : RE } { c : Char }
+    → ( inj : U p → U r ) 
+    → ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
+    → Efn p
+    → EfnPDInstance {r} {c} (pdinstance {p} {r} {c} inj s-ev)
+
+pdU-isEnf : ∀ { r : RE } { c : Char }
+  → All (EfnPDInstance {r} {c}) pdU[ r , c ]
+pdU-isEnf = {!!} 
+
+data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
+  >-inc-efn : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → Efn p 
+    → ( (u₁ : U p) → (u₂ : U p)
+        →  p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
+    → >-Inc-efn {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
+
+>-inc-fst-efn : ∀ { l r : RE } { loc : ℕ } { c : Char }
+               → ( pdi : PDInstance l c )
+               → >-Inc-efn {l} {c} pdi
+               ------------------------
+               → >-Inc-efn {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+>-inc-fst-efn {l} {r} {loc} {c} (pdinstance {ε} {l} {c}  inj sound-ev) (>-inc-efn efn-ε u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-efn (efn-● efn-ε) >-inc-ev
+  where 
+    injFst : U (ε ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
+    injFst = mkinjFst inj
+    injFstSnd :  ( u : U (ε ● r ` loc) )  → proj₁ (flat (injFst u))  ≡ c ∷ proj₁ (flat u)
+    injFstSnd = mkinjFstSoundEv inj sound-ev
+    >-inc-ev : ∀ (uv₁ : U ( ε ● r ` loc ))
+              → (uv₂ : U ( ε ● r ` loc ))
+              → ε ● r ` loc  ⊢ uv₁ > uv₂
+              ------------------------------------
+              → l ● r ` loc ⊢ (injFst uv₁) > (injFst uv₂)
+
+    >-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ (be _ _ ())))
+>-inc-fst-efn {l} {r} {loc} {c} (pdinstance {p ● t ` loc'} {l} {c}  inj sound-ev) (>-inc-efn (efn-● efn-p) u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-efn (efn-● (efn-● efn-p)) >-inc-ev
+  where 
+    injFst : U (( p ● t ` loc') ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
+    injFst = mkinjFst inj
+    injFstSnd :  ( u : U (( p ● t ` loc') ● r ` loc) )  → proj₁ (flat (injFst u))  ≡ c ∷ proj₁ (flat u)
+    injFstSnd = mkinjFstSoundEv inj sound-ev
+    >-inc-ev : ∀ (uv₁ : U ( ( p ● t ` loc') ● r ` loc ))
+              → (uv₂ : U ( ( p ● t ` loc') ● r ` loc ))
+              → ( p ● t ` loc') ● r ` loc  ⊢ uv₁ > uv₂
+              ------------------------------------
+              → l ● r ` loc ⊢ (injFst uv₁) > (injFst uv₂)
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = bne {!!} {!!} {!!}  
 
 ```

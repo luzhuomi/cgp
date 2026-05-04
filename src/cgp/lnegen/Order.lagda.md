@@ -51,7 +51,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; _≟_ )
 
 
 
@@ -1415,7 +1415,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         -} 
 
     
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ v₁≅v₂)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  = 
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ v₁≅v₂)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  =  
       let inj-u₁>inj-u₂ = u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁≅u₂  u₁>u₂
       in bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₁ inj-u₁>inj-u₂) 
 
@@ -1937,6 +1937,7 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → Efn p 
     → ( (u₁ : U p) → (u₂ : U p)
+        → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
         →  p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence 
     → >-Inc-efn {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 
@@ -1946,29 +1947,84 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
                ------------------------
                → >-Inc-efn {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
 >-inc-fst-efn {l} {r} {loc} {c} (pdinstance {ε} {l} {c}  inj sound-ev) (>-inc-efn efn-ε u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-efn (efn-● efn-ε) >-inc-ev
-  where 
-    injFst : U (ε ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
+  where
+    injFst : U (ε ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ●
     injFst = mkinjFst inj
     injFstSnd :  ( u : U (ε ● r ` loc) )  → proj₁ (flat (injFst u))  ≡ c ∷ proj₁ (flat u)
     injFstSnd = mkinjFstSoundEv inj sound-ev
     >-inc-ev : ∀ (uv₁ : U ( ε ● r ` loc ))
               → (uv₂ : U ( ε ● r ` loc ))
+              → length (proj₁ (flat uv₁)) ≡ length (proj₁ (flat uv₂))
               → ε ● r ` loc  ⊢ uv₁ > uv₂
               ------------------------------------
               → l ● r ` loc ⊢ (injFst uv₁) > (injFst uv₂)
 
-    >-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ (be _ _ ())))
+    |injFst-pair-u-v|>0 : ∀ {u v} → length (proj₁ (flat (PairU {l} {r} {loc} (inj u) v))) Nat.> 0
+    |injFst-pair-u-v|>0 {u} {v} rewrite injFstSnd (PairU u v) = Nat.s≤s Nat.z≤n
+
+    >-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) _ (be _ len|pair-u₂v₂|≡0 (seq₂ refl v₁>v₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₂ refl v₁>v₂)
+    >-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) _ (be _ _ (seq₁ u₁>u₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ EmptyU EmptyU refl u₁>u₂))
+    >-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) _ (bne _ _ (seq₂ refl v₁>v₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₂ refl v₁>v₂)
+    >-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) _ (bne _ _ (seq₁ u₁>u₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ EmptyU EmptyU refl u₁>u₂))
+    >-inc-ev (PairU EmptyU v₁) (PairU EmptyU v₂) _ (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0)
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₂ refl (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0))
+
+
 >-inc-fst-efn {l} {r} {loc} {c} (pdinstance {p ● t ` loc'} {l} {c}  inj sound-ev) (>-inc-efn (efn-● efn-p) u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc-efn (efn-● (efn-● efn-p)) >-inc-ev
-  where 
-    injFst : U (( p ● t ` loc') ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ● 
+  where
+    injFst : U (( p ● t ` loc') ● r ` loc)   → U (l ● r ` loc ) -- the p can only be seq ε or ●
     injFst = mkinjFst inj
     injFstSnd :  ( u : U (( p ● t ` loc') ● r ` loc) )  → proj₁ (flat (injFst u))  ≡ c ∷ proj₁ (flat u)
     injFstSnd = mkinjFstSoundEv inj sound-ev
     >-inc-ev : ∀ (uv₁ : U ( ( p ● t ` loc') ● r ` loc ))
               → (uv₂ : U ( ( p ● t ` loc') ● r ` loc ))
+              → length (proj₁ (flat uv₁)) ≡ length (proj₁ (flat uv₂))
               → ( p ● t ` loc') ● r ` loc  ⊢ uv₁ > uv₂
               ------------------------------------
               → l ● r ` loc ⊢ (injFst uv₁) > (injFst uv₂)
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = bne {!!} {!!} {!!}  
+
+    |injFst-pair-u-v|>0 : ∀ {u v} → length (proj₁ (flat (PairU {l} {r} {loc} (inj u) v))) Nat.> 0
+    |injFst-pair-u-v|>0 {u} {v} rewrite injFstSnd (PairU u v) = Nat.s≤s Nat.z≤n
+
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) len|uv₁|≡len|uv₂| (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| u₁>u₂))
+      where
+        flat-u₂v₂≡[] : proj₁ (flat (PairU u₂ v₂)) ≡ []
+        flat-u₂v₂≡[] = Utils.length≡0→[] len|pair-u₂v₂|≡0
+        flat-u₂≡[] : proj₁ (flat u₂) ≡ []
+        flat-u₂≡[] = ++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) flat-u₂v₂≡[]
+        flat-u₁v₁≡[] : proj₁ (flat (PairU u₁ v₁)) ≡ []
+        flat-u₁v₁≡[] = Utils.length≡0→[] (trans len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0)
+        flat-u₁≡[] : proj₁ (flat u₁) ≡ []
+        flat-u₁≡[] = ++-conicalˡ (proj₁ (flat u₁)) (proj₁ (flat v₁)) flat-u₁v₁≡[]
+        len|u₁|≡len|u₂| : length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
+        len|u₁|≡len|u₂| = trans (cong length flat-u₁≡[]) (sym (cong length flat-u₂≡[]))
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) _ (be _ _ (seq₂ u₁≡u₂ v₁>v₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₂ (cong inj u₁≡u₂) v₁>v₂)
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) _ (bne _ _ (seq₁ u₁>u₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| u₁>u₂))
+      where
+        len|u₁|≡len|u₂| : length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
+        len|u₁|≡len|u₂| = {!!}
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) _ (bne _ _ (seq₂ u₁≡u₂ v₁>v₂))
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₂ (cong inj u₁≡u₂) v₁>v₂)
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) len|pair-u₁v₁|≡len|pair-u₂v₂| (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0) =  Nullary.contradiction len|pair-u₁v₁|>0  (n≡0→¬n>0  len|pair-u₁v₁|≡0) 
+      where
+        len|pair-u₁v₁|≡0 : length (proj₁ (flat (PairU u₁ v₁))) ≡ 0
+        len|pair-u₁v₁|≡0 rewrite len|pair-u₁v₁|≡len|pair-u₂v₂| = len|pair-u₂v₂|≡0
+    {-
+      with length (proj₁ (flat u₁)) Nat.≟ 0
+    ... | no ¬len|u₁|≡0 = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| (lne (Utils.¬≡0→>0 ¬len|u₁|≡0) len|u₂|≡0)))
+      where
+        len|u₂|≡0 : length (proj₁ (flat u₂)) ≡ 0
+        len|u₂|≡0 = Utils.[]→length≡0 (++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len|pair-u₂v₂|≡0))
+        len|u₁|≡len|u₂| : length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
+        len|u₁|≡len|u₂| = {!!}
+    ... | yes len|u₁|≡0 = {!!}  -- COUNTEREXAMPLE: when u₁ is empty but differs from u₂ (e.g. p = ε ● ((ε + $d) + (ε + $d)) with u₁ = PairU EmptyU (RightU (LeftU EmptyU)) and u₂ = PairU EmptyU (LeftU (RightU EmptyU))), the goal is unprovable because seq₂ requires inj u₁ ≡ inj u₂ and seq₁ requires an ordering in l that may not exist.
+    -}
 
 ```

@@ -66,7 +66,8 @@ open LNEOrder using ( _⊢_>_ ; seq₁ ; seq₂ ;
   _⊢_≅_ ; ≅-Preserve ; ≅-pres ; pdU-≅-preserve ;
   ≅-Preserve* ; ≅-pres* ; 
   mkAllEmptyU-≅ ; All-≅ ;  all-≅-nil ;  all-≅-cons ; All-≅→All ; 
-  >-trans ; *>-Inc-≅  ; *>-inc ;
+  >-trans ; >-Inc-≅ ; >-inc ; 
+  *>-Inc-≅  ; *>-inc ;
   concatmap-advance-pdi*-with-c-*>inc ;
   pdUMany-*>-inc )   
 
@@ -1130,12 +1131,37 @@ data Ex*>-weak-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstan
 
 
 ```agda
+p-inhabit : ∀ { r : RE } { pf : List Char } → PDInstance* r pf → RE 
+p-inhabit {r} {pf} (pdinstance* {p} {r} {pf} _ _ ) = p
+
+inj-inhabit : ∀ { r : RE } { pf : List Char } → (pdi : PDInstance* r pf) → ( U (p-inhabit pdi) → U r  )
+inj-inhabit {r} {pf} (pdinstance* {p} {r} {pf} inj _ ) = inj 
+
+s-ev-inhabit : ∀ { r : RE } { pf : List Char } → (pdi : PDInstance* r pf) → ( ( u : U (p-inhabit pdi)) → proj₁ (flat ((inj-inhabit pdi) u)) ≡ pf ++ (proj₁ (flat u))   )
+s-ev-inhabit {r} {pf} (pdinstance* {p} {r} {pf} inj s-ev ) = s-ev
+
+
+
 data _,_⊢*_≥_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf → PDInstance* r pf → Set where
-  *≥-pdi-= : ∀ { r : RE }
+  *≥-pdi-[] : ∀ { r : RE }
     → r , [] ⊢* pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ≥ pdinstance* {r} {r} (λ u → u) (λ u → refl)
+
+  -- do we need to do the same for ≥-pdi? 
+  *≥-pdi-= : ∀ { r : RE } { c : Char } { pf : List Char } 
+    → ( pdi : PDInstance* r ( c ∷ pf ) )
+    → ( 
+        ( u₁ : U ( p-inhabit pdi ) )
+        → ( u₂ : U ( p-inhabit pdi ) )
+        → ( (p-inhabit pdi) ⊢ u₁ ≅ u₂ )
+        → ( (p-inhabit pdi) ⊢ u₁ > u₂ )
+        → ( ( r ⊢ (inj-inhabit pdi) u₁ ≅ (inj-inhabit pdi) u₂) × ( r ⊢ (inj-inhabit pdi) u₁ > (inj-inhabit pdi) u₂) ) )  
+    → r , ( c ∷ pf )  ⊢* pdi ≥ pdi 
+
+
   *≥-pdi-> : ∀ { r : RE } { c : Char } { pf : List Char } 
     → ( pdi₁ : PDInstance* r ( c ∷ pf ) )
-    → ( pdi₂ : PDInstance* r ( c ∷ pf )  )
+    → ( pdi₂ : PDInstance* r ( c ∷ pf ) )
+    → ¬ (p-inhabit pdi₁ ≡ p-inhabit pdi₂ ) 
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → r ⊢ u₁ > u₂ )
     → r , ( c ∷ pf )  ⊢* pdi₁ ≥  pdi₂ 
 
@@ -1151,8 +1177,8 @@ data _,_⊢*_≥_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf �
   → r , pf   ⊢* pdi₂ ≥ pdi₃
   -------------------------------------------
   → r , pf  ⊢* pdi₁ ≥  pdi₃
-*≥-pdi-trans {r} {[]}  *≥-pdi-= *≥-pdi-= = *≥-pdi-=
-*≥-pdi-trans {r} { c ∷ pf } (*≥-pdi-> pdi₁ pdi₂ u₁>u₂-ev ) (*≥-pdi-> .pdi₂ pdi₃ u₂>u₃-ev ) = *≥-pdi-> pdi₁ pdi₃ *>-ev
+*≥-pdi-trans {r} {[]}  *≥-pdi-[] *≥-pdi-[] = *≥-pdi-[]
+*≥-pdi-trans {r} { c ∷ pf } (*≥-pdi-> pdi₁ pdi₂ ¬p₁≡p₂ u₁>u₂-ev ) (*≥-pdi-> .pdi₂ pdi₃ ¬p₃≡p₄ u₂>u₃-ev ) = *≥-pdi-> pdi₁ pdi₃ {!!}  *>-ev
   where
     *>-ev : ( u₁ : U r )
           → ( u₃ : U r )
@@ -1442,22 +1468,29 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-
 compose-pdi-with-ex*≥-head-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r ) -- a part of a pdi*
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) ) -- a part of a pdi* 
-  → ( >-inc-d→r :  (v₁ v₂ : U d) →  d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r for that pdi*
+  → ( >-inc-d→r :  (v₁ v₂ : U d) →  d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → ( r ⊢ d→r v₁ ≅ d→r v₂ × r ⊢ d→r v₁ > d→r v₂ ) ) -- strict inc evidence for d→r for that pdi*
   -- in what situation, we don't have d ⊢ v₁ ≅ v₂?  only when d ≡ r ?
   -- we need d to be a strict descendant, i.e. d ∈ pdUMany [ r , w ] where w is not [] 
-  → ( pdi : PDInstance d c ) 
+  → ( pdi : PDInstance d c )
+  → ( >-Inc-≅ pdi ) 
   → ( pdis : List (PDInstance d c) )
   → Ex>-maybe pdi (head pdis)
   -------------------------------------------------------------------------------------------------
   → Ex*≥-maybe (compose-pdi-with d→r s-ev-d-r pdi) (head (List.map (compose-pdi-with d→r s-ev-d-r) pdis))
-compose-pdi-with-ex*≥-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r pdi []  ex>-nothing = ex*≥-nothing   
+compose-pdi-with-ex*≥-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-r >-inc-d→r pdi (>-inc u₁→u₂→u₁≅u₂→in₁u₁≅in₁u₂) []  ex>-nothing = ex*≥-nothing   
 compose-pdi-with-ex*≥-head-map-compose-pdi-with {d} {r} {x ∷ pref} {c} d→r s-ev-d-r >-inc-d→r
-  pdi₁@(pdinstance {p₁} {d} {c} p₁→d s-ev-p₁-d)
+  pdi₁@(pdinstance {p₁} {d} {c} p₁→d s-ev-p₁-d) (>-inc u₁→u₂→u₁≅u₂→p₁→du₁≅p₁→du₂)
   (pdi₂@(pdinstance {p₂} {d} {c} p₂→d s-ev-p₂-d) ∷ pdis )
-  (ex>-just pdi₁>pdi₂@(>-pdi _ _ u₁→u₂→rec₁→rec₂→u₁>u₂ ) ) = ex*≥-just (*≥-pdi-> -- u₁ and u₂ of U d
+  {- p₁→d u₁ > p₂→d u₂?
+     p₁→d u₁ ≅ p₂→d u₂?
+     but ¬ p₁ ≡ p₂
+     we dont have u₁ ≅ u₂ 
+  -}
+  (ex>-just pdi₁>pdi₂@(>-pdi _ _ u₁→u₂→rec₁→rec₂→u₁>u₂ ) ) = ex*≥-just (*≥-pdi->  -- u₁ and u₂ of U d
                              {r} {x} { pref  ∷ʳ c}
                              (compose-pdi-with d→r s-ev-d-r pdi₁)
-                             (compose-pdi-with d→r s-ev-d-r pdi₂) -- from the same pdinstance* 
+                             (compose-pdi-with d→r s-ev-d-r pdi₂)
+                             {!!} -- from the same pdinstance* 
                              ex*>-ev ) 
   where
             -- 1) from inv-recons*-compose-pdi-with we note that
@@ -1479,12 +1512,12 @@ compose-pdi-with-ex*≥-head-map-compose-pdi-with {d} {r} {x ∷ pref} {c} d→r
             with inv-recons*-compose-pdi-with u₁ pdi₁ d→r s-ev-d-r rec*₁     | inv-recons*-compose-pdi-with u₂ pdi₂ d→r s-ev-d-r rec*₂             
     ... | recons* .{d} .{r} {cw₁} .{x ∷ pref} .u₁ ( cw₁∈⟦d⟧ , d→r-unflat-cw₁∈⟦d⟧≡u₁ ) | recons* .{d} .{r} {cw₂} .{x ∷ pref} .u₂ ( cw₂∈⟦d⟧ , d→r-unflat-cw₂∈⟦d⟧≡u₂ ) 
             rewrite sym d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ | sym  d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ = 
-                >-inc-d→r (p₁→d (unflat w₁∈⟦p₁⟧) ) (p₂→d (unflat w₂∈⟦p₂⟧)  )
+                proj₂ (  >-inc-d→r (p₁→d (unflat w₁∈⟦p₁⟧) ) (p₂→d (unflat w₂∈⟦p₂⟧)  )
                   {!!}  -- this hole requires  d ⊢ p₁→d (unflat w₁∈⟦p₁⟧) ≅ p₂→d (unflat w₂∈⟦p₂⟧)
                   (u₁→u₂→rec₁→rec₂→u₁>u₂ (p₁→d (unflat w₁∈⟦p₁⟧))
                                                                                                (p₂→d (unflat w₂∈⟦p₂⟧))
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
-                                                                                               (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl)))
+                                                                                               (recons (p₂→d (unflat w₂∈⟦p₂⟧)) (w₂∈⟦p₂⟧ , refl))) )
 
 
 

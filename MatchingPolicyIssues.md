@@ -1081,22 +1081,26 @@ parseAllU r [a] = app buildU pdU[ r . a ]
 
 
 1. Greedy Parsing using partial derivative
+
    a. The ordering relation is adopted from Frisc's paper (a modular ordering with the top level is identity rule (GreedyTop)
    b. The parsing algorithm uses Antimirov's partial derivative plus associativity rule plus distributivity rule.
    c. Agda proof is done.
    
 2. Posix Parsing using partial derivative
+
    a. The ordering relation is based onthe modular ordering with the top level is identity rules (≡-len)  and (>-len). The internal level is identical to greedy order rules.
    b. The parsing algorithm uses Antimirov's partial derivative with combining all partial derivatives with +.
    c. Agda proof is done.
    
 3. (Old) lne parsing using partial derivative
+
    a. The ordering relation does not fit into the modular ordering system, (search for (ChoiceLL-bothempty), (ChoiceLL-notempty) above). 
    b. The parsing algorithm uses Antimirov's partial derivative plus associativity rule WITHOUT distributivity rule. 
    c. Agda proof is done. 
    d. Since it does not fit into the modular odering system, Kenny does like it. =)
    
 4. (New) lne parsing using partialderviative
+
    a. The ordering relation is based on the modular ordering system,  into the modular ordering system, (search for (BothEmpty), (BothNonEmpty) and (LeftNonEmpty)  above). 
    b. The parsing algorithm uses  Antimirov's partial derivative WITHOUT associativity NOR distributivity rules.
    c. Agda proof is work in progress.

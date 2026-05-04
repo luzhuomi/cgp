@@ -163,6 +163,36 @@ data _,_⊢_>_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstanc
     → r , c ⊢ pdi₁ > pdi₂
 
 
+
+
+p-inhabit : ∀ { r : RE } { c : Char } → PDInstance r c → RE 
+p-inhabit {r} {c} (pdinstance {p} {r} {c} _ _ ) = p
+
+inj-inhabit : ∀ { r : RE } { c : Char } → (pdi : PDInstance r c) → ( U (p-inhabit pdi) → U r  )
+inj-inhabit {r} {c} (pdinstance {p} {r} {c} inj _ ) = inj 
+
+s-ev-inhabit : ∀ { r : RE } { c : Char } → (pdi : PDInstance r c) → ( ( u : U (p-inhabit pdi)) → proj₁ (flat ((inj-inhabit pdi) u)) ≡ c ∷ (proj₁ (flat u))   )
+s-ev-inhabit {r} {c} (pdinstance {p} {r} {c} inj s-ev ) = s-ev
+
+
+data _,_⊢_≥_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
+  ≥-pdi-= : ∀ { r  : RE } { c : Char }
+    → ( pdi : PDInstance r c )
+    → ( ( u₁ : U ( p-inhabit pdi ) )
+        → ( u₂ : U ( p-inhabit pdi ) )
+        → (p-inhabit pdi) ⊢ u₁ ≅ u₂ 
+        → (p-inhabit pdi) ⊢ u₁ > u₂ 
+        → ( r ⊢ (inj-inhabit pdi) u₁ ≅ (inj-inhabit pdi) u₂) × ( r ⊢ (inj-inhabit pdi) u₁ > (inj-inhabit pdi) u₂) )    
+    → r ,  c  ⊢ pdi ≥ pdi 
+
+  ≥-pdi-> : ∀ { r : RE } { c : Char }
+    → ( pdi₁ : PDInstance r c )
+    → ( pdi₂ : PDInstance r c )
+    → ¬ (p-inhabit pdi₁ ≡ p-inhabit pdi₂)
+    → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) →  r ⊢ u₁ > u₂ )
+    → r , c ⊢ pdi₁ ≥ pdi₂
+
+
 {- we don't need this? , we have not defined pdi-∃ 
 >-pdi-trans : ∀ { r : RE } { c : Char } 
   → { pdi₁ : PDInstance r c }
@@ -215,6 +245,30 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) �
     → Ex>-maybe {r} {c} pdi (head pdis)
     --------------------------------------
     → Ex>-sorted {r} {c} ( pdi ∷ pdis ) 
+
+
+data Ex≥-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
+  ex≥-nothing : ∀ { r : RE } { c : Char }
+    → { pdi : PDInstance r c } 
+    ---------------------------
+    → Ex≥-maybe {r} {c} pdi nothing
+  ex≥-just : ∀ { r : RE } { c : Char }
+    → { pdi : PDInstance r c }
+    → { pdi' : PDInstance r c }
+    → r , c ⊢ pdi ≥ pdi' 
+    ----------------------------------
+    → Ex≥-maybe {r} {c} pdi (just pdi')
+
+data Ex≥-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) → Set where
+  ex≥-nil  : ∀ { r : RE } { c : Char } → Ex≥-sorted {r} {c} []
+  ex≥-cons : ∀ { r : RE } { c : Char } 
+    → { pdi : PDInstance r c }
+    → { pdis : List (PDInstance r c) } 
+    → Ex≥-sorted  {r} {c} pdis 
+    → Ex≥-maybe {r} {c} pdi (head pdis)
+    --------------------------------------
+    → Ex≥-sorted {r} {c} ( pdi ∷ pdis ) 
+
 
 ```
 
@@ -1131,14 +1185,14 @@ data Ex*>-weak-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstan
 
 
 ```agda
-p-inhabit : ∀ { r : RE } { pf : List Char } → PDInstance* r pf → RE 
-p-inhabit {r} {pf} (pdinstance* {p} {r} {pf} _ _ ) = p
+p-inhabit* : ∀ { r : RE } { pf : List Char } → PDInstance* r pf → RE 
+p-inhabit* {r} {pf} (pdinstance* {p} {r} {pf} _ _ ) = p
 
-inj-inhabit : ∀ { r : RE } { pf : List Char } → (pdi : PDInstance* r pf) → ( U (p-inhabit pdi) → U r  )
-inj-inhabit {r} {pf} (pdinstance* {p} {r} {pf} inj _ ) = inj 
+inj-inhabit* : ∀ { r : RE } { pf : List Char } → (pdi : PDInstance* r pf) → ( U (p-inhabit* pdi) → U r  )
+inj-inhabit* {r} {pf} (pdinstance* {p} {r} {pf} inj _ ) = inj 
 
-s-ev-inhabit : ∀ { r : RE } { pf : List Char } → (pdi : PDInstance* r pf) → ( ( u : U (p-inhabit pdi)) → proj₁ (flat ((inj-inhabit pdi) u)) ≡ pf ++ (proj₁ (flat u))   )
-s-ev-inhabit {r} {pf} (pdinstance* {p} {r} {pf} inj s-ev ) = s-ev
+s-ev-inhabit* : ∀ { r : RE } { pf : List Char } → (pdi : PDInstance* r pf) → ( ( u : U (p-inhabit* pdi)) → proj₁ (flat ((inj-inhabit* pdi) u)) ≡ pf ++ (proj₁ (flat u))   )
+s-ev-inhabit* {r} {pf} (pdinstance* {p} {r} {pf} inj s-ev ) = s-ev
 
 
 
@@ -1150,18 +1204,17 @@ data _,_⊢*_≥_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf �
   *≥-pdi-= : ∀ { r : RE } { c : Char } { pf : List Char } 
     → ( pdi : PDInstance* r ( c ∷ pf ) )
     → ( 
-        ( u₁ : U ( p-inhabit pdi ) )
-        → ( u₂ : U ( p-inhabit pdi ) )
-        → ( (p-inhabit pdi) ⊢ u₁ ≅ u₂ )
-        → ( (p-inhabit pdi) ⊢ u₁ > u₂ )
-        → ( ( r ⊢ (inj-inhabit pdi) u₁ ≅ (inj-inhabit pdi) u₂) × ( r ⊢ (inj-inhabit pdi) u₁ > (inj-inhabit pdi) u₂) ) )  
+        ( u₁ : U ( p-inhabit* pdi ) )
+        → ( u₂ : U ( p-inhabit* pdi ) )
+        → ( (p-inhabit* pdi) ⊢ u₁ ≅ u₂ )
+        → ( (p-inhabit* pdi) ⊢ u₁ > u₂ )
+        → ( ( r ⊢ (inj-inhabit* pdi) u₁ ≅ (inj-inhabit* pdi) u₂) × ( r ⊢ (inj-inhabit* pdi) u₁ > (inj-inhabit* pdi) u₂) ) )  
     → r , ( c ∷ pf )  ⊢* pdi ≥ pdi 
 
 
   *≥-pdi-> : ∀ { r : RE } { c : Char } { pf : List Char } 
     → ( pdi₁ : PDInstance* r ( c ∷ pf ) )
     → ( pdi₂ : PDInstance* r ( c ∷ pf ) )
-    → ¬ (p-inhabit pdi₁ ≡ p-inhabit pdi₂ ) 
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → r ⊢ u₁ > u₂ )
     → r , ( c ∷ pf )  ⊢* pdi₁ ≥  pdi₂ 
 
@@ -1178,7 +1231,8 @@ data _,_⊢*_≥_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf �
   -------------------------------------------
   → r , pf  ⊢* pdi₁ ≥  pdi₃
 *≥-pdi-trans {r} {[]}  *≥-pdi-[] *≥-pdi-[] = *≥-pdi-[]
-*≥-pdi-trans {r} { c ∷ pf } (*≥-pdi-> pdi₁ pdi₂ ¬p₁≡p₂ u₁>u₂-ev ) (*≥-pdi-> .pdi₂ pdi₃ ¬p₃≡p₄ u₂>u₃-ev ) = *≥-pdi-> pdi₁ pdi₃ {!!}  *>-ev
+
+*≥-pdi-trans {r} { c ∷ pf } (*≥-pdi-> pdi₁ pdi₂  u₁>u₂-ev ) (*≥-pdi-> .pdi₂ pdi₃ u₂>u₃-ev ) = *≥-pdi-> pdi₁ pdi₃ *>-ev 
   where
     *>-ev : ( u₁ : U r )
           → ( u₃ : U r )
@@ -1490,7 +1544,7 @@ compose-pdi-with-ex*≥-head-map-compose-pdi-with {d} {r} {x ∷ pref} {c} d→r
                              {r} {x} { pref  ∷ʳ c}
                              (compose-pdi-with d→r s-ev-d-r pdi₁)
                              (compose-pdi-with d→r s-ev-d-r pdi₂)
-                             {!!} -- from the same pdinstance* 
+
                              ex*>-ev ) 
   where
             -- 1) from inv-recons*-compose-pdi-with we note that

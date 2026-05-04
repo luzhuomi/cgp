@@ -1097,7 +1097,7 @@ parseAllU r [a] = app buildU pdU[ r . a ]
    1. The ordering relation does not fit into the modular ordering system, (search for (ChoiceLL-bothempty), (ChoiceLL-notempty) above). 
    2. The parsing algorithm uses Antimirov's partial derivative plus associativity rule WITHOUT distributivity rule. 
    3. Agda proof is done. 
-   4. Since it does not fit into the modular ordering system, Kenny does like it. =)
+   4. Since it does not fit into the modular ordering system, Kenny does not like it. =)
    
 4. (New) lne parsing using partialderviative
 

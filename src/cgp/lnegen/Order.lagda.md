@@ -499,7 +499,15 @@ Then ¬ u₁ ≡ u₂
 
 
 
+Question: is > total? or it is partial?
 
+
+```agda
+>-trichotomy : ∀ { r : RE } ( u v : U r ) → proj₁ (flat u) ≡ proj₁ (flat v)
+  → (r ⊢ u > v) ⊎ (r ⊢ v > u) ⊎ (u ≡ v)
+>-trichotomy = {!!}   
+
+```
 
 
 
@@ -878,6 +886,13 @@ data _⊢_≅_ : ∀ ( r : RE ) → ( u : U r  ) →  ( v : U r  ) → Set where
     → proj₁ (flat u) ++ proj₁ (flat v) ≡ proj₁ (flat u') ++ proj₁ (flat v')
     ----------------------------------------------------------------------
     → l ● r ` loc ⊢ (PairU {l} {r} {loc} u v) ≅ (PairU {l} {r} {loc} u' v')
+  ●⊢lne : { l r : RE  } { ε∈l : ε∈ l }  { loc : ℕ } { u u' : U l } { v v'  : U r }
+    → ¬ (proj₁ (flat u) ≡ []) 
+    → proj₁ (flat u') ≡ [] 
+    → proj₁ (flat u) ++ proj₁ (flat v) ≡ proj₁ (flat v')
+    ----------------------------------------------------------------------
+    → l ● r ` loc ⊢ (PairU {l} {r} {loc} u v) ≅ (PairU {l} {r} {loc} u' v')
+    
   +⊢≅ : { l r : RE  } { loc : ℕ } { u u' : U ( l + r ` loc ) }
     → proj₁ (flat u) ≡ proj₁ (flat u')
     ------------------------------------------------
@@ -902,7 +917,6 @@ Prefix structural equivalence implies flatten word equivalence.
 ≅→||≡|| {l ● r ` loc} {PairU u v} {PairU u' v'} (●⊢≅ u≅u' |u|++|v|≅|u'|++|v'|) = |u|++|v|≅|u'|++|v'| 
 ≅→||≡|| {l + r ` loc} {u} {u'} (+⊢≅ |u|≡|u'|) = |u|≡|u'|
 ≅→||≡|| {r * ε∉r ` loc} {u} {u'} (*⊢≅ |u|≡|u'|) = |u|≡|u'|
-
 ```
 
 
@@ -1344,7 +1358,15 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               ------------------------------------
               → l ● r ` loc ⊢ (injFst uv₁) > (injFst uv₂)
 
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ v₁≅v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂)) =
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 pair-u₁v₁>ⁱpair-u₂v₂ ) =
+      {!!}  -- a contradiction here |u₁|≡[] and ¬|u₁|≡[]
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁ u₁>u₂) ) = {!!}
+      -- same counter example ( ε ● ( ε + ε ) ) ● ( ε + $ b )
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₂ u₁≡u₂ v₁>v₂) ) = {!!} -- a contradiction here.
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = {!!} -- a contradiction here 
+      
+
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≡|uv₂|) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂)) =
       let inj-u₁>inj-u₂ = u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁≅u₂ u₁>u₂
       in bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₁ inj-u₁>inj-u₂)
         where
@@ -1355,7 +1377,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
 
 
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ v₁≅v₂) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₂ u₁≡u₂ v₁>v₂)) =
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≡|uv₂|) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₂ u₁≡u₂ v₁>v₂)) =
       bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₂ inj-u₁≡inj-u₂ v₁>v₂)
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
@@ -1415,7 +1437,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         -} 
 
     
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ v₁≅v₂)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  =  
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ |uv₁|≡|uv₂|)  (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁  u₁>u₂))  =  
       let inj-u₁>inj-u₂ = u₁→u₂→u₁≅u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁≅u₂  u₁>u₂
       in bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₁ inj-u₁>inj-u₂) 
 
@@ -1428,7 +1450,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
           |injFst-pair-u₂-v₂|>0 rewrite injFstSnd (PairU u₂ v₂) = Nat.s≤s Nat.z≤n 
 
 
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ v₁≅v₂) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₂  u₁≡u₂ v₁>v₂ )) =
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂)  (●⊢≅ u₁≅u₂ |uv₁|≡|uv₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₂  u₁≡u₂ v₁>v₂ )) =
       bne |injFst-pair-u₁-v₁|>0 |injFst-pair-u₂-v₂|>0 (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
@@ -1801,6 +1823,17 @@ data *>-Inc-≅ : ∀ { r : RE } { w : List Char } → PDInstance* r w → Set w
       → p ⊢ u₁ > u₂
       → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence
     → *>-Inc-≅ {r} {w} (pdinstance* {p} {r} {w} inj sound-ev)
+{-    
+  *>-inc-> : ∀ { p₁ p₂ r : RE } { w : List Char }
+    { in₁ : U p₁ → U r }
+    { s-ev₁ : ∀ ( x : U p₁ ) → (proj₁ ( (flat {r} (in₁ x ) ) ≡ w ++ (proj₁ (flat {p₁} x)))) }
+    { in₂ : U p₂ → U r }
+    { s-ev₂ : ∀ ( x : U p₂ ) → (proj₁ ( (flat {r} (in₂ x ) ) ≡ w ++ (proj₁ (flat {p₂} x)))) }
+    → ( (u₁ : U p₁) → (u₂ : U p₂ )
+      → r ⊢ in₁ u₁ > in₂ u₂ ) -- strict increasing evidence
+    → *>-Inc-≅ {r} {w} (pdinstance* {p} {r} {w} inj sound-ev)
+-}     
+
  -- if p ≡ r and w ≡ [] , inj is λ x → x, do we need a special case? no. 
 ```
 

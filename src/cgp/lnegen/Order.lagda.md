@@ -1912,7 +1912,9 @@ pdUMany-*>-inc {r} {w} = pdUMany-aux-*>-inc w  [  ( pdinstance* {r} {r} {[]} (λ
 
 
 ```agda
--- epsilon first normal form 
+-- epsilon first normal form
+
+{-
 
 data Efn : ∀ (r : RE ) → Set where
   efn-ε : Efn ε
@@ -2016,6 +2018,7 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
       where
         len|pair-u₁v₁|≡0 : length (proj₁ (flat (PairU u₁ v₁))) ≡ 0
         len|pair-u₁v₁|≡0 rewrite len|pair-u₁v₁|≡len|pair-u₂v₂| = len|pair-u₂v₂|≡0
+-}        
     {-
       with length (proj₁ (flat u₁)) Nat.≟ 0
     ... | no ¬len|u₁|≡0 = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| (lne (Utils.¬≡0→>0 ¬len|u₁|≡0) len|u₂|≡0)))
@@ -2026,5 +2029,7 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
         len|u₁|≡len|u₂| = {!!}
     ... | yes len|u₁|≡0 = {!!}  -- COUNTEREXAMPLE: when u₁ is empty but differs from u₂ (e.g. p = ε ● ((ε + $d) + (ε + $d)) with u₁ = PairU EmptyU (RightU (LeftU EmptyU)) and u₂ = PairU EmptyU (LeftU (RightU EmptyU))), the goal is unprovable because seq₂ requires inj u₁ ≡ inj u₂ and seq₁ requires an ordering in l that may not exist.
     -}
+
+
 
 ```

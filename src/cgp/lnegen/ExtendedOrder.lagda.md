@@ -1474,7 +1474,7 @@ The above counter example is flaw, e.g.
 compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r ) -- a part of a pdi*
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) ) -- a part of a pdi* 
-  → ( >-inc-d→r :  (v₁ v₂ : U d) →  d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r for that pdi*
+  → ( >-inc-d→r :  (v₁ v₂ : U d) →  d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r for that pdi*
   -- in what situation, we don't have d ⊢ v₁ ≅ v₂?  only when d ≡ r ?
   -- we need d to be a strict descendant, i.e. d ∈ pdUMany [ r , w ] where w is not [] 
   → ( pdi : PDInstance d c ) 
@@ -1512,7 +1512,6 @@ compose-pdi-with-ex*>-head-map-compose-pdi-with {d} {r} {pref} {c} d→r s-ev-d-
     ... | recons* .{d} .{r} {cw₁} .{pref} .u₁ ( cw₁∈⟦d⟧ , d→r-unflat-cw₁∈⟦d⟧≡u₁ ) | recons* .{d} .{r} {cw₂} .{pref} .u₂ ( cw₂∈⟦d⟧ , d→r-unflat-cw₂∈⟦d⟧≡u₂ ) 
             rewrite sym d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ | sym  d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ = 
                 >-inc-d→r (p₁→d (unflat w₁∈⟦p₁⟧) ) (p₂→d (unflat w₂∈⟦p₂⟧)  )
-                  {!!}  -- this hole requires  d ⊢ p₁→d (unflat w₁∈⟦p₁⟧) ≅ p₂→d (unflat w₂∈⟦p₂⟧)
                   (u₁→u₂→rec₁→rec₂→u₁>u₂ (p₁→d (unflat w₁∈⟦p₁⟧))
                                                                                                (p₂→d (unflat w₂∈⟦p₂⟧))
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
@@ -1568,6 +1567,16 @@ compose-pdi-with-ex*≥-head-map-compose-pdi-with {d} {r} {x ∷ pref} {c} d→r
             rewrite sym d→r∘p₁→d-unflat-w₁∈⟦p₁⟧≡u₁ | sym  d→r∘p₁→d-unflat-w₂∈⟦p₂⟧≡u₂ = 
                 proj₂ (  >-inc-d→r (p₁→d (unflat w₁∈⟦p₁⟧) ) (p₂→d (unflat w₂∈⟦p₂⟧)  )
                   {!!}  -- this hole requires  d ⊢ p₁→d (unflat w₁∈⟦p₁⟧) ≅ p₂→d (unflat w₂∈⟦p₂⟧)
+                  -- when d = a* ● a* 
+                  --      p₁ = (ε ● a*) ● a* and p₂ = ε ● a*
+                  --      w₁ = [] and w₂ = [] 
+                  -- unflat []∈⟦p₁⟧ --> PairU (PairU EmptyU (ListU [])) (ListU [])
+                  -- unflat []∈⟦p₂⟧ --> PairU EmptyU (ListU [])
+                  -- p₁→d ∘ unflat []∈⟦p₁⟧ --> PairU (PairU (ListU (LetterU 'a' ∷ [])) (ListU []))                (ListU [])
+                  -- p₂→d ∘ unflat []∈⟦p₂⟧ --> PairU (PairU (ListU [])                 (ListU (Letter 'a' ∷ []))) (ListU [])
+                  -- we don't have d ⊢ p₁→d (unflat w₁∈⟦p₁⟧) ≅ p₂→d (unflat w₂∈⟦p₂⟧)!!!
+                  -- we need a special coercion for this case!!
+                  -- what is the relationship between p₁ and p₂ and d? this happens only d has an alternative branch in the shape r ● t and ε∈ r. 
                   (u₁→u₂→rec₁→rec₂→u₁>u₂ (p₁→d (unflat w₁∈⟦p₁⟧))
                                                                                                (p₂→d (unflat w₂∈⟦p₂⟧))
                                                                                                (recons (p₁→d (unflat w₁∈⟦p₁⟧)) (w₁∈⟦p₁⟧ , refl))
@@ -1579,7 +1588,7 @@ compose-pdi-with-ex*≥-head-map-compose-pdi-with {d} {r} {x ∷ pref} {c} d→r
 map-compose-pdi-with-sorted : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r )
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
-  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ ≅ v₂ → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
+  → ( >-inc-d→r :  (v₁ v₂ : U d) → d ⊢ v₁ > v₂ → r ⊢ d→r v₁ > d→r v₂ ) -- strict inc evidence for d→r  
   → ( pdis : List (PDInstance d c) )
   → Ex>-sorted pdis
   -------------------------------------------------------------
@@ -1604,10 +1613,10 @@ advance-pdi*-with-c-sorted {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r 
 ... | []                                   | _                                         | _ = ex*>-nil
 ... | pdi₁@(pdinstance in₁ s-ev₁) ∷ pdis₁  | ex>-cons ex>-sorted-pdis₁ pdi₁>head-pdis₁ | (≅-pres u₁→u₂→u₁≅u₂→in₁u₁≅in₁u₂) ∷ ≅-pres-pdis₁   =
   ex*>-cons (map-compose-pdi-with-sorted d→r s-ev-d-r
-                                         d→r-inc-ev -- d→r-inc-ev
+                                         {!!} -- d→r-inc-ev
                                          pdis₁ ex>-sorted-pdis₁)
                                                (compose-pdi-with-ex*>-head-map-compose-pdi-with d→r s-ev-d-r
-                                                 d→r-inc-ev -- d→r-inc-ev
+                                                 {!!} -- d→r-inc-ev -- d→r-inc-ev
                                                    pdi₁ pdis₁ pdi₁>head-pdis₁  )
 
 

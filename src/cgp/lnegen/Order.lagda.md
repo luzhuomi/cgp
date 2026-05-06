@@ -1446,11 +1446,27 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → l ● r ` loc ⊢ (injFst uv₁) > (injFst uv₂)
 
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 pair-u₁v₁>ⁱpair-u₂v₂ ) =
-      {!!}  -- a contradiction here |u₁|≡[] and ¬|u₁|≡[]
+      contradiction-¬|u₁|≡[]
+      where
+        contradiction-¬|u₁|≡[] = Nullary.contradiction |u₁|≡[] ¬|u₁|≡[]
+          where
+            |v₂|≡[] : proj₁ (flat v₂) ≡ []
+            |v₂|≡[] = ++-conicalʳ _ _ (length≡0→[] len|pair-u₂v₂|≡0)
+            |u₁|≡[] : proj₁ (flat u₁) ≡ []
+            |u₁|≡[] = ++-conicalˡ _ _ (trans |uv₁|≡|v₂| |v₂|≡[])
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁ u₁>u₂) ) = {!!}
       -- same counter example ( ε ● ( ε + ε ) ) ● ( ε + $ b )
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₂ u₁≡u₂ v₁>v₂) ) = {!!} -- a contradiction here.
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) = {!!} -- a contradiction here 
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₂ u₁≡u₂ v₁>v₂) ) =
+      Nullary.contradiction (trans (cong proj₁ (cong flat u₁≡u₂)) |u₂|≡[]) ¬|u₁|≡[]
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) =
+      contradiction-¬|u₁|≡[]
+      where
+        contradiction-¬|u₁|≡[] = Nullary.contradiction |u₁|≡[] ¬|u₁|≡[]
+          where
+            |v₂|≡[] : proj₁ (flat v₂) ≡ []
+            |v₂|≡[] = ++-conicalʳ _ _ (length≡0→[] len|pair-u₂v₂|≡0)
+            |u₁|≡[] : proj₁ (flat u₁) ≡ []
+            |u₁|≡[] = ++-conicalˡ _ _ (trans |uv₁|≡|v₂| |v₂|≡[]) 
       
 
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≡|uv₂|) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂)) =

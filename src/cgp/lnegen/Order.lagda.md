@@ -928,6 +928,18 @@ right-mono {l} {r} {loc} {u} {v} (be len|u|≡len|v| len|v|≡0 u>ⁱv) = be len
 right-mono {l} {r} {loc} {u} {v} (bne len|u|>0 len|v|>0 u>ⁱv)  = bne len|u|>0 len|v|>0 (choice-rr (bne len|u|>0 len|v|>0 u>ⁱv)) 
 right-mono {l} {r} {loc} {u} {v} (lne len|u|>0 len|v|≡0) = lne len|u|>0 len|v|≡0
 
+left-mono-≥ : ∀ { l r : RE } { loc : ℕ } { u v : U l }
+  → l ⊢ u ≥ v
+  → l + r ` loc ⊢ LeftU u ≥ LeftU v
+left-mono-≥ {l} {r} {loc} (inj₁ u>v) = inj₁ (left-mono u>v)
+left-mono-≥ {l} {r} {loc} (inj₂ u≡v) = inj₂ (cong LeftU u≡v)
+
+right-mono-≥ : ∀ { l r : RE } { loc : ℕ } { u v : U r }
+  → r ⊢ u ≥ v
+  → l + r ` loc ⊢ RightU u ≥ RightU v
+right-mono-≥ {l} {r} {loc} (inj₁ u>v) = inj₁ (right-mono u>v)
+right-mono-≥ {l} {r} {loc} (inj₂ u≡v) = inj₂ (cong RightU u≡v)
+
 ```
 
 
@@ -2220,9 +2232,9 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
 ≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v) =  ≥-max-pres u max-u prf 
-  where
+ where
     prf : (v : U p) → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v) → (l + r ` loc) ⊢ LeftU (inj u) ≥ LeftU (inj v)
-    prf = {!!} 
+    prf v |u|≡|v| = left-mono-≥ (v→|u|≡|v|→inj-u≥inj-v v |u|≡|v|)
     
 
 ≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -2230,12 +2242,16 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
   → ≥-Max-Preserve {r} {c} pdi
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
 ≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v) =  ≥-max-pres u max-u prf 
-  where
+   where
     prf : (v : U p) → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v) → (l + r ` loc) ⊢ RightU (inj u) ≥ RightU (inj v)
-    prf = {!!} 
+    prf v |u|≡|v| = right-mono-≥ (v→|u|≡|v|→inj-u≥inj-v v |u|≡|v|)
     
 
 
 -- fst
-
+≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c )
+  → ≥-Max-Preserve {l} {c} pdi
+  → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
+≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v)   = {!!} 
 ```

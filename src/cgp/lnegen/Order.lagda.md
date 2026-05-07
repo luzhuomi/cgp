@@ -84,7 +84,8 @@ import Relation.Nullary as Nullary
 import Relation.Nullary.Negation using (contradiction; contraposition)
 open Nullary using (¬_)
 
-import Data.Empty using (⊥-elim)
+import Data.Empty using (⊥ ; ⊥-elim)
+open Data.Empty
 
 import Relation.Nullary.Decidable as Decidable
 open Decidable using
@@ -1451,11 +1452,22 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         contradiction-¬|u₁|≡[] = Nullary.contradiction |u₁|≡[] ¬|u₁|≡[]
           where
             |v₂|≡[] : proj₁ (flat v₂) ≡ []
-            |v₂|≡[] = ++-conicalʳ _ _ (length≡0→[] len|pair-u₂v₂|≡0)
+            |v₂|≡[] = ++-conicalʳ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (length≡0→[] len|pair-u₂v₂|≡0)
             |u₁|≡[] : proj₁ (flat u₁) ≡ []
-            |u₁|≡[] = ++-conicalˡ _ _ (trans |uv₁|≡|v₂| |v₂|≡[])
-    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁ u₁>u₂) ) = {!!}
-      -- same counter example ( ε ● ( ε + ε ) ) ● ( ε + $ b )
+            |u₁|≡[] = ++-conicalˡ (proj₁ (flat u₁)) (proj₁ (flat v₁)) (trans |uv₁|≡|v₂| |v₂|≡[])
+    >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₁ u₁>u₂) ) =
+      case-u₁>u₂ u₁>u₂
+      where
+        |u₂|≡0 : length (proj₁ (flat u₂)) ≡ 0
+        |u₂|≡0 = cong length |u₂|≡[]
+
+        case-u₁>u₂ : p ⊢ u₁ > u₂ → (l ● r ` loc) ⊢ injFst (PairU u₁ v₁) > injFst (PairU u₂ v₂)
+        case-u₁>u₂ (be len|u₁|≡len|u₂| len|u₂|≡0 _) =
+          ⊥-elim (¬|u₁|≡[] (length≡0→[] (trans len|u₁|≡len|u₂| len|u₂|≡0)))
+        case-u₁>u₂ (bne _ len|u₂|>0 _) =
+          ⊥-elim (n≡0→¬n>0 |u₂|≡0 len|u₂|>0)
+        case-u₁>u₂ (lne len|u₁|>0 len|u₂|≡0) = {!!}
+          -- unprovable: need l ⊢ inj u₁ > inj u₂ but lack u₁ ≅ u₂ premise
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (bne len|pair-u₁v₁|>0 len|pair-u₂v₂|>0 (seq₂ u₁≡u₂ v₁>v₂) ) =
       Nullary.contradiction (trans (cong proj₁ (cong flat u₁≡u₂)) |u₂|≡[]) ¬|u₁|≡[]
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢lne ¬|u₁|≡[] |u₂|≡[] |uv₁|≡|v₂|) (lne len|pair-u₁v₁|>0 len|pair-u₂v₂|≡0 ) =
@@ -1464,9 +1476,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
         contradiction-¬|u₁|≡[] = Nullary.contradiction |u₁|≡[] ¬|u₁|≡[]
           where
             |v₂|≡[] : proj₁ (flat v₂) ≡ []
-            |v₂|≡[] = ++-conicalʳ _ _ (length≡0→[] len|pair-u₂v₂|≡0)
+            |v₂|≡[] = ++-conicalʳ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (length≡0→[] len|pair-u₂v₂|≡0)
             |u₁|≡[] : proj₁ (flat u₁) ≡ []
-            |u₁|≡[] = ++-conicalˡ _ _ (trans |uv₁|≡|v₂| |v₂|≡[]) 
+            |u₁|≡[] = ++-conicalˡ (proj₁ (flat u₁)) (proj₁ (flat v₁)) (trans |uv₁|≡|v₂| |v₂|≡[])
       
 
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) (●⊢≅ u₁≅u₂ |uv₁|≡|uv₂|) (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂)) =
@@ -2167,5 +2179,63 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
     -}
 
 
+
+```
+
+
+```agda
+data ≥-Max : ∀ { r : RE } → U r → Set where 
+  ≥-max : ∀ { r : RE }
+        → ( u : U r )
+        → ( ( v : U r )
+          → ( proj₁ (flat u ) ≡ proj₁ (flat v))
+          → r ⊢ u ≥ v )
+        → ≥-Max {r} u
+
+-- each partial derivative p is unique
+{- not quite right, this is ≥-Inc
+data ≥-Max-Pres : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
+  ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( u : U p )
+      → ( v : U p )
+      → ( proj₁ (flat u) ≡ proj₁ (flat v))
+      → p ⊢ u ≥ v
+      → r ⊢ inj u ≥ inj v
+      )
+    → ≥-Max-Pres {r} {c} (pdinstance inj sound-ev)
+  -}
+
+data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
+  ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( u : U p )
+    → ≥-Max u
+    → ( ( v : U p ) → ( proj₁ (flat u ) ≡ proj₁ (flat v)) →  r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
+    → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+
+
+≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c )
+  → ≥-Max-Preserve {l} {c} pdi
+  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
+≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v) =  ≥-max-pres u max-u prf 
+  where
+    prf : (v : U p) → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v) → (l + r ` loc) ⊢ LeftU (inj u) ≥ LeftU (inj v)
+    prf = {!!} 
+    
+
+≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance r c )
+  → ≥-Max-Preserve {r} {c} pdi
+  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
+≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v) =  ≥-max-pres u max-u prf 
+  where
+    prf : (v : U p) → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v) → (l + r ` loc) ⊢ RightU (inj u) ≥ RightU (inj v)
+    prf = {!!} 
+    
+
+
+-- fst
 
 ```

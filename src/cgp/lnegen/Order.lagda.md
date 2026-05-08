@@ -2218,15 +2218,18 @@ data ≥-Max-Pres : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
     → ≥-Max-Pres {r} {c} (pdinstance inj sound-ev)
   -}
 
+{- -- old definition
 data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
   ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    -- something wrong here ?    
     → ( u : U p )
     → ≥-Max u
     → ( ( v : U p ) → ( proj₁ (flat u ) ≡ proj₁ (flat v)) →  r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+-}
 
-
+{-
 ≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
@@ -2245,13 +2248,56 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
    where
     prf : (v : U p) → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v) → (l + r ` loc) ⊢ RightU (inj u) ≥ RightU (inj v)
     prf v |u|≡|v| = right-mono-≥ (v→|u|≡|v|→inj-u≥inj-v v |u|≡|v|)
-    
+-}     
 
+data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
+  ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( u : U p )
+      → ≥-Max u
+      → ( v : U p )
+      → ( proj₁ (flat u ) ≡ proj₁ (flat v)) →  r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
+    → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+
+
+
+
+-- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
+       
+≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c )
+  → ≥-Max-Preserve {l} {c} pdi
+  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
+≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→max-u→v→|u|≡|v|→inj-u≥inj-v) = ≥-max-pres {!!}
+
+
+≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance r c )
+  → ≥-Max-Preserve {r} {c} pdi
+  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
+≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u→max-u→v→|u|≡|v|→inj-u≥inj-v) = ≥-max-pres {!!}        
 
 -- fst
 ≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
-≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v)   = {!!} 
+≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→max-u→v→|u|≡|v|→inj-u≥inj-v)   = {!!} 
+
+≥-max-pres-● :  ∀ { p l r : RE } { loc : ℕ }  { c : Char }  { inj : U p →  U l }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {l} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( u : U p )
+    → ≥-Max u
+    → ( v : U r )
+    → ≥-Max v
+    → ( y : U p )
+    → ( proj₁ (flat u ) ≡ proj₁ (flat y) )
+    → ≥-Max-Preserve {l} {c} (pdinstance inj sound-ev) 
+    → ( l ● r ` loc ) ⊢ mkinjFst inj (PairU u v) ≥ mkinjFst inj (PairU y v )
+≥-max-pres-● {p} {l} {r} {loc} {c} {inj} {s-ev} u (≥-max .(u) v→|u|≡|v|→u≥v) v ≥-max-v y |u|≡|y|
+  (≥-max-pres u→maxu→v→|u|≡|v|→u≥v) 
+  with v→|u|≡|v|→u≥v y |u|≡|y|
+... | inj₁ u>y  = inj₁ (bne {!!} {!!} {!!} )
+... | inj₂ u≡y  rewrite u≡y =  inj₂ refl 
+
 ```

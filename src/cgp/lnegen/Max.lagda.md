@@ -128,10 +128,51 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 ≥-max-pair-inv {l} {r} {loc} {c} u v (≥-max (PairU .u .v) pair-u'-v'→|uv|≡|u'v'|→uv≥u'v')  =
    ≥-max u ev₁  , ≥-max v ev₂
    where
+     extract-≥-fst : ∀ {u₁ u₂ : U l} {v₁ : U r}
+       → proj₁ (flat u₁) ≡ proj₁ (flat u₂)
+       → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₂ v₁
+       → l ⊢ u₁ ≥ u₂
+     extract-≥-fst _ (inj₁ (be _ _ (seq₁ u₁>u₂))) = inj₁ u₁>u₂
+     extract-≥-fst _ (inj₁ (be _ _ (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
+     extract-≥-fst _ (inj₁ (bne _ _ (seq₁ u₁>u₂))) = inj₁ u₁>u₂
+     extract-≥-fst _ (inj₁ (bne _ _ (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
+     extract-≥-fst {u₁} {u₂} {v₁} flat-u₁≡flat-u₂ (inj₁ (lne len>0 len≡0)) =
+       ⊥-elim (n≡0→¬n>0 len-u₁v₁≡0 len>0)
+       where
+         len-u₁v₁≡len-u₂v₁ : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u₂ v₁)))
+         len-u₁v₁≡len-u₂v₁ = cong length (cong (λ w → w List.++ proj₁ (flat v₁)) flat-u₁≡flat-u₂)
+         len-u₁v₁≡0 : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ 0
+         len-u₁v₁≡0 = trans len-u₁v₁≡len-u₂v₁ len≡0
+     extract-≥-fst _ (inj₂ refl) = inj₂ refl
+
      ev₁ : (u₁ : U l) → proj₁ (flat u) ≡ proj₁ (flat u₁) → l ⊢ u ≥ u₁
-     ev₁ = {!!}
+     ev₁ u₁ flat-u≡flat-u₁ =
+       extract-≥-fst flat-u≡flat-u₁
+         (pair-u'-v'→|uv|≡|u'v'|→uv≥u'v' (PairU u₁ v)
+           (cong (λ w → w List.++ proj₁ (flat v)) flat-u≡flat-u₁))
+
+     extract-≥-snd : ∀ {u₁ : U l} {v₁ v₂ : U r}
+       → proj₁ (flat v₁) ≡ proj₁ (flat v₂)
+       → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₁ v₂
+       → r ⊢ v₁ ≥ v₂
+     extract-≥-snd _ (inj₁ (be _ _ (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
+     extract-≥-snd _ (inj₁ (be _ _ (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
+     extract-≥-snd _ (inj₁ (bne _ _ (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
+     extract-≥-snd _ (inj₁ (bne _ _ (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
+     extract-≥-snd {u₁} {v₁} {v₂} flat-v₁≡flat-v₂ (inj₁ (lne len>0 len≡0)) =
+        ⊥-elim (n≡0→¬n>0 len-u₁v₁≡0 len>0)
+        where
+          len-u₁v₁≡len-u₁v₂ : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₂)))
+          len-u₁v₁≡len-u₁v₂ = cong length (cong (proj₁ (flat u₁) List.++_) flat-v₁≡flat-v₂)
+          len-u₁v₁≡0 : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ 0
+          len-u₁v₁≡0 = trans len-u₁v₁≡len-u₁v₂ len≡0
+     extract-≥-snd _ (inj₂ refl) = inj₂ refl
+
      ev₂ : (v₂ : U r) → proj₁ (flat v) ≡ proj₁ (flat v₂) → r ⊢ v ≥ v₂
-     ev₂ = {!!}
+     ev₂ v₂ flat-v≡flat-v₂ =
+       extract-≥-snd flat-v≡flat-v₂
+         (pair-u'-v'→|uv|≡|u'v'|→uv≥u'v' (PairU u v₂)
+           (cong (proj₁ (flat u) List.++_) flat-v≡flat-v₂)) 
        
 
 -- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
@@ -151,17 +192,17 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 ≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u→max-u→v→|u|≡|v|→inj-u≥inj-v) =
   ≥-max-pres (λ u max-u v |u|≡|v| → right-mono-≥ (u→max-u→v→|u|≡|v|→inj-u≥inj-v u max-u v |u|≡|v|))        
 
-≥-max-pres-● :  ∀ { p l r : RE } { loc : ℕ }  { c : Char }  { inj : U p →  U l }
+≥-max-pres-●-fst :  ∀ { p l r : RE } { loc : ℕ }  { c : Char }  { inj : U p →  U l }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {l} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( u : U p )
     → ≥-Max u
     → ( v : U r )
     → ≥-Max v
     → ( y : U p )
-    → ( proj₁ (flat u ) ≡ proj₁ (flat y) )
+    →  proj₁ (flat u ) ≡ proj₁ (flat y) 
     → ≥-Max-Preserve {l} {c} (pdinstance inj sound-ev)
     → ( l ● r ` loc ) ⊢ mkinjFst inj (PairU u v) ≥ mkinjFst inj (PairU y v )
-≥-max-pres-● {p} {l} {r} {loc} {c} {inj} {s-ev} u (≥-max .(u) v→|u|≡|v|→u≥v) v ≥-max-v y |u|≡|y|
+≥-max-pres-●-fst {p} {l} {r} {loc} {c} {inj} {s-ev} u (≥-max .(u) v→|u|≡|v|→u≥v) v ≥-max-v y |u|≡|y|
   (≥-max-pres u→maxu→v→|u|≡|v|→u≥v)
   with u→maxu→v→|u|≡|v|→u≥v u (≥-max u v→|u|≡|v|→u≥v) y |u|≡|y|
 ... | inj₁ inj-u>inj-y = inj₁ (bne len>0 len>0 (seq₁ inj-u>inj-y))
@@ -170,7 +211,46 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     len>0 {w} rewrite s-ev w = Nat.s≤s Nat.z≤n
 ... | inj₂ inj-u≡inj-y rewrite inj-u≡inj-y = inj₂ refl
 
+
+≥-max-pres-●-snd : ∀ { p l r : RE } { ε∉l : ε∉ l } { loc : ℕ } { c : Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( u : U p )
+    → ≥-Max u
+    → ( e : U l )
+    → Flat-[] l e
+    → ≥-Max e 
+    → ( y : U p )
+    → proj₁ (flat u) ≡ proj₁ (flat y)
+    → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+    → ( l ● r ` loc ) ⊢ mkinjSnd inj e u ≥  mkinjSnd inj e y
+≥-max-pres-●-snd =  {!!}     
+
+
+
+
+≥-max-pres-* : ∀ { p r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( u : U p )
+    → ≥-Max u
+    → ( vs : U (r * ε∉r ` loc )  )
+    → ≥-Max vs
+    → ( y : U p )
+    → ( proj₁ (flat u ) ≡ proj₁ (flat y) )
+    → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+    → ( r * ε∉r ` loc ) ⊢ mkinjList inj (PairU u vs) ≥ mkinjList inj (PairU y vs )
+≥-max-pres-*  {p} {r} {ε∉r} {loc} {c} {inj} {s-ev} u (≥-max .(u) v→|u|≡|v|→u≥v) (ListU vs) ≥-max-list-vs y |u|≡|y|
+  (≥-max-pres u→maxu→v→|u|≡|v|→u≥v)
+  with  u→maxu→v→|u|≡|v|→u≥v u (≥-max u v→|u|≡|v|→u≥v) y |u|≡|y|
+... | inj₁ inj-u>inj-y = inj₁ (bne len>0 len>0 (star-head inj-u>inj-y))
+  where
+    len>0 : ∀ {w} → length (proj₁ (flat (ListU {r} {ε∉r}  {loc} ((inj w) ∷ vs )))) Nat.> 0
+    len>0 {w} rewrite s-ev w = Nat.s≤s Nat.z≤n
+... | inj₂ inj-u≡inj-y rewrite inj-u≡inj-y = inj₂ refl 
+
+{-
+
 -- fst
+-- not provable 
 ≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
@@ -197,14 +277,14 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
             let flat-u₁≡[] = length≡0→[] (trans len≡' len0')
                 flat-v₁≡[] = length≡0→[] len0'
             in case-flat-eq max₁ max₂ flat-eq (trans flat-u₁≡[] (sym flat-v₁≡[]))
-        ; (bne _ _ _) →
+        ; (bne lenu₁>0 lenv₁>0 u₁>ⁱv₁) →
             {!!}
             -- COUNTEREXAMPLE: when p = ε ● ($ a + ε), r = $ a + ε,
             -- u₁ = PairU EmptyU (LeftU (LetterU 'a')), u₂ = RightU EmptyU,
             -- v₁ = PairU EmptyU (RightU EmptyU), v₂ = LeftU (LetterU 'a'),
             -- the goal is unprovable because l ⊢ inj u₁ > inj v₁ is impossible
             -- (lengths differ: 2 vs 1) and inj u₁ ≢ inj v₁.
-        ; (lne _ _) →
+        ; (lne lenu₁>0 lenv₁≡0) →
             {!!}
             -- Similarly unprovable: flat v₁ ≡ [] but flat u₁ is non-empty,
             -- so l ⊢ inj u₁ > inj v₁ is impossible (no applicable > constructor).
@@ -293,5 +373,5 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
         combine (inj₂ eq) (inj₂ u₂≡v₂) =
           let inj-u₁≡inj-v₁ = proj₁ (ParseTree.inv-pairU (inj u₁) u₂ (inj v₁) u₂ eq)
           in inj₂ (trans eq (cong (PairU (inj v₁)) u₂≡v₂)) 
-
+-} 
 ```

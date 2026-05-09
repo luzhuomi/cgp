@@ -100,7 +100,7 @@ open import Function using (_∘_ ; flip ; case_of_)
 
 ```
 
-### Definition 32: >-Strict increasing PDInstance
+### Definition 32: >-Strict increasing PDInstance (length-equality variant)
 
 Let r be a non problematic regular expression.
 Let c be a letter.
@@ -108,8 +108,10 @@ Let pdi be a PDInstance  w.r.t r and c.
 We say pdi is >-inc (strict increasing) iff,
   1. p is the partial derivative inhabited in pdi, and
   2. inj is the injection function from parse trees of p to parse trees of r.
-  3. for all parse trees of p, u₁ and u₂  where p ⊢ u₁ > u₂
-  Then r ⊢ inj u₁ > inj u₂
+  3. for all parse trees of p, u₁ and u₂  where
+       length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
+       and p ⊢ u₁ > u₂
+     Then r ⊢ inj u₁ > inj u₂
 
 ```agda
 
@@ -124,8 +126,137 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 
 ```
 
+### Counterexample: `>-inc-fst` is unprovable even with length equality
+
+The length-equality premise is not strong enough.  We reuse the
+second counterexample from `CounterExample.lagda.md`.
+
+Regular expressions:
+- `l = ($ 'c') + (($ 'c') ● ($ 'c'))`
+- `r = ε + ($ 'c')`
+- `p = ε + ($ 'c')` (a partial derivative of `l` w.r.t. `'c'`)
 
 ```agda
+module CounterExample-LenEq where
+
+  l : RE
+  l = ($ 'c' ` 1) + (($ 'c' ` 2) ● ($ 'c' ` 3) ` 4) ` 5
+
+  r : RE
+  r = ε + ($ 'c' ` 6) ` 7
+
+  p : RE
+  p = ε + ($ 'c' ` 8) ` 9
+
+  inj : U p → U l
+  inj (LeftU EmptyU)          = LeftU (LetterU 'c')
+  inj (RightU (LetterU 'c'))  = RightU (PairU (LetterU 'c') (LetterU 'c'))
+
+  sound-ev : ∀ (u : U p) → proj₁ (flat (inj u)) ≡ 'c' ∷ proj₁ (flat u)
+  sound-ev (LeftU EmptyU)          = refl
+  sound-ev (RightU (LetterU 'c'))  = refl
+
+  pdi : PDInstance l 'c'
+  pdi = pdinstance inj sound-ev
+```
+
+**Step 1: `pdi` satisfies the length-restricted `>-Inc`.**
+
+`U p` has exactly two trees:
+- `e = LeftU EmptyU` with `length (flat e) = 0`
+- `a = RightU (LetterU 'c')` with `length (flat a) = 1`
+
+The only pairs with equal length are reflexive (`e,e` and `a,a`),
+but `>` is irreflexive, so the implication holds vacuously.
+
+```agda
+  e : U p
+  e = LeftU EmptyU
+
+  a : U p
+  a = RightU (LetterU 'c')
+
+  pdi->-inc : >-Inc pdi
+  pdi->-inc = >-inc (λ where
+    (LeftU EmptyU)          (LeftU EmptyU)          _ p⊢e>e → ⊥-elim (>→¬≡ p⊢e>e refl)
+    (RightU (LetterU 'c'))  (RightU (LetterU 'c'))  _ p⊢a>a → ⊥-elim (>→¬≡ p⊢a>a refl)
+    (LeftU EmptyU)          (RightU (LetterU 'c'))  () _
+    (RightU (LetterU 'c'))  (LeftU EmptyU)          () _)
+```
+
+**Step 2: a pair in `U (p ● r)` with equal lengths that is ordered.**
+
+```agda
+  top : U (p ● r ` 10)
+  top = PairU a (LeftU EmptyU)      -- flat = ['c'] ++ []
+
+  x : U (p ● r ` 10)
+  x = PairU e (RightU (LetterU 'c')) -- flat = [] ++ ['c']
+
+  len|top|≡len|x| : length (proj₁ (flat top)) ≡ length (proj₁ (flat x))
+  len|top|≡len|x| = refl
+
+  p⊢a>e : p ⊢ a > e
+  p⊢a>e = lne (Nat.s≤s Nat.z≤n) refl
+
+  p●r⊢top>x : (p ● r ` 10) ⊢ top > x
+  p●r⊢top>x = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ p⊢a>e)
+```
+
+**Step 3: after `pdinstance-fst` the ordering disappears.**
+
+```agda
+  injFst : U (p ● r ` 10) → U (l ● r ` 10)
+  injFst = mkinjFst inj
+
+  len|injFst-top|>0 : length (proj₁ (flat (injFst top))) Nat.> 0
+  len|injFst-top|>0 = Nat.s≤s Nat.z≤n
+
+  len|injFst-x|>0 : length (proj₁ (flat (injFst x))) Nat.> 0
+  len|injFst-x|>0 = Nat.s≤s Nat.z≤n
+
+  l⊢LeftU>RightU : l ⊢ LeftU (LetterU 'c') > RightU (PairU (LetterU 'c') (LetterU 'c'))
+  l⊢LeftU>RightU = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) choice-lr
+
+  -- No >ⁱ proof can relate injFst top and injFst x because:
+  -- seq₁ needs l ⊢ inj a > inj e, which is impossible by asymmetry.
+  -- seq₂ needs inj a ≡ inj e, which is impossible (different constructors).
+  ¬l●r⊢>ⁱ : ¬ ((l ● r ` 10) ⊢ injFst top >ⁱ injFst x)
+  ¬l●r⊢>ⁱ (seq₁ l⊢inja>inje) = >-asym l⊢LeftU>RightU l⊢inja>inje
+  ¬l●r⊢>ⁱ (seq₂ eq _) = ⊥-elim (ParseTree.RightU≢LeftU _ _ eq)
+
+  ¬l●r⊢injFst-top>injFst-x : ¬ ((l ● r ` 10) ⊢ injFst top > injFst x)
+  -- `be` and `lne` are impossible because both sides are non-empty.
+  ¬l●r⊢injFst-top>injFst-x (be len≡ len0 _) =
+    n≡0→¬n>0 (trans len≡ len0) len|injFst-top|>0
+  ¬l●r⊢injFst-top>injFst-x (lne _ len0) =
+    n≡0→¬n>0 len0 len|injFst-x|>0
+  -- `bne` delegates to the >ⁱ impossibility.
+  ¬l●r⊢injFst-top>injFst-x (bne _ _ >ⁱprf) = ⊥-elim (¬l●r⊢>ⁱ >ⁱprf)
+```
+
+**Conclusion.**
+
+```agda
+  pdi-fst : PDInstance (l ● r ` 10) 'c'
+  pdi-fst = pdinstance-fst pdi
+
+  ¬>-inc-fst : ¬ (>-Inc pdi-fst)
+  ¬>-inc-fst (>-inc ev) =
+    ¬l●r⊢injFst-top>injFst-x (ev top x len|top|≡len|x| p●r⊢top>x)
+```
+
+Therefore `>-inc-fst` is unprovable even with the length-equality
+restriction.  The root cause is the same: in a sequential composition
+`p ● r`, two trees can be ordered via `seq₁` while their first
+components flatten to different words.  After `mkinjFst` the injected
+first components always prepend one character, so the length-equality
+of the *pairs* does not imply length-equality of the *first
+components*.  The induction hypothesis therefore does not apply.
+
+```agda
+
+-- The unprovable lemma (kept as a hole for reference)
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdi : PDInstance l c )

@@ -109,37 +109,6 @@ data ≥-Max : ∀ { r : RE } → U r → Set where
         → ≥-Max {r} u
 
 -- each partial derivative p is unique
-{- -- old definition
-data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
-  ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    -- something wrong here ?    
-    → ( u : U p )
-    → ≥-Max u
-    → ( ( v : U p ) → ( proj₁ (flat u ) ≡ proj₁ (flat v)) →  r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
-    → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
--}
-
-{-
-≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  → ( pdi : PDInstance l c )
-  → ≥-Max-Preserve {l} {c} pdi
-  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
-≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v) =  ≥-max-pres u max-u prf 
- where
-    prf : (v : U p) → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v) → (l + r ` loc) ⊢ LeftU (inj u) ≥ LeftU (inj v)
-    prf v |u|≡|v| = left-mono-≥ (v→|u|≡|v|→inj-u≥inj-v v |u|≡|v|)
-    
-
-≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  → ( pdi : PDInstance r c )
-  → ≥-Max-Preserve {r} {c} pdi
-  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
-≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u max-u v→|u|≡|v|→inj-u≥inj-v) =  ≥-max-pres u max-u prf 
-   where
-    prf : (v : U p) → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v) → (l + r ` loc) ⊢ RightU (inj u) ≥ RightU (inj v)
-    prf v |u|≡|v| = right-mono-≥ (v→|u|≡|v|→inj-u≥inj-v v |u|≡|v|)
--}     
 
 data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
   ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
@@ -151,7 +120,19 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
 
 
-
+≥-max-pair-inv : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( u : U l )
+  → ( v : U r )
+  → ≥-Max (PairU {l} {r} {loc} u v)
+  → ≥-Max u × ≥-Max v
+≥-max-pair-inv {l} {r} {loc} {c} u v (≥-max (PairU .u .v) pair-u'-v'→|uv|≡|u'v'|→uv≥u'v')  =
+   ≥-max u ev₁  , ≥-max v ev₂
+   where
+     ev₁ : (u₁ : U l) → proj₁ (flat u) ≡ proj₁ (flat u₁) → l ⊢ u ≥ u₁
+     ev₁ = {!!}
+     ev₂ : (v₂ : U r) → proj₁ (flat v) ≡ proj₁ (flat v₂) → r ⊢ v ≥ v₂
+     ev₂ = {!!}
+       
 
 -- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
        

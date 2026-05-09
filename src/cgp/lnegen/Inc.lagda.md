@@ -122,6 +122,17 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 
 
 
+>-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+               → ( pdi : PDInstance l c )
+               → >-Inc {l} {c} pdi
+               ------------------------
+               → >-Inc {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+>-inc-fst {l} {r} {loc} {c} (pdinstance {p} {l} {c}  inj sound-ev)(>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂) = >-inc >-inc-ev -- >-inc-ev
+  where
+    >-inc-ev : (u₁ u₂ : U (p ● r ` loc))
+      → (p ● r ` loc) ⊢ u₁ > u₂
+      → (l ● r ` loc) ⊢ mkinjFst inj u₁ >  mkinjFst inj u₂
+    >-inc-ev = {!!} 
 
 ```
 

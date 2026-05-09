@@ -212,18 +212,35 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 ... | inj₂ inj-u≡inj-y rewrite inj-u≡inj-y = inj₂ refl
 
 
-≥-max-pres-●-snd : ∀ { p l r : RE } { ε∉l : ε∉ l } { loc : ℕ } { c : Char } { inj : U p → U r }
+≥-max-pres-●-snd : ∀ { p l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( u : U p )
     → ≥-Max u
     → ( e : U l )
     → Flat-[] l e
-    → ≥-Max e 
+    → ≥-Max e
     → ( y : U p )
     → proj₁ (flat u) ≡ proj₁ (flat y)
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
     → ( l ● r ` loc ) ⊢ mkinjSnd inj e u ≥  mkinjSnd inj e y
-≥-max-pres-●-snd =  {!!}     
+≥-max-pres-●-snd {p} {l} {r} {ε∈l} {loc} {c} {inj} {s-ev} u max-u e (flat-[] .e flat-e≡[]) max-e y flat-u≡flat-y (≥-max-pres f) =
+  aux (f u max-u y flat-u≡flat-y)
+  where
+    len>0-inj : (w : U p) → length (proj₁ (flat (inj w))) Nat.> 0
+    len>0-inj w rewrite s-ev w = Nat.s≤s Nat.z≤n
+
+    len>0-pair : (w : U p) → length (proj₁ (flat (PairU {l} {r} {loc} e (inj w)))) Nat.> 0
+    len>0-pair w rewrite flat-e≡[] | s-ev w = Nat.s≤s Nat.z≤n
+
+    aux : r ⊢ inj u ≥ inj y → (l ● r ` loc) ⊢ mkinjSnd inj e u ≥ mkinjSnd inj e y
+    aux (inj₁ (be _ len0 _)) = ⊥-elim (n≡0→¬n>0 len0 (len>0-inj y))
+    aux (inj₁ (bne _ _ inj-u>ⁱinj-y)) =
+      inj₁ (bne {l ● r ` loc} {PairU {l} {r} {loc} e (inj u)} {PairU {l} {r} {loc} e (inj y)}
+        (len>0-pair u) (len>0-pair y)
+        (seq₂ {l} {r} {loc} {e} {e} {inj u} {inj y} refl
+          (bne {r} {inj u} {inj y} (len>0-inj u) (len>0-inj y) inj-u>ⁱinj-y)))
+    aux (inj₁ (lne _ len0)) = ⊥-elim (n≡0→¬n>0 len0 (len>0-inj y))
+    aux (inj₂ eq) = inj₂ (cong (PairU {l} {r} {loc} e) eq) 
 
 
 

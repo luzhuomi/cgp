@@ -252,22 +252,23 @@ data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r
 
 
 -- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
-{-       
-≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+
+≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { n : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
-  → ≥-Max-Preserve {l} {c} pdi
-  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
-≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→max-u→v→|u|≡|v|→inj-u≥inj-v) =
-  ≥-max-pres (λ u max-u v |u|≡|v| → left-mono-≥ (u→max-u→v→|u|≡|v|→inj-u≥inj-v u max-u v |u|≡|v|))
+  → ≥-Max-Preserve {l} {suc n} {c} pdi
+  → ≥-Max-Preserve {l + r ` loc} {suc n} {c} (pdinstance-left pdi)
+≥-max-pres-left {l} {r} {loc} {n} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→len|v|≤n→inj-u≥inj-v) =
+  ≥-max-pres (λ u maxu v len|v|≤n  → left-mono-≥ (u→maxu→v→len|v|≤n→inj-u≥inj-v u maxu v len|v|≤n))
 
 
-≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { n : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
-  → ≥-Max-Preserve {r} {c} pdi
-  → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
-≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u→max-u→v→|u|≡|v|→inj-u≥inj-v) =
-  ≥-max-pres (λ u max-u v |u|≡|v| → right-mono-≥ (u→max-u→v→|u|≡|v|→inj-u≥inj-v u max-u v |u|≡|v|))        
+  → ≥-Max-Preserve {r} {suc n} {c} pdi
+  → ≥-Max-Preserve {l + r ` loc} {suc n} {c} (pdinstance-right pdi)
+≥-max-pres-right {l} {r} {loc} {n} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u→maxu→v→len|v|≤n→inj-u≥inj-v) =
+  ≥-max-pres (λ u maxu v len|v|≤n → right-mono-≥ (u→maxu→v→len|v|≤n→inj-u≥inj-v u maxu v len|v|≤n))        
 
+{-
 ≥-max-pres-●-fst :  ∀ { p l r : RE } { loc : ℕ }  { c : Char }  { inj : U p →  U l }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {l} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ≥-Max-Preserve {l} {c} (pdinstance inj sound-ev)
@@ -316,25 +317,22 @@ len-max> : ∀ { r : RE } { u v : U r }
 -} 
 
 
-{-
-≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+
+≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { n : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
-  → ≥-Max-Preserve {l} {c} pdi
-  → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
-≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→|u|≡|v|→inju≥injv) =
+  → ≥-Max-Preserve {l} {suc n} {c} pdi
+  → ≥-Max-Preserve {l ● r ` loc} {suc n} {c} (pdinstance-fst pdi)
+≥-max-pres-fst {l} {r} {loc} {n} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→len|v|≤n→inju≥injv) =
   ≥-max-pres prf
   where
-    prf : (u : U (p ● r ` loc))
-        → ≥-Max u
-        → (v : U (p ● r ` loc))
-        → proj₁ (flat u) ≡ proj₁ (flat v)
+    prf :  (u : U (p ● r ` loc))
+        →  ≥-Max n u
+        →  (v : U (p ● r ` loc))
+        →  length (proj₁ (flat v)) ≤ n
         → (l ● r ` loc) ⊢ mkinjFst inj u ≥ mkinjFst inj v
-    prf (PairU v₁ v₂) ≥-max-v₁v₂ (PairU v₁' v₂') |v₁v₂|≡|v₁'v₂'| = {!!}
-      -- issue: we don't have |v₁|≡|v₁'| and |v₂|≡|v₂'|
-      -- what if we enforce the same constraint as ≅ in PrefEq?
-      -- it should work but
-      -- what aboit the concatmap-advance-pdi-with-c in ExtenedOrder? 
--}
+    prf = {!!} 
+  
+
   
 
 

@@ -127,55 +127,9 @@ data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r
   → ( v : U r )
   → ≥-Max n (PairU {l} {r} {loc} u v)
   → ≥-Max n u × ≥-Max n v
-≥-max-pair-inv {l} {r} {loc} {c} u v (≥-max (PairU .u .v) pair-u'-v'→|uv|≡|u'v'|→uv≥u'v')  =
-   ≥-max u ev₁  , ≥-max v ev₂
-   where
-     extract-≥-fst : ∀ {u₁ u₂ : U l} {v₁ : U r}
-       → proj₁ (flat u₁) ≡ proj₁ (flat u₂)
-       → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₂ v₁
-       → l ⊢ u₁ ≥ u₂
-     extract-≥-fst _ (inj₁ (be _ _ (seq₁ u₁>u₂))) = inj₁ u₁>u₂
-     extract-≥-fst _ (inj₁ (be _ _ (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
-     extract-≥-fst _ (inj₁ (bne _ _ (seq₁ u₁>u₂))) = inj₁ u₁>u₂
-     extract-≥-fst _ (inj₁ (bne _ _ (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
-     extract-≥-fst {u₁} {u₂} {v₁} flat-u₁≡flat-u₂ (inj₁ (lne len>0 len≡0)) =
-       ⊥-elim (n≡0→¬n>0 len-u₁v₁≡0 len>0)
-       where
-         len-u₁v₁≡len-u₂v₁ : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u₂ v₁)))
-         len-u₁v₁≡len-u₂v₁ = cong length (cong (λ w → w List.++ proj₁ (flat v₁)) flat-u₁≡flat-u₂)
-         len-u₁v₁≡0 : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ 0
-         len-u₁v₁≡0 = trans len-u₁v₁≡len-u₂v₁ len≡0
-     extract-≥-fst _ (inj₂ refl) = inj₂ refl
+≥-max-pair-inv {l} {r} {loc} {n} {c} u v (≥-max .n (PairU .u .v) len|pair-u-v|≤n pair-u'-v'→|u'v'|≤n→uv≥u'v')  =  {!!}
 
-     ev₁ : (u₁ : U l) → proj₁ (flat u) ≡ proj₁ (flat u₁) → l ⊢ u ≥ u₁
-     ev₁ u₁ flat-u≡flat-u₁ =
-       extract-≥-fst flat-u≡flat-u₁
-         (pair-u'-v'→|uv|≡|u'v'|→uv≥u'v' (PairU u₁ v)
-           (cong (λ w → w List.++ proj₁ (flat v)) flat-u≡flat-u₁))
 
-     extract-≥-snd : ∀ {u₁ : U l} {v₁ v₂ : U r}
-       → proj₁ (flat v₁) ≡ proj₁ (flat v₂)
-       → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₁ v₂
-       → r ⊢ v₁ ≥ v₂
-     extract-≥-snd _ (inj₁ (be _ _ (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
-     extract-≥-snd _ (inj₁ (be _ _ (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
-     extract-≥-snd _ (inj₁ (bne _ _ (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
-     extract-≥-snd _ (inj₁ (bne _ _ (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
-     extract-≥-snd {u₁} {v₁} {v₂} flat-v₁≡flat-v₂ (inj₁ (lne len>0 len≡0)) =
-        ⊥-elim (n≡0→¬n>0 len-u₁v₁≡0 len>0)
-        where
-          len-u₁v₁≡len-u₁v₂ : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₂)))
-          len-u₁v₁≡len-u₁v₂ = cong length (cong (proj₁ (flat u₁) List.++_) flat-v₁≡flat-v₂)
-          len-u₁v₁≡0 : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ 0
-          len-u₁v₁≡0 = trans len-u₁v₁≡len-u₁v₂ len≡0
-     extract-≥-snd _ (inj₂ refl) = inj₂ refl
-
-     ev₂ : (v₂ : U r) → proj₁ (flat v) ≡ proj₁ (flat v₂) → r ⊢ v ≥ v₂
-     ev₂ v₂ flat-v≡flat-v₂ =
-       extract-≥-snd flat-v≡flat-v₂
-         (pair-u'-v'→|uv|≡|u'v'|→uv≥u'v' (PairU u v₂)
-           (cong (proj₁ (flat u) List.++_) flat-v≡flat-v₂)) 
-       
 
 -- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
 {-       

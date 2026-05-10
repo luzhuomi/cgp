@@ -1,7 +1,7 @@
 ```agda
 {-# OPTIONS --rewriting  #-}
 -- {-# OPTIONS --rewriting --allow-unsolved-metas #-}
-module cgp.lnegen.Max where
+module cgp.lnegen.MaxLen where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
@@ -100,44 +100,33 @@ open import Function using (_∘_ ; flip ; case_of_)
 
 
 ```agda
-data ≥-Max : ∀ { r : RE } → U r → Set where 
+data ≥-Max : ∀ { r : RE } → ℕ → U r  → Set where 
   ≥-max : ∀ { r : RE }
+        → ( n : ℕ )
         → ( u : U r )
+        → length (proj₁ (flat u)) Nat.≤ n
         → ( ( v : U r )
-          → ( proj₁ (flat u ) ≡ proj₁ (flat v))
+          → length ( proj₁ (flat v)) Nat.≤ n  
           → r ⊢ u ≥ v )
-        → ≥-Max {r} u
+        → ≥-Max {r} n u
 
 -- each partial derivative p is unique
 
-data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
-  ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
+data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r c → Set where
+  ≥-max-pres : ∀ { p r : RE } { n : ℕ }  { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( ( u : U p )
-      → ≥-Max u
+      → ≥-Max n u 
       → ( v : U p )
-      → ( proj₁ (flat u ) ≡ proj₁ (flat v))
+      → ( length ( proj₁ (flat v)) Nat.≤ n )
       → r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
-    → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
-  {- this leads to negative data type definition
-  ≥-max-pres-●-f : ∀ { p l r : RE } { loc : ℕ }  { c : Char }  { inj : U p →  U l }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {l} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( ( u : U p )
-      → ≥-Max u
-      → ( v : U r )
-      → ≥-Max v
-      → ( y : U p )
-      →  proj₁ (flat u ) ≡ proj₁ (flat y) 
-      → ≥-Max-Preserve {l} {c} (pdinstance inj sound-ev)
-      → ( l ● r ` loc ) ⊢ mkinjFst inj (PairU u v) ≥ mkinjFst inj (PairU y v ) )
-    → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst (pdinstance inj sound-ev))
-  -} 
+    → ≥-Max-Preserve {r} {suc n} {c} (pdinstance inj sound-ev)
 
-≥-max-pair-inv : ∀ { l r : RE } { loc : ℕ } { c : Char }
+≥-max-pair-inv : ∀ { l r : RE } { loc : ℕ } { n : ℕ } { c : Char }
   → ( u : U l )
   → ( v : U r )
-  → ≥-Max (PairU {l} {r} {loc} u v)
-  → ≥-Max u × ≥-Max v
+  → ≥-Max n (PairU {l} {r} {loc} u v)
+  → ≥-Max n u × ≥-Max n v
 ≥-max-pair-inv {l} {r} {loc} {c} u v (≥-max (PairU .u .v) pair-u'-v'→|uv|≡|u'v'|→uv≥u'v')  =
    ≥-max u ev₁  , ≥-max v ev₂
    where
@@ -189,7 +178,7 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
        
 
 -- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
-       
+{-       
 ≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
@@ -224,7 +213,9 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     len>0 {w} rewrite s-ev w = Nat.s≤s Nat.z≤n
 ... | inj₂ inj-u≡inj-y rewrite inj-u≡inj-y = inj₂ refl
 
+-}
 
+{-
 -- the following is a "monomorphized" version of the ≥-Max-Preserve 
 data ≥-Max-Fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → ( PDInstance ( l ● r ` loc ) c ) → Set where
   ≥-max-fst : ∀ { p l r : RE } { loc : ℕ } { c : Char } { inj : U p → U l }
@@ -240,6 +231,15 @@ data ≥-Max-Fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → ( PDInstance 
 
 -- this data type looks similar to ≥-max-pres-●-fst except that v ≡ v'.
 -- if ≥-max-pres-●-fst is provable why ≥-pres0-fst is not?
+
+-- probably a very useful lemma
+-}
+{-
+len-max> : ∀ { r : RE } { u v : U r }
+  → ≥-Max u
+  → ≥-Max v
+  → length (proj₁ (flat u))  >  
+-} 
 
 
 {-
@@ -264,7 +264,7 @@ data ≥-Max-Fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → ( PDInstance 
   
 
 
-
+{-
 ≥-max-pres-●-snd : ∀ { p l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( u : U p )
@@ -318,7 +318,7 @@ data ≥-Max-Fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → ( PDInstance 
     len>0 {w} rewrite s-ev w = Nat.s≤s Nat.z≤n
 ... | inj₂ inj-u≡inj-y rewrite inj-u≡inj-y = inj₂ refl 
 
-
+-} 
 
 
 -- pdU-≥-max-pres : ∀ {r : RE } { c : Char }

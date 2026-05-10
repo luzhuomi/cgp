@@ -111,7 +111,8 @@ data ≥-Max : ∀ { r : RE } → ℕ → U r  → Set where
         → ≥-Max {r} n u
 
 -- each partial derivative p is unique
-
+-- inj is ≥-Max-Preserve is given an u which is max, and another v,
+-- we must have inj u ≥ inj v 
 data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r c → Set where
   ≥-max-pres : ∀ { p r : RE } { n : ℕ }  { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }

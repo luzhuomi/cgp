@@ -114,7 +114,7 @@ data ≥-Max : ∀ { r : RE } → ℕ → U r  → Set where
 -- inj is ≥-Max-Preserve is given an u which is max, and another v,
 -- we must have inj u ≥ inj v 
 data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r c → Set where
-  ≥-max-pres : ∀ { p r : RE } { n : ℕ }  { c : Char } { inj : U p →  U r }
+  ≥-max-pres : ∀ { p r : RE } { n : ℕ }  { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( ( u : U p )
       → ≥-Max n u 
@@ -122,6 +122,23 @@ data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r
       → ( length ( proj₁ (flat v)) Nat.≤ n )
       → r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
     → ≥-Max-Preserve {r} {suc n} {c} (pdinstance inj sound-ev)
+
+-- inj is ≥-Max-pdi if we fix a particular parse tree u,
+-- inj u ≥ inj' u for any other injection inj'
+
+-- looks like ex≥  ?
+
+data _,_⊢_>_ : ∀ { r : RE } { c : Char } → PDInstance r c → PDInstance r c → Set where
+  >-pdi : 
+
+data ≥-Max-PDInstance : ∀ {r : RE } { n : ℕ } { c : Char } → PDInstance r c → Set where
+  ≥-max-pdi : ∀ { p r : RE } { n ∶ ℕ } { c : Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( u : U p )
+      → ≥-Max n u
+      → ( v : U p )
+      → ( length ( proj₁ (flat v)) Nat.≤ n ) 
+
 
 ≥-max-pair-inv : ∀ { l r : RE } { loc : ℕ } { n : ℕ } { c : Char }
   → ( u : U l )
@@ -317,7 +334,38 @@ len-max> : ∀ { r : RE } { u v : U r }
   → length (proj₁ (flat u))  >  
 -} 
 
+{-
+Take the example from the commented code (lines 431–435):
+- p = ε ● ($ a + ε)
+- l = $ c ● p (so inj maps w to PairU (LetterU c) w)
+- r = $ a + ε
+Let:
+- u₁ = PairU EmptyU (LeftU (LetterU 'a'))  — flat length 1
+- u₂ = RightU EmptyU                        — flat length 0
+- v₁ = PairU EmptyU (RightU EmptyU)         — flat length 0
+- v₂ = LeftU (LetterU 'a')                  — flat length 1
+With n = 1:
+- PairU u₁ u₂ has flat length 1 and is ≥-Max 1 (it beats all trees of length ≤ 1)
+- PairU v₁ v₂ has flat length 1, so length (flat v) ≤ 1 holds
+After pdinstance-fst:
+- mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂ has flat length 2
+- mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂ has flat length 2
+To show (l ● r) ⊢ PairU (inj u₁) u₂ ≥ PairU (inj v₁) v₂ we need bne + >ⁱ:
+- seq₁: requires l ⊢ inj u₁ > inj v₁. This is true, but it only yields  
+  PairU (inj u₁) u₂ >ⁱ PairU (inj v₁) u₂ — not PairU (inj v₁) v₂.
+- seq₂: requires inj u₁ ≡ inj v₁ (false, lengths differ) and r ⊢ u₂ > v₂.  
+  But u₂ = RightU EmptyU and v₂ = LeftU (LetterU 'a'), so actually r ⊢ v₂ > u₂ — the opposite!
+So neither seq₁ nor seq₂ works, and the goal is unprovable.
+What to do instead
+The file already contains a provable variant that keeps the second component fixed — ≥-max-pres-●-fst (commented out at lines 271–291). That lemma type-checks and is usable:
+≥-max-pres-●-fst :
+  → ≥-Max-Preserve {l} {c} (pdinstance inj sound-ev)
+  → (u : U p) → ≥-Max u → (v : U r) → ≥-Max v
+  → (y : U p) → proj₁ (flat u) ≡ proj₁ (flat y)
+  → (l ● r ` loc) ⊢ mkinjFst inj (PairU u v) ≥ mkinjFst inj (PairU y v)
+If your use case genuinely needs ≥-max-pres-fst, the definition of ≥-Max-Preserve or ≥-Max would need to be strengthened (e.g. by requiring a component-wise maximality condition for PairU). As written, the lemma cannot be completed.
 
+-}
 
 ≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { n : ℕ } { c : Char }
   → ( pdi : PDInstance l c )

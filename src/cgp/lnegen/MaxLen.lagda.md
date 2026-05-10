@@ -49,10 +49,10 @@ import Data.Char as Char
 open Char using (Char )
 
 import Data.Nat as Nat
-open Nat using ( ℕ ; suc ; zero )
+open Nat using ( ℕ ; suc ; zero ; _+_ ; _∸_ ; _≤_ )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; _≟_ )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; _≟_ ; m+n≤o⇒m≤o∸n ; m≤o∸n⇒m+n≤o ; m+n≤o⇒n≤o ; +-identityʳ ; +-identityˡ ; m≤m+n ; m≤n+m ; +-comm ; m+n≡0⇒m≡0 ; m+n≡0⇒n≡0 )
 
 
 
@@ -63,7 +63,7 @@ import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ )
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ )
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -126,8 +126,128 @@ data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r
   → ( u : U l )
   → ( v : U r )
   → ≥-Max n (PairU {l} {r} {loc} u v)
-  → ≥-Max n u × ≥-Max n v
-≥-max-pair-inv {l} {r} {loc} {n} {c} u v (≥-max .n (PairU .u .v) len|pair-u-v|≤n pair-u'-v'→|u'v'|≤n→uv≥u'v')  =  {!!}
+  → ≥-Max (n ∸ length (proj₁ (flat v))) u × ≥-Max (n ∸ length (proj₁ (flat u))) v
+≥-max-pair-inv {l} {r} {loc} {n} {c} u v (≥-max .n (PairU .u .v) len|pair-u-v|≤n pair-u'-v'→|u'v'|≤n→uv≥u'v') =
+  ≥-max (n ∸ length (proj₁ (flat v))) u len-u≤n∸len-v ev₁ ,
+  ≥-max (n ∸ length (proj₁ (flat u))) v len-v≤n∸len-u ev₂
+  where
+    flat-pairU-proj₁ : (u' : U l) (v' : U r) → proj₁ (flat (PairU {l} {r} {loc} u' v')) ≡ proj₁ (flat u') ++ proj₁ (flat v')
+    flat-pairU-proj₁ u' v' with flat u' | flat v'
+    ... | xs , _ | ys , _ = refl
+
+    len|uv|≡|u|+|v| : length (proj₁ (flat (PairU {l} {r} {loc} u v))) ≡ (length (proj₁ (flat u)) + length (proj₁ (flat v)))
+    len|uv|≡|u|+|v| = trans (cong length (flat-pairU-proj₁ u v)) (length-++ (proj₁ (flat u)) {proj₁ (flat v)})
+
+    len|pair-u-v|≡n : length (proj₁ (flat u)) + length (proj₁ (flat v)) ≤ n
+    len|pair-u-v|≡n = subst (λ k → k ≤ n) len|uv|≡|u|+|v| len|pair-u-v|≤n
+
+    len-v≤n : length (proj₁ (flat v)) ≤ n
+    len-v≤n = ≤-trans (m≤n+m (length (proj₁ (flat v))) (length (proj₁ (flat u)))) len|pair-u-v|≡n
+
+    len-u≤n : length (proj₁ (flat u)) ≤ n
+    len-u≤n = ≤-trans (m≤m+n (length (proj₁ (flat u))) (length (proj₁ (flat v)))) len|pair-u-v|≡n
+
+    len-u≤n∸len-v : length (proj₁ (flat u)) ≤ n ∸ length (proj₁ (flat v))
+    len-u≤n∸len-v = m+n≤o⇒m≤o∸n (length (proj₁ (flat u))) len|pair-u-v|≡n
+
+    len-v≤n∸len-u : length (proj₁ (flat v)) ≤ n ∸ length (proj₁ (flat u))
+    len-v≤n∸len-u = m+n≤o⇒m≤o∸n (length (proj₁ (flat v))) (subst (λ k → k ≤ n) (+-comm (length (proj₁ (flat u))) (length (proj₁ (flat v)))) len|pair-u-v|≡n)
+
+    extract-≥-fst : ∀ {u₁ u₂ : U l} {v₁ : U r}
+      → proj₁ (flat u₁) ≡ proj₁ (flat u₂)
+      → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₂ v₁
+      → l ⊢ u₁ ≥ u₂
+    extract-≥-fst _ (inj₁ (be _ _ (seq₁ u₁>u₂))) = inj₁ u₁>u₂
+    extract-≥-fst _ (inj₁ (be _ _ (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
+    extract-≥-fst _ (inj₁ (bne _ _ (seq₁ u₁>u₂))) = inj₁ u₁>u₂
+    extract-≥-fst _ (inj₁ (bne _ _ (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
+    extract-≥-fst {u₁} {u₂} {v₁} flat-u₁≡flat-u₂ (inj₁ (lne len>0 len≡0)) =
+      ⊥-elim (n≡0→¬n>0 len-u₁v₁≡0 len>0)
+      where
+        len-u₁v₁≡len-u₂v₁ : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u₂ v₁)))
+        len-u₁v₁≡len-u₂v₁ = cong length (cong (λ w → w List.++ proj₁ (flat v₁)) flat-u₁≡flat-u₂)
+        len-u₁v₁≡0 : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ 0
+        len-u₁v₁≡0 = trans len-u₁v₁≡len-u₂v₁ len≡0
+    extract-≥-fst _ (inj₂ refl) = inj₂ refl
+
+    pair≥→fst≥ : ∀ {u₁ u₂ : U l} {v₁ : U r}
+      → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₂ v₁
+      → l ⊢ u₁ ≥ u₂
+    pair≥→fst≥ (inj₁ (be len≡ len0 (seq₁ u₁>u₂))) = inj₁ u₁>u₂
+    pair≥→fst≥ (inj₁ (be len≡ len0 (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
+    pair≥→fst≥ (inj₁ (bne _ _ (seq₁ u₁>u₂))) = inj₁ u₁>u₂
+    pair≥→fst≥ (inj₁ (bne _ _ (seq₂ refl v₁>v₁))) = ⊥-elim (>→¬≡ v₁>v₁ refl)
+    pair≥→fst≥ {u₁} {u₂} {v₁} (inj₁ (lne len>0 len0)) =
+      let len|u₂v₁|≡|u₂|+|v₁| : length (proj₁ (flat (PairU {l} {r} {loc} u₂ v₁))) ≡ (length (proj₁ (flat u₂)) + length (proj₁ (flat v₁)))
+          len|u₂v₁|≡|u₂|+|v₁| = trans (cong length (flat-pairU-proj₁ u₂ v₁)) (length-++ (proj₁ (flat u₂)) {proj₁ (flat v₁)})
+          len-v₁≡0 : length (proj₁ (flat v₁)) ≡ 0
+          len-v₁≡0 = m+n≡0⇒n≡0 (length (proj₁ (flat u₂))) (trans (sym len|u₂v₁|≡|u₂|+|v₁|) len0)
+          len|u₁v₁|≡|u₁|+|v₁| : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ (length (proj₁ (flat u₁)) + length (proj₁ (flat v₁)))
+          len|u₁v₁|≡|u₁|+|v₁| = trans (cong length (flat-pairU-proj₁ u₁ v₁)) (length-++ (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+          len|u₁v₁|≡|u₁| : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat u₁))
+          len|u₁v₁|≡|u₁| = trans len|u₁v₁|≡|u₁|+|v₁| (trans (cong (λ k → length (proj₁ (flat u₁)) + k) len-v₁≡0) (+-identityʳ (length (proj₁ (flat u₁)))))
+          len-u₁>0 : length (proj₁ (flat u₁)) Nat.> 0
+          len-u₁>0 = subst (λ k → k Nat.> 0) len|u₁v₁|≡|u₁| len>0
+          len-u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+          len-u₂≡0 = m+n≡0⇒m≡0 (length (proj₁ (flat u₂))) (trans (sym len|u₂v₁|≡|u₂|+|v₁|) len0)
+      in inj₁ (lne len-u₁>0 len-u₂≡0)
+    pair≥→fst≥ (inj₂ refl) = inj₂ refl
+
+    ev₁ : (u' : U l) → length (proj₁ (flat u')) ≤ n ∸ length (proj₁ (flat v)) → l ⊢ u ≥ u'
+    ev₁ u' len-u'≤n∸len-v =
+      let len|u'v|≡|u'|+|v| : length (proj₁ (flat (PairU {l} {r} {loc} u' v))) ≡ (length (proj₁ (flat u')) + length (proj₁ (flat v)))
+          len|u'v|≡|u'|+|v| = trans (cong length (flat-pairU-proj₁ u' v)) (length-++ (proj₁ (flat u')) {proj₁ (flat v)})
+          len-u'v≤n : length (proj₁ (flat (PairU {l} {r} {loc} u' v))) ≤ n
+          len-u'v≤n = subst (λ k → k ≤ n) (sym len|u'v|≡|u'|+|v|) (m≤o∸n⇒m+n≤o (length (proj₁ (flat u'))) len-v≤n len-u'≤n∸len-v)
+      in pair≥→fst≥ (pair-u'-v'→|u'v'|≤n→uv≥u'v' (PairU u' v) len-u'v≤n)
+
+    extract-≥-snd : ∀ {u₁ : U l} {v₁ v₂ : U r}
+      → proj₁ (flat v₁) ≡ proj₁ (flat v₂)
+      → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₁ v₂
+      → r ⊢ v₁ ≥ v₂
+    extract-≥-snd _ (inj₁ (be _ _ (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
+    extract-≥-snd _ (inj₁ (be _ _ (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
+    extract-≥-snd _ (inj₁ (bne _ _ (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
+    extract-≥-snd _ (inj₁ (bne _ _ (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
+    extract-≥-snd {u₁} {v₁} {v₂} flat-v₁≡flat-v₂ (inj₁ (lne len>0 len≡0)) =
+       ⊥-elim (n≡0→¬n>0 len-u₁v₁≡0 len>0)
+       where
+         len-u₁v₁≡len-u₁v₂ : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₂)))
+         len-u₁v₁≡len-u₁v₂ = cong length (cong (proj₁ (flat u₁) List.++_) flat-v₁≡flat-v₂)
+         len-u₁v₁≡0 : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ 0
+         len-u₁v₁≡0 = trans len-u₁v₁≡len-u₁v₂ len≡0
+    extract-≥-snd _ (inj₂ refl) = inj₂ refl
+
+    pair≥→snd≥ : ∀ {u₁ : U l} {v₁ v₂ : U r}
+      → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₁ v₂
+      → r ⊢ v₁ ≥ v₂
+    pair≥→snd≥ (inj₁ (be len≡ len0 (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
+    pair≥→snd≥ (inj₁ (be len≡ len0 (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
+    pair≥→snd≥ (inj₁ (bne _ _ (seq₂ refl v₁>v₂))) = inj₁ v₁>v₂
+    pair≥→snd≥ (inj₁ (bne _ _ (seq₁ u₁>u₁))) = ⊥-elim (>→¬≡ u₁>u₁ refl)
+    pair≥→snd≥ {u₁} {v₁} {v₂} (inj₁ (lne len>0 len0)) =
+      let len|u₁v₂|≡|u₁|+|v₂| : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₂))) ≡ (length (proj₁ (flat u₁)) + length (proj₁ (flat v₂)))
+          len|u₁v₂|≡|u₁|+|v₂| = trans (cong length (flat-pairU-proj₁ u₁ v₂)) (length-++ (proj₁ (flat u₁)) {proj₁ (flat v₂)})
+          len-u₁≡0 : length (proj₁ (flat u₁)) ≡ 0
+          len-u₁≡0 = m+n≡0⇒m≡0 (length (proj₁ (flat u₁))) (trans (sym len|u₁v₂|≡|u₁|+|v₂|) len0)
+          len|u₁v₁|≡|u₁|+|v₁| : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ (length (proj₁ (flat u₁)) + length (proj₁ (flat v₁)))
+          len|u₁v₁|≡|u₁|+|v₁| = trans (cong length (flat-pairU-proj₁ u₁ v₁)) (length-++ (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+          len|u₁v₁|≡|v₁| : length (proj₁ (flat (PairU {l} {r} {loc} u₁ v₁))) ≡ length (proj₁ (flat v₁))
+          len|u₁v₁|≡|v₁| = trans len|u₁v₁|≡|u₁|+|v₁| (trans (cong (λ k → k + length (proj₁ (flat v₁))) len-u₁≡0) (+-identityˡ (length (proj₁ (flat v₁)))))
+          len-v₁>0 : length (proj₁ (flat v₁)) Nat.> 0
+          len-v₁>0 = subst (λ k → k Nat.> 0) len|u₁v₁|≡|v₁| len>0
+          len-v₂≡0 : length (proj₁ (flat v₂)) ≡ 0
+          len-v₂≡0 = m+n≡0⇒n≡0 (length (proj₁ (flat u₁))) (trans (sym len|u₁v₂|≡|u₁|+|v₂|) len0)
+      in inj₁ (lne len-v₁>0 len-v₂≡0)
+    pair≥→snd≥ (inj₂ refl) = inj₂ refl
+
+    ev₂ : (v' : U r) → length (proj₁ (flat v')) ≤ n ∸ length (proj₁ (flat u)) → r ⊢ v ≥ v'
+    ev₂ v' len-v'≤n∸len-u =
+      let len|uv'|≡|u|+|v'| : length (proj₁ (flat (PairU {l} {r} {loc} u v'))) ≡ (length (proj₁ (flat u)) + length (proj₁ (flat v')))
+          len|uv'|≡|u|+|v'| = trans (cong length (flat-pairU-proj₁ u v')) (length-++ (proj₁ (flat u)))
+          len-uv'≤n : length (proj₁ (flat (PairU {l} {r} {loc} u v'))) ≤ n
+          len-uv'≤n = subst (λ k → k ≤ n) (trans (+-comm (length (proj₁ (flat v'))) (length (proj₁ (flat u)))) (sym len|uv'|≡|u|+|v'|)) (m≤o∸n⇒m+n≤o (length (proj₁ (flat v'))) len-u≤n len-v'≤n∸len-u)
+      in pair≥→snd≥ (pair-u'-v'→|u'v'|≤n→uv≥u'v' (PairU u v') len-uv'≤n)
 
 
 

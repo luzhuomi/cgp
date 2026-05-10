@@ -45,9 +45,10 @@ When your changes create orphans:
 **Define success criteria. Loop until verified.**
 
 Transform tasks into verifiable goals:
-- "Add validation" → "Write tests for invalid inputs, then make them pass"
-- "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
+- "Try to prove" → "Break down the input into possible sub cases, then try to prove them case by case."
+- "Fix the type error" → "Re-run the compiler, identify the conflicting locations, then fix the confliction"
+- "Disprove it or find a counter example" → "Construct a step by step runable example that invalidate the given goal being proved"
+- "Refactor X" → "Ensure type check pass before and after"
 
 For multi-step tasks, state a brief plan:
 ```
@@ -76,7 +77,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 ## 7. Workflow
 - Generate proof according to user request
 - Do not change existing given type annotations
-- Ensure all new types are added
 - Always run `agda` to verify type safety during implementation
 - If you think the given goal is unprovable, provide a counter example
 

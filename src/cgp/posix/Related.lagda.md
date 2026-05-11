@@ -826,21 +826,49 @@ subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) with drop n us
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | x ∷ _ = subval xs p x
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | [] = subval (n ∷ xs) (sub-*-n p) (ListU {r} {ε∉r} {loc} us)
 
+subval-maybe : ∀ {r s : RE } → (pos : List ℕ) → (IsSubAt r pos s)  → U r → Maybe (U s)
+subval-maybe {ε} {ε} [] sub-ε u = just u
+subval-maybe {$ c ` loc} {$ c ` loc} [] sub-$ u = just u
+subval-maybe {l ● r ` loc} {l ● r ` loc} [] sub-● u = just u
+subval-maybe {l ● r ` loc} {s} (0 ∷ xs) (sub-●-0 p) (PairU u _) = subval-maybe xs p u
+subval-maybe {l ● r ` loc} {s} (1 ∷ xs) (sub-●-1 p) (PairU _ v) = subval-maybe xs p v
+subval-maybe {l + r ` loc} {l + r ` loc} [] sub-+ u = just u
+subval-maybe {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (LeftU u) = subval-maybe xs p u
+subval-maybe {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (RightU {l} {r} {loc} _) = nothing
+subval-maybe {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (RightU u) = subval-maybe xs p u
+subval-maybe {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (LeftU {l} {r} {loc} _) = nothing
+subval-maybe {r * ε∉r ` loc} {r * ε∉r ` loc} [] sub-* u = just u
+subval-maybe {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) with drop n us
+subval-maybe {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | x ∷ _ = subval-maybe xs p x
+subval-maybe {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU {r} {ε∉r} {loc} us) | [] = nothing
+
 ```
 
 Definition:
 
 length (norm) of value v at position p.
 
+The original definition 
 ∥ v ∥p = if p ∈ pos v then length |v ↓ p |  else -1
 
-we want to avoid use negative value -1
+
+We want to avoid using negative value -1, hence adjust the aboe  definition 
+
+Let
+v : U r 
+
+∥ v ∥p = just (length |v ↓ p |)  if subre r p == just s
+∥ v ∥p = nothing otherwise 
 
 
-∥ v ∥p = if p ∈ pos v then just (length |v ↓ p |)  else nothing
+```agda
+norm : ∀ {r : RE } → U r → List ℕ  → Maybe ℕ
+norm {r} u pos with subre r pos
+... | just s = {!!} -- extract sub val from u using pos and (IsSubAt r pos s), then find the length of the flatten word
+... | nothing = nothing 
+  
 
-
-
+```
 
 
 

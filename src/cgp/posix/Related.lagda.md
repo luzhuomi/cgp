@@ -827,3 +827,73 @@ subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | x ∷ _ = subv
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | [] = subval (n ∷ xs) (sub-*-n p) (ListU {r} {ε∉r} {loc} us)
 
 ```
+
+Definition:
+
+length (norm) of value v at position p.
+
+∥ v ∥p = if p ∈ pos v then length |v ↓ p |  else -1
+
+we want to avoid use negative value -1
+
+
+∥ v ∥p = if p ∈ pos v then just (length |v ↓ p |)  else nothing
+
+
+
+
+
+
+Definition:
+
+lexical ordering among positions
+
+
+
+--------------- 
+[] ≺lex p ∷ ps
+
+
+p₁ < p₂
+----------------------
+p₁ ∷ ps₁ ≺lex p₂ ∷ ps₂
+
+
+
+ps₁ ≺lex ps₂
+----------------------
+p ∷ ps₁ ≺lex p ∷ ps₂
+
+
+
+```agda
+
+infix 4 _≺Lex_
+
+data _≺Lex_ :  List ℕ  →  List ℕ → Set where
+  ≺lex-[] : { p : ℕ } { ps : List ℕ }
+    → [] ≺Lex  (p ∷ ps)
+  ≺lex-head : { p₁ p₂ : ℕ } { ps₁ ps₂ : List ℕ }
+    → p₁ Nat.< p₂
+    → p₁ ∷ ps₁ ≺Lex p₂ ∷ ps₂
+  ≺lex-tail : { p : ℕ } { ps₁ ps₂ : List ℕ }
+    → ps₁ ≺Lex ps₂
+    → p ∷ ps₁ ≺Lex p ∷ ps₂
+
+
+```
+
+
+Definition: 
+a value v₁ is smaller at position p than v₂
+
+
+
+v₁ ≺p v₂ iff
+i) 
+
+
+```agda
+
+
+```

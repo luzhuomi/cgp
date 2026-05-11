@@ -791,11 +791,39 @@ data IsSubAt : RE → List ℕ → RE → Set where
 
 subval takes a parse tree and a position, extracts the sub parse tree 
 
+v ↓ []              = v
 
+LeftU v ↓ 0∷ps      = v ↓ ps
+
+RightU v ↓ 1∷ps     = v ↓ ps
+
+PairU v₁ v₂ ↓ 0∷ps  = v₁ ↓ ps
+
+PairU v₁ v₂ ↓ 1∷ps  = v₂ ↓ ps
+
+ListU vs ↓ n∷ps     = vs[n] ↓ ps  
 ```agda
 
+drop : ∀ {A : Set} → ℕ → List A → List A
+drop zero xs = xs
+drop (suc n) [] = []
+drop (suc n) (_ ∷ xs) = drop n xs
+
+{-# TERMINATING #-}
 subval : ∀ {r s : RE } → (pos : List ℕ) → (IsSubAt r pos s)  → U r → U s
 subval {ε} {ε} [] sub-ε u = u
-subval {$ c ` loc} {$ c ` loc} [] sub-$ u = u 
+subval {$ c ` loc} {$ c ` loc} [] sub-$ u = u
+subval {l ● r ` loc} {l ● r ` loc} [] sub-● u = u
+subval {l ● r ` loc} {s} (0 ∷ xs) (sub-●-0 p) (PairU u _) = subval xs p u
+subval {l ● r ` loc} {s} (1 ∷ xs) (sub-●-1 p) (PairU _ v) = subval xs p v
+subval {l + r ` loc} {l + r ` loc} [] sub-+ u = u
+subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (LeftU u) = subval xs p u
+subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (RightU v) = subval (0 ∷ xs) (sub-+-0 p) (RightU {l} {r} {loc} v) 
+subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (RightU u) = subval xs p u
+subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (LeftU v) = subval (1 ∷ xs) (sub-+-1 p) (LeftU {l} {r} {loc} v)
+subval {r * ε∉r ` loc} {r * ε∉r ` loc} [] sub-* u = u
+subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) with drop n us
+subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | x ∷ _ = subval xs p x
+subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | [] = subval (n ∷ xs) (sub-*-n p) (ListU {r} {ε∉r} {loc} us)
 
 ```

@@ -83,7 +83,7 @@ open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++
   -- ; length-++-sucʳ -- this is only available after v2.3
   )
 
-
+open import Data.List.Membership.Propositional using (_∈_; _∉_)
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -862,13 +862,36 @@ v : U r
 
 
 ```agda
-norm : ∀ {r : RE } → U r → List ℕ  → Maybe ℕ
-norm {r} u pos with subre r pos
-... | just s = {!!} -- extract sub val from u using pos and (IsSubAt r pos s), then find the length of the flatten word
-... | nothing = nothing 
-  
+sublen : ∀ {r : RE } → U r → List ℕ → Maybe ℕ
+sublen {ε} EmptyU [] = just 0
+sublen {ε} EmptyU (_ ∷ _) = nothing
+sublen {$ c ` loc} (LetterU .c) [] = just 1
+sublen {$ c ` loc} (LetterU .c) (_ ∷ _) = nothing
+sublen {l ● r ` loc} (PairU u v) [] with length (proj₁ (flat (PairU {l} {r} {loc} u v)))
+... | n = just n
+sublen {l ● r ` loc} (PairU u _) (0 ∷ xs) = sublen u xs
+sublen {l ● r ` loc} (PairU _ v) (1 ∷ xs) = sublen v xs
+sublen {l ● r ` loc} (PairU _ _) (suc (suc _) ∷ _) = nothing
+sublen {l + r ` loc} (LeftU u) [] with length (proj₁ (flat (LeftU {l} {r} {loc} u)))
+... | n = just n
+sublen {l + r ` loc} (RightU u) [] with length (proj₁ (flat (RightU {l} {r} {loc} u)))
+... | n = just n
+sublen {l + r ` loc} (LeftU u) (0 ∷ xs) = sublen u xs
+sublen {l + r ` loc} (RightU u) (1 ∷ xs) = sublen u xs
+sublen {l + r ` loc} (LeftU _) (1 ∷ _) = nothing
+sublen {l + r ` loc} (RightU _) (0 ∷ _) = nothing
+sublen {l + r ` loc} (LeftU _) (suc (suc _) ∷ _) = nothing
+sublen {l + r ` loc} (RightU _) (suc (suc _) ∷ _) = nothing
+sublen {r * ε∉r ` loc} (ListU us) [] with length (proj₁ (flat (ListU {r} {ε∉r} {loc} us)))
+... | n = just n
+sublen {r * ε∉r ` loc} (ListU us) (n ∷ xs) with drop n us
+sublen {r * ε∉r ` loc} (ListU us) (n ∷ xs) | x ∷ _ = sublen x xs
+sublen {r * ε∉r ` loc} (ListU us) (n ∷ xs) | [] = nothing
 
 ```
+
+
+
 
 
 
@@ -912,16 +935,75 @@ data _≺Lex_ :  List ℕ  →  List ℕ → Set where
 ```
 
 
+
+
 Definition: 
 a value v₁ is smaller at position p than v₂
 
 
-
 v₁ ≺p v₂ iff
-i) 
+i) ∥ v₂ ∥p < ∥ v₁ ∥p and 
+ii) ∀ q ∈ Pos v₁ ∪ Pos v₂. q ≺lex p implies ∥ v1 ∥ q = ∥ v2 ∥ q
 
 
 ```agda
 
+data MaybeNat< : Maybe ℕ → Maybe ℕ   → Set where
+  maybenat-nothing-just : ∀ {  y : ℕ }
+    --------------------------------
+    → MaybeNat< nothing (just y)
+    
+  maybenat-just-just : ∀ { x y  : ℕ  }
+    → x Nat.< y
+    --------------------------------
+    → MaybeNat< (just x) (just y)
 
+data SubLen< : { r : RE } → List ℕ → U r → U r → Set  where
+  sublen< : ∀ { r : RE } ( u v : U r )
+    → ( pos : List ℕ )
+    →  MaybeNat< (sublen u pos) (sublen v pos)
+    → SubLen< pos u v
+
+infix 4  _,_⊢_≺_
+
+
+data _,_⊢_≺_ : ( r : RE ) → (List ℕ) → U r → U r → Set where
+  ≺p : ∀ { r : RE } ( u v : U r )
+    → ( p : List ℕ )
+    → SubLen< {r} p u v
+    → ( ( q : List ℕ )
+      → q ∈ (pos {r} u) ++ (pos {r} v)
+      → q ≺Lex p
+      → sublen u q ≡ sublen v q
+      )
+    → r , p ⊢ u ≺ v 
+
+
+
+infix 4  _⊢_≺_
+
+data _⊢_≺_ : ( r : RE ) →  U r → U r → Set where
+  ≺ : ∀ { r : RE } ( u v : U r )
+    → ∃[ p ] ( r , p ⊢ u ≺ v )
+    →  _⊢_≺_ r u v
+
+-- type alias 
+
+_⊢_≼_ : ( r : RE ) →  U r → U r → Set
+_⊢_≼_ r u v = (_⊢_≺_ r u v) ⊎ (u ≡ v )
+
+```
+
+
+Lemma: transitivity of  _⊢_≺_
+
+
+```agda
+
+≺-trans : ∀ { r : RE } { u₁ u₂ u₃ : U r } 
+  → r ⊢ u₁ ≺ u₂ 
+  → r ⊢ u₂ ≺ u₃
+  --------------
+  → r ⊢ u₁ ≺ u₃
+≺-trans =  {!!}   
 ```

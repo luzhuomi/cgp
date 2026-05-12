@@ -128,17 +128,18 @@ data ≥-Max-Preserve : ∀ { r : RE } { n : ℕ } { c : Char } → PDInstance r
 
 -- looks like ex≥  ?
 
-data _,_⊢_>_ : ∀ { r : RE } { c : Char } → PDInstance r c → PDInstance r c → Set where
-  >-pdi : 
+-- data _,_⊢_>_ : ∀ { r : RE } { c : Char } → PDInstance r c → PDInstance r c → Set where
+--   >-pdi : 
 
+{-
 data ≥-Max-PDInstance : ∀ {r : RE } { n : ℕ } { c : Char } → PDInstance r c → Set where
   ≥-max-pdi : ∀ { p r : RE } { n ∶ ℕ } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( ( u : U p )
       → ≥-Max n u
       → ( v : U p )
-      → ( length ( proj₁ (flat v)) Nat.≤ n ) 
-
+      → ( length ( proj₁ (flat v)) Nat.≤ n )  
+-} 
 
 ≥-max-pair-inv : ∀ { l r : RE } { loc : ℕ } { n : ℕ } { c : Char }
   → ( u : U l )
@@ -348,8 +349,8 @@ With n = 1:
 - PairU u₁ u₂ has flat length 1 and is ≥-Max 1 (it beats all trees of length ≤ 1)
 - PairU v₁ v₂ has flat length 1, so length (flat v) ≤ 1 holds
 After pdinstance-fst:
-- mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂ has flat length 2
-- mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂ has flat length 2
+- mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂ has flat length 2  
+- mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂ has flat length 2  but it should be PairU (PairU c (RightU EmptyU)) (LeftU EmptyU)
 To show (l ● r) ⊢ PairU (inj u₁) u₂ ≥ PairU (inj v₁) v₂ we need bne + >ⁱ:
 - seq₁: requires l ⊢ inj u₁ > inj v₁. This is true, but it only yields  
   PairU (inj u₁) u₂ >ⁱ PairU (inj v₁) u₂ — not PairU (inj v₁) v₂.
@@ -364,6 +365,43 @@ The file already contains a provable variant that keeps the second component fix
   → (y : U p) → proj₁ (flat u) ≡ proj₁ (flat y)
   → (l ● r ` loc) ⊢ mkinjFst inj (PairU u v) ≥ mkinjFst inj (PairU y v)
 If your use case genuinely needs ≥-max-pres-fst, the definition of ≥-Max-Preserve or ≥-Max would need to be strengthened (e.g. by requiring a component-wise maximality condition for PairU). As written, the lemma cannot be completed.
+
+NEW Insights!!
+
+KL: but mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂ should be PairU (PairU (LetterU 'c') (LeftU (LetterU 'a'))) (RightU EmptyU)
+and mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂ has flat length 2  it should be PairU (PairU (LetterU 'c') (RightU EmptyU)) (LeftU EmptyU)
+
+inj should insert at the first EmptyU.
+
+
+Consider another example
+what about ?
+
+- p = ε ● (ε + $ a)
+- l = $ c ● p (so inj maps w to PairU (LetterU c) w)
+- r = $ a + ε
+Let:
+- u₁ = PairU EmptyU (LeftU EmptyU)  — flat length 0
+- u₂ = LeftU (LetterU 'a')                        — flat length 1
+- v₁ = PairU EmptyU (RightU (LetterU 'a'))         — flat length 1
+- v₂ = RightU EmptyU                 — flat length 0
+
+is PairU v₁ v₂ the max for "a" in p ● r? Yes.
+but injFst (PairU v₁ v₂) =  PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
+    injFst (PairU u₁ u₂) =  PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
+
+PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
+>
+PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
+
+with
+
+seq₁ (bne (seq₂ c≡c lne ))
+
+this looks like inserting two efns, (PairU u₁ u₂) (PairU v₁ v₂) who are in lne
+the insertion give us seq₁ (bne (.... (seq₂ c≡c lne))) depends on how many nested inside u₁ and v₁
+
+
 
 -}
 

@@ -499,15 +499,17 @@ Then ¬ u₁ ≡ u₂
 
 
 
-Lemma: The set of parse tree is in > total order,  given a flatten word.
+Lemma: The set of parse tree is in > total order. 
 
 The tssue still remains. the issue with monotonicity,
 Namely, the inj functions are not monotonic for the case of lne 
 
 ```agda
->-trichotomy : ∀ { r : RE } ( u v : U r ) → proj₁ (flat u) ≡ proj₁ (flat v)
+>-trichotomy : ∀ { r : RE } ( u v : U r )
+  -- → proj₁ (flat u) ≡ proj₁ (flat v) 
   → (r ⊢ u > v) ⊎ (r ⊢ v > u) ⊎ (u ≡ v)
->-trichotomy u v _ = >-total u v
+-- >-trichotomy u v _ = >-total u v
+>-trichotomy u v = >-total u v
   where
     swap->ⁱ : ∀ { r : RE } { u v : U r }
       → (r ⊢ v > u) ⊎ (r ⊢ u > v) ⊎ (v ≡ u)

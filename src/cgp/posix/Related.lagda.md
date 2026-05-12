@@ -69,7 +69,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -106,6 +106,8 @@ open All using (All ; _∷_ ; [] ; map)
 import Relation.Nullary as Nullary 
 import Relation.Nullary.Negation using (contradiction; contraposition)
 open Nullary using (¬_)
+
+open import Relation.Binary.Definitions using (Tri ; tri< ; tri≈ ; tri>)
 
 import Relation.Nullary.Decidable as Decidable
 open Decidable using
@@ -998,9 +1000,23 @@ _⊢_≼_ r u v = (_⊢_≺_ r u v) ⊎ (u ≡ v )
 Lemma:  _≺Lex_ is total
 
 ```agda
+≺Lex-cong-∷ : ∀ {m n : ℕ} {ms ns : List ℕ}
+  → m ≡ n
+  → ms ≺Lex ns ⊎ ns ≺Lex ms ⊎ ms ≡ ns
+  → m ∷ ms ≺Lex n ∷ ns ⊎ n ∷ ns ≺Lex m ∷ ms ⊎ m ∷ ms ≡ n ∷ ns
+≺Lex-cong-∷ refl (inj₁ p<q)     = inj₁ (≺lex-tail p<q)
+≺Lex-cong-∷ refl (inj₂ (inj₁ q<p)) = inj₂ (inj₁ (≺lex-tail q<p))
+≺Lex-cong-∷ refl (inj₂ (inj₂ refl)) = inj₂ (inj₂ refl)
+
 ≺Lex-trichotomous : ∀ ( p q : List ℕ )
   → p ≺Lex q ⊎ q ≺Lex p ⊎ p ≡ q
-≺Lex-trichotomous = {!!}   
+≺Lex-trichotomous []          []          = inj₂ (inj₂ refl)
+≺Lex-trichotomous []          (_ ∷ _)     = inj₁ ≺lex-[]
+≺Lex-trichotomous (_ ∷ _)     []          = inj₂ (inj₁ ≺lex-[])
+≺Lex-trichotomous (m ∷ ms)    (n ∷ ns)    with <-cmp m n | ≺Lex-trichotomous ms ns
+... | tri< m<n _ _ | _ = inj₁ (≺lex-head m<n)
+... | tri> _ _ n<m | _ = inj₂ (inj₁ (≺lex-head n<m))
+... | tri≈ _ m≡n _ | tri = ≺Lex-cong-∷ m≡n tri
 
 ```
 

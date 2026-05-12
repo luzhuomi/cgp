@@ -995,8 +995,30 @@ _⊢_≼_ r u v = (_⊢_≺_ r u v) ⊎ (u ≡ v )
 ```
 
 
+Lemma:  _≺Lex_ is total
+
+```agda
+≺Lex-trichotomous : ∀ ( p q : List ℕ )
+  → p ≺Lex q ⊎ q ≺Lex p ⊎ p ≡ q
+≺Lex-trichotomous = {!!}   
+
+```
+
+
 Lemma: transitivity of  _⊢_≺_
 
+
+Proof sketch as follows
+ From the assumption we obtain two positions p and q, where the values v₁ and v₂
+(respectively v₂ and v₃) are ‘distinct’. Since _≺Lex_ is trichotomous, we need to consider
+three cases, namely p = q, p ≺Lex q and q ≺Lex p. Let us look at the first case. Clearly
+∥ v₂ ∥ p < ∥ v₁ ∥ p (note that ∥ v₂ ∥ p is the SubLen operation) and ∥ v₃ ∥ p < ∥ v₂ ∥ p imply ∥ v₃ ∥ p < ∥ v₁ ∥ p.
+It remains to show that for a
+p' ∈ Pos v1 ∪ Pos v3 with p' ≺lex p that ∥ v₁ ∥ p' = ∥ v₃ ∥ p'  holds. Suppose p' ∈ Pos v₁1, then
+we can infer from the first assumption that ∥ v₁ ∥ p' = ∥ v₂ ∥ p'. But this means that p'
+must be in Pos v₂ too (the sublen cannot be nothing ) given p' ∈ Pos v₁).
+Hence we can use the second assumption and infer ∥ v₂ ∥ p' = ∥ v₃ ∥ p', which concludes this case with v₁ ≺ v₃. The reasoning in the
+other cases is similar.
 
 ```agda
 

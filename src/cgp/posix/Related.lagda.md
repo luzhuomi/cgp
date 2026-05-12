@@ -1021,6 +1021,21 @@ Lemma:  _≺Lex_ is total
 ```
 
 
+
+Lemma:  _≺Lex_ is transitive
+
+```agda
+
+≺Lex-trans : ∀ ( p q r : List ℕ )
+  → p ≺Lex q
+  → q ≺Lex r
+  -------------
+  → p ≺Lex r
+≺Lex-trans = ?   
+
+```
+
+
 Lemma: transitivity of  _⊢_≺_
 
 

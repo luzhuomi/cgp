@@ -1026,12 +1026,14 @@ Lemma:  _≺Lex_ is transitive
 
 ```agda
 
-≺Lex-trans : ∀ ( p q r : List ℕ )
-  → p ≺Lex q
-  → q ≺Lex r
-  -------------
-  → p ≺Lex r
-≺Lex-trans = ?   
+
+≺Lex-trans : ∀ (p q r : List ℕ) → p ≺Lex q → q ≺Lex r → p ≺Lex r
+≺Lex-trans [] q (rh ∷ rt) ≺lex-[] (≺lex-head qr′) = ≺lex-[]
+≺Lex-trans [] (qh ∷ qt) (qh ∷ rt) ≺lex-[] (≺lex-tail qr′) = ≺lex-[]
+≺Lex-trans (ph ∷ pt) (qh ∷ qt) (rh ∷ rt) (≺lex-head pq′) (≺lex-head qr′) = ≺lex-head (<-trans pq′ qr′)
+≺Lex-trans (ph ∷ pt) (qh ∷ qt) (rh ∷ rt) (≺lex-head pq′) (≺lex-tail qr′) = ≺lex-head pq′
+≺Lex-trans (ph ∷ pt) (qh ∷ qt) (rh ∷ rt) (≺lex-tail pq′) (≺lex-head qr′) = ≺lex-head qr′
+≺Lex-trans (ph ∷ pt) (qh ∷ qt) (rh ∷ rt) (≺lex-tail pq′) (≺lex-tail qr′) = ≺lex-tail (≺Lex-trans pt qt rt pq′ qr′)
 
 ```
 

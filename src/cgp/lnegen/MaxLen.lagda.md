@@ -366,15 +366,30 @@ The file already contains a provable variant that keeps the second component fix
   → (l ● r ` loc) ⊢ mkinjFst inj (PairU u v) ≥ mkinjFst inj (PairU y v)
 If your use case genuinely needs ≥-max-pres-fst, the definition of ≥-Max-Preserve or ≥-Max would need to be strengthened (e.g. by requiring a component-wise maximality condition for PairU). As written, the lemma cannot be completed.
 
+
+### Kenny's argument about the above counter example 
 NEW Insights!!
 
-KL: but mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂ should be PairU (PairU (LetterU 'c') (LeftU (LetterU 'a'))) (RightU EmptyU)
-and mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂ has flat length 2  it should be PairU (PairU (LetterU 'c') (RightU EmptyU)) (LeftU EmptyU)
+mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂
+                           = PairU (PairU (LetterU 'c') (LeftU (LetterU 'a'))) (RightU EmptyU)
+
+and
+
+mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂
+                           = PairU (PairU (LetterU 'c') (RightU EmptyU)) (LeftU EmptyU)
 
 inj should insert at the first EmptyU.
 
 
-Consider another example
+l ● r ⊢ 
+PairU (PairU (LetterU 'c') (LeftU (LetterU 'a'))) (RightU EmptyU) >
+PairU (PairU (LetterU 'c') (RightU EmptyU)) (LeftU EmptyU)
+
+the witness of the proof is  bne _ _ (seq₁ (bne _ _ (seq₂ refl (lne _ _)))) 
+
+
+
+Consider another (non-counter) example
 what about ?
 
 - p = ε ● (ε + $ a)
@@ -387,20 +402,24 @@ Let:
 - v₂ = RightU EmptyU                 — flat length 0
 
 is PairU v₁ v₂ the max for "a" in p ● r? Yes.
-but injFst (PairU v₁ v₂) =  PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
-    injFst (PairU u₁ u₂) =  PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
 
+injFst (PairU v₁ v₂) =  PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
+injFst (PairU u₁ u₂) =  PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
+
+l ● r ⊢
 PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
 >
 PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
 
 with
 
-seq₁ (bne (seq₂ c≡c lne ))
+bne _ _ (seq₁ (bne _ _ (seq₂ refl (lne _ _ ))))
 
-this looks like inserting two efns, (PairU u₁ u₂) (PairU v₁ v₂) who are in lne
+this looks like inserting two efns, (PairU u₁ u₂) (PairU v₁ v₂)
+
+which are in bne relation, but one of the first component is len≡0, then
+
 the insertion give us seq₁ (bne (.... (seq₂ c≡c lne))) depends on how many nested inside u₁ and v₁
-
 
 
 -}

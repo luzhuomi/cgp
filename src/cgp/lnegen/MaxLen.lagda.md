@@ -421,6 +421,45 @@ which are in bne relation, but one of the first component is len≡0, then
 
 the insertion give us seq₁ (bne (.... (seq₂ c≡c lne))) depends on how many nested inside u₁ and v₁
 
+                (Left [a,a]),[]  (Left [a]),[a]     (Right [a,a]),[]  (Right [a]),[a]               
+                    (  a₁* + a₂* ) ● a₃ *
+                 in₁/a        in₂|a       in₃\a
+       (ε ● a₁*) ● a₃*   (ε ● a₂*) ● a₃*   ε ● a₃*
+(Emp,[a]),[] (Emp,[]),[a]  (Emp,[a]),[] (Emp,[]),[a]     
+    a /         a|         /a           \  
+(ε ● a₁*) ● a₃*  ε ● a₃*   (ε ● a₂*) ● a₃* ε●a₃*
+(Emp,[]),[]    Emp, []     (Emp,[]),[]    Emp, []
+
+
+What if we define a relation  r >> t
+
+                                      (p₁ ● r₁) >> (p₂ ● r₂)
+---------------------              -------------------------------
+(p ● t) ● r >> ε ● r               (p₁ ● r₁) ● t >> (p₂ ● r₂) ● t
+
+
+conjecture
+let r and t be partial derivative of s, such that  r >> t, u₁ : U r , u₂ : U t
+Then in₁ u₁ > in₂ u₂
+
+Sure, if it is true, it solves the problem for in₁ (Emp,[a]),[] > in₃ Emp,[a],
+
+But this does not solve the >-Inc issue with in₁ above!!
+(ε ● a₁*) ● a₃*  ⊢ (Emp,[a]),[] > (Emp,[]),[a]           witness 1 (bne _ _ (seq₁ (lne len|emp-[a]|>0 len|emp-[]|≡0)))
+
+We also have
+( a₁* + a₂* ) ● a₃ * ⊢ in₁ (Emp,[a]),[] > in₁ (Emp,[]),[a]       
+
+( a₁* + a₂* ) ● a₃ * ⊢ (Left [a,a]),[] > (Left [a]),[a]      witness 2 (bne _ _ (seq₁ (bne len|left-[a,a]|>0 len|left-[a]|>0) (choice-ll (bne len|[a,a]|>0 len|[a]|>0 (star-tail (lne len|[a]|>0 len|[]|≡0)))))))
+  without evaluating the concrete value, can we derive witness 2 from witness 1? via type? which one.  
+
+
+But do we care ? 
+
+(Left [a]),[] > (Right [a,a]),[a]
+
+
+The issue is how do we get witness 2 from witness 1? the 
 
 -}
 

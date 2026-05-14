@@ -450,7 +450,7 @@ But this does not solve the >-Inc issue with in₁ above!!
 We also have
 ( a₁* + a₂* ) ● a₃ * ⊢ in₁ (Emp,[a]),[] > in₁ (Emp,[]),[a]       
 
-( a₁* + a₂* ) ● a₃ * ⊢ (Left [a,a]),[] > (Left [a]),[a]      witness 2 (bne _ _ (seq₁ (bne len|left-[a,a]|>0 len|left-[a]|>0) (choice-ll (bne len|[a,a]|>0 len|[a]|>0 (star-tail (lne len|[a]|>0 len|[]|≡0)))))))
+ ( a₁* + a₂* ) ● a₃ * ⊢ (Left [a,a]),[] > (Left [a]),[a]      witness 2 (bne _ _ (seq₁ (bne len|left-[a,a]|>0 len|left-[a]|>0) (choice-ll (bne len|[a,a]|>0 len|[a]|>0 (star-tail (lne len|[a]|>0 len|[]|≡0)))))))
   without evaluating the concrete value, can we derive witness 2 from witness 1? via type? which one.  
 
 

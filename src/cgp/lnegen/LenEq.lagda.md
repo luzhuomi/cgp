@@ -136,6 +136,9 @@ Regular expressions:
 - `r = ε + ($ 'c')`
 - `p = ε + ($ 'c')` (a partial derivative of `l` w.r.t. `'c'`)
 
+
+consider the counter example given in `lnegen/LenEq.lagda.md` showing `>-inc-fst` is unprovable, it is a bogus counter example. `p = ε + ($ 'c')` is not a partial derivative of `l = ($ 'c') + (($ 'c') ● ($ 'c'))`. According to definition of pdU in `lnegen/PartialDerivative.lagda.md`, `l` has two partial derivatives, ` ε ` and `ε ● $ 'c'`. 
+
 ```agda
 module CounterExample-LenEq where
 

@@ -366,15 +366,30 @@ The file already contains a provable variant that keeps the second component fix
   → (l ● r ` loc) ⊢ mkinjFst inj (PairU u v) ≥ mkinjFst inj (PairU y v)
 If your use case genuinely needs ≥-max-pres-fst, the definition of ≥-Max-Preserve or ≥-Max would need to be strengthened (e.g. by requiring a component-wise maximality condition for PairU). As written, the lemma cannot be completed.
 
+
+### Kenny's argument about the above counter example 
 NEW Insights!!
 
-KL: but mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂ should be PairU (PairU (LetterU 'c') (LeftU (LetterU 'a'))) (RightU EmptyU)
-and mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂ has flat length 2  it should be PairU (PairU (LetterU 'c') (RightU EmptyU)) (LeftU EmptyU)
+mkinjFst inj (PairU u₁ u₂) = PairU (inj u₁) u₂
+                           = PairU (PairU (LetterU 'c') (LeftU (LetterU 'a'))) (RightU EmptyU)
+
+and
+
+mkinjFst inj (PairU v₁ v₂) = PairU (inj v₁) v₂
+                           = PairU (PairU (LetterU 'c') (RightU EmptyU)) (LeftU EmptyU)
 
 inj should insert at the first EmptyU.
 
 
-Consider another example
+l ● r ⊢ 
+PairU (PairU (LetterU 'c') (LeftU (LetterU 'a'))) (RightU EmptyU) >
+PairU (PairU (LetterU 'c') (RightU EmptyU)) (LeftU EmptyU)
+
+the witness of the proof is  bne _ _ (seq₁ (bne _ _ (seq₂ refl (lne _ _)))) 
+
+
+
+Consider another (non-counter) example
 what about ?
 
 - p = ε ● (ε + $ a)
@@ -387,21 +402,64 @@ Let:
 - v₂ = RightU EmptyU                 — flat length 0
 
 is PairU v₁ v₂ the max for "a" in p ● r? Yes.
-but injFst (PairU v₁ v₂) =  PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
-    injFst (PairU u₁ u₂) =  PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
 
+injFst (PairU v₁ v₂) =  PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
+injFst (PairU u₁ u₂) =  PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
+
+l ● r ⊢
 PairU (PairU (LetterU 'c') (RightU (LetterU 'a'))) (RightU EmptyU)
 >
 PairU (PairU (LetterU 'c') (LeftU EmptyU)) (LeftU (LetterU 'a'))
 
 with
 
-seq₁ (bne (seq₂ c≡c lne ))
+bne _ _ (seq₁ (bne _ _ (seq₂ refl (lne _ _ ))))
 
-this looks like inserting two efns, (PairU u₁ u₂) (PairU v₁ v₂) who are in lne
+this looks like inserting two efns, (PairU u₁ u₂) (PairU v₁ v₂)
+
+which are in bne relation, but one of the first component is len≡0, then
+
 the insertion give us seq₁ (bne (.... (seq₂ c≡c lne))) depends on how many nested inside u₁ and v₁
 
+                (Left [a,a]),[]  (Left [a]),[a]     (Right [a,a]),[]  (Right [a]),[a]               
+                    (  a₁* + a₂* ) ● a₃ *
+                 in₁/a        in₂|a       in₃\a
+       (ε ● a₁*) ● a₃*   (ε ● a₂*) ● a₃*   ε ● a₃*
+(Emp,[a]),[] (Emp,[]),[a]  (Emp,[a]),[] (Emp,[]),[a]     
+    a /         a|         /a           \  
+(ε ● a₁*) ● a₃*  ε ● a₃*   (ε ● a₂*) ● a₃* ε●a₃*
+(Emp,[]),[]    Emp, []     (Emp,[]),[]    Emp, []
 
+
+What if we define a relation  r >> t
+
+                                      (p₁ ● r₁) >> (p₂ ● r₂)
+---------------------              -------------------------------
+(p ● t) ● r >> ε ● r               (p₁ ● r₁) ● t >> (p₂ ● r₂) ● t
+
+
+conjecture
+let r and t be partial derivative of s, such that  r >> t, u₁ : U r , u₂ : U t
+Then in₁ u₁ > in₂ u₂
+
+Sure, if it is true, it solves the problem for in₁ (Emp,[a]),[] > in₃ Emp,[a],
+
+But this does not solve the >-Inc issue with in₁ above!!
+(ε ● a₁*) ● a₃*  ⊢ (Emp,[a]),[] > (Emp,[]),[a]           witness 1 (bne _ _ (seq₁ (lne len|emp-[a]|>0 len|emp-[]|≡0)))
+
+We also have
+( a₁* + a₂* ) ● a₃ * ⊢ in₁ (Emp,[a]),[] > in₁ (Emp,[]),[a]       
+
+ ( a₁* + a₂* ) ● a₃ * ⊢ (Left [a,a]),[] > (Left [a]),[a]      witness 2 (bne _ _ (seq₁ (bne len|left-[a,a]|>0 len|left-[a]|>0) (choice-ll (bne len|[a,a]|>0 len|[a]|>0 (star-tail (lne len|[a]|>0 len|[]|≡0)))))))
+  without evaluating the concrete value, can we derive witness 2 from witness 1? via type? which one.  
+
+
+But do we care ? 
+
+(Left [a]),[] > (Right [a,a]),[a]
+
+
+The issue is how do we get witness 2 from witness 1? the 
 
 -}
 

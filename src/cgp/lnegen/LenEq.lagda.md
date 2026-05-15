@@ -263,6 +263,7 @@ components*.  The induction hypothesis therefore does not apply.
 ```agda
 
 -- The unprovable lemma (kept as a hole for reference)
+-- the reason is that pdi is unrestricted, it might not be from pdU[ l , c] 
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdi : PDInstance l c )
@@ -284,10 +285,11 @@ components*.  The induction hypothesis therefore does not apply.
 ```agda
 >-inc-fst-strict : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
-  → Any (λ p → p ≡ pdi ) pdU[ l , c ]
+  → Any (λ p → p ≡ pdi ) pdU[ l , c ] -- pdi ∈ pdU[ l , c ]
   → >-Inc {l} {c} pdi
   --------------------------------
   → >-Inc { l ● r ` loc } {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
->-inc-fst-strict = ?   
+>-inc-fst-strict = {!!}
+-- hm instead of carrying around pdi ∈ pdU [ l , c ], use Efn Epsilon First Normal form? 
 
 ```

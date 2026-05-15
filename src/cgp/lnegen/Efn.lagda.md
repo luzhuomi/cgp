@@ -121,7 +121,7 @@ pdU-isEnf : ∀ { r : RE } { c : Char }
   → All (EfnPDInstance {r} {c}) pdU[ r , c ]
 pdU-isEnf = {!!} 
 
-{-
+
 -- not in used,  it got stuck below
 data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc-efn : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
@@ -207,7 +207,6 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
       where
         len|pair-u₁v₁|≡0 : length (proj₁ (flat (PairU u₁ v₁))) ≡ 0
         len|pair-u₁v₁|≡0 rewrite len|pair-u₁v₁|≡len|pair-u₂v₂| = len|pair-u₂v₂|≡0
--}
     {-
       with length (proj₁ (flat u₁)) Nat.≟ 0
     ... | no ¬len|u₁|≡0 = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| (lne (Utils.¬≡0→>0 ¬len|u₁|≡0) len|u₂|≡0)))
@@ -235,8 +234,7 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
         →  p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence for bne
     → ( (v₁ : U p) → (v₂ : U p)
         → length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₂))
-        → length (proj₁ (flat v₂)) ≡ 0 
-        →  p ⊢ v₁ > v₂ → r ⊢ inj v₁ > inj v₂ ) -- strict increasing evidience for be 
+        →  p ⊢ v₁ > v₂ → r ⊢ inj v₁ > inj v₂ ) -- strict increasing evidience for be and to rule out lne
     → >-Inc {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -245,5 +243,5 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
                ------------------------
                → >-Inc {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
 
->-inc-fst  =  ? 
+>-inc-fst  =  {!!} 
 ```

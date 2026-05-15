@@ -11,7 +11,7 @@ open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  ;
   w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ ;
   w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ ;
   ¬m>n→n≡m⊎n>m ;
-  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ ; concatmap-λx→[]-xs≡[] 
+  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ ; concatmap-λx→[]-xs≡[]
   {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
 
 
@@ -69,7 +69,9 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp )
+open import Data.Nat using (_<_ ; _≤_ ; zero ; suc ; _+_ ; _∸_ ; s<s)
+open import Data.Empty using (⊥ ; ⊥-elim)
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -79,17 +81,18 @@ open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ 
 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ;
-  length-++ ; ++-assoc 
+  length-++ ; ++-assoc ; ∷-injective
   -- ; length-++-sucʳ -- this is only available after v2.3
   )
 
 open import Data.List.Membership.Propositional using (_∈_; _∉_)
+open import Data.List.Relation.Unary.Any using (here ; there)
+open import Data.List.Membership.Propositional.Properties using (∈-++⁻ ; ∈-++⁺ˡ ; ∈-++⁺ʳ)
 
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
+open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst; inspect)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
-
 
 import Data.Product as Product
 open Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_ )
@@ -703,17 +706,18 @@ pos extracts the set of positions in a parse tree.
 
 ```agda
 
-pos : ∀ { r : RE } → U r → List (List ℕ)
-pos {ε} EmptyU = [] ∷ []
-pos {$ c ` loc} (LetterU .c) = [] ∷ []
-pos {l + r ` loc} (LeftU u) = [] ∷ (List.map (λ ps → 0 ∷ ps ) (pos u))
-pos {l + r ` loc} (RightU u) = [] ∷ (List.map (λ ps → 1 ∷ ps ) (pos u))
-pos {l ● r ` loc} (PairU u v) = [] ∷ (List.map (λ ps → 0 ∷ ps ) (pos u)) ++ (List.map (λ ps → 1 ∷ ps ) (pos v))
-pos {r * ε∉r ` loc } (ListU vs) = [] ∷ (go 0 vs)
-  where
-    go : ℕ → List (U r) → List (List ℕ)
-    go id [] = []
-    go id (u ∷ us) = (List.map (λ ps → id ∷ ps ) (pos u)) ++ go (suc id) us
+mutual
+  pos : ∀ { r : RE } → U r → List (List ℕ)
+  pos {ε} EmptyU = [] ∷ []
+  pos {$ c ` loc} (LetterU .c) = [] ∷ []
+  pos {l + r ` loc} (LeftU u) = [] ∷ (List.map (λ ps → 0 ∷ ps ) (pos u))
+  pos {l + r ` loc} (RightU u) = [] ∷ (List.map (λ ps → 1 ∷ ps ) (pos u))
+  pos {l ● r ` loc} (PairU u v) = [] ∷ (List.map (λ ps → 0 ∷ ps ) (pos u)) ++ (List.map (λ ps → 1 ∷ ps ) (pos v))
+  pos {r * ε∉r ` loc } (ListU vs) = [] ∷ (go-pos 0 vs)
+
+  go-pos : ∀ { r : RE } → ℕ → List (U r) → List (List ℕ)
+  go-pos id [] = []
+  go-pos id (u ∷ us) = (List.map (λ ps → id ∷ ps ) (pos u)) ++ go-pos (suc id) us
 
 ```
 
@@ -1055,10 +1059,422 @@ other cases is similar.
 
 ```agda
 
-≺-trans : ∀ { r : RE } { u₁ u₂ u₃ : U r } 
-  → r ⊢ u₁ ≺ u₂ 
+-- Transitivity of the MaybeNat< ordering.
+-- Used in ≺-trans (p≡q case) to compose sublen inequalities.
+≺Nat<-trans : ∀ { x y z : Maybe ℕ }
+  → MaybeNat< x y
+  → MaybeNat< y z
+  → MaybeNat< x z
+≺Nat<-trans maybenat-nothing-just (maybenat-just-just _) = maybenat-nothing-just
+≺Nat<-trans (maybenat-just-just x<y) (maybenat-just-just y<z) = maybenat-just-just (<-trans x<y y<z)
+
+-- just x is never equal to nothing. Used in MaybeNat< case analysis.
+¬just≡nothing : ∀ {x : ℕ} → ¬ just x ≡ nothing
+¬just≡nothing {x} ()
+
+-- nothing is never equal to just x. Used in MaybeNat< case analysis.
+¬nothing≡just : ∀ {x : ℕ} → ¬ nothing ≡ just x
+¬nothing≡just {x} ()
+
+-- Map membership: if xs ∈ ys, then n ∷ xs ∈ map (n ∷_) ys.
+-- Used in sublen-just-∈-pos to lift inner positions to mapped lists.
+map-member : ∀ {n : ℕ} {xs : List ℕ} (ys : List (List ℕ)) → xs ∈ ys → (n ∷ xs) ∈ List.map (n ∷_) ys
+map-member [] ()
+map-member (y ∷ ys) (here refl) = here refl
+map-member (y ∷ ys) (there x∈) = there (map-member ys x∈)
+
+-- Convert a proof that sublen returns just to a membership proof in pos.
+-- Used throughout ≺-trans to bridge between sublen equality and position membership.
+sublen-just-∈-pos : ∀ { r : RE } { u : U r } { q : List ℕ }
+  → ∃[ n ] sublen u q ≡ just n
+  → q ∈ pos u
+sublen-just-∈-pos {ε} {EmptyU} {[]} pr = here refl
+sublen-just-∈-pos {$ c ` loc} {LetterU _} {[]} pr = here refl
+sublen-just-∈-pos {l ● r ` loc} {PairU _ _} {[]} pr = here refl
+sublen-just-∈-pos {l ● r ` loc} {PairU u v} {0 ∷ xs} pr =
+  there (∈-++⁺ˡ (map-member (pos u) (sublen-just-∈-pos {l} {u} {xs} pr)))
+sublen-just-∈-pos {l ● r ` loc} {PairU u v} {1 ∷ xs} pr =
+  there (∈-++⁺ʳ _ (map-member (pos v) (sublen-just-∈-pos {r} {v} {xs} pr)))
+sublen-just-∈-pos {l ● r ` loc} {PairU u v} {suc (suc x) ∷ xs} pr =
+  ⊥-elim (¬just≡nothing (sym (proj₂ pr)))
+sublen-just-∈-pos {l + r ` loc} {LeftU u} {[]} pr = here refl
+sublen-just-∈-pos {l + r ` loc} {LeftU u} {0 ∷ xs} pr =
+  there (map-member (pos u) (sublen-just-∈-pos {l} {u} {xs} pr))
+sublen-just-∈-pos {l + r ` loc} {LeftU u} {1 ∷ xs} pr =
+  ⊥-elim (¬just≡nothing (sym (proj₂ pr)))
+sublen-just-∈-pos {l + r ` loc} {LeftU u} {suc (suc x) ∷ xs} pr =
+  ⊥-elim (¬just≡nothing (sym (proj₂ pr)))
+sublen-just-∈-pos {l + r ` loc} {RightU u} {[]} pr = here refl
+sublen-just-∈-pos {l + r ` loc} {RightU u} {1 ∷ xs} pr =
+  there (map-member (pos u) (sublen-just-∈-pos {r} {u} {xs} pr))
+sublen-just-∈-pos {l + r ` loc} {RightU u} {0 ∷ xs} pr =
+  ⊥-elim (¬just≡nothing (sym (proj₂ pr)))
+sublen-just-∈-pos {l + r ` loc} {RightU u} {suc (suc x) ∷ xs} pr =
+  ⊥-elim (¬just≡nothing (sym (proj₂ pr)))
+sublen-just-∈-pos {sr * se ` loc} {ListU us} {[]} pr = here refl
+sublen-just-∈-pos {sr * se ` loc} {ListU us} {n ∷ xs} pr = there (go 0 n us pr)
+  where
+    go : ∀ k n (us : List (U sr)) → ∃[ m ] sublen (ListU {sr} {se} {loc} us) (n ∷ xs) ≡ just m → (k + n) ∷ xs ∈ go-pos k us
+    go k zero (y ∷ us) pr =
+      subst (λ m → m ∷ xs ∈ go-pos k (y ∷ us)) (sym (+-identityʳ k))
+        (∈-++⁺ˡ (map-member (pos y) (sublen-just-∈-pos {sr} {y} {xs} pr)))
+    go k (suc n) (w ∷ us) pr =
+      subst (λ m → m ∷ xs ∈ go-pos k (w ∷ us)) (sym (+-suc k n))
+        (∈-++⁺ʳ _ (go (suc k) n us pr))
+    go k (suc n) [] pr = ⊥-elim (¬just≡nothing (sym (proj₂ pr)))
+
+-- Invert membership in a mapped list: if n∷xs is in map (n∷_) ys, then xs is in ys.
+-- Used in sublen-∈-just to strip the prefix from position paths.
+map-inv : ∀ { n : ℕ } { xs : List ℕ } ( ys : List (List ℕ) ) → (n ∷ xs) ∈ List.map (n ∷_) ys → xs ∈ ys
+map-inv (y ∷ ys') (here p) rewrite proj₂ (∷-injective p) = here refl
+map-inv (y ∷ ys') (there x∈xs) = there (map-inv ys' x∈xs)
+
+-- Extract prefix equality from mapped list membership.
+-- If suc n ∷ xs' is in map (_∷_ k) ys, then suc n ≡ k.
+-- Used in sublen-∈-just to eliminate impossible prefix mismatches.
+map-prefix≡ : ∀ {k n : ℕ} {xs' : List ℕ} {ys : List (List ℕ)} → (suc n ∷ xs') ∈ List.map (_∷_ k) ys → suc n ≡ k
+map-prefix≡ {ys = _ ∷ _} (here p) = proj₁ (∷-injective p)
+map-prefix≡ {ys = _ ∷ _} (there y∈ys) = map-prefix≡ y∈ys
+map-prefix≡ {ys = []} ()
+
+-- Shift mapped list indices: if suc n ∷ xs ∈ map (suc k ∷_) qs, then n ∷ xs ∈ map (k ∷_) qs.
+go-pos-shift-map : (k n : ℕ) (xs : List ℕ) (qs : List (List ℕ)) → (suc n ∷ xs) ∈ List.map (suc k ∷_) qs → (n ∷ xs) ∈ List.map (k ∷_) qs
+go-pos-shift-map k n xs [] ()
+go-pos-shift-map k n xs (q ∷ qs) (here p) =
+  subst (λ n' → n' ∷ xs ∈ List.map (k ∷_) (q ∷ qs)) (sym (suc-injective (proj₁ (∷-injective p)))) (subst (λ xs' → k ∷ xs' ∈ List.map (k ∷_) (q ∷ qs)) (sym (proj₂ (∷-injective p))) (here refl))
+go-pos-shift-map k n xs (q ∷ qs) (there y∈) = there (go-pos-shift-map k n xs qs y∈)
+
+-- Shift go-pos indices: membership in go-pos (suc k) implies membership in go-pos k
+-- after decrementing the path prefix. Used in sublen-∈-just for ListU positions.
+go-pos-shift : ∀ { r : RE } (k : ℕ) (vs : List (U r)) { n : ℕ } { xs : List ℕ }
+  → (suc n ∷ xs) ∈ go-pos (suc k) vs
+  → (n ∷ xs) ∈ go-pos k vs
+go-pos-shift k [] ()
+go-pos-shift {r} k (v ∷ vs) {n} {xs} y∈ = helper y∈
+  where
+    helper : (suc n ∷ xs) ∈ go-pos (suc k) (v ∷ vs) → (n ∷ xs) ∈ go-pos k (v ∷ vs)
+    helper y∈ with ∈-++⁻ {v = suc n ∷ xs} (List.map (suc k ∷_) (pos v)) {ys = go-pos (suc (suc k)) vs} y∈
+    ... | inj₁ y∈map = ∈-++⁺ˡ (go-pos-shift-map k n xs (pos v) y∈map)
+    ... | inj₂ y∈tail = ∈-++⁺ʳ _ (go-pos-shift (suc k) vs y∈tail)
+
+-- The empty list cannot be a member of a mapped list (all elements have prefix n).
+-- Used in sublen-∈-just to eliminate impossible membership proofs.
+¬[]∈map∷ : ∀ {n : ℕ} {ys : List (List ℕ)} → ¬ ([] ∈ List.map (n ∷_) ys)
+¬[]∈map∷ {ys = []} ()
+¬[]∈map∷ {ys = y ∷ ys} (here ())
+¬[]∈map∷ {ys = y ∷ ys} (there x∈) = ¬[]∈map∷ x∈
+
+-- Prefix mismatch implies non-membership: if m ≢ n, then m∷xs cannot be in map (n∷_) ys.
+-- Used in sublen-∈-just to eliminate impossible prefix mismatches.
+¬prefix∈map : ∀ {m n : ℕ} {xs : List ℕ} {ys : List (List ℕ)} → ¬ (m ≡ n) → ¬ (m ∷ xs ∈ List.map (n ∷_) ys)
+¬prefix∈map {ys = []} m≢n ()
+¬prefix∈map {ys = y ∷ ys} m≢n (here p) = m≢n (proj₁ (∷-injective p))
+¬prefix∈map {ys = y ∷ ys} m≢n (there x∈) = ¬prefix∈map m≢n x∈
+
+-- The empty list cannot be a member of go-pos (all elements have a numeric prefix).
+-- Used in sublen-∈-just for ListU to eliminate impossible membership proofs.
+¬[]∈go-pos : ∀ {r : RE} {n : ℕ} (us : List (U r)) → ¬ ([] ∈ go-pos n us)
+¬[]∈go-pos [] ()
+¬[]∈go-pos (u ∷ us) x∈ with ∈-++⁻ _ x∈
+... | inj₁ x∈map = ¬[]∈map∷ x∈map
+... | inj₂ x∈tail = ¬[]∈go-pos us x∈tail
+
+-- 0 ∷ xs cannot be in go-pos (suc k) us (all elements have prefix ≥ suc k ≥ 1).
+¬0∈go-pos-suc : ∀ {r : RE} (k : ℕ) (us : List (U r)) {xs : List ℕ} → ¬ (0 ∷ xs ∈ go-pos (suc k) us)
+¬0∈go-pos-suc k [] ()
+¬0∈go-pos-suc k (u ∷ us) x∈ with ∈-++⁻ _ x∈
+... | inj₁ x∈map = ¬prefix∈map ¬0≡suc x∈map
+  where ¬0≡suc : ¬ (0 ≡ suc k)
+        ¬0≡suc ()
+... | inj₂ x∈tail = ¬0∈go-pos-suc (suc k) us x∈tail
+
+-- 0 is not equal to 1. Used in prefix mismatch eliminations.
+¬0≡1 : ¬ (0 ≡ 1)
+¬0≡1 ()
+
+-- 1 is not equal to 0. Used in prefix mismatch eliminations.
+¬1≡0 : ¬ (1 ≡ 0)
+¬1≡0 ()
+
+-- suc n is never equal to 0. Used in prefix mismatch eliminations.
+¬suc≡0 : ∀ {n : ℕ} → ¬ (suc n ≡ 0)
+¬suc≡0 ()
+
+-- suc (suc n) is never equal to 1. Used in prefix mismatch eliminations.
+¬suc-suc≡1 : ∀ {n : ℕ} → ¬ (suc (suc n) ≡ 1)
+¬suc-suc≡1 {n} eq = ¬suc≡0 (suc-injective eq)
+
+-- Extract the 'just' witness from the right side of a MaybeNat< proof.
+-- Used in ≺-trans to extract sublen equality from the ordering witness.
+MaybeNat<-just-r : ∀ (x y : Maybe ℕ) → MaybeNat< x y → ∃[ z ] y ≡ just z
+MaybeNat<-just-r nothing (just z) maybenat-nothing-just = z , refl
+MaybeNat<-just-r (just x') (just y') (maybenat-just-just _<_) = y' , refl
+MaybeNat<-just-r nothing nothing ()
+MaybeNat<-just-r (just _) nothing ()
+
+-- Transitivity helper for sublen existential equalities.
+-- Given sublen u₁ q ≡ sublen u₂ q and a proof that sublen u₂ q ≡ just n,
+-- produces a proof that sublen u₁ q ≡ just n (packaged as ∃).
+trans-SublenEq : ∀ {r} {u₁ u₂ : U r} (q : List ℕ)
+  → sublen u₁ q ≡ sublen u₂ q
+  → ∃[ n ] sublen u₂ q ≡ just n
+  → ∃[ n ] sublen u₁ q ≡ just n
+trans-SublenEq q eq (n , eq₂) = n , trans eq eq₂
+
+-- Proof that sublen u [] ≡ just (length (proj₁ (flat u))).
+sublen-nil-∈ : ∀ {r : RE} (u : U r) → ∃[ n ] sublen u [] ≡ just n
+sublen-nil-∈ {ε} EmptyU = 0 , refl
+sublen-nil-∈ {$ c ` loc} (LetterU c) = 1 , refl
+sublen-nil-∈ {l ● r ` loc} (PairU u v) with length (proj₁ (flat (PairU {l} {r} {loc} u v)))
+... | k = k , refl
+sublen-nil-∈ {l + r ` loc} (LeftU u) with length (proj₁ (flat (LeftU {l} {r} {loc} u)))
+... | k = k , refl
+sublen-nil-∈ {l + r ` loc} (RightU u) with length (proj₁ (flat (RightU {l} {r} {loc} u)))
+... | k = k , refl
+sublen-nil-∈ {r * ε∉r ` loc} (ListU us) with length (proj₁ (flat (ListU {r} {ε∉r} {loc} us)))
+... | k = k , refl
+
+-- Convert position membership to a proof that sublen returns just.
+-- Used throughout ≺-trans to bridge between membership and sublen equality.
+sublen-∈-just : ∀ { r : RE } { u : U r } ( q' : List ℕ )
+  → q' ∈ pos u
+  → ∃[ n ] sublen u q' ≡ just n
+sublen-∈-just {ε} {EmptyU} [] (here p) rewrite p = 0 , refl
+sublen-∈-just {$ c ` loc} {LetterU _} [] (here p) rewrite p = 1 , refl
+sublen-∈-just {l ● r ` loc} {PairU u v} [] (here p) with length (proj₁ (flat (PairU {l} {r} {loc} u v)))
+... | k = k , refl
+sublen-∈-just {l ● r ` loc} {PairU u v} (0 ∷ xs) (there x∈xs++) with ∈-++⁻ _ x∈xs++
+... | inj₁ y∈ys = sublen-∈-just {l} {u} xs (map-inv (pos u) y∈ys)
+... | inj₂ x∈ = ⊥-elim (¬prefix∈map ¬0≡1 x∈)
+sublen-∈-just {l ● r ` loc} {PairU u v} (1 ∷ xs) (there x∈xs++) with ∈-++⁻ _ x∈xs++
+... | inj₁ x∈ = ⊥-elim (¬prefix∈map ¬1≡0 x∈)
+... | inj₂ y∈ys = sublen-∈-just {r} {v} xs (map-inv (pos v) y∈ys)
+sublen-∈-just {l + r ` loc} {LeftU u} [] (here p) with length (proj₁ (flat (LeftU {l} {r} {loc} u)))
+... | k = k , refl
+sublen-∈-just {l + r ` loc} {LeftU u} [] (there x∈) = ⊥-elim (¬[]∈map∷ x∈)
+sublen-∈-just {l + r ` loc} {LeftU u} (0 ∷ xs) (there x∈xs) = sublen-∈-just {l} {u} xs (map-inv (pos u) x∈xs)
+sublen-∈-just {l + r ` loc} {LeftU u} (suc x ∷ q') (there x∈) = ⊥-elim (¬prefix∈map ¬suc≡0 x∈)
+sublen-∈-just {l + r ` loc} {RightU u} [] (here p) with length (proj₁ (flat (RightU {l} {r} {loc} u)))
+... | k = k , refl
+sublen-∈-just {l + r ` loc} {RightU u} [] (there x∈) = ⊥-elim (¬[]∈map∷ x∈)
+sublen-∈-just {l + r ` loc} {RightU u} (0 ∷ q') (there x∈) = ⊥-elim (¬prefix∈map ¬0≡1 x∈)
+sublen-∈-just {l + r ` loc} {RightU u} (1 ∷ xs) (there x∈xs) = sublen-∈-just {r} {u} xs (map-inv (pos u) x∈xs)
+sublen-∈-just {l + r ` loc} {RightU u} (suc (suc x) ∷ q') (there x∈) = ⊥-elim (¬prefix∈map ¬suc-suc≡1 x∈)
+sublen-∈-just {sr * se ` loc} {ListU us} [] (here p) with length (proj₁ (flat (ListU {sr} {se} {loc} us)))
+... | k = k , refl
+sublen-∈-just {sr * se ` loc} {ListU us} [] (there x∈) = ⊥-elim (¬[]∈go-pos us x∈)
+sublen-∈-just {r₂} {ListU {r₁} (u ∷ us)} (0 ∷ xs) (there x∈xs++) = go⁰ (∈-++⁻ _ x∈xs++)
+  where go⁰ : _ ⊎ _ → _
+        go⁰ (inj₁ y∈ys₁) = sublen-∈-just {r₁} {u} xs (map-inv (pos u) y∈ys₁)
+        go⁰ (inj₂ x∈) = ⊥-elim (¬0∈go-pos-suc 0 us x∈)
+sublen-∈-just {sr * se ` loc} {ListU {r₁} (u ∷ us)} (suc n ∷ xs) (there x∈xs++) with ∈-++⁻ _ x∈xs++
+... | inj₁ y∈ = ⊥-elim (¬suc-n≡0 (map-prefix≡ {k = 0} y∈))
+  where ¬suc-n≡0 : ¬ (suc n ≡ 0)
+        ¬suc-n≡0 ()
+... | inj₂ y∈ = helper n us y∈
+  where
+    helper : ∀ n (vs : List (U r₁)) → (suc n ∷ xs) ∈ go-pos 1 vs → ∃ λ m → sublen (ListU {r₁} {se} {loc} (u ∷ vs)) (suc n ∷ xs) ≡ just m
+    helper zero (v ∷ vs) y∈ with ∈-++⁻ _ y∈
+    ... | inj₁ y∈map = sublen-∈-just {r₁} {v} xs (map-inv (pos v) y∈map)
+    ... | inj₂ y∈tail = ⊥-elim (¬1∈go-pos-suc1 0 vs y∈tail)
+      where
+        ¬1≡sk : ∀ {k : ℕ} → ¬ (1 ≡ suc (suc k))
+        ¬1≡sk ()
+        ¬1∈go-pos-suc1 : ∀ (k : ℕ) (ws : List (U r₁)) → (1 ∷ xs) ∈ go-pos (suc (suc k)) ws → ⊥
+        ¬1∈go-pos-suc1 k [] ()
+        ¬1∈go-pos-suc1 k (w ∷ ws) y∈ with ∈-++⁻ _ y∈
+        ... | inj₁ y∈map = ⊥-elim (¬1≡sk (map-prefix≡ {k = suc (suc k)} y∈map))
+        ... | inj₂ y∈tail = ¬1∈go-pos-suc1 (suc k) ws y∈tail
+    helper (suc n) (v ∷ vs) y∈ with ∈-++⁻ _ y∈
+    ... | inj₁ y∈map = ⊥-elim (¬suc-suc-n≡1 (map-prefix≡ {k = 1} y∈map))
+      where ¬suc-suc-n≡1 : ¬ (suc (suc n) ≡ 1)
+            ¬suc-suc-n≡1 ()
+    ... | inj₂ y∈tail = helper n vs (go-pos-shift 1 vs y∈tail)
+
+sublen-∈-just {sr * se ` loc} {ListU []} (n ∷ xs) (there ())
+sublen-∈-just {l ● r ` loc} {u = PairU u v} [] (there x∈) = ⊥-elim (¬[]∈ x∈)
+  where
+    ¬[]∈ : ¬ ([] ∈ List.map (0 ∷_) (pos u) ++ List.map (1 ∷_) (pos v))
+    ¬[]∈ x∈ with ∈-++⁻ {v = []} (List.map (0 ∷_) (pos u)) x∈
+    ... | inj₁ x∈map = ¬[]∈map∷ x∈map
+    ... | inj₂ x∈map = ¬[]∈map∷ x∈map
+sublen-∈-just {l ● r ` loc} {u = PairU u v} (suc (suc x) ∷ q') (there x∈) = ⊥-elim (¬suc2∈ x∈)
+  where
+    ¬suc2∈ : ¬ (suc (suc x) ∷ q' ∈ List.map (0 ∷_) (pos u) ++ List.map (1 ∷_) (pos v))
+    ¬suc2∈ x∈ with ∈-++⁻ {v = suc (suc x) ∷ q'} (List.map (0 ∷_) (pos u)) x∈
+    ... | inj₁ x∈map = ¬prefix∈map ¬suc≡0 x∈map
+    ... | inj₂ x∈map = ¬prefix∈map ¬suc-suc≡1 x∈map
+
+-- Extract the underlying < proof from a suc-lifted inequality.
+-- Used in ≺-trans to deconstruct ≺lex-head proofs.
+<-injective : ∀ {m n} (p : suc m < suc n) → ∃ λ (q : m < n) → s<s q ≡ p
+<-injective (s<s q) = q , refl
+
+-- Helper for the ≺-trans q≺p case: prove the condition field of ≺p.
+-- For any q' in pos u₁ ++ pos u₃ with q' ≺Lex q, we show sublen u₁ q' ≡ sublen u₃ q'.
+-- This is used in all three branches of the mb₂ case analysis.
+eq-cond-q-helper : ∀ { r : RE } (u₁ u₂ u₃ : U r) (p q : List ℕ)
+  → (cond₁ : ∀ (x : List ℕ) → x ∈ pos u₁ ++ pos u₂ → x ≺Lex p → sublen u₁ x ≡ sublen u₂ x)
+  → (cond₂ : ∀ (x : List ℕ) → x ∈ pos u₂ ++ pos u₃ → x ≺Lex q → sublen u₂ x ≡ sublen u₃ x)
+  → q ≺Lex p
+  → ∀ (q' : List ℕ) → q' ∈ pos u₁ ++ pos u₃ → q' ≺Lex q → sublen u₁ q' ≡ sublen u₃ q'
+eq-cond-q-helper {r} u₁ u₂ u₃ p q cond₁ cond₂ q≺p q' q'∈ q'≺q = helper (∈-++⁻ {v = q'} (pos u₁) q'∈)
+  where
+    helper : q' ∈ pos u₁ ⊎ q' ∈ pos u₃ → sublen u₁ q' ≡ sublen u₃ q'
+    helper (inj₁ q'∈u₁) =
+      begin
+        sublen u₁ q'
+      ≡⟨ cond₁ q' (∈-++⁺ˡ q'∈u₁) (≺Lex-trans q' q p q'≺q q≺p) ⟩
+        sublen u₂ q'
+      ≡⟨ cond₂ q' (∈-++⁺ˡ q'∈u₂) q'≺q ⟩
+        sublen u₃ q'
+      ∎
+      where
+        q'∈u₂-just : ∃ λ n → sublen u₂ q' ≡ just n
+        q'∈u₂-just = trans-SublenEq {r} q' (sym (cond₁ q' (∈-++⁺ˡ q'∈u₁) (≺Lex-trans q' q p q'≺q q≺p))) (sublen-∈-just {u = u₁} q' q'∈u₁)
+
+        q'∈u₂ : q' ∈ pos u₂
+        q'∈u₂ = sublen-just-∈-pos {u = u₂} q'∈u₂-just
+
+    helper (inj₂ q'∈u₃) =
+      trans (cond₁ q' (∈-++⁺ʳ _ q'∈u₂) (≺Lex-trans q' q p q'≺q q≺p))
+            (cond₂ q' (∈-++⁺ʳ _ q'∈u₃) q'≺q)
+      where
+        q'∈u₂-just : ∃ λ n → sublen u₂ q' ≡ just n
+        q'∈u₂-just = trans-SublenEq {r} q' (cond₂ q' (∈-++⁺ʳ _ q'∈u₃) q'≺q) (sublen-∈-just {u = u₃} q' q'∈u₃)
+
+        q'∈u₂ : q' ∈ pos u₂
+        q'∈u₂ = sublen-just-∈-pos {u = u₂} q'∈u₂-just
+
+-- Given u₁ ≺ u₂ with witness p and u₂ ≺ u₃ with witness q,
+-- we case-analyse on the trichotomy of p and q (using ≺Lex-trichotomous)
+-- to build a witness for u₁ ≺ u₃.
+≺-trans : ∀ { r : RE } { u₁ u₂ u₃ : U r }
+  → r ⊢ u₁ ≺ u₂
   → r ⊢ u₂ ≺ u₃
   --------------
   → r ⊢ u₁ ≺ u₃
-≺-trans =  {!!}   
+≺-trans {r} {u₁} {u₂} {u₃} (≺ _ _ (p , ≺p _ _ p (sublen< _ _ p mb₁) cond₁)) (≺ _ _ (q , ≺p _ _ q (sublen< _ _ q mb₂) cond₂))
+   with ≺Lex-trichotomous p q
+... | inj₁ p≺q = ≺ u₁ u₃ (p , ≺p u₁ u₃ p (sublen< u₁ u₃ p mb) eq-cond)
+   where
+    p∈u₂-just : ∃ λ n → sublen u₂ p ≡ just n
+    p∈u₂-just = MaybeNat<-just-r (sublen u₁ p) (sublen u₂ p) mb₁
+
+    p∈u₂-pos : p ∈ pos u₂
+    p∈u₂-pos = sublen-just-∈-pos p∈u₂-just
+
+    sublen-u₂-p≡u₃-p : sublen u₂ p ≡ sublen u₃ p
+    sublen-u₂-p≡u₃-p = cond₂ p (∈-++⁺ˡ p∈u₂-pos) p≺q
+
+    mb : MaybeNat< (sublen u₁ p) (sublen u₃ p)
+    mb = subst (λ y → MaybeNat< (sublen u₁ p) y) sublen-u₂-p≡u₃-p mb₁
+
+    eq-cond : ∀ (q' : List ℕ) → q' ∈ pos u₁ ++ pos u₃ → q' ≺Lex p → sublen u₁ q' ≡ sublen u₃ q'
+    eq-cond q' q'∈ q'≺p with ∈-++⁻ {v = q'} (pos u₁) q'∈
+    ... | inj₁ q'∈u₁ =
+      begin
+      sublen u₁ q'
+      ≡⟨ cond₁ q' (∈-++⁺ˡ q'∈u₁) q'≺p ⟩
+      sublen u₂ q'
+      ≡⟨ cond₂ q' (∈-++⁺ˡ q'∈u₂) (≺Lex-trans q' p q q'≺p p≺q) ⟩
+      sublen u₃ q'
+      ∎
+      where
+        q'∈u₂-just : ∃ λ n → sublen u₂ q' ≡ just n
+        q'∈u₂-just = trans-SublenEq {r} q' (sym (cond₁ q' (∈-++⁺ˡ q'∈u₁) q'≺p)) (sublen-∈-just q' q'∈u₁)
+
+        q'∈u₂ : q' ∈ pos u₂
+        q'∈u₂ = sublen-just-∈-pos q'∈u₂-just
+
+    ... | inj₂ q'∈u₃ =
+      begin
+        sublen u₁ q'
+      ≡⟨ cond₁ q' (∈-++⁺ˡ q'∈u₁) q'≺p ⟩
+        sublen u₂ q'
+      ≡⟨ cond₂ q' (∈-++⁺ˡ q'∈u₂) (≺Lex-trans q' p q q'≺p p≺q) ⟩
+        sublen u₃ q'
+      ∎
+      where
+        q'∈u₃-just : ∃ λ n → sublen u₃ q' ≡ just n
+        q'∈u₃-just = sublen-∈-just q' q'∈u₃
+
+        q'∈u₂-just : ∃ λ n → sublen u₂ q' ≡ just n
+        q'∈u₂-just = trans-SublenEq {r} q' (cond₂ q' (∈-++⁺ʳ _ q'∈u₃) (≺Lex-trans q' p q q'≺p p≺q)) q'∈u₃-just
+
+        q'∈u₂ : q' ∈ pos u₂
+        q'∈u₂ = sublen-just-∈-pos q'∈u₂-just
+
+        q'∈u₁-just : ∃ λ n → sublen u₁ q' ≡ just n
+        q'∈u₁-just = trans-SublenEq {r} q' (cond₁ q' (∈-++⁺ʳ _ q'∈u₂) q'≺p) q'∈u₂-just
+
+        q'∈u₁ : q' ∈ pos u₁
+        q'∈u₁ = sublen-just-∈-pos q'∈u₁-just
+
+... | inj₂ (inj₁ q≺p) = helper₂ (sublen u₂ q) refl
+  where
+    helper₂ : (x : Maybe ℕ) → sublen u₂ q ≡ x → r ⊢ u₁ ≺ u₃
+    helper₂ (just x) eq = ≺ u₁ u₃ (q , ≺p u₁ u₃ q (sublen< u₁ u₃ q mb-q) eq-cond-q)
+      where
+        q∈u₂ : q ∈ pos u₂
+        q∈u₂ = sublen-just-∈-pos (x , eq)
+
+        sublen-u₁-q≡u₂-q : sublen u₁ q ≡ sublen u₂ q
+        sublen-u₁-q≡u₂-q = cond₁ q (∈-++⁺ʳ _ q∈u₂) q≺p
+
+        mb-q : MaybeNat< (sublen u₁ q) (sublen u₃ q)
+        mb-q = subst (λ z → MaybeNat< z (sublen u₃ q)) (sym sublen-u₁-q≡u₂-q) mb₂
+
+        eq-cond-q = eq-cond-q-helper u₁ u₂ u₃ p q cond₁ cond₂ q≺p
+
+    helper₂ nothing eq = ≺ u₁ u₃ (q , ≺p u₁ u₃ q (sublen< u₁ u₃ q mb-q) eq-cond-q)
+      where
+        sublen-u₁-q≡nothing : sublen u₁ q ≡ nothing
+        sublen-u₁-q≡nothing = lemma (sublen u₁ q) refl
+          where
+            lemma : ∀ (x : Maybe ℕ) → sublen u₁ q ≡ x → sublen u₁ q ≡ nothing
+            lemma nothing eq' = eq'
+            lemma (just x) eq' = ⊥-elim (¬nothing≡just (trans (sym eq) (trans (sym (cond₁ q (∈-++⁺ˡ (sublen-just-∈-pos {r} {u₁} (x , eq'))) q≺p)) eq')))
+
+        mb-q : MaybeNat< (sublen u₁ q) (sublen u₃ q)
+        mb-q = subst (λ z → MaybeNat< z (sublen u₃ q)) (trans eq (sym sublen-u₁-q≡nothing)) mb₂
+
+        eq-cond-q = eq-cond-q-helper u₁ u₂ u₃ p q cond₁ cond₂ q≺p
+
+... | inj₂ (inj₂ p≡q) = ≺ u₁ u₃ (p , ≺p u₁ u₃ p (sublen< u₁ u₃ p mb-eq) eq-cond-eq)
+   where
+    mb-eq : MaybeNat< (sublen u₁ p) (sublen u₃ p)
+    mb-eq rewrite p≡q = ≺Nat<-trans mb₁ mb₂
+
+    eq-cond-eq : ∀ (q' : List ℕ) → q' ∈ pos u₁ ++ pos u₃ → q' ≺Lex p → sublen u₁ q' ≡ sublen u₃ q'
+    eq-cond-eq q' q'∈ q'≺p with ∈-++⁻ {v = q'} (pos u₁) q'∈
+    ... | inj₁ q'∈u₁ =
+      begin
+        sublen u₁ q'
+      ≡⟨ cond₁ q' (∈-++⁺ˡ q'∈u₁) q'≺p ⟩
+        sublen u₂ q'
+      ≡⟨ cond₂ q' (∈-++⁺ˡ q'∈u₂) (subst (λ x → q' ≺Lex x) p≡q q'≺p) ⟩
+        sublen u₃ q'
+      ∎
+      where
+        q'∈u₂-just : ∃ λ n → sublen u₂ q' ≡ just n
+        q'∈u₂-just = trans-SublenEq {r} q' (sym (cond₁ q' (∈-++⁺ˡ q'∈u₁) q'≺p)) (sublen-∈-just q' q'∈u₁)
+
+        q'∈u₂ : q' ∈ pos u₂
+        q'∈u₂ = sublen-just-∈-pos q'∈u₂-just
+
+    ... | inj₂ q'∈u₃ =
+      begin
+        sublen u₁ q'
+      ≡⟨ cond₁ q' (∈-++⁺ʳ _ q'∈u₂) q'≺p ⟩
+        sublen u₂ q'
+      ≡⟨ cond₂ q' (∈-++⁺ʳ _ q'∈u₃) (subst (λ x → q' ≺Lex x) p≡q q'≺p) ⟩
+        sublen u₃ q'
+      ∎
+      where
+        q'∈u₂-just : ∃ λ n → sublen u₂ q' ≡ just n
+        q'∈u₂-just = trans-SublenEq {r} q' (cond₂ q' (∈-++⁺ʳ _ q'∈u₃) (subst (λ x → q' ≺Lex x) p≡q q'≺p)) (sublen-∈-just q' q'∈u₃)
+
+        q'∈u₂ : q' ∈ pos u₂
+        q'∈u₂ = sublen-just-∈-pos q'∈u₂-just
 ```

@@ -1482,11 +1482,50 @@ eq-cond-q-helper {r} u₁ u₂ u₃ p q cond₁ cond₂ q≺p q' q'∈ q'≺q = 
 Lemma: _ ⊢ _ ≺ _ is asymmetric
 
 ```agda
+just-inj : {x y : ℕ} → just x ≡ just y → x ≡ y
+just-inj refl = refl
+
+maybeNatAsym : (x : Maybe ℕ) → (y : Maybe ℕ) → MaybeNat< x y → x ≡ y → ⊥
+maybeNatAsym nothing (just n) maybenat-nothing-just x≡y = ¬nothing≡just x≡y
+maybeNatAsym (just m) (just n) (maybenat-just-just m<nat) x≡y = <-irrefl (just-inj x≡y) m<nat
+
+maybeNat<-asym : ∀ {x y : Maybe ℕ} → MaybeNat< x y → MaybeNat< y x → ⊥
+maybeNat<-asym maybenat-nothing-just ()
+maybeNat<-asym {just mx} {just my} (maybenat-just-just mn) (maybenat-just-just nm) = <-irrefl refl mm
+  where
+    mm : mx < mx
+    mm = <-trans mn nm
+
+open-exist : ∀ {r : RE} {u v : U r} → r ⊢ u ≺ v → Σ (List ℕ) (λ p → r , p ⊢ u ≺ v)
+open-exist (≺ u v e) = e
+
 ≺-asym : ∀ {r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ ≺ u₂
   -------------
   → ¬ ( r ⊢ u₂ ≺ u₁)
-≺-asym  = {!!}   
+≺-asym {r} {u₁} {u₂} u₁≺u₂ u₂≺u₁ with open-exist u₁≺u₂
+... | pw₁ , ≺p _ _ pw₁ (sublen< _ _ pw₁ mb₁) cond₁ = go u₂≺u₁
+  where
+    go : r ⊢ u₂ ≺ u₁ → ⊥
+    go (≺ _ _ (pw₂ , ≺p _ _ pw₂ (sublen< _ _ pw₂ mb₂) cond₂))
+      with ≺Lex-trichotomous pw₁ pw₂
+    ... | inj₁ pw₁≺pw₂ = maybeNatAsym (sublen u₁ pw₁) (sublen u₂ pw₁) mb₁ (sym (cond₂ pw₁ (∈-++⁺ˡ pw₁∈u₂) pw₁≺pw₂))
+      where
+        pw₁∈u₂-just : ∃ λ n → sublen u₂ pw₁ ≡ just n
+        pw₁∈u₂-just = MaybeNat<-just-r (sublen u₁ pw₁) (sublen u₂ pw₁) mb₁
+
+        pw₁∈u₂ : pw₁ ∈ pos u₂
+        pw₁∈u₂ = sublen-just-∈-pos {r} {u₂} pw₁∈u₂-just
+
+    ... | inj₂ (inj₁ pw₂≺pw₁) = maybeNatAsym (sublen u₂ pw₂) (sublen u₁ pw₂) mb₂ (sym (cond₁ pw₂ (∈-++⁺ˡ pw₂∈u₁) pw₂≺pw₁))
+      where
+        pw₂∈u₁-just : ∃ λ n → sublen u₁ pw₂ ≡ just n
+        pw₂∈u₁-just = MaybeNat<-just-r (sublen u₂ pw₂) (sublen u₁ pw₂) mb₂
+
+        pw₂∈u₁ : pw₂ ∈ pos u₁
+        pw₂∈u₁ = sublen-just-∈-pos {r} {u₁} pw₂∈u₁-just
+
+    ... | inj₂ (inj₂ pw₁≡pw₂) = maybeNat<-asym {sublen u₁ pw₁} {sublen u₂ pw₁} mb₁ (subst (λ y → MaybeNat< (sublen u₂ y) (sublen u₁ y)) (sym pw₁≡pw₂) mb₂)
 
 ```
 

@@ -1536,7 +1536,7 @@ Lemma: _ ⊢ _ ≺ _ is irreflexive
   → u₁ ≡ u₂
   ------------------
   → ¬ (r ⊢ u₁ ≺ u₂)
-≺-irrefl {r} {u₁} {u₂} u₁≡u₂ = {!!} 
+≺-irrefl u₁≡u₂ u₁≺u₂ rewrite u₁≡u₂ = ≺-asym u₁≺u₂ u₁≺u₂
 ```
 
 

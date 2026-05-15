@@ -1529,7 +1529,18 @@ open-exist (≺ u v e) = e
 
 ```
 
-Lemma: _ ⊢ _ ≼ _ is transtive 
+Lemma: _ ⊢ _ ≺ _ is irreflexive
+
+```agda
+≺-irrefl : ∀ { r : RE } { u₁ u₂ : U r }
+  → u₁ ≡ u₂
+  ------------------
+  → ¬ (r ⊢ u₁ ≺ u₂)
+≺-irrefl {r} {u₁} {u₂} u₁≡u₂ = {!!} 
+```
+
+
+Lemma: _ ⊢ _ ≼ _ is transitive 
 
 
 ```agda
@@ -1545,6 +1556,10 @@ Lemma: _ ⊢ _ ≼ _ is transtive
 
 
 ```
+
+
+
+
 
 Lemma: _ ⊢ _ ≼ _ is reflexive
 

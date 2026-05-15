@@ -1478,3 +1478,54 @@ eq-cond-q-helper {r} u₁ u₂ u₃ p q cond₁ cond₂ q≺p q' q'∈ q'≺q = 
         q'∈u₂ : q' ∈ pos u₂
         q'∈u₂ = sublen-just-∈-pos q'∈u₂-just
 ```
+
+Lemma: _ ⊢ _ ≺ _ is asymmetric
+
+```agda
+≺-asym : ∀ {r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ ≺ u₂
+  -------------
+  → ¬ ( r ⊢ u₂ ≺ u₁)
+≺-asym  = {!!}   
+
+```
+
+Lemma: _ ⊢ _ ≼ _ is transtive 
+
+
+```agda
+≼-trans : ∀ { r : RE } { u₁ u₂ u₃ : U r }
+  → r ⊢ u₁ ≼ u₂
+  → r ⊢ u₂ ≼ u₃
+  --------------
+  → r ⊢ u₁ ≼ u₃
+≼-trans (inj₁ u₁≺u₂) (inj₁ u₂≺u₃) = inj₁ (≺-trans u₁≺u₂  u₂≺u₃)
+≼-trans (inj₂ u₁≡u₂) (inj₁ u₂≺u₃) rewrite u₁≡u₂ = inj₁ u₂≺u₃
+≼-trans (inj₁ u₁≺u₂) (inj₂ u₂≡u₃) rewrite sym u₂≡u₃ = inj₁ u₁≺u₂
+≼-trans (inj₂ u₁≡u₂) (inj₂ u₂≡u₃) rewrite sym u₂≡u₃ = inj₂ u₁≡u₂
+
+
+```
+
+Lemma: _ ⊢ _ ≼ _ is reflexive
+
+```agda
+≼-refl : ∀ { r : RE } { u : U r }
+  → r ⊢ u ≼ u
+≼-refl {r} {u} = inj₂ refl 
+```
+
+
+Lemma: _ ⊢ _ ≼ _ is anti symmetric
+
+```agda
+≼-antisym : ∀ { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ ≼ u₂
+  → r ⊢ u₂ ≼ u₁
+  --------------
+  → u₁ ≡ u₂ 
+≼-antisym (inj₂ u₁≡u₂) _ = u₁≡u₂
+≼-antisym _ (inj₂ u₂≡u₁) = sym u₂≡u₁
+≼-antisym (inj₁ u₁≺u₂) (inj₁ u₂≺u₁) = Nullary.contradiction u₁≺u₂ (≺-asym u₂≺u₁)  
+
+```

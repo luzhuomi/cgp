@@ -1587,8 +1587,8 @@ Lemma: _ ⊢ _ ≼ _ is anti symmetric
 Lemma: ≼ is wellfounded given a fix flatten word.
 
 ```agda
-≼-wellfound : ∀ { r : RE } { w : List Char }
+≼-wellfounded : ∀ { r : RE } { w : List Char }
   → w ∈⟦ r ⟧ 
-  → ∃[ u ] ( ( v : U r ) →  r ⊢ u ≼ v )
-≼-wellfound = {!!} 
+  → ∃[ u ] ( proj₁ (flat u) ≡ w ) → ( v : U r ) → (proj₁ (flat v) ≡ w) →  r ⊢ u ≼ v )
+≼-wellfounded = {!!} 
 ```

@@ -1583,3 +1583,12 @@ Lemma: _ ⊢ _ ≼ _ is anti symmetric
 ≼-antisym (inj₁ u₁≺u₂) (inj₁ u₂≺u₁) = Nullary.contradiction u₁≺u₂ (≺-asym u₂≺u₁)  
 
 ```
+
+Lemma: ≼ is wellfounded given a fix flatten word.
+
+```agda
+≼-wellfound : ∀ { r : RE } { w : List Char }
+  → w ∈⟦ r ⟧ 
+  → ∃[ u ] ( ( v : U r ) →  r ⊢ u ≼ v )
+≼-wellfound = {!!} 
+```

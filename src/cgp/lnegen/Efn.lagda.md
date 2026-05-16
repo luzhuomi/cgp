@@ -51,10 +51,10 @@ import Data.Char as Char
 open Char using (Char )
 
 import Data.Nat as Nat
-open Nat using ( ℕ ; suc ; zero )
+open Nat using ( ℕ ; suc ; zero ; _+_ ; _<_ )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; _≟_ )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; _≟_ ; +-identityˡ )
 
 
 
@@ -65,7 +65,7 @@ import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ )
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ )
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -181,6 +181,9 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
     |injFst-pair-u-v|>0 : ∀ {u v} → length (proj₁ (flat (PairU {l} {r} {loc} (inj u) v))) Nat.> 0
     |injFst-pair-u-v|>0 {u} {v} rewrite injFstSnd (PairU u v) = Nat.s≤s Nat.z≤n
 
+    sound-ev-len : ∀ (u : U (p ● t ` loc')) → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    sound-ev-len u rewrite sound-ev u = refl
+
     >-inc-ev (PairU u₁ v₁) (PairU u₂ v₂) len|uv₁|≡len|uv₂| (be len|pair-u₁v₁|≡len|pair-u₂v₂| len|pair-u₂v₂|≡0 (seq₁ u₁>u₂))
       = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| u₁>u₂))
       where
@@ -227,21 +230,249 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → Efn p 
-    → ( (u₁ : U p) → (u₂ : U p)
-        → length (proj₁ (flat u₁)) Nat.> 0
-        → length (proj₁ (flat u₂)) Nat.> 0 
-        →  p ⊢ u₁ > u₂ → r ⊢ inj u₁ > inj u₂ ) -- strict increasing evidence for bne
+    → Efn p
     → ( (v₁ : U p) → (v₂ : U p)
-        → length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₂))
-        →  p ⊢ v₁ > v₂ → r ⊢ inj v₁ > inj v₂ ) -- strict increasing evidience for be and to rule out lne
+        → proj₁ (flat v₁) ≡ proj₁ (flat v₂)
+        →  p ⊢ v₁ > v₂ → r ⊢ inj v₁ > inj v₂ )
     → >-Inc {r} {c} (pdinstance {p} {r} {c} inj sound-ev)
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-               → ( pdi : PDInstance l c )
-               → >-Inc {l} {c} pdi
-               ------------------------
-               → >-Inc {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+                → ( pdi : PDInstance l c )
+                → >-Inc {l} {c} pdi
+                ------------------------
+                → >-Inc {l ● r ` loc} {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
 
->-inc-fst  =  {!!} 
+>-inc-fst {l} {r} {loc} {c} (pdinstance {l'} {l} {c} inj sound-ev) (>-inc efn-l inc-bne inc-lne inc-be) = >-inc (efn-● efn-l) inc-bne-fst inc-lne-fst inc-be-fst
+  where
+    injFst : U (l' ● r ` loc) → U (l ● r ` loc)
+    injFst = mkinjFst inj
+
+    injFstSnd : (u : U (l' ● r ` loc)) → proj₁ (flat (injFst u)) ≡ c ∷ proj₁ (flat u)
+    injFstSnd = mkinjFstSoundEv inj sound-ev
+
+    |injFst-pair-u-v|>0 : ∀ {u v} → length (proj₁ (flat (PairU {l} {r} {loc} (inj u) v))) Nat.> 0
+    |injFst-pair-u-v|>0 {u} {v} rewrite injFstSnd (PairU u v) = Nat.s≤s Nat.z≤n
+
+    sound-ev-len : ∀ (u : U l') → length (proj₁ (flat (inj u))) ≡ suc (length (proj₁ (flat u)))
+    sound-ev-len u rewrite sound-ev u = refl
+
+    flat-pair : ∀ {l₁ r₁ loc₁} (u : U l₁) (v : U r₁) → proj₁ (flat (PairU u v)) ≡ proj₁ (flat u) ++ proj₁ (flat v)
+    flat-pair u v with flat u | flat v
+    flat-pair u v | xs , _ | ys , _ = refl
+
+    >-inc-seq₁-bne : ∀ (u₁ u₂ : U l') (v₁ v₂ : U r)
+                     → length (proj₁ (flat u₁)) ≢ 0
+                     → length (proj₁ (flat u₂)) ≢ 0
+                     → l' ● r ` loc ⊢ PairU u₁ v₁ >ⁱ PairU u₂ v₂
+                     → l ● r ` loc ⊢ PairU (inj u₁) v₁ >ⁱ PairU (inj u₂) v₂
+    >-inc-seq₁-bne u₁ u₂ v₁ v₂ ¬u₁≡0 ¬u₂≡0 (seq₁ (be len-u₁-u₂ u₂≡0 u₁>ⁱu₂))
+      = seq₁ (inc-be u₁ u₂ len-u₁-u₂ (be len-u₁-u₂ u₂≡0 u₁>ⁱu₂))
+    >-inc-seq₁-bne u₁ u₂ v₁ v₂ ¬u₁≡0 ¬u₂≡0 (seq₁ (bne u₁>0' u₂>0' u₁>ⁱu₂))
+      = seq₁ (inc-bne u₁ u₂ (¬≡0→>0 ¬u₁≡0) (¬≡0→>0 ¬u₂≡0) (bne u₁>0' u₂>0' u₁>ⁱu₂))
+    >-inc-seq₁-bne u₁ u₂ v₁ v₂ ¬u₁≡0 ¬u₂≡0 (seq₁ (lne u₁>0' u₂≡0))
+      = ⊥-elim (n≡0→¬n>0 u₂≡0 (¬≡0→>0 ¬u₂≡0))
+    >-inc-seq₁-bne u₁ u₂ v₁ v₂ _ _ (seq₂ u₁≡u₂ v₁>v₂) = seq₂ (cong inj u₁≡u₂) v₁>v₂
+
+    >-inc-seq₁-lne : ∀ (u₁ u₂ : U l') (v₁ v₂ : U r)
+                     → length (proj₁ (flat u₁)) ≢ 0
+                     → length (proj₁ (flat u₂)) ≡ 0
+                     → l' ● r ` loc ⊢ PairU u₁ v₁ >ⁱ PairU u₂ v₂
+                     → l ● r ` loc ⊢ PairU (inj u₁) v₁ >ⁱ PairU (inj u₂) v₂
+    >-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 (seq₁ (be len-u₁-u₂ u₂≡0' u₁>ⁱu₂))
+      = ⊥-elim (n≡0→¬n>0 (trans len-u₁-u₂ u₂≡0') (¬≡0→>0 ¬u₁≡0))
+    >-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 (seq₁ (bne u₁>0' u₂>0' u₁>ⁱu₂))
+      = ⊥-elim (n≡0→¬n>0 u₂≡0 u₂>0')
+    >-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 (seq₁ (lne u₁>0' u₂≡0'))
+      = seq₁ (inc-lne u₁ u₂ (¬≡0→>0 ¬u₁≡0) u₂≡0 (lne u₁>0' u₂≡0'))
+    >-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 (seq₂ u₁≡u₂ v₁>v₂)
+      = ⊥-elim (n≡0→¬n>0 (trans (cong (length ∘ proj₁ ∘ flat) u₁≡u₂) u₂≡0) (¬≡0→>0 ¬u₁≡0))
+
+    >-inc-seq₁-be : ∀ (u₁ u₂ : U l') (v₁ v₂ : U r)
+                    → length (proj₁ (flat u₁)) ≡ length (proj₁ (flat u₂))
+                    → l' ● r ` loc ⊢ PairU u₁ v₁ >ⁱ PairU u₂ v₂
+                    → l ● r ` loc ⊢ PairU (inj u₁) v₁ >ⁱ PairU (inj u₂) v₂
+    >-inc-seq₁-be u₁ u₂ v₁ v₂ len-u₁-u₂ (seq₁ (be len-u₁-u₂' u₂≡0 u₁>ⁱu₂))
+      = seq₁ (inc-be u₁ u₂ len-u₁-u₂ (be len-u₁-u₂' u₂≡0 u₁>ⁱu₂))
+    >-inc-seq₁-be u₁ u₂ v₁ v₂ len|u₁|≡len|u₂| (seq₁ (bne u₁>0 u₂>0 u₁>ⁱu₂))
+      = seq₁ (inc-bne u₁ u₂ u₁>0 u₂>0 (bne u₁>0 u₂>0 u₁>ⁱu₂))
+    >-inc-seq₁-be u₁ u₂ v₁ v₂ len-u₁-u₂ (seq₁ (lne u₁>0 u₂≡0))
+      = ⊥-elim (n≡0→¬n>0 (trans len-u₁-u₂ u₂≡0) u₁>0)
+    >-inc-seq₁-be u₁ u₂ v₁ v₂ len|u₁|≡len|u₂| (seq₂ u₁≡u₂ v₁>v₂) = seq₂ (cong inj u₁≡u₂) v₁>v₂
+
+    inc-bne-fst : ∀ (uv₁ uv₂ : U (l' ● r ` loc))
+                  → length (proj₁ (flat uv₁)) Nat.> 0
+                  → length (proj₁ (flat uv₂)) Nat.> 0
+                  → l' ● r ` loc ⊢ uv₁ > uv₂
+                  → l ● r ` loc ⊢ injFst uv₁ > injFst uv₂
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ)
+      with length (proj₁ (flat u₁)) ≟ 0 | length (proj₁ (flat u₂)) ≟ 0
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ) | yes u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-be u₁ u₂ v₁ v₂ (trans u₁≡0 (sym u₂≡0)) >ⁱ)
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ) | no ¬u₁≡0 | no ¬u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-bne u₁ u₂ v₁ v₂ ¬u₁≡0 ¬u₂≡0 >ⁱ)
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ) | no ¬u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 >ⁱ)
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ (seq₁ u₁>u₂)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (bne-impossible u₁>u₂)
+      where
+        bne-impossible : l' ⊢ u₁ > u₂ → ⊥
+        bne-impossible (be l≡ l0 _) = ¬u₂≡0 l0
+        bne-impossible (bne l>0 l0' _) = n≡0→¬n>0 u₁≡0 l>0
+        bne-impossible (lne l>0 l0) = n≡0→¬n>0 u₁≡0 l>0
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ (seq₂ u₁≡u₂ _)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 rewrite trans (cong (length ∘ proj₁ ∘ flat) (sym u₁≡u₂)) u₁≡0 = refl
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ >ⁱ)
+      with length (proj₁ (flat u₁)) ≟ 0 | length (proj₁ (flat u₂)) ≟ 0
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ >ⁱ) | yes u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-be u₁ u₂ v₁ v₂ (trans u₁≡0 (sym u₂≡0)) >ⁱ)
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be len-pair-≡ len-u2v2-≡0 >ⁱ) | no ¬u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 len-u₂-≡0)
+      where
+        len-u₂-≡0 : length (proj₁ (flat u₂)) ≡ 0
+        len-u₂-≡0 = Utils.[]→length≡0 (++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len-u2v2-≡0))
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ >ⁱ) | no ¬u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 >ⁱ)
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ (seq₁ u₁>u₂)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (bne-impossible u₁>u₂)
+      where
+        bne-impossible : l' ⊢ u₁ > u₂ → ⊥
+        bne-impossible (be l≡ l0 _) = ¬u₂≡0 l0
+        bne-impossible (bne l>0 l0' _) = n≡0→¬n>0 u₁≡0 l>0
+        bne-impossible (lne l>0 l0) = n≡0→¬n>0 u₁≡0 l>0
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ (seq₂ u₁≡u₂ _)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 rewrite trans (cong (length ∘ proj₁ ∘ flat) (sym u₁≡u₂)) u₁≡0 = refl
+    inc-bne-fst (PairU u₁ v₁) (PairU u₂ v₂) u₁>0 u₂>0 (lne _ u₂≡0)
+      = ⊥-elim (n≡0→¬n>0 u₂≡0 u₂>0)
+
+    inc-lne-fst : ∀ (uv₁ uv₂ : U (l' ● r ` loc))
+                  → length (proj₁ (flat uv₁)) Nat.> 0
+                  → length (proj₁ (flat uv₂)) ≡ 0
+                  → l' ● r ` loc ⊢ uv₁ > uv₂
+                  → l ● r ` loc ⊢ injFst uv₁ > injFst uv₂
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ)
+      with length (proj₁ (flat u₁)) ≟ 0 | length (proj₁ (flat u₂)) ≟ 0
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ) | yes u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-be u₁ u₂ v₁ v₂ (trans u₁≡0 (sym u₂≡0)) >ⁱ)
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ) | no ¬u₁≡0 | no ¬u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-bne u₁ u₂ v₁ v₂ ¬u₁≡0 ¬u₂≡0 >ⁱ)
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ >ⁱ) | no ¬u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 >ⁱ)
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ (seq₁ u₁>u₂)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (bne-impossible u₁>u₂)
+      where
+        bne-impossible : l' ⊢ u₁ > u₂ → ⊥
+        bne-impossible (be l≡ l0 _) = ¬u₂≡0 l0
+        bne-impossible (bne l>0 l0' _) = n≡0→¬n>0 u₁≡0 l>0
+        bne-impossible (lne l>0 l0) = n≡0→¬n>0 u₁≡0 l>0
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (bne _ _ (seq₂ u₁≡u₂ _)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 rewrite trans (cong (length ∘ proj₁ ∘ flat) (sym u₁≡u₂)) u₁≡0 = refl
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ >ⁱ)
+      with length (proj₁ (flat u₁)) ≟ 0 | length (proj₁ (flat u₂)) ≟ 0
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ >ⁱ) | yes u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-be u₁ u₂ v₁ v₂ (trans u₁≡0 (sym u₂≡0)) >ⁱ)
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be len-pair-≡ len-u2v2-≡0 >ⁱ) | no ¬u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 len-u₂-≡0)
+      where
+        len-u₂-≡0 : length (proj₁ (flat u₂)) ≡ 0
+        len-u₂-≡0 = Utils.[]→length≡0 (++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len-u2v2-≡0))
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ >ⁱ) | no ¬u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 >ⁱ)
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ (seq₁ u₁>u₂)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (bne-impossible u₁>u₂)
+      where
+        bne-impossible : l' ⊢ u₁ > u₂ → ⊥
+        bne-impossible (be l≡ l0 _) = ¬u₂≡0 l0
+        bne-impossible (bne l>0 l0' _) = n≡0→¬n>0 u₁≡0 l>0
+        bne-impossible (lne l>0 l0) = n≡0→¬n>0 u₁≡0 l>0
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (be _ _ (seq₂ u₁≡u₂ _)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 rewrite trans (cong (length ∘ proj₁ ∘ flat) (sym u₁≡u₂)) u₁≡0 = refl
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (lne _ _)
+      with length (proj₁ (flat u₁)) ≟ 0 | length (proj₁ (flat u₂)) ≟ 0
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (lne uv₁>0 uv₂≡0) | yes u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (lne inj-u₁>0 inj-u₂≡0))
+      where
+        inj-u₁>0 : length (proj₁ (flat (inj u₁))) Nat.> 0
+        inj-u₁>0 rewrite sound-ev u₁ = Nat.s≤s Nat.z≤n
+        inj-u₂≡0 : length (proj₁ (flat (inj u₂))) ≡ 0
+        inj-u₂≡0 rewrite sound-ev u₂ rewrite u₂≡0 = refl
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (lne uv₁>0 uv₂≡0) | no ¬u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 (seq₁ (lne (¬≡0→>0 ¬u₁≡0) u₂≡0)))
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (lne _ uv₂≡0) | no ¬u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        flat-u₂v₂≡[] : proj₁ (flat (PairU u₂ v₂)) ≡ []
+        flat-u₂v₂≡[] = Utils.length≡0→[] uv₂≡0
+        flat-u₂≡[] : proj₁ (flat u₂) ≡ []
+        flat-u₂≡[] = ++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (trans (sym (flat-pair u₂ v₂)) flat-u₂v₂≡[])
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 = Utils.[]→length≡0 flat-u₂≡[]
+    inc-lne-fst (PairU u₁ v₁) (PairU u₂ v₂) _ _ (lne _ u₂v₂≡0) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        u₂-flat-uv₂ : length (proj₁ (flat (PairU u₂ v₂))) ≡ length (proj₁ (flat u₂))
+        u₂-flat-uv₂ = trans (trans (cong length (flat-pair u₂ v₂)) (length-++ (proj₁ (flat u₂)))) (sym (+-identityˡ (length (proj₁ (flat u₂)))))
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 = trans (sym u₂-flat-uv₂) u₂v₂≡0
+
+    inc-be-fst : ∀ (uv₁ uv₂ : U (l' ● r ` loc))
+                 → length (proj₁ (flat uv₁)) ≡ length (proj₁ (flat uv₂))
+                 → l' ● r ` loc ⊢ uv₁ > uv₂
+                 → l ● r ` loc ⊢ injFst uv₁ > injFst uv₂
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (bne _ _ >ⁱ)
+      with length (proj₁ (flat u₁)) ≟ 0 | length (proj₁ (flat u₂)) ≟ 0
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (bne _ _ >ⁱ) | yes u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-be u₁ u₂ v₁ v₂ (trans u₁≡0 (sym u₂≡0)) >ⁱ)
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (bne _ _ >ⁱ) | no ¬u₁≡0 | no ¬u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-bne u₁ u₂ v₁ v₂ ¬u₁≡0 ¬u₂≡0 >ⁱ)
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (bne _ _ >ⁱ) | no ¬u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 >ⁱ)
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (bne _ _ (seq₁ u₁>u₂)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (bne-impossible u₁>u₂)
+      where
+        bne-impossible : l' ⊢ u₁ > u₂ → ⊥
+        bne-impossible (be l≡ l0 _) = ¬u₂≡0 l0
+        bne-impossible (bne l>0 l0' _) = n≡0→¬n>0 u₁≡0 l>0
+        bne-impossible (lne l>0 l0) = n≡0→¬n>0 u₁≡0 l>0
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (bne _ _ (seq₂ u₁≡u₂ _)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 rewrite trans (cong (length ∘ proj₁ ∘ flat) (sym u₁≡u₂)) u₁≡0 = refl
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (be _ _ >ⁱ)
+      with length (proj₁ (flat u₁)) ≟ 0 | length (proj₁ (flat u₂)) ≟ 0
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (be _ _ >ⁱ) | yes u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-be u₁ u₂ v₁ v₂ (trans u₁≡0 (sym u₂≡0)) >ⁱ)
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (be len-pair-≡ len-u2v2-≡0 >ⁱ) | no ¬u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 len-u₂-≡0)
+      where
+        len-u₂-≡0 : length (proj₁ (flat u₂)) ≡ 0
+        len-u₂-≡0 = Utils.[]→length≡0 (++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len-u2v2-≡0))
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (be _ _ >ⁱ) | no ¬u₁≡0 | yes u₂≡0
+      = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (>-inc-seq₁-lne u₁ u₂ v₁ v₂ ¬u₁≡0 u₂≡0 >ⁱ)
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (be _ _ (seq₁ u₁>u₂)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (bne-impossible u₁>u₂)
+      where
+        bne-impossible : l' ⊢ u₁ > u₂ → ⊥
+        bne-impossible (be l≡ l0 _) = ¬u₂≡0 l0
+        bne-impossible (bne l>0 l0' _) = n≡0→¬n>0 u₁≡0 l>0
+        bne-impossible (lne l>0 l0) = n≡0→¬n>0 u₁≡0 l>0
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (be _ _ (seq₂ u₁≡u₂ _)) | yes u₁≡0 | no ¬u₂≡0
+      = ⊥-elim (¬u₂≡0 u₂≡0)
+      where
+        u₂≡0 : length (proj₁ (flat u₂)) ≡ 0
+        u₂≡0 rewrite trans (cong (length ∘ proj₁ ∘ flat) (sym u₁≡u₂)) u₁≡0 = refl
+    inc-be-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (lne uv₁>0 uv₂≡0)
+      = ⊥-elim (n≡0→¬n>0 (trans uv₁≡uv₂ uv₂≡0) uv₁>0)
 ```

@@ -323,6 +323,22 @@ module Example-Left-NonEmpty where
   -- t14>t13 = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (be {!!} {!!} (seq₁ (be refl refl choice-lr))  ))
   t13>t14 : a*+a*●a*+a*●a* ⊢ t13 > t14
   t13>t14 = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (lne (Nat.s≤s Nat.z≤n) refl)) 
+
+
+  a●ε+b●ε+b : RE -- (a●(ε+b))●(ε+b)
+  a●ε+b●ε+b = (($ 'a' ` 1) ● ( ε + ($ 'b' ` 2 ) ` 3) ` 4 ) ● ( ε + ($ 'b' ` 5) ` 6) ` 7
+  t15 t16 : U a●ε+b●ε+b
+  t15 = PairU (PairU (LetterU 'a') (RightU (LetterU 'b'))) (LeftU EmptyU)
+  t16 = PairU (PairU (LetterU 'a') (LeftU EmptyU)) (RightU (LetterU 'b'))
+
+  t15>t16 : a●ε+b●ε+b ⊢ t15 > t16
+  t15>t16 = bne (Nat.s≤s Nat.z≤n)
+                (Nat.s≤s Nat.z≤n)
+                (seq₁ (bne (Nat.s≤s Nat.z≤n)
+                           (Nat.s≤s Nat.z≤n)
+                           (seq₂ refl (lne (Nat.s≤s Nat.z≤n) refl)))) 
+
+
 ```
 
 

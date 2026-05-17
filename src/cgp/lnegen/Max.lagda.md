@@ -98,6 +98,171 @@ open import Function using (_∘_ ; flip ; case_of_)
 ```
 
 
+#### ParseAll is not sorted
+
+
+The following is defined in lnegen/PartialDerivative
+  -- ((a●(ε+ε))●(ε+b))●(ε+b)
+  a●ε+ε●ε+b●ε+b = ( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+  ex_sss : List (U a●ε+ε●ε+b●ε+b)
+  ex_sss = parseAll[ a●ε+ε●ε+b●ε+b ,  'a' ∷ 'b' ∷  [] ]
+
+ExampleParseAll.ex_sss
+
+should yield
+
+~~~~~~~
+
+PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU))   (RightU (LetterU 'b'))) (LeftU EmptyU) -- (a)
+∷
+PairU (PairU (PairU (LetterU 'a') (RightU EmptyU))  (RightU (LetterU 'b'))) (LeftU EmptyU) -- (b)
+∷
+PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))   -- (c)
+∷
+PairU (PairU (PairU (LetterU 'a') (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))  -- (d)
+∷ []
+
+
+```agda
+a●ε+ε●ε+b●ε+b : RE 
+a●ε+ε●ε+b●ε+b = ( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+t_a t_b t_c t_d : U a●ε+ε●ε+b●ε+b
+t_a = PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU))   (RightU (LetterU 'b'))) (LeftU EmptyU) -- (a)
+t_b = PairU (PairU (PairU (LetterU 'a') (RightU EmptyU))  (RightU (LetterU 'b'))) (LeftU EmptyU) -- (b)
+t_c = PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))   -- (c)
+t_d = PairU (PairU (PairU (LetterU 'a') (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))  -- (d)
+
+t_a>t_b : a●ε+ε●ε+b●ε+b ⊢ t_a > t_b
+t_a>t_b = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))) )
+
+t_c>t_d : a●ε+ε●ε+b●ε+b ⊢ t_c > t_d
+t_c>t_d = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))) )
+
+t_a>t_d : a●ε+ε●ε+b●ε+b ⊢ t_a > t_d
+t_a>t_d = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))))
+
+t_a>t_c : a●ε+ε●ε+b●ε+b ⊢ t_a > t_c
+t_a>t_c = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₂ refl (lne (Nat.s≤s Nat.z≤n) refl))) )
+
+
+t_b>t_d : a●ε+ε●ε+b●ε+b ⊢ t_b > t_d
+t_b>t_d = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₂ refl (lne (Nat.s≤s Nat.z≤n) refl))) )
+
+
+-- however instead of t_b>t_c, we have
+
+t_c>t_b : a●ε+ε●ε+b●ε+b ⊢ t_c > t_b
+t_c>t_b = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))))
+
+
+```
+
+The breakdown of parseAll[ a●ε+ε●ε+b●ε+b ,  'a' ∷ 'b' ∷  [] ]
+
+We omit the number annotation
+
+( (a ● (ε + ε ) ) ● ( ε + b ) ) ● ( ε + b)
+               | a in₁
+  ( (ε ● (ε + ε ) ) ● ( ε + b ) ) ● ( ε + b)
+             /b in₂      \ b in₃
+ ε ● (ε + b)                  ε
+ PairU EmptyU (LeftU EmptyU)  EmptyU
+
+in₂ (PairU EmptyU (Left EmptyU)) =
+  [ PairU (PairU (PairU EmptyU (LeftU EmptyU)) (RightU (LetterU 'b'))) (LeftU EmptyU)    --(a')
+  , PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU 'b'))) (LeftU EmptyU)   --(b')
+  ]
+
+in₃ EmptyU =
+  [ PairU (PairU (PairU EmptyU (LeftU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))    --(c')
+  , PairU (PairU (PairU EmptyU (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))   --(d')
+  ] 
+
+
+
+```agda
+ε●ε+ε●ε+b●ε+b : RE 
+ε●ε+ε●ε+b●ε+b = ( ( (ε ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+
+t_a' t_b' t_c' t_d' : U ε●ε+ε●ε+b●ε+b
+t_a' = PairU (PairU (PairU EmptyU (LeftU EmptyU))  (RightU (LetterU 'b'))) (LeftU EmptyU)
+t_b' = PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU 'b'))) (LeftU EmptyU)
+t_c' = PairU (PairU (PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU))         (RightU (LetterU 'b'))
+t_d' = PairU (PairU (PairU EmptyU (RightU EmptyU)) (LeftU EmptyU))         (RightU (LetterU 'b'))
+
+-- the > order is total, hence the following is good enough
+t_a'>t_b' : ε●ε+ε●ε+b●ε+b ⊢ t_a' > t_b'
+t_a'>t_b' = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₁ (be refl refl (seq₂ refl (be refl refl choice-lr))))) )
+t_b'>t_c' : ε●ε+ε●ε+b●ε+b ⊢ t_b' > t_c'
+t_b'>t_c' = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (lne (Nat.s≤s Nat.z≤n) refl) )
+
+t_c'>t_d' : ε●ε+ε●ε+b●ε+b ⊢ t_c' > t_d'
+t_c'>t_d' = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (be refl refl
+                                                            (seq₁ (be refl refl (seq₂ refl (be refl refl choice-lr))))) )
+
+
+-- my_in₁' : U ((ε●(ε+ε))●(ε+b)) → U  ((a●(ε+ε))●(ε+b))
+my_in₁' : U  ( (ε ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6)  → U  ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6)
+my_in₁' (PairU (PairU EmptyU lr-emp) l-empty-r-b) =
+        PairU (PairU (LetterU 'a') lr-emp) l-empty-r-b
+-- my_in₁ : U ((ε●(ε+ε))●(ε+b))●(ε+b) → U  ((a●(ε+ε))●(ε+b))●(ε+b)
+my_in₁ : U ( ( (ε ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 ) → U ( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+-- my_in₁ (PairU (PairU (PairU EmptyU lr-emp) l-empty-r-b) l-empty-r-b') =
+  -- (PairU (PairU (PairU (LetterU 'a') lr-emp) l-empty-r-b) l-empty-r-b')
+my_in₁ = mkinjFst my_in₁' 
+
+_ : my_in₁ t_a' ≡ t_a
+_ = refl
+
+_ : my_in₁ t_b' ≡ t_b
+_ = refl
+
+_ : my_in₁ t_c' ≡ t_c
+_ = refl
+
+
+_ : my_in₁ t_d' ≡ t_d
+_ = refl
+```
+
+Hence the order > is not preserved by injection, because injection is not monotonic.
+
+ParseAll should maintain the property that the first element is the maximal.
+
+Maximality must be bounded by the flatten word, otherwise, it might not exist.
+
+```agda
+
+a* : RE
+a* = ($ 'a' ` 1) * ε∉$ ` 2
+
+aa aaa : U a*
+aa = ListU ((LetterU 'a') ∷ (LetterU 'a') ∷ [])
+
+aaa = ListU ((LetterU 'a') ∷ (LetterU 'a') ∷ (LetterU 'a') ∷ [])
+
+aaa>aa : a* ⊢ aaa > aa
+aaa>aa = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (star-tail refl (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                                   (star-tail refl (lne (Nat.s≤s Nat.z≤n) refl)))) 
+```
+
+we have aaaa > aaa , aaaaa > aaaa, ... 
+
 
 ```agda
 data ≥-Max : ∀ { r : RE } → U r → Set where 
@@ -114,11 +279,19 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
   ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ( ( u : U p )
-      → ≥-Max u
+      → ≥-Max u -- ∀ (v : U p) →  |u|≡|v| → p ⊢ u ≥ v
       → ( v : U p )
-      → ( proj₁ (flat u ) ≡ proj₁ (flat v))
+      → ( proj₁ (flat u ) ≡ proj₁ (flat v)) -- too weak? , t_b' > t_c', but t_c > t_b, but t_b is not max. t_a is max. t_b' is not max, t_a' is max. 
       → r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+    -- shouldn't the above be
+    {- ( ( u : U p)
+      → ≥-Max u
+      → ≥-Max (inj u) ) -- this is too strong, requiring inj having all other parts are max too, e.g. mkSndInj inj e. e must be max, e is max is ok, because it is []
+    -} 
+
+
+      
   {- this leads to negative data type definition
   ≥-max-pres-●-f : ∀ { p l r : RE } { loc : ℕ }  { c : Char }  { inj : U p →  U l }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {l} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -205,6 +378,7 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 ≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u→max-u→v→|u|≡|v|→inj-u≥inj-v) =
   ≥-max-pres (λ u max-u v |u|≡|v| → right-mono-≥ (u→max-u→v→|u|≡|v|→inj-u≥inj-v u max-u v |u|≡|v|))        
 
+-- is this useful?
 ≥-max-pres-●-fst :  ∀ { p l r : RE } { loc : ℕ }  { c : Char }  { inj : U p →  U l }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {l} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
     → ≥-Max-Preserve {l} {c} (pdinstance inj sound-ev)
@@ -225,6 +399,7 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
 ... | inj₂ inj-u≡inj-y rewrite inj-u≡inj-y = inj₂ refl
 
 
+-- is this useful?
 -- the following is a "monomorphized" version of the ≥-Max-Preserve 
 data ≥-Max-Fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → ( PDInstance ( l ● r ` loc ) c ) → Set where
   ≥-max-fst : ∀ { p l r : RE } { loc : ℕ } { c : Char } { inj : U p → U l }
@@ -241,8 +416,8 @@ data ≥-Max-Fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → ( PDInstance 
 -- this data type looks similar to ≥-max-pres-●-fst except that v ≡ v'.
 -- if ≥-max-pres-●-fst is provable why ≥-pres0-fst is not?
 
-
-{-
+-- this is what we want but hard.
+-- this leads us to MaxPre.lagda.md
 ≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
@@ -255,12 +430,30 @@ data ≥-Max-Fst : ∀ { l r : RE } { loc : ℕ } { c : Char } → ( PDInstance 
         → (v : U (p ● r ` loc))
         → proj₁ (flat u) ≡ proj₁ (flat v)
         → (l ● r ` loc) ⊢ mkinjFst inj u ≥ mkinjFst inj v
-    prf (PairU v₁ v₂) ≥-max-v₁v₂ (PairU v₁' v₂') |v₁v₂|≡|v₁'v₂'| = {!!}
+    prf (PairU v₁ v₂)
+        ≥-max-v₁v₂@(≥-max (PairU .v₁ .v₂) pair-v₁'v₂'→|v₁v₂|≡|v₁'v₂'|→pair-v₁v₂>pair-v₁'v₂')
+        (PairU v₁' v₂')
+        |v₁v₂|≡|v₁'v₂'|
+        with pair-v₁'v₂'→|v₁v₂|≡|v₁'v₂'|→pair-v₁v₂>pair-v₁'v₂' (PairU v₁' v₂') |v₁v₂|≡|v₁'v₂'|
+    ... | inj₁ (be len|v₁v₂|≡len|v₁'v₂'| len|v₁v₂|≡0 pairv₁v₂>ⁱpairv₁'v₂') = {!!}
+          -- from len|v₁v₂|≡len|v₁'v₂'| len|v₁v₂|≡0 we have len|v₁'v₂'|≡0, hence
+          -- len|v₁|≡len|v₁'|≡0 hence |v₁|≡|v₁'|≡[]
+          -- we apply u→maxu→v→|u|≡|v|→inju≥injv to v₁ max-v₁ v₁' |v₁|≡|v₁'|to get inj v₁ ≥ inj v₂
+          -- if inj v₁ > inj v₂, we prove it with bne _ _ (seq₁ ...)
+          -- if inj v₁ ≡ inj v₂, we know pairv₁v₂>ⁱpairv₁'v₂' must be seq₂ v₂>v₂'
+          --                     we prove it with bne _ _ (seq₂ ...) 
+    ... | inj₁ (lne len|v₁v₂|>0 len|v₁'v₂'|≡0) = {!!} -- ? 
+    ... | inj₁ (bne len|v₁v₂|>0 len|v₁'v₂'|>0 pairv₁v₂>ⁱpairv₁'v₂') = {!!}
+          -- from ≥-max-pair-inv, we have ≥-max v₁ and ≥-max v₂
+          -- how to get |v₁|≡|v₁'| ?? which is needed to apply  u→maxu→v→|u|≡|v|→inju≥inj to get inj v₁ ≥ inj v₁' 
+    ... | inj₂ pair-v₁v₂≡pair-v₁'v₂' rewrite sym pair-v₁v₂≡pair-v₁'v₂' = inj₂ {!!}  -- using pair-inv we have v₁≡v₁' and v₂≡v₂' 
+      -- the length diff betwen v₁ and v₁' and v₂ and v₂' are 0 or 1?
+      -- let say inj is my_in₁'
+      -- mkinjFst inj is my_in₁ 
       -- issue: we don't have |v₁|≡|v₁'| and |v₂|≡|v₂'|
       -- what if we enforce the same constraint as ≅ in PrefEq?
       -- it should work but
       -- what aboit the concatmap-advance-pdi-with-c in ExtenedOrder? 
--}
   
 
 

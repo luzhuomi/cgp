@@ -137,7 +137,10 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     ev₁ : (v₁ : U l)
       → ∃[ w ] (proj₁ (flat u) ≡ proj₁ (flat v₁) ++ w)
       → l ⊢ u ≥ v₁
-    ev₁ v₁ ( w , |u|≡|v₁|++w ) =  extract-≥-fst {u} {v₁} {v}  (w , |u|≡|v₁|++w) {!!}  
+    ev₁ v₁ ( w , |u|≡|v₁|++w ) =  extract-≥-fst {u} {v₁} {v}  (w , |u|≡|v₁|++w) ( pair-u'-v'→∃w|uv|≡|u'v'|++w→uv≥u'v' (PairU v₁ v) {!!} )
+      where
+        ex :  ∃-syntax (λ w₁ → proj₁ (flat (PairU u v)) ≡ proj₁ (flat (PairU v₁ v)) ++ w₁)
+        ex = {!!} 
     ev₂ : (v₂ : U r)
       → ∃[ w ] (proj₁ (flat v) ≡ proj₁ (flat v₂) ++ w)
       → r ⊢ v ≥ v₂

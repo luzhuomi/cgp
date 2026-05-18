@@ -672,8 +672,35 @@ module ExampleParseAll where
   ex_zs = parseAll[ a*+a*●a*+a*●a* , 'a' ∷ 'a' ∷ [] ]
 
 
+  a●ε+b●ε+b : RE -- (a●(ε+b))●(ε+b)
+  a●ε+b●ε+b = (($ 'a' ` 1) ● ( ε + ($ 'b' ` 2 ) ` 3) ` 4 ) ● ( ε + ($ 'b' ` 5) ` 6) ` 7
 
+  ex_ss : List (U a●ε+b●ε+b)
+  ex_ss = parseAll[ a●ε+b●ε+b , 'a' ∷ 'b' ∷  [] ]
+  
+
+  -- ((a●(ε+ε))●(ε+b))●(ε+b)
+  a●ε+ε●ε+b●ε+b = ( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+  ex_sss : List (U a●ε+ε●ε+b●ε+b)
+  ex_sss = parseAll[ a●ε+ε●ε+b●ε+b ,  'a' ∷ 'b' ∷  [] ]
 ```
+
+ExampleParseAll.ex_sss
+
+should yield
+
+~~~~~~~
+
+PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU))   (RightU (LetterU 'b'))) (LeftU EmptyU)
+∷
+PairU (PairU (PairU (LetterU 'a') (RightU EmptyU))  (RightU (LetterU 'b'))) (LeftU EmptyU)
+∷
+PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))
+∷
+PairU (PairU (PairU (LetterU 'a') (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))
+∷ []
+
+~~~~~~~
 
 ExampleParseAll.ex_ts
 
@@ -828,6 +855,13 @@ PairU (PairU (RightU (ListU []))                                    (RightU (Lis
 ∷ []
 
 
+ExampleParseAll.ex_ss
+
+should yield
+
+PairU (PairU (LetterU 'a') (RightU (LetterU 'b'))) (LeftU EmptyU) ∷
+PairU (PairU (LetterU 'a') (LeftU EmptyU)) (RightU (LetterU 'b')) ∷
+[]
 
 
 ### Lemma 25 : buildU is sound

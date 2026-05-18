@@ -343,3 +343,76 @@ through `mkinjFst` that ordering can disappear.
 
 ```
 
+#### ParseAll is not sorted
+
+
+The following is defined in lnegen/PartialDerivative
+  -- ((a●(ε+ε))●(ε+b))●(ε+b)
+  a●ε+ε●ε+b●ε+b = ( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+  ex_sss : List (U a●ε+ε●ε+b●ε+b)
+  ex_sss = parseAll[ a●ε+ε●ε+b●ε+b ,  'a' ∷ 'b' ∷  [] ]
+
+ExampleParseAll.ex_sss
+
+should yield
+
+~~~~~~~
+
+PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU))   (RightU (LetterU 'b'))) (LeftU EmptyU) -- (a)
+∷
+PairU (PairU (PairU (LetterU 'a') (RightU EmptyU))  (RightU (LetterU 'b'))) (LeftU EmptyU) -- (b)
+∷
+PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))   -- (c)
+∷
+PairU (PairU (PairU (LetterU 'a') (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))  -- (d)
+∷ []
+
+
+```agda
+a●ε+ε●ε+b●ε+b : RE 
+a●ε+ε●ε+b●ε+b = ( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+t_a t_b t_c t_d : U a●ε+ε●ε+b●ε+b
+t_a = PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU))   (RightU (LetterU 'b'))) (LeftU EmptyU) -- (a)
+t_b = PairU (PairU (PairU (LetterU 'a') (RightU EmptyU))  (RightU (LetterU 'b'))) (LeftU EmptyU) -- (b)
+t_c = PairU (PairU (PairU (LetterU 'a') (LeftU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))   -- (c)
+t_d = PairU (PairU (PairU (LetterU 'a') (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU 'b'))  -- (d)
+
+t_a>t_b : a●ε+ε●ε+b●ε+b ⊢ t_a > t_b
+t_a>t_b = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))) )
+
+t_c>t_d : a●ε+ε●ε+b●ε+b ⊢ t_c > t_d
+t_c>t_d = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))) )
+
+t_a>t_d : a●ε+ε●ε+b●ε+b ⊢ t_a > t_d
+t_a>t_d = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))))
+
+t_a>t_c : a●ε+ε●ε+b●ε+b ⊢ t_a > t_c
+t_a>t_c = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₂ refl (lne (Nat.s≤s Nat.z≤n) refl))) )
+
+
+t_b>t_d : a●ε+ε●ε+b●ε+b ⊢ t_b > t_d
+t_b>t_d = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₂ refl (lne (Nat.s≤s Nat.z≤n) refl))) )
+
+
+-- however instead of t_b>t_c, we have
+
+t_c>t_b : a●ε+ε●ε+b●ε+b ⊢ t_c > t_b
+t_c>t_b = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                          (seq₁
+                                                           (bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n)
+                                                            (seq₂ refl (be refl refl choice-lr))))))
+
+
+```
+

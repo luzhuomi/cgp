@@ -84,6 +84,9 @@ open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 import Data.List.Relation.Unary.All as All
 open All using (All ; _∷_ ; [] ; map)
 
+open import Data.List.Relation.Unary.Any using (Any; here; there ; map)
+
+
 import Relation.Nullary as Nullary
 import Relation.Nullary.Negation using (contradiction; contraposition)
 open Nullary using (¬_)
@@ -271,6 +274,7 @@ hypothesis provides no guarantee about `l ⊢ inj u₁ > inj u₂`.
 ```agda
 
 -- The unprovable lemma (kept as a hole for reference)
+-- the reason is that pdi is unrestricted, it might not be from pdU[ l , c] 
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
                → ( pdi : PDInstance l c )
@@ -285,5 +289,18 @@ hypothesis provides no guarantee about `l ⊢ inj u₁ > inj u₂`.
       → (l ● r ` loc) ⊢ mkinjFst inj u₁ >  mkinjFst inj u₂
     >-inc-ev = {!!}
 
+
+```
+
+
+```agda
+>-inc-fst-strict : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdi : PDInstance l c )
+  → Any (λ p → p ≡ pdi ) pdU[ l , c ] -- pdi ∈ pdU[ l , c ]
+  → >-Inc {l} {c} pdi
+  --------------------------------
+  → >-Inc { l ● r ` loc } {c} (pdinstance-fst {l} {r} {loc} {c} pdi)
+>-inc-fst-strict = {!!}
+-- hm instead of carrying around pdi ∈ pdU [ l , c ], use Efn Epsilon First Normal form? 
 
 ```

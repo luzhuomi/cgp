@@ -19,7 +19,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; unListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ) 
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; unListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; RightU≢LeftU ; inv-pairU ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU≢[] ; Flat-[] ; flat-[] ; proj₁flat-v≡[]→ε∈r )
@@ -128,16 +128,24 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 
 ### Counterexample: `>-inc-fst` is unprovable even with length equality
 
-The length-equality premise is not strong enough.  We reuse the
-second counterexample from `CounterExample.lagda.md`.
+The length-equality premise is not strong enough.
 
 Regular expressions:
 - `l = ($ 'c') + (($ 'c') ● ($ 'c'))`
 - `r = ε + ($ 'c')`
-- `p = ε + ($ 'c')` (a partial derivative of `l` w.r.t. `'c'`)
+- `p = ε + ($ 'c')`
 
+The injection maps two trees of `p` with different lengths:
+- `LeftU EmptyU` (len 0) → `LeftU (LetterU 'c')` (len 1)
+- `RightU (LetterU 'c')` (len 1) → `RightU (PairU (LetterU 'c') (LetterU 'c'))` (len 2)
 
-consider the counter example given in `lnegen/LenEq.lagda.md` showing `>-inc-fst` is unprovable, it is a bogus counter example. `p = ε + ($ 'c')` is not a partial derivative of `l = ($ 'c') + (($ 'c') ● ($ 'c'))`. According to definition of pdU in `lnegen/PartialDerivative.lagda.md`, `l` has two partial derivatives, ` ε ` and `ε ● $ 'c'`. 
+Key insight: `U p` has trees of different lengths (0 and 1), so
+`>-Inc pdi` holds vacuously.  But in `p ● r`, we pair them with
+complementary lengths in `r` to get equal total lengths.  The ordering
+uses `seq₁` via `lne` (first component with len 1 > first component
+with len 0).  After `mkinjFst`, both first components become
+`RightU` vs `LeftU` in `l`, and `l ⊢ RightU > LeftU` is impossible
+since only `choice-lr` (LeftU > RightU) exists.
 
 ```agda
 module CounterExample-LenEq where
@@ -146,18 +154,18 @@ module CounterExample-LenEq where
   l = ($ 'c' ` 1) + (($ 'c' ` 2) ● ($ 'c' ` 3) ` 4) ` 5
 
   r : RE
-  r = ε + ($ 'c' ` 6) ` 7
+  r = ε + ($ 'c' ` 7) ` 8
 
   p : RE
-  p = ε + ($ 'c' ` 8) ` 9
+  p = ε + ($ 'c' ` 6) ` 9
 
   inj : U p → U l
-  inj (LeftU EmptyU)          = LeftU (LetterU 'c')
-  inj (RightU (LetterU 'c'))  = RightU (PairU (LetterU 'c') (LetterU 'c'))
+  inj (LeftU EmptyU) = LeftU (LetterU 'c')
+  inj (RightU (LetterU _)) = RightU (PairU (LetterU 'c') (LetterU 'c'))
 
   sound-ev : ∀ (u : U p) → proj₁ (flat (inj u)) ≡ 'c' ∷ proj₁ (flat u)
-  sound-ev (LeftU EmptyU)          = refl
-  sound-ev (RightU (LetterU 'c'))  = refl
+  sound-ev (LeftU EmptyU) = refl
+  sound-ev (RightU (LetterU _)) = refl
 
   pdi : PDInstance l 'c'
   pdi = pdinstance inj sound-ev
@@ -165,48 +173,53 @@ module CounterExample-LenEq where
 
 **Step 1: `pdi` satisfies the length-restricted `>-Inc`.**
 
-`U p` has exactly two trees:
-- `e = LeftU EmptyU` with `length (flat e) = 0`
-- `a = RightU (LetterU 'c')` with `length (flat a) = 1`
-
-The only pairs with equal length are reflexive (`e,e` and `a,a`),
-but `>` is irreflexive, so the implication holds vacuously.
+`U p` has trees of lengths 0 and 1.  No equal-length non-reflexive
+pair exists, so `>-Inc` is vacuous.
 
 ```agda
-  e : U p
-  e = LeftU EmptyU
-
-  a : U p
-  a = RightU (LetterU 'c')
-
   pdi->-inc : >-Inc pdi
   pdi->-inc = >-inc (λ where
-    (LeftU EmptyU)          (LeftU EmptyU)          _ p⊢e>e → ⊥-elim (>→¬≡ p⊢e>e refl)
-    (RightU (LetterU 'c'))  (RightU (LetterU 'c'))  _ p⊢a>a → ⊥-elim (>→¬≡ p⊢a>a refl)
-    (LeftU EmptyU)          (RightU (LetterU 'c'))  () _
-    (RightU (LetterU 'c'))  (LeftU EmptyU)          () _)
+    (LeftU EmptyU) (LeftU EmptyU) _ p⊢> → ⊥-elim (>→¬≡ p⊢> refl)
+    (RightU (LetterU _)) (RightU (LetterU _)) _ p⊢> → ⊥-elim (>→¬≡ p⊢> refl)
+    (LeftU EmptyU) (RightU (LetterU _)) len≡ _ → ⊥-elim (¬0≡1 len≡)
+    (RightU (LetterU _)) (LeftU EmptyU) len≡ _ → ⊥-elim (¬1≡0 len≡))
+    where
+      ¬0≡1 : ¬ (0 ≡ 1)
+      ¬0≡1 ()
+      ¬1≡0 : ¬ (1 ≡ 0)
+      ¬1≡0 ()
 ```
 
 **Step 2: a pair in `U (p ● r)` with equal lengths that is ordered.**
 
+`top` pairs the len-1 tree of `p` with the len-0 tree of `r`.
+`x` pairs the len-0 tree of `p` with the len-1 tree of `r`.
+Both have total length 1, and `top > x` via `seq₁` using `lne`
+(len 1 > len 0 in `p`).
+
 ```agda
   top : U (p ● r ` 10)
-  top = PairU a (LeftU EmptyU)      -- flat = ['c'] ++ []
+  top = PairU (RightU (LetterU 'c')) (LeftU EmptyU)
 
   x : U (p ● r ` 10)
-  x = PairU e (RightU (LetterU 'c')) -- flat = [] ++ ['c']
+  x = PairU (LeftU EmptyU) (RightU (LetterU 'c'))
 
   len|top|≡len|x| : length (proj₁ (flat top)) ≡ length (proj₁ (flat x))
   len|top|≡len|x| = refl
 
-  p⊢a>e : p ⊢ a > e
-  p⊢a>e = lne (Nat.s≤s Nat.z≤n) refl
+  p⊢RightU>LeftU : p ⊢ RightU (LetterU 'c') > LeftU EmptyU
+  p⊢RightU>LeftU = lne (Nat.s≤s Nat.z≤n) refl
 
   p●r⊢top>x : (p ● r ` 10) ⊢ top > x
-  p●r⊢top>x = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ p⊢a>e)
+  p●r⊢top>x = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) (seq₁ p⊢RightU>LeftU)
 ```
 
 **Step 3: after `pdinstance-fst` the ordering disappears.**
+
+`injFst top` has first component `RightU (PairU ...)` and
+`injFst x` has first component `LeftU (LetterU ...)`.
+`seq₁` needs `l ⊢ RightU > LeftU` (impossible, only `choice-lr`
+gives `LeftU > RightU`).  `seq₂` needs `RightU ≡ LeftU` (false).
 
 ```agda
   injFst : U (p ● r ` 10) → U (l ● r ` 10)
@@ -218,23 +231,20 @@ but `>` is irreflexive, so the implication holds vacuously.
   len|injFst-x|>0 : length (proj₁ (flat (injFst x))) Nat.> 0
   len|injFst-x|>0 = Nat.s≤s Nat.z≤n
 
-  l⊢LeftU>RightU : l ⊢ LeftU (LetterU 'c') > RightU (PairU (LetterU 'c') (LetterU 'c'))
-  l⊢LeftU>RightU = bne (Nat.s≤s Nat.z≤n) (Nat.s≤s Nat.z≤n) choice-lr
+  ¬l⊢RightU>LeftU : ¬ (l ⊢ RightU (PairU (LetterU 'c') (LetterU 'c')) > LeftU (LetterU 'c'))
+  ¬l⊢RightU>LeftU (be _ len|LeftU|≡0 _) = <-irrefl (sym len|LeftU|≡0) (Nat.s≤s Nat.z≤n)
+  ¬l⊢RightU>LeftU (lne _ len|LeftU|≡0) = <-irrefl (sym len|LeftU|≡0) (Nat.s≤s Nat.z≤n)
+  ¬l⊢RightU>LeftU (bne _ _ ())
 
-  -- No >ⁱ proof can relate injFst top and injFst x because:
-  -- seq₁ needs l ⊢ inj a > inj e, which is impossible by asymmetry.
-  -- seq₂ needs inj a ≡ inj e, which is impossible (different constructors).
   ¬l●r⊢>ⁱ : ¬ ((l ● r ` 10) ⊢ injFst top >ⁱ injFst x)
-  ¬l●r⊢>ⁱ (seq₁ l⊢inja>inje) = >-asym l⊢LeftU>RightU l⊢inja>inje
-  ¬l●r⊢>ⁱ (seq₂ eq _) = ⊥-elim (ParseTree.RightU≢LeftU _ _ eq)
+  ¬l●r⊢>ⁱ (seq₁ l⊢RightU>LeftU) = ¬l⊢RightU>LeftU l⊢RightU>LeftU
+  ¬l●r⊢>ⁱ (seq₂ RightU≡LeftU _) = RightU≢LeftU _ _ RightU≡LeftU
 
   ¬l●r⊢injFst-top>injFst-x : ¬ ((l ● r ` 10) ⊢ injFst top > injFst x)
-  -- `be` and `lne` are impossible because both sides are non-empty.
   ¬l●r⊢injFst-top>injFst-x (be len≡ len0 _) =
     n≡0→¬n>0 (trans len≡ len0) len|injFst-top|>0
   ¬l●r⊢injFst-top>injFst-x (lne _ len0) =
     n≡0→¬n>0 len0 len|injFst-x|>0
-  -- `bne` delegates to the >ⁱ impossibility.
   ¬l●r⊢injFst-top>injFst-x (bne _ _ >ⁱprf) = ⊥-elim (¬l●r⊢>ⁱ >ⁱprf)
 ```
 
@@ -250,12 +260,13 @@ but `>` is irreflexive, so the implication holds vacuously.
 ```
 
 Therefore `>-inc-fst` is unprovable even with the length-equality
-restriction.  The root cause is the same: in a sequential composition
-`p ● r`, two trees can be ordered via `seq₁` while their first
-components flatten to different words.  After `mkinjFst` the injected
-first components always prepend one character, so the length-equality
-of the *pairs* does not imply length-equality of the *first
-components*.  The induction hypothesis therefore does not apply.
+restriction.  The root cause is structural: `>-Inc pdi` only constrains
+ordering for equal-length pairs in `p`, but in `p ● r`, a locally
+maximal list can contain pairs `(u₁, v₁)` and `(u₂, v₂)` where
+`flat u₁ ++ flat v₁ ≡ flat u₂ ++ flat v₂` (same total word) but
+`flat u₁ ≢ flat u₂` (different first-component words).  Since
+`[u₁, u₂]` is not an equal-length pair in `U p`, the `>-Inc pdi`
+hypothesis provides no guarantee about `l ⊢ inj u₁ > inj u₂`.
 
 ```agda
 

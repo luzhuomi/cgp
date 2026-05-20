@@ -120,6 +120,9 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
       → r ⊢ inj u ≥ inj v ) -- local max w.r.t to the inj
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
 
+
+{-
+-- hm.. is this provable? 
 ≥-max-pair-inv : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( u : U l )
   → ( v : U r )
@@ -144,7 +147,33 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     ev₂ : (v₂ : U r)
       → ∃[ w ] (proj₁ (flat v) ≡ proj₁ (flat v₂) ++ w)
       → r ⊢ v ≥ v₂
-    ev₂ v₁ ( w , |u|≡|v₁|++w ) = {!!} 
+    ev₂ v₁ ( w , |u|≡|v₁|++w ) = {!!}
+-}
+
+
+≥-max-pair-inv2 : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( u : U l )
+  → ( v : U r )
+  → ≥-Max (PairU {l} {r} {loc} u v)
+  → ≥-Max u 
+≥-max-pair-inv2 {l} {r} {loc} {c} u v (≥-max (PairU .u .v) pair-u'-v'→∃w|uv|≡|u'v'|++w→uv≥u'v')  =
+  ≥-max u ev₁
+  where
+    extract-≥-fst : ∀ {u₁ u₂ : U l} {v₁ : U r}
+       → ∃[ w ] proj₁ (flat u₁) ≡ proj₁ (flat u₂) ++ w -- u₂ is a prefix of u₁
+       → (l ● r ` loc) ⊢ PairU u₁ v₁ ≥ PairU u₂ v₁
+       → l ⊢ u₁ ≥ u₂
+    extract-≥-fst = {!!} 
+    ev₁ : (v₁ : U l)
+      → ∃[ w ] (proj₁ (flat u) ≡ proj₁ (flat v₁) ++ w)
+      → l ⊢ u ≥ v₁
+    ev₁ v₁ ( w , |u|≡|v₁|++w ) = {!!}  -- goal  l ⊢ u ≥ v₁ 
+      -- extract-≥-fst {u} {v₁} {v}  (w , |u|≡|v₁|++w) ( pair-u'-v'→∃w|uv|≡|u'v'|++w→uv≥u'v' (PairU v₁ v) ex )
+      where
+        -- ex :  ∃-syntax (λ w₁ → proj₁ (flat (PairU u v)) ≡ proj₁ (flat (PairU v₁ v)) ++ w₁)
+        ex :  ∃[  w₁ ] proj₁ (flat (PairU u v)) ≡ proj₁ (flat (PairU v₁ v)) ++ w₁ -- given we know w, |u| ≡ |v₁|++w 
+        ex = {!!} , {!!} 
+        -- 
   
 
 
@@ -170,7 +199,7 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
-≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→len|v|≤n→inju≥injv) =
+≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v) =
   ≥-max-pres prf
   where
     prf :  (u : U (p ● r ` loc))
@@ -178,7 +207,19 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
         →  (v : U (p ● r ` loc))
         →  ∃[ w ] proj₁ (flat u) ≡ (proj₁ (flat v)) ++ w 
         → (l ● r ` loc) ⊢ mkinjFst inj u ≥ mkinjFst inj v
-    prf = {!!} 
+    prf (PairU v₁ v₂)
+        ≥-max-v₁v₂@(≥-max (PairU .v₁ .v₂) pair-v₁'v₂'→∃w|v₁v₂|≡|v₁'v₂'|++w→pair-v₁v₂>pair-v₁'v₂')
+        (PairU v₁' v₂')
+        ( w , |v₁v₂|≡|v₁'v₂'|++w )
+        with pair-v₁'v₂'→∃w|v₁v₂|≡|v₁'v₂'|++w→pair-v₁v₂>pair-v₁'v₂' (PairU v₁' v₂') ( w , |v₁v₂|≡|v₁'v₂'|++w )
+    ... | inj₁ (be len|v₁v₂|≡len|v₁'v₂'| len|v₁v₂|≡0 pairv₁v₂>ⁱpairv₁'v₂') = {!!}
+      -- if we have max-v₁, |v₁|≡|v₁'|≡0, |injv₁|≡|injv₁'|, we have inj v₁ ≥ inj v₁'
+      -- then we can prove by bne _ _ (seq₁ _)
+    ... | inj₁ (lne len|v₁v₂|>0 len|v₁'v₂'|≡0) = {!!}
+      -- if we have max-v₁, definitely ∃ w |v₁|≡|v₁'|++w, since |v₁'|≡[], we have inj v₁ ≥ inj v₁'
+    ... | inj₁ (bne len|v₁v₂|>0 len|v₁'v₂'|>0 pairv₁v₂>ⁱpairv₁'v₂') = {!!}
+      -- if we have max-v₁, do we have ∃ w |v₁|≡|v₁'|++w?  we have inj v₁ ≥ inj v₁'
+    
   
 
   

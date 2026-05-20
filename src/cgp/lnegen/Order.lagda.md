@@ -915,6 +915,12 @@ _⊢_≥_ r u v = (r ⊢ u > v) ⊎  ( u ≡ v  )
 ≥-anti {r} {u} {v} (inj₁ u>v) (inj₂ v≡u) = Nullary.contradiction (sym v≡u) (>→¬≡  u>v )
 
 
+<→¬≥ :  ∀ { r : RE } {u v : U r }
+  → r ⊢ u > v
+  → ¬ ( r ⊢ v ≥ u )
+<→¬≥ {r} {u} {v} u>v (inj₂ v≡u) = >→¬≡ u>v (sym v≡u)
+<→¬≥ {r} {u} {v} u>v (inj₁ v>u) = >-asym u>v v>u
+
 -- leftU is monotonic
 
 left-mono : ∀ { l r : RE } { loc : ℕ } { u v : U l }

@@ -11,7 +11,7 @@ import Data.Char as Char
 open Char using (Char)
 
 import Data.Nat as Nat
-open Nat using (ℕ ; _>_ ; zero ; suc ) 
+open Nat using (ℕ ; _>_ ; zero ; suc ; _+_ ) 
 
 import Data.Nat.Properties as NatProperties
 open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective )
@@ -140,6 +140,9 @@ length≡0→[] {A} {[]} refl = refl
 
 n≡0→¬n>0 : ∀ {n} → n ≡ 0 → ¬ (n Nat.> 0)
 n≡0→¬n>0 refl ()
+
+nat+0→>0 : ∀ {n} → (n + 0) > 0 → n > 0
+nat+0→>0 {n} p rewrite NatProperties.+-identityʳ n = p
 
 
 ¬≡0→>0 :  ∀ { n : ℕ }

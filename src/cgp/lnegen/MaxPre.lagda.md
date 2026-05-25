@@ -7,7 +7,7 @@ open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_
 
 
 import cgp.Utils as Utils
-open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ¬≡[]→length>0 ; ¬≡0→>0 ; length≡0→[] ; n≡0→¬n>0 
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ¬≡[]→length>0 ; ¬≡0→>0 ; length≡0→[] ; n≡0→¬n>0
  )
 
 
@@ -62,7 +62,7 @@ import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ )
+open Data.List.Properties using ( ++-assoc ; ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ )
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -131,7 +131,7 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
       → ≥-Max u
       → ( v : U p )
       → ¬ ( ∃[ c ] ∃[ w ] proj₁ (flat v) ≡ ( proj₁ (flat u)) ++ ( c ∷ w ) )
-      → r ⊢ inj u > inj v )      
+      → r ⊢ inj u ≥ inj v )      
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
 
 
@@ -230,55 +230,147 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     |u|>0 : length (proj₁ (flat u)) Nat.> 0
     |u|>0 rewrite |u|-eq  = Nat.s≤s Nat.z≤n 
 
+-- Extract ≥ from first component of pair
+extract-≥-fst : ∀ { l r : RE } (loc : ℕ) { x₁ w₁ : U l } { x₂ : U r }
+              → l ● r ` loc ⊢ PairU x₁ x₂ ≥ PairU w₁ x₂
+              → l ⊢ x₁ ≥ w₁
+extract-≥-fst loc (inj₁ (be _ _ (seq₁ x>w))) = inj₁ x>w
+extract-≥-fst loc (inj₁ (be _ _ (seq₂ refl x>x))) = ⊥-elim (>→¬≡ x>x refl)
+extract-≥-fst loc (inj₁ (bne _ _ (seq₁ x>w))) = inj₁ x>w
+extract-≥-fst loc (inj₁ (bne _ _ (seq₂ refl x>x))) = ⊥-elim (>→¬≡ x>x refl)
+extract-≥-fst {l} {r} loc {x₁} {w₁} {x₂} (inj₁ (lne len>0 len0)) =
+    inj₁ (lne len-x₁>0 len-w₁≡0)
+  where
+    flat-w₁x₂≡[] : proj₁ (flat (PairU {l} {r} {loc} w₁ x₂)) ≡ []
+    flat-w₁x₂≡[] = Utils.length≡0→[] len0
+    flat-x₂≡[] : proj₁ (flat x₂) ≡ []
+    flat-x₂≡[] = proj₂ (++-≡-[] flat-w₁x₂≡[])
+    flat-w₁≡[] : proj₁ (flat w₁) ≡ []
+    flat-w₁≡[] = proj₁ (++-≡-[] flat-w₁x₂≡[])
+    len-w₁≡0 : length (proj₁ (flat w₁)) ≡ 0
+    len-w₁≡0 = Utils.[]→length≡0 flat-w₁≡[]
+    ¬len-x₁≡0 : ¬ length (proj₁ (flat x₁)) ≡ 0
+    ¬len-x₁≡0 len-x₁≡0 = Utils.n≡0→¬n>0 len-pair≡0 len>0
+      where
+        flat-x₁≡[] : proj₁ (flat x₁) ≡ []
+        flat-x₁≡[] = Utils.length≡0→[] len-x₁≡0
+        flat-pair≡[] : proj₁ (flat (PairU {l} {r} {loc} x₁ x₂)) ≡ []
+        flat-pair≡[] rewrite flat-x₁≡[] | flat-x₂≡[] = refl
+        len-pair≡0 : length (proj₁ (flat (PairU {l} {r} {loc} x₁ x₂))) ≡ 0
+        len-pair≡0 = Utils.[]→length≡0 flat-pair≡[]
+    len-x₁>0 : length (proj₁ (flat x₁)) Nat.> 0
+    len-x₁>0 = Utils.¬≡0→>0 ¬len-x₁≡0
+extract-≥-fst loc (inj₂ refl) = inj₂ refl
+
+-- Length of injected pair is > 0
+inj-pair-len>0 : ∀ {p l r : RE} (loc : ℕ) {c : Char}
+               → (inj : U p → U l)
+               → (s-ev : ∀ (u : U p) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
+               → (v₁ : U p) → (v₂ : U r)
+               → length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂))) Nat.> 0
+inj-pair-len>0 loc inj s-ev v₁ _ rewrite s-ev v₁ = Nat.s≤s Nat.z≤n
+
+-- Extract ≥-Max of first component from ≥-Max of pair
+max-v₁-from-pair : ∀ { l r : RE } (loc : ℕ)
+                  → (u₁ : U l) → (u₂ : U r)
+                  → ≥-Max (PairU {l} {r} {loc} u₁ u₂)
+                  → ≥-Max u₁
+max-v₁-from-pair loc u₁ u₂ max-pair = {!!}
+  -- NOTE: extracting ≥-Max u₁ from ≥-Max (PairU u₁ u₂) is not straightforward
+  -- because the suffix w in the pair's ≥ proof doesn't decompose.
+
 -- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
 
-≥-max-pres-left : ∀ { l r : RE } {loc : ℕ } { c : Char } 
+≥-max-pres-left : ∀ { l r : RE } {loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
-≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v) =
+≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u≥inj-v) =
   ≥-max-pres (λ u maxu v ∃w|u|≡|v|++w → left-mono-≥ (u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u maxu v ∃w|u|≡|v|++w))
-             (λ u maxu v ¬∃cw|v|≡|u|++cw → left-mono (u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v u maxu v ¬∃cw|v|≡|u|++cw))
+             (λ u maxu v ¬∃cw|v|≡|u|++cw → left-mono (u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u≥inj-v u maxu v ¬∃cw|v|≡|u|++cw))
 
 
 ≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
   → ≥-Max-Preserve {r} {c} pdi
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
-≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres  u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v) =
+≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres  u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u≥inj-v) =
   ≥-max-pres (λ u maxu v ∃w|u|≡|v|++w  → right-mono-≥ (u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u maxu v ∃w|u|≡|v|++w))        
-             (λ u maxu v ¬∃cw|v|≡|u|++cw → right-mono (u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v u maxu v ¬∃cw|v|≡|u|++cw))
+             (λ u maxu v ¬∃cw|v|≡|u|++cw → right-mono (u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u≥inj-v u maxu v ¬∃cw|v|≡|u|++cw))
 
 ≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  → ( pdi : PDInstance l c )
-  → ≥-Max-Preserve {l} {c} pdi
-  → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
-≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v) =
-  ≥-max-pres prf {!!}  
-  where
-    prf :  (u : U (p ● r ` loc))
-        →  ≥-Max u
-        →  (v : U (p ● r ` loc))
-        →  ∃[ w ] proj₁ (flat u) ≡ (proj₁ (flat v)) ++ w 
-        → (l ● r ` loc) ⊢ mkinjFst inj u ≥ mkinjFst inj v
-    prf (PairU v₁ v₂)
-        ≥-max-v₁v₂@(≥-max (PairU .v₁ .v₂) pair-v₁'v₂'→∃w|v₁v₂|≡|v₁'v₂'|++w→pair-v₁v₂>pair-v₁'v₂' pair-v₁'v₂'→¬∃w→|v₁'v₂'|≡|v₁v₂|++w→pair-v₁v₂>pair-v₁'v₂' )
-        (PairU v₁' v₂')
-        ( w , |v₁v₂|≡|v₁'v₂'|++w )
-        with pair-v₁'v₂'→∃w|v₁v₂|≡|v₁'v₂'|++w→pair-v₁v₂>pair-v₁'v₂' (PairU v₁' v₂') ( w , |v₁v₂|≡|v₁'v₂'|++w )
-    ... | inj₁ (be len|v₁v₂|≡len|v₁'v₂'| len|v₁v₂|≡0 pairv₁v₂>ⁱpairv₁'v₂') = {!!}
-      -- by calling ≥-max-pair-inv3 to establish IH
-      -- we have inj v₁ ≥ inj v₁'
-      -- then we can prove by bne _ _ (seq₁ _)
-    ... | inj₁ (lne len|v₁v₂|>0 len|v₁'v₂'|≡0) = {!!}
-      -- by calling ≥-max-pair-inv3 to establish IH
-      -- we have inj v₁ ≥ inj v₁'
-      -- then we can prove by bne _ _ (seq₁ _)
-    ... | inj₁ (bne len|v₁v₂|>0 len|v₁'v₂'|>0 pairv₁v₂>ⁱpairv₁'v₂') = {!!}
-      -- by calling ≥-max-pair-inv3 to establish IH
-      -- we have inj v₁ ≥ inj v₁'
-      -- then we can prove by bne _ _ (seq₁ _)
-    ... | inj₂ pairv₁v₂≡pairv₁'v₂' = inj₂ {!!}  -- cong
+   → ( pdi : PDInstance l c )
+   → ≥-Max-Preserve {l} {c} pdi
+   → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
+≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→maxu→v→∃w|u|≡|v|++w→inj-u≥inj-v u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u≥inj-v) =
+  ≥-max-pres prf snd-prf
+     where
+       prf : (u : U (p ● r ` loc))
+            → ≥-Max u
+            → (v : U (p ● r ` loc))
+            → ∃[ w ] proj₁ (flat u) ≡ (proj₁ (flat v)) ++ w
+            → (l ● r ` loc) ⊢ mkinjFst inj u ≥ mkinjFst inj v
+       prf (PairU v₁ v₂)
+           max-pair@(≥-max (PairU .v₁ .v₂) f₁ f₂)
+           (PairU v₁' v₂')
+           ( w , |v₁v₂|≡|v₁'v₂'|++w )
+         with f₁ (PairU v₁' v₂') ( w , |v₁v₂|≡|v₁'v₂'|++w )
+       prf (PairU v₁ v₂)
+           max-pair@(≥-max (PairU .v₁ .v₂) f₁ f₂)
+           (PairU v₁' v₂')
+           ( _ , _ )
+         | inj₁ (be len≡ len0 (seq₁ _)) =
+             let max-v₁ = max-v₁-from-pair loc v₁ v₂ max-pair
+                 iv1gtv1p = u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v v₁ max-v₁ v₁' {!!}
+             in inj₁ (bne (inj-pair-len>0 loc inj s-ev v₁ v₂) (inj-pair-len>0 loc inj s-ev v₁' v₂') (seq₁ iv1gtv1p))
+       prf (PairU v₁ v₂)
+           max-pair@(≥-max (PairU .v₁ .v₂) f₁ f₂)
+           (PairU v₁' v₂')
+           ( _ , _ )
+         | inj₁ (be len≡ len0 (seq₂ v₁≡v₁' v₂>v₂')) =
+             let max-v₁ = max-v₁-from-pair loc v₁ v₂ max-pair
+                 iv1gtv1p = u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v v₁ max-v₁ v₁' {!!}
+             in inj₁ (bne (inj-pair-len>0 loc inj s-ev v₁ v₂) (inj-pair-len>0 loc inj s-ev v₁' v₂') (seq₂ (cong inj v₁≡v₁') v₂>v₂'))
+       prf (PairU v₁ v₂)
+           max-pair@(≥-max (PairU .v₁ .v₂) f₁ f₂)
+           (PairU v₁' v₂')
+           ( _ , _ )
+         | inj₁ (lne len>0 len0) =
+             let max-v₁ = max-v₁-from-pair loc v₁ v₂ max-pair
+                 iv1gtv1p = u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v v₁ max-v₁ v₁' {!!}
+             in inj₁ (bne (inj-pair-len>0 loc inj s-ev v₁ v₂) (inj-pair-len>0 loc inj s-ev v₁' v₂') (seq₁ iv1gtv1p))
+       prf (PairU v₁ v₂)
+           max-pair@(≥-max (PairU .v₁ .v₂) f₁ f₂)
+           (PairU v₁' v₂')
+           ( _ , _ )
+         | inj₁ (bne len>0 len>0' _) =
+             let max-v₁ = max-v₁-from-pair loc v₁ v₂ max-pair
+                 iv1gtv1p = u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v v₁ max-v₁ v₁' {!!}
+             in inj₁ (bne (inj-pair-len>0 loc inj s-ev v₁ v₂) (inj-pair-len>0 loc inj s-ev v₁' v₂') (seq₁ iv1gtv1p))
+       prf (PairU v₁ v₂)
+           max-pair@(≥-max (PairU .v₁ .v₂) f₁ f₂)
+           (PairU v₁' v₂')
+           ( _ , _ )
+         | inj₂ pairv₁v₂≡pairv₁'v₂' =
+             let v₁≡v₁' , v₂≡v₂' = inv-pairU v₁ v₂ v₁' v₂' pairv₁v₂≡pairv₁'v₂'
+             in inj₂ (cong₂ PairU (cong inj v₁≡v₁') v₂≡v₂')
+
+       snd-prf : (u : U (p ● r ` loc))
+                → ≥-Max u
+                → (v : U (p ● r ` loc))
+                → ¬ (∃[ c ] ∃[ w ] proj₁ (flat v) ≡ proj₁ (flat u) ++ c ∷ w)
+                → (l ● r ` loc) ⊢ mkinjFst inj u > mkinjFst inj v
+       snd-prf (PairU v₁ v₂) snd-max-pair@(≥-max (PairU .v₁ .v₂) f₁' f₂') (PairU v₁' v₂') ¬∃ =
+             bne (inj-pair-len>0 loc inj s-ev v₁ v₂) (inj-pair-len>0 loc inj s-ev v₁' v₂') (seq₁ snd-v₁>ⁱv₁')
+           where
+             snd-max-v₁ : ≥-Max v₁
+             snd-max-v₁ = max-v₁-from-pair loc v₁ v₂ snd-max-pair
+
+             snd-¬∃-v₁ : ¬ (∃[ c ] ∃[ w ] proj₁ (flat v₁') ≡ proj₁ (flat v₁) ++ c ∷ w)
+             snd-¬∃-v₁ (c₁ , (w₁ , p)) = {!!}
+
+             snd-v₁>ⁱv₁' : l ⊢ inj v₁ > inj v₁'
+             snd-v₁>ⁱv₁' = u→maxu→v→¬∃cw|v|≡|u|++cw→inj-u>inj-v v₁ snd-max-v₁ v₁' snd-¬∃-v₁
   
 
   

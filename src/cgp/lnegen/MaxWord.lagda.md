@@ -123,7 +123,6 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
 
 
--- do we have some thing like ≥-Max-Preserve but for the first of a pair parse tree?
 
 ≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )

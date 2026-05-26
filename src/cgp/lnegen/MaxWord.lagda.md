@@ -110,6 +110,14 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
           → r ⊢ u ≥ v )
         → ≥-Max {r} w u
 
+≥-max-pair-longest-prefix : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
+  → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)
+  → ( u' : U l )
+  → ( v' : U r )
+  → ¬ ( ∃[ c ] ∃[ w ] ( proj₁ (flat u') ≡ proj₁ (flat u) ++ ( c ∷ w ) ) × ( proj₁ (flat v) ) ≡ (c ∷ w ++ (proj₁ (flat v'))) )
+≥-max-pair-longest-prefix = {!!}  
+
+
 -- each partial derivative p is unique
 -- inj is ≥-Max-Preserve is given an u which is max, and another v,
 -- we must have inj u ≥ inj v 
@@ -138,6 +146,7 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
 ≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u→w→max-u→max-inj-u) =
   ≥-max-pres (λ u w maxu → {!!} )        
+
 
 
 ≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ }  { c : Char }

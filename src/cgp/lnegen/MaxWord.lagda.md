@@ -398,7 +398,83 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
   → ≥-Max {l} [] e₁
   → ≥-Max {p} w u₂
   → ¬ ( ∃[ w₁ ] ∃[ w₂ ] ( ¬ w₁ ≡ [] ) × ( w₁ ++ w₂ ≡ c ∷ w ) × ( w₁ ∈⟦ l ⟧ ) × ( w₂ ∈⟦ r ⟧ ))
-  → ≥-Max { l ● r ` loc } ( c ∷ w) (mkinjSnd inj e₁ u₂)
-≥-max-pres-snd = {!!}   
+  → ≥-Max { l ● r ` loc } ( c ∷ w) (mkinjSnd {l} {r} {p} {loc} inj e₁ u₂)
+≥-max-pres-snd {p} {l} {r} {ε∈l} {loc} {c} {inj} {sound-ev} (≥-max-pres preserve) e₁ u₂ w max-e₁ max-u₂ ¬split =
+  ≥-max (c ∷ w) (mkinjSnd {l} {r} {p} {loc} inj e₁ u₂) flat-mkinjSnd≡c∷w helper
+  where
+    flat-e₁≡[] : proj₁ (flat {l} e₁) ≡ []
+    flat-e₁≡[] = ≥-max-word max-e₁
+
+    flat-mkinjSnd≡c∷w : proj₁ (flat {l ● r ` loc} (mkinjSnd {l} {r} {p} {loc} inj e₁ u₂)) ≡ c ∷ w
+    flat-mkinjSnd≡c∷w =
+      begin
+        proj₁ (flat {l ● r ` loc} (mkinjSnd {l} {r} {p} {loc} inj e₁ u₂))
+      ≡⟨ refl ⟩
+        proj₁ (flat {l} e₁) ++ proj₁ (flat {r} (inj u₂))
+      ≡⟨ cong (_++ proj₁ (flat {r} (inj u₂))) flat-e₁≡[] ⟩
+        [] ++ proj₁ (flat {r} (inj u₂))
+      ≡⟨ ++-identityˡ (proj₁ (flat {r} (inj u₂))) ⟩
+        proj₁ (flat {r} (inj u₂))
+      ≡⟨ sound-ev u₂ ⟩
+        c ∷ proj₁ (flat {p} u₂)
+      ≡⟨ cong (c ∷_) (≥-max-word max-u₂) ⟩
+        c ∷ w
+      ∎
+
+    len>0-pair-e₁ : length (proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} e₁ (inj u₂)))) Nat.> 0
+    len>0-pair-e₁ rewrite flat-mkinjSnd≡c∷w = Nat.s≤s Nat.z≤n
+
+    len>0-pair-v : (v : U (l ● r ` loc)) → proj₁ (flat {l ● r ` loc} v) ≡ c ∷ w → length (proj₁ (flat {l ● r ` loc} v)) Nat.> 0
+    len>0-pair-v v eq = subst (λ x → suc zero ≤ x) (cong length (sym eq)) (Nat.s≤s Nat.z≤n)
+
+    ≥-max-μ : ∀ {r' : RE} {w' : List Char} {u : U r'} → ≥-Max {r'} w' u → (v : U r') → proj₁ (flat {r'} v) ≡ w' → r' ⊢ u ≥ v
+    ≥-max-μ (≥-max _ _ _ μ) v flat-v≡w = μ v flat-v≡w
+
+    pair-≥-from-comp : (v₁ : U l) (v₂ : U r)
+      → l ⊢ e₁ ≥ v₁
+      → r ⊢ inj u₂ ≥ v₂
+      → proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ w
+      → l ● r ` loc ⊢ PairU {l} {r} {loc} e₁ (inj u₂) ≥ PairU {l} {r} {loc} v₁ v₂
+    pair-≥-from-comp v₁ v₂ (inj₁ e₁>v₁) _ flat-v≡c∷w =
+      inj₁ (bne {l ● r ` loc} {PairU {l} {r} {loc} e₁ (inj u₂)} {PairU {l} {r} {loc} v₁ v₂}
+        len>0-pair-e₁ (len>0-pair-v (PairU {l} {r} {loc} v₁ v₂) flat-v≡c∷w)
+        (seq₁ {l} {r} {loc} {e₁} {v₁} {inj u₂} {v₂} e₁>v₁))
+    pair-≥-from-comp v₁ v₂ (inj₂ refl) (inj₁ inj-u₂>v₂) flat-v≡c∷w =
+      inj₁ (bne {l ● r ` loc} {PairU {l} {r} {loc} e₁ (inj u₂)} {PairU {l} {r} {loc} v₁ v₂}
+        len>0-pair-e₁ (len>0-pair-v (PairU {l} {r} {loc} v₁ v₂) flat-v≡c∷w)
+        (seq₂ {l} {r} {loc} {e₁} {v₁} {inj u₂} {v₂} refl inj-u₂>v₂))
+    pair-≥-from-comp _ _ (inj₂ refl) (inj₂ refl) _ =
+      inj₂ refl
+
+    inj-u₂-max : ≥-Max {r} (c ∷ w) (inj u₂)
+    inj-u₂-max = preserve u₂ w max-u₂
+
+    helper : (v : U (l ● r ` loc)) → proj₁ (flat {l ● r ` loc} v) ≡ c ∷ w → l ● r ` loc ⊢ mkinjSnd {l} {r} {p} {loc} inj e₁ u₂ ≥ v
+    helper (PairU v₁ v₂) flat-v≡c∷w
+      with length (proj₁ (flat {l} v₁)) Nat.≟ 0
+    ... | yes len-v₁≡0 =
+      let flat-v₁≡[] = length≡0→[] len-v₁≡0
+          flat-v₂≡c∷w : proj₁ (flat {r} v₂) ≡ c ∷ w
+          flat-v₂≡c∷w =
+            begin
+              proj₁ (flat {r} v₂)
+            ≡⟨ sym (++-identityˡ (proj₁ (flat {r} v₂))) ⟩
+              [] ++ proj₁ (flat {r} v₂)
+            ≡⟨ cong (_++ proj₁ (flat {r} v₂)) (sym flat-v₁≡[]) ⟩
+              proj₁ (flat {l} v₁) ++ proj₁ (flat {r} v₂)
+            ≡⟨ flat-v≡c∷w ⟩
+              c ∷ w
+            ∎
+      in pair-≥-from-comp v₁ v₂
+           (≥-max-μ max-e₁ v₁ flat-v₁≡[])
+           (≥-max-μ inj-u₂-max v₂ flat-v₂≡c∷w)
+           flat-v≡c∷w
+    ... | no ¬len-v₁≡0 =
+      let ¬[] : proj₁ (flat {l} v₁) ≢ []
+          ¬[] eq = ¬len-v₁≡0 (cong length eq)
+      in ⊥-elim (¬split (proj₁ (flat {l} v₁) ,
+        (proj₁ (flat {r} v₂) ,
+          (¬[] ,
+            (flat-v≡c∷w , (proj₂ (flat {l} v₁) , proj₂ (flat {r} v₂)))))))   
 
 ```

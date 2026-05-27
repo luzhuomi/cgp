@@ -157,7 +157,19 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
 ≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→w→max-u→max-inj-u) =
-  ≥-max-pres (λ u w maxu → {!!} )
+  ≥-max-pres (λ u w maxu →
+    case u→w→max-u→max-inj-u u w maxu of λ
+      { (≥-max _ _ flat-inj-u≡c∷w μ') →
+        ≥-max (c ∷ w) (LeftU (inj u))
+          flat-inj-u≡c∷w
+          (λ { (LeftU v₁) flat-left-v₁≡c∷w → left-mono-≥ (μ' v₁ flat-left-v₁≡c∷w)
+             ; (RightU v₂) flat-right-v₂≡c∷w →
+               inj₁ (bne
+                 (subst (λ x → length x Nat.> 0) (sym flat-inj-u≡c∷w) (Nat.s≤s Nat.z≤n))
+                 (subst (λ x → length x Nat.> 0) (sym flat-right-v₂≡c∷w) (Nat.s≤s Nat.z≤n))
+                 choice-lr)
+             })
+      })
 
 
 ≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }

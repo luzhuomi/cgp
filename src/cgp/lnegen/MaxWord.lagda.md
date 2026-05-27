@@ -150,25 +150,30 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
       → ≥-Max (c ∷ w) (inj u) )
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
 
+≥-max-word : ∀ {r : RE} {w : List Char} {u : U r} → ≥-Max w u → proj₁ (flat u) ≡ w
+≥-max-word (≥-max _ _ eq _) = eq
+
+≥-max-pres-left-helper : (p l r : RE) (loc : ℕ) (c : Char) (inj : U p → U l)
+  → (u : U p) (w : List Char)
+  → ≥-Max (c ∷ w) (inj u)
+  → ≥-Max (c ∷ w) (LeftU {l} {r} {loc} (inj u))
+≥-max-pres-left-helper p l r loc c inj u w (≥-max _ _ flat-inj-u≡c∷w μ') =
+  ≥-max (c ∷ w) (LeftU {l} {r} {loc} (inj u))
+    flat-inj-u≡c∷w
+    (λ { (LeftU v₁) flat-left-v₁≡c∷w → left-mono-≥ (μ' v₁ flat-left-v₁≡c∷w)
+       ; (RightU v₂) flat-right-v₂≡c∷w →
+         inj₁ (bne
+           (subst (λ x → length x Nat.> 0) (sym flat-inj-u≡c∷w) (Nat.s≤s Nat.z≤n))
+           (subst (λ x → length x Nat.> 0) (sym flat-right-v₂≡c∷w) (Nat.s≤s Nat.z≤n))
+           (choice-lr {l} {r} {loc} {v₁ = inj u} {v₂ = v₂}))
+       })
 
 ≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-left pdi)
 ≥-max-pres-left {l} {r} {loc} {c} (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→w→max-u→max-inj-u) =
-  ≥-max-pres (λ u w maxu →
-    case u→w→max-u→max-inj-u u w maxu of λ
-      { (≥-max _ _ flat-inj-u≡c∷w μ') →
-        ≥-max (c ∷ w) (LeftU (inj u))
-          flat-inj-u≡c∷w
-          (λ { (LeftU v₁) flat-left-v₁≡c∷w → left-mono-≥ (μ' v₁ flat-left-v₁≡c∷w)
-             ; (RightU v₂) flat-right-v₂≡c∷w →
-               inj₁ (bne
-                 (subst (λ x → length x Nat.> 0) (sym flat-inj-u≡c∷w) (Nat.s≤s Nat.z≤n))
-                 (subst (λ x → length x Nat.> 0) (sym flat-right-v₂≡c∷w) (Nat.s≤s Nat.z≤n))
-                 choice-lr)
-             })
-      })
+  ≥-max-pres (λ u w maxu → ≥-max-pres-left-helper p l r loc c inj u w (u→w→max-u→max-inj-u u w maxu))
 
 {-
 -- unprovable. we need a different conclusion which says it is only maximal if the word is not inhabiting in l.
@@ -197,29 +202,190 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
   → ≥-Max w u
   → ¬ ( (c ∷ w) ∈⟦ l ⟧ )
   → ≥-Max {l + r ` loc} (c ∷ w) (RightU (inj u))
+≥-max-pres-right-helper : (p r l : RE) (loc : ℕ) (c : Char) (inj : U p → U r)
+  → (u : U p) (w : List Char)
+  → ¬ ((c ∷ w) ∈⟦ l ⟧)
+  → ≥-Max {r} (c ∷ w) (inj u)
+  → ≥-Max {l + r ` loc} (c ∷ w) (RightU {l} {r} {loc} (inj u))
+≥-max-pres-right-helper p r l loc c inj u w ¬c∷w∈l (≥-max _ _ flat-inj-u≡c∷w μ') =
+  ≥-max (c ∷ w) (RightU {l} {r} {loc} (inj u))
+    flat-inj-u≡c∷w
+    (λ { (LeftU v₁) flat-left-v₁≡c∷w →
+           let xs = proj₁ (flat {l} v₁)
+               xs∈⟦l⟧ = proj₂ (flat {l} v₁)
+               eq : xs ≡ c ∷ w
+               eq = trans (sym (proj₁-flat-LeftU {l} {r} {loc} v₁)) flat-left-v₁≡c∷w
+           in ⊥-elim (¬c∷w∈l (subst (λ x → x ∈⟦ l ⟧) eq xs∈⟦l⟧))
+       ; (RightU v₂) flat-right-v₂≡c∷w →
+           right-mono-≥ (μ' v₂ flat-right-v₂≡c∷w)
+       })
+
 ≥-max-pres-right {p} {l} {r} {loc} {c} {inj} {sound-ev} (≥-max-pres preserve) u w max-u ¬c∷w∈l =
-  case preserve u w max-u of λ
-    { (≥-max _ _ flat-inj-u≡c∷w μ') →
-      ≥-max (c ∷ w) (RightU (inj u))
-        flat-inj-u≡c∷w
-         (λ { (LeftU v₁) flat-left-v₁≡c∷w →
-                let xs = proj₁ (flat {l} v₁)
-                    xs∈⟦l⟧ = proj₂ (flat {l} v₁)
-                    eq : xs ≡ c ∷ w
-                    eq = trans (sym (proj₁-flat-LeftU {l} {r} {loc} v₁)) flat-left-v₁≡c∷w
-                in ⊥-elim (¬c∷w∈l (subst (λ x → x ∈⟦ l ⟧) eq xs∈⟦l⟧))
-           ; (RightU v₂) flat-right-v₂≡c∷w →
-               right-mono-≥ (μ' v₂ flat-right-v₂≡c∷w)
-           })
-    } 
+  ≥-max-pres-right-helper p r l loc c inj u w ¬c∷w∈l (preserve u w max-u) 
 
 
-≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ }  { c : Char }
-  → ( pdi : PDInstance l c )
-  → ≥-Max-Preserve {l} {c} pdi
-  → ≥-Max-Preserve {l ● r ` loc} {c} (pdinstance-fst pdi)
-≥-max-pres-fst {l} {r} {loc} {c}  (pdinstance {p} .{l} .{c} inj s-ev) (≥-max-pres u→w→maxu→max-inj-u) =
-  ≥-max-pres {!!} 
+≥-max-pres-fst : ∀ { p l r : RE } { loc : ℕ } { c : Char }
+  { inj : U p → U l }
+  { sound-ev : ∀ ( x : U p ) → proj₁ (flat {l} (inj x)) ≡ c ∷ proj₁ (flat {p} x) }
+  → ≥-Max-Preserve {l} {c} (pdinstance inj sound-ev)
+  → ( u₁ : U p ) ( u₂ : U r )
+  → ( w : List Char )
+  → ≥-Max {p ● r ` loc} w (PairU u₁ u₂)
+  → ≥-Max {r} (proj₁ (flat u₂)) u₂
+  → ( ∀ ( v₁ : U l ) → proj₁ (flat {l} v₁) ≢ c ∷ proj₁ (flat {p} u₁) → proj₁ (flat {l} v₁) ≢ [] → l ⊢ inj u₁ > v₁ )
+  → ≥-Max {l ● r ` loc} (c ∷ w) (PairU (inj u₁) u₂)
+≥-max-pres-fst {p} {l} {r} {loc} {c} {inj} {sound-ev} (≥-max-pres preserve) u₁ u₂ w max-pair max-u₂ dom =
+  ≥-max (c ∷ w) (PairU (inj u₁) u₂) flat-inj-u₁-u₂≡c∷w helper
+  where
+    flat-inj-u₁-u₂≡c∷w : proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} (inj u₁) u₂)) ≡ c ∷ w
+    flat-inj-u₁-u₂≡c∷w =
+      begin
+        proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} (inj u₁) u₂))
+      ≡⟨ refl ⟩
+        proj₁ (flat {l} (inj u₁)) ++ proj₁ (flat {r} u₂)
+      ≡⟨ cong (_++ proj₁ (flat {r} u₂)) (sound-ev u₁) ⟩
+        c ∷ proj₁ (flat {p} u₁) ++ proj₁ (flat {r} u₂)
+      ≡⟨ cong (c ∷_) (begin
+          proj₁ (flat {p} u₁) ++ proj₁ (flat {r} u₂)
+        ≡⟨ refl ⟩
+          proj₁ (flat {p ● r ` loc} (PairU {p} {r} {loc} u₁ u₂))
+        ≡⟨ ≥-max-word max-pair ⟩
+          w
+        ∎) ⟩
+        c ∷ w
+      ∎
+
+    ≥-max-pair-all : ∀ { l' r' : RE } { loc' : ℕ } { w' : List Char } { u : U (l' ● r' ` loc') }
+      → ≥-Max w' u → ( v : U (l' ● r' ` loc') ) → proj₁ (flat v) ≡ w' → l' ● r' ` loc' ⊢ u ≥ v
+    ≥-max-pair-all (≥-max _ _ _ μ) v flat-v≡w = μ v flat-v≡w
+
+    flat-pair-cong : ∀ {l' r' : RE} {loc' : ℕ} {u₁ u₁' : U l'} {u₂ : U r'}
+      → proj₁ (flat u₁) ≡ proj₁ (flat u₁')
+      → proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁ u₂)) ≡ proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
+    flat-pair-cong {l'} {r'} {loc'} {u₁} {u₁'} {u₂} eq =
+      begin
+        proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁ u₂))
+      ≡⟨ refl ⟩
+        proj₁ (flat {l'} u₁) ++ proj₁ (flat {r'} u₂)
+      ≡⟨ cong (_++ proj₁ (flat {r'} u₂)) eq ⟩
+        proj₁ (flat {l'} u₁') ++ proj₁ (flat {r'} u₂)
+      ≡⟨ refl ⟩
+        proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
+      ∎
+
+    len-flat-pair : ∀ {l' r' : RE} {loc' : ℕ} {a : U l'} {b : U r'}
+      → length (proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} a b))) ≡ length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
+    len-flat-pair {l'} {r'} {loc'} {a = a} {b = b} =
+      begin
+        length (proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} a b)))
+      ≡⟨ cong length (begin
+          proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} a b))
+        ≡⟨ refl ⟩
+          proj₁ (flat {l'} a) ++ proj₁ (flat {r'} b)
+        ∎) ⟩
+        length (proj₁ (flat {l'} a) ++ proj₁ (flat {r'} b))
+      ≡⟨ length-++ (proj₁ (flat {l'} a)) {proj₁ (flat {r'} b)} ⟩
+        length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
+      ∎
+
+    extract-≥-fst : (l' r' : RE) (loc' : ℕ) (u₁ u₁' : U l') (u₂ : U r')
+      → l' ● r' ` loc' ⊢ PairU u₁ u₂ ≥ PairU u₁' u₂ → l' ⊢ u₁ ≥ u₁'
+    extract-≥-fst _ _ _ _ _ _ (inj₁ (be _ _ (seq₁ u₁>u₁'))) = inj₁ u₁>u₁'
+    extract-≥-fst _ _ _ _ _ _ (inj₁ (be _ _ (seq₂ u₁≡u' _))) = inj₂ u₁≡u'
+    extract-≥-fst _ _ _ _ _ _ (inj₁ (bne _ _ (seq₁ u₁>u₁'))) = inj₁ u₁>u₁'
+    extract-≥-fst _ _ _ _ _ _ (inj₁ (bne _ _ (seq₂ u₁≡u' _))) = inj₂ u₁≡u'
+    extract-≥-fst l' r' loc' u₁ u₁' u₂ (inj₁ (lne len>0 len'≡0)) =
+      let len-u₂≡0 = m+n≡0⇒n≡0 (length (proj₁ (flat {l'} u₁')))
+                               (trans (sym (len-flat-pair {l'} {r'} {loc'} {a = u₁'} {b = u₂})) len'≡0)
+          len-u₁>0 = subst (λ x → x Nat.> 0)
+                           (trans (cong (λ y → length (proj₁ (flat {l'} u₁)) + y) len-u₂≡0)
+                                  (+-identityʳ (length (proj₁ (flat {l'} u₁)))))
+                           (subst (λ x → x Nat.> 0)
+                                  (len-flat-pair {l'} {r'} {loc'} {a = u₁} {b = u₂})
+                                  len>0)
+          len-u₁'≡0 = m+n≡0⇒m≡0 (length (proj₁ (flat {l'} u₁')))
+                               (trans (sym (len-flat-pair {l'} {r'} {loc'} {a = u₁'} {b = u₂})) len'≡0)
+      in inj₁ (lne len-u₁>0 len-u₁'≡0)
+    extract-≥-fst _ _ _ _ _ _ (inj₂ refl) = inj₂ refl
+
+    u₁-max : ≥-Max {p} (proj₁ (flat {p} u₁)) u₁
+    u₁-max = ≥-max (proj₁ (flat {p} u₁)) u₁ refl λ v₁ flat-v₁≡flat-u₁ →
+      extract-≥-fst p r loc u₁ v₁ u₂ (≥-max-pair-all max-pair (PairU {p} {r} {loc} v₁ u₂)
+        (trans (flat-pair-cong {p} {r} {loc} flat-v₁≡flat-u₁) (≥-max-word max-pair)))
+
+    inj-u₁-max : ≥-Max {l} (c ∷ proj₁ (flat u₁)) (inj u₁)
+    inj-u₁-max = preserve u₁ (proj₁ (flat u₁)) u₁-max
+
+    len>0-inj : length (proj₁ (flat {l} (inj u₁))) Nat.> 0
+    len>0-inj rewrite sound-ev u₁ = Nat.s≤s Nat.z≤n
+
+    len>0-pair-inj : length (proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} (inj u₁) u₂))) Nat.> 0
+    len>0-pair-inj rewrite flat-inj-u₁-u₂≡c∷w = Nat.s≤s Nat.z≤n
+
+    flat-inj-u₁-u₂≡c∷w' : c ∷ proj₁ (flat {p} u₁) ++ proj₁ (flat {r} u₂) ≡ c ∷ w
+    flat-inj-u₁-u₂≡c∷w' = subst (λ x → x ++ proj₁ (flat {r} u₂) ≡ c ∷ w) (sound-ev u₁) flat-inj-u₁-u₂≡c∷w
+
+    len>0-pair-v : (v : U (l ● r ` loc)) → proj₁ (flat {l ● r ` loc} v) ≡ c ∷ w → length (proj₁ (flat {l ● r ` loc} v)) Nat.> 0
+    len>0-pair-v v eq = subst (λ x → suc zero ≤ x) (cong length (sym eq)) (Nat.s≤s Nat.z≤n)
+
+    list-≟ : (xs ys : List Char) → Dec (xs ≡ ys)
+    list-≟ [] [] = yes refl
+    list-≟ [] (_ ∷ _) = no (λ ())
+    list-≟ (_ ∷ _) [] = no (λ ())
+    list-≟ (x ∷ xs) (y ∷ ys) with x Char.≟ y | list-≟ xs ys
+    ... | yes x≡y | yes xs≡ys = yes (cong₂ _∷_ x≡y xs≡ys)
+    ... | no ¬x≡y | _         = no (λ eq → ¬x≡y (proj₁ (Utils.∷-inj eq)))
+    ... | yes _   | no ¬xs≡ys = no (λ eq → ¬xs≡ys (proj₂ (Utils.∷-inj eq)))
+
+    helper-inj-μ : (v₁ : U l) (v₂ : U r) → inj u₁ ≡ v₁ → proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ w
+      → r ⊢ u₂ ≥ v₂ → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ PairU v₁ v₂
+    helper-inj-μ v₁ v₂ eq-inj flat-v≡c∷w (inj₁ u₂>v₂) =
+      inj₁ (bne {l ● r ` loc} {PairU (inj u₁) u₂} {PairU v₁ v₂}
+        len>0-pair-inj (len>0-pair-v (PairU {l} {r} {loc} v₁ v₂) flat-v≡c∷w)
+        (seq₂ {l} {r} {loc} {inj u₁} {v₁} {u₂} {v₂} eq-inj u₂>v₂))
+    helper-inj-μ v₁ v₂ eq-inj flat-v≡c∷w (inj₂ eq-u₂) =
+      inj₂ (cong₂ (PairU {l} {r} {loc}) eq-inj eq-u₂)
+
+    helper-inj-eq-inj : (v₁ : U l) (v₂ : U r) → inj u₁ ≡ v₁ → proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ w
+      → proj₁ (flat {r} v₂) ≡ proj₁ (flat {r} u₂) → ≥-Max {r} (proj₁ (flat {r} u₂)) u₂ → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ PairU v₁ v₂
+    helper-inj-eq-inj v₁ v₂ eq-inj flat-v≡c∷w v₂-word max-u₂'
+      with max-u₂'
+    ... | ≥-max _ _ _ μ-u₂ = helper-inj-μ v₁ v₂ eq-inj flat-v≡c∷w (μ-u₂ v₂ v₂-word)
+
+    helper-inj : (v₁ : U l) (v₂ : U r) → proj₁ (flat {l} v₁) ≡ c ∷ proj₁ (flat {p} u₁) → proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ w → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ PairU v₁ v₂
+    helper-inj v₁ v₂ eq flat-v≡c∷w
+      with inj-u₁-max
+    ... | ≥-max _ _ _ μ-inj
+      with μ-inj v₁ eq
+    ...   | inj₁ inj-u₁>v₁ =
+      inj₁ (bne {l ● r ` loc} {PairU (inj u₁) u₂} {PairU v₁ v₂}
+        len>0-pair-inj (len>0-pair-v (PairU {l} {r} {loc} v₁ v₂) flat-v≡c∷w)
+        (seq₁ {l} {r} {loc} {inj u₁} {v₁} {u₂} {v₂} inj-u₁>v₁))
+    ...   | inj₂ eq-inj =
+      let v₂-word : proj₁ (flat {r} v₂) ≡ proj₁ (flat {r} u₂)
+          v₂-word = ++-cancelˡ (c ∷ proj₁ (flat {p} u₁)) (proj₁ (flat {r} v₂)) (proj₁ (flat {r} u₂))
+            (sym (trans flat-inj-u₁-u₂≡c∷w'
+              (trans (sym flat-v≡c∷w)
+                (cong (_++ proj₁ (flat {r} v₂)) eq))))
+      in helper-inj-eq-inj v₁ v₂ eq-inj flat-v≡c∷w v₂-word max-u₂
+
+    helper : ( v : U (l ● r ` loc) ) → proj₁ (flat {l ● r ` loc} v) ≡ c ∷ w → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ v
+    helper (PairU v₁ v₂) flat-v≡c∷w
+      with length (proj₁ (flat {l} v₁)) Nat.≟ 0
+    ... | yes len-v₁≡0 =
+      inj₁ (bne {l ● r ` loc} {PairU (inj u₁) u₂} {PairU v₁ v₂}
+        len>0-pair-inj (len>0-pair-v (PairU {l} {r} {loc} v₁ v₂) flat-v≡c∷w)
+        (seq₁ {l} {r} {loc} {inj u₁} {v₁} {u₂} {v₂}
+          (lne {l} {inj u₁} {v₁} len>0-inj len-v₁≡0)))
+    ... | no ¬len-v₁≡0
+      with list-≟ (proj₁ (flat {l} v₁)) (c ∷ proj₁ (flat {p} u₁))
+    ...   | yes eq = helper-inj v₁ v₂ eq flat-v≡c∷w
+    ...   | no ¬eq =
+      let ¬[] : proj₁ (flat {l} v₁) ≢ []
+          ¬[] eq = ¬len-v₁≡0 (cong length eq)
+      in inj₁ (bne {l ● r ` loc} {PairU (inj u₁) u₂} {PairU v₁ v₂}
+           len>0-pair-inj (len>0-pair-v (PairU {l} {r} {loc} v₁ v₂) flat-v≡c∷w)
+           (seq₁ {l} {r} {loc} {inj u₁} {v₁} {u₂} {v₂} (dom v₁ ¬eq ¬[])))
   
 
   

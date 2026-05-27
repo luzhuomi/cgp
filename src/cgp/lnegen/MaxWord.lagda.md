@@ -151,7 +151,6 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
     → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
 
 
-
 ≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
@@ -171,14 +170,48 @@ data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set w
              })
       })
 
-
+{-
+-- unprovable. we need a different conclusion which says it is only maximal if the word is not inhabiting in l.
 ≥-max-pres-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance r c )
   → ≥-Max-Preserve {r} {c} pdi
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
 ≥-max-pres-right {l} {r} {loc} {c} (pdinstance {p} .{r} .{c} inj s-ev) (≥-max-pres u→w→max-u→max-inj-u) =
   ≥-max-pres (λ u w maxu → {!!} )        
+-} 
 
+proj₁-flat-LeftU : ∀ {l r : RE} {loc : ℕ} (v₁ : U l) → proj₁ (flat {l + r ` loc} (LeftU v₁)) ≡ proj₁ (flat v₁)
+proj₁-flat-LeftU {ε} {r} {loc} EmptyU = refl
+proj₁-flat-LeftU {$ c ` loc} {r} {loc'} (LetterU c) = refl
+proj₁-flat-LeftU {l₁ + l₂ ` loc} {r} {loc'} (LeftU v₁) = refl
+proj₁-flat-LeftU {l₁ + l₂ ` loc} {r} {loc'} (RightU v₁) = refl
+proj₁-flat-LeftU {l₁ ● l₂ ` loc} {r} {loc'} (PairU v₁ v₂) = refl
+proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
+
+≥-max-pres-right : ∀ { p l r  : RE } { loc : ℕ } { c : Char }
+  { inj : U p → U r }
+  { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+  → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+  → ( u : U p )
+  → ( w : List Char )
+  → ≥-Max w u
+  → ¬ ( (c ∷ w) ∈⟦ l ⟧ )
+  → ≥-Max {l + r ` loc} (c ∷ w) (RightU (inj u))
+≥-max-pres-right {p} {l} {r} {loc} {c} {inj} {sound-ev} (≥-max-pres preserve) u w max-u ¬c∷w∈l =
+  case preserve u w max-u of λ
+    { (≥-max _ _ flat-inj-u≡c∷w μ') →
+      ≥-max (c ∷ w) (RightU (inj u))
+        flat-inj-u≡c∷w
+         (λ { (LeftU v₁) flat-left-v₁≡c∷w →
+                let xs = proj₁ (flat {l} v₁)
+                    xs∈⟦l⟧ = proj₂ (flat {l} v₁)
+                    eq : xs ≡ c ∷ w
+                    eq = trans (sym (proj₁-flat-LeftU {l} {r} {loc} v₁)) flat-left-v₁≡c∷w
+                in ⊥-elim (¬c∷w∈l (subst (λ x → x ∈⟦ l ⟧) eq xs∈⟦l⟧))
+           ; (RightU v₂) flat-right-v₂≡c∷w →
+               right-mono-≥ (μ' v₂ flat-right-v₂≡c∷w)
+           })
+    } 
 
 
 ≥-max-pres-fst : ∀ { l r : RE } { loc : ℕ }  { c : Char }

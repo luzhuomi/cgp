@@ -389,6 +389,16 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
   
 
   
-
+≥-max-pres-snd : ∀ { p l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  { inj : U p → U r }
+  { sound-ev : ∀ ( x : U p ) → proj₁ (flat {r} (inj x)) ≡ c ∷ proj₁ (flat {p} x) }
+  → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+  → ( e₁ : U l) ( u₂ : U p )
+  → ( w : List Char )
+  → ≥-Max {l} [] e₁
+  → ≥-Max {p} w u₂
+  → ¬ ( ∃[ w₁ ] ∃[ w₂ ] ( ¬ w₁ ≡ [] ) × ( w₁ ++ w₂ ≡ c ∷ w ) × ( w₁ ∈⟦ l ⟧ ) × ( w₂ ∈⟦ r ⟧ ))
+  → ≥-Max { l ● r ` loc } ( c ∷ w) (mkinjSnd inj e₁ u₂)
+≥-max-pres-snd = {!!}   
 
 ```

@@ -17,7 +17,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; unListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ) 
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; unListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; inv-pairU ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU≢[] ; Flat-[] ; flat-[] ; proj₁flat-v≡[]→ε∈r )
@@ -63,7 +63,7 @@ import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ )
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ ; ++-assoc )
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -110,13 +110,33 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
           → r ⊢ u ≥ v )
         → ≥-Max {r} w u
 
-≥-max-pair-longest-prefix : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
+
+≥-max-pair-fst-prefix→> : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
   → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)
   → ( u' : U l )
   → ( v' : U r )
-  → ¬ ( ∃[ c ] ∃[ w ] ( proj₁ (flat u') ≡ proj₁ (flat u) ++ ( c ∷ w ) ) × ( proj₁ (flat v) ) ≡ (c ∷ w ++ (proj₁ (flat v'))) )
-≥-max-pair-longest-prefix = {!!}  
-
+--   → ¬ ( ∃[ c ] ∃[ w ] ( proj₁ (flat u') ≡ proj₁ (flat u) ++ ( c ∷ w ) ) × ( proj₁ (flat v) ) ≡ (c ∷ w ++ (proj₁ (flat v'))) ) 
+  → ( Σ[ c ∈ Char ] Σ[ w ∈ List Char ] ( ( proj₁ (flat u') ≡ proj₁ (flat u) ++ ( c ∷ w ) ) × ( ( proj₁ (flat v) ) ≡ (c ∷ w ++ (proj₁ (flat v'))) ) ) )
+  → l ⊢ u > u' 
+≥-max-pair-fst-prefix→> {l = l} {r = r} {loc} u v (≥-max _ _ _ μ) u' v' ((c , w , wu'≡ , wv≡)) =
+  helper (μ (PairU u' v') same-word)
+  where
+    same-word : proj₁ (flat {l ● r ` loc} (PairU u' v')) ≡ proj₁ (flat {l ● r ` loc} (PairU u v))
+    same-word = trans (trans (cong (λ x → x ++ proj₁ (flat v')) wu'≡)
+                             (++-assoc (proj₁ (flat u)) (c ∷ w) (proj₁ (flat v'))))
+                        (cong (λ x → proj₁ (flat u) ++ x) (sym wv≡))
+    u≢u' : ¬ (u ≡ u')
+    u≢u' u≡u' with ++-cancelˡ (proj₁ (flat u)) (c ∷ w) []
+                      (trans (trans (sym wu'≡) (sym (cong (λ x → proj₁ (flat x)) u≡u')))
+                            (sym (++-identityʳ (proj₁ (flat u)))))
+    ... | ()
+    helper : l ● r ` loc ⊢ PairU u v ≥ PairU u' v' → l ⊢ u > u'
+    helper (inj₂ refl) = ⊥-elim (u≢u' (proj₁ (inv-pairU {l} {r} {loc} u v u' v' refl)))
+    helper (inj₁ (be _ _ (seq₁ u>u'))) = u>u'
+    helper (inj₁ (be _ _ (seq₂ u≡u' _))) = ⊥-elim (u≢u' u≡u')
+    helper (inj₁ (bne _ _ (seq₁ u>u'))) = u>u'
+    helper (inj₁ (bne _ _ (seq₂ u≡u' _))) = ⊥-elim (u≢u' u≡u')
+    helper (inj₁ (lne len>0 len'≡0)) rewrite trans (sym (cong length same-word)) len'≡0 = ⊥-elim (Nullary.contradiction len>0 (λ { () }))
 
 -- each partial derivative p is unique
 -- inj is ≥-Max-Preserve is given an u which is max, and another v,

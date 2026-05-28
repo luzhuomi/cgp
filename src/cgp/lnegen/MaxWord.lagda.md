@@ -224,6 +224,19 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
   ≥-max-pres-right-helper p r l loc c inj u w ¬c∷w∈l (preserve u w max-u) 
 
 
+-- ≥-max-pres-fst: Lifting maximality through pdinstance on the first component.
+-- Statement: If PairU u₁ u₂ is maximal in p●r for word w, and inj : U p → U l preserves
+--   maximality (≥-Max-Preserve), then PairU (inj u₁) u₂ is maximal in l●r for word c∷w.
+--   Additional premises: u₂ is maximal in r for its own word, and dom ensures inj u₁ > v₁
+--   whenever v₁ doesn't match the expected prefix or empty word.
+-- Usage: Core lemma for two-level LNE ordering (lnegen), used when constructing the
+--   composite pdinstance's maximality from component-wise maximality on the left factor.
+-- Proof idea: (1) Show flat(PairU (inj u₁) u₂) ≡ c∷w via sound-ev and max-pair.
+--   (2) For competitor PairU v₁ v₂, case on length(flat v₁): if 0, use dom to get
+--   inj u₁ > v₁ (since v₁ is empty); if non-zero, check if flat v₁ ≡ c∷flat u₁ via
+--   list-≟: if yes, use inj-u₁-max to compare first component, then cancel to compare
+--   second; if no, invoke dom directly for strict dominance.
+
 ≥-max-pres-fst : ∀ { p l r : RE } { loc : ℕ } { c : Char }
   { inj : U p → U l }
   { sound-ev : ∀ ( x : U p ) → proj₁ (flat {l} (inj x)) ≡ c ∷ proj₁ (flat {p} x) }
@@ -255,10 +268,18 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         c ∷ w
       ∎
 
+    -- ≥-max-pair-all: Extract the comparison function μ from ≥-max.
+    -- Statement: Given ≥-Max w u and a competitor v with flat v ≡ w, yields l'●r'⊢ u ≥ v.
+    -- Usage: Used in ≥-max-pres-fst (to get u₁-max) and ≥-max-pres-snd (as ≥-max-μ).
+    -- Proof idea: Pattern-match on ≥-max to expose the underlying μ function.
     ≥-max-pair-all : ∀ { l' r' : RE } { loc' : ℕ } { w' : List Char } { u : U (l' ● r' ` loc') }
       → ≥-Max w' u → ( v : U (l' ● r' ` loc') ) → proj₁ (flat v) ≡ w' → l' ● r' ` loc' ⊢ u ≥ v
     ≥-max-pair-all (≥-max _ _ _ μ) v flat-v≡w = μ v flat-v≡w
 
+    -- flat-pair-cong: Congruence of flat under first-component equality.
+    -- Statement: If proj₁(flat u₁) ≡ proj₁(flat u₁'), then flat(PairU u₁ u₂) ≡ flat(PairU u₁' u₂).
+    -- Usage: Used in u₁-max to show flat(PairU v₁ u₂) ≡ w when flat v₁ ≡ flat u₁.
+    -- Proof idea: Unfold flat of PairU to concat, apply cong to the first operand, re-fold.
     flat-pair-cong : ∀ {l' r' : RE} {loc' : ℕ} {u₁ u₁' : U l'} {u₂ : U r'}
       → proj₁ (flat u₁) ≡ proj₁ (flat u₁')
       → proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁ u₂)) ≡ proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
@@ -273,6 +294,10 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
       ∎
 
+    -- len-flat-pair: Length of flat(PairU a b) is sum of component lengths.
+    -- Statement: length(proj₁(flat(PairU a b))) ≡ length(proj₁(flat a)) + length(proj₁(flat b)).
+    -- Usage: Used in extract-≥-fst to decompose length zero of pair into component lengths.
+    -- Proof idea: Unfold flat of PairU to concat, apply length-++, done.
     len-flat-pair : ∀ {l' r' : RE} {loc' : ℕ} {a : U l'} {b : U r'}
       → length (proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} a b))) ≡ length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
     len-flat-pair {l'} {r'} {loc'} {a = a} {b = b} =
@@ -288,6 +313,11 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
       ∎
 
+    -- extract-≥-fst: Project pair-wise ≥ to first-component ≥.
+    -- Statement: If l'●r' ⊢ PairU u₁ u₂ ≥ PairU u₁' u₂, then l' ⊢ u₁ ≥ u₁'.
+    -- Usage: Used to derive u₁-max from max-pair (extract maximality of u₁ from PairU u₁ u₂).
+    -- Proof idea: Case analysis on the order constructor: seq₁→inj₁, seq₂→inj₂, lne→
+    --   decompose length zero of pair to show both components zero, then reconstruct lne.
     extract-≥-fst : (l' r' : RE) (loc' : ℕ) (u₁ u₁' : U l') (u₂ : U r')
       → l' ● r' ` loc' ⊢ PairU u₁ u₂ ≥ PairU u₁' u₂ → l' ⊢ u₁ ≥ u₁'
     extract-≥-fst _ _ _ _ _ _ (inj₁ (be _ _ (seq₁ u₁>u₁'))) = inj₁ u₁>u₁'
@@ -308,11 +338,20 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
       in inj₁ (lne len-u₁>0 len-u₁'≡0)
     extract-≥-fst _ _ _ _ _ _ (inj₂ refl) = inj₂ refl
 
+    -- u₁-max: u₁ is maximal in p for its own word.
+    -- Statement: ≥-Max (proj₁(flat u₁)) u₁, extracted from max-pair.
+    -- Usage: Seed for inj-u₁-max (applied with preserve to lift to l).
+    -- Proof idea: For any competitor v₁, construct PairU v₁ u₂, use max-pair to get ≥,
+    --   then extract-≥-fst to project to first component.
     u₁-max : ≥-Max {p} (proj₁ (flat {p} u₁)) u₁
     u₁-max = ≥-max (proj₁ (flat {p} u₁)) u₁ refl λ v₁ flat-v₁≡flat-u₁ →
       extract-≥-fst p r loc u₁ v₁ u₂ (≥-max-pair-all max-pair (PairU {p} {r} {loc} v₁ u₂)
         (trans (flat-pair-cong {p} {r} {loc} flat-v₁≡flat-u₁) (≥-max-word max-pair)))
 
+    -- inj-u₁-max: inj u₁ is maximal in l for c∷flat u₁.
+    -- Statement: ≥-Max (c ∷ proj₁(flat u₁)) (inj u₁), from ≥-Max-Preserve applied to u₁-max.
+    -- Usage: Used in helper-inj to compare v₁ against inj u₁ when flat v₁ ≡ c∷flat u₁.
+    -- Proof idea: Direct application of preserve (from ≥-max-pres) to u₁-max.
     inj-u₁-max : ≥-Max {l} (c ∷ proj₁ (flat u₁)) (inj u₁)
     inj-u₁-max = preserve u₁ (proj₁ (flat u₁)) u₁-max
 
@@ -337,6 +376,11 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
     ... | no ¬x≡y | _         = no (λ eq → ¬x≡y (proj₁ (Utils.∷-inj eq)))
     ... | yes _   | no ¬xs≡ys = no (λ eq → ¬xs≡ys (proj₂ (Utils.∷-inj eq)))
 
+    -- helper-inj-μ: First components equal (v₁ ≡ inj u₁), compare second components via μ.
+    -- Statement: Given inj u₁ ≡ v₁, flat(PairU v₁ v₂) ≡ c∷w, and u₂ ≥ v₂,
+    --   yields PairU (inj u₁) u₂ ≥ PairU v₁ v₂.
+    -- Usage: Called from helper-inj-eq-inj when first components are equal.
+    -- Proof idea: If u₂ > v₂, use seq₂; if u₂ ≡ v₂ and v₁ ≡ inj u₁, use refl on pair.
     helper-inj-μ : (v₁ : U l) (v₂ : U r) → inj u₁ ≡ v₁ → proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ w
       → r ⊢ u₂ ≥ v₂ → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ PairU v₁ v₂
     helper-inj-μ v₁ v₂ eq-inj flat-v≡c∷w (inj₁ u₂>v₂) =
@@ -346,12 +390,25 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
     helper-inj-μ v₁ v₂ eq-inj flat-v≡c∷w (inj₂ eq-u₂) =
       inj₂ (cong₂ (PairU {l} {r} {loc}) eq-inj eq-u₂)
 
+    -- helper-inj-eq-inj: First components equal (v₁ ≡ inj u₁), derive v₂-word then use u₂-max.
+    -- Statement: Given inj u₁ ≡ v₁, flat(PairU v₁ v₂) ≡ c∷w, flat v₂ ≡ flat u₂, and max-u₂,
+    --   yields PairU (inj u₁) u₂ ≥ PairU v₁ v₂.
+    -- Usage: Called from helper-inj when μ-inj yields inj u₁ ≡ v₁.
+    -- Proof idea: Unfold ≥-max on max-u₂ to get μ, then apply to v₂ with v₂-word,
+    --   pass result to helper-inj-μ.
     helper-inj-eq-inj : (v₁ : U l) (v₂ : U r) → inj u₁ ≡ v₁ → proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ w
       → proj₁ (flat {r} v₂) ≡ proj₁ (flat {r} u₂) → ≥-Max {r} (proj₁ (flat {r} u₂)) u₂ → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ PairU v₁ v₂
     helper-inj-eq-inj v₁ v₂ eq-inj flat-v≡c∷w v₂-word max-u₂'
       with max-u₂'
     ... | ≥-max _ _ _ μ-u₂ = helper-inj-μ v₁ v₂ eq-inj flat-v≡c∷w (μ-u₂ v₂ v₂-word)
 
+    -- helper-inj: flat v₁ matches the expected prefix c∷flat u₁, compare via inj-u₁-max.
+    -- Statement: Given flat v₁ ≡ c∷flat u₁ and flat(PairU v₁ v₂) ≡ c∷w,
+    --   yields PairU (inj u₁) u₂ ≥ PairU v₁ v₂.
+    -- Usage: Called from helper when list-≟ confirms flat v₁ ≡ c∷flat u₁.
+    -- Proof idea: Apply inj-u₁-max to v₁ with eq: if inj u₁ > v₁, use seq₁;
+    --   if inj u₁ ≡ v₁, cancel the common prefix to derive flat v₂ ≡ flat u₂,
+    --   then delegate to helper-inj-eq-inj.
     helper-inj : (v₁ : U l) (v₂ : U r) → proj₁ (flat {l} v₁) ≡ c ∷ proj₁ (flat {p} u₁) → proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ w → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ PairU v₁ v₂
     helper-inj v₁ v₂ eq flat-v≡c∷w
       with inj-u₁-max
@@ -369,6 +426,12 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
                 (cong (_++ proj₁ (flat {r} v₂)) eq))))
       in helper-inj-eq-inj v₁ v₂ eq-inj flat-v≡c∷w v₂-word max-u₂
 
+    -- helper: Main competitor handler for ≥-max-pres-fst.
+    -- Statement: For any competitor v with flat v ≡ c∷w, shows PairU (inj u₁) u₂ ≥ v.
+    -- Usage: Passed as μ to ≥-max constructor in the conclusion of ≥-max-pres-fst.
+    -- Proof idea: Case on length(flat v₁): (a) if 0, v₁ is empty → dom gives inj u₁ > v₁
+    --   (since flat v₁ is empty, not c∷flat u₁); (b) if non-zero, check flat v₁ ≟ c∷flat u₁:
+    --   if yes, delegate to helper-inj; if no, dom gives inj u₁ > v₁ directly.
     helper : ( v : U (l ● r ` loc) ) → proj₁ (flat {l ● r ` loc} v) ≡ c ∷ w → l ● r ` loc ⊢ PairU (inj u₁) u₂ ≥ v
     helper (PairU v₁ v₂) flat-v≡c∷w
       with length (proj₁ (flat {l} v₁)) Nat.≟ 0
@@ -389,6 +452,17 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
   
 
   
+-- ≥-max-pres-snd: Lifting maximality through pdinstance on the second component.
+-- Statement: If e₁ is maximal in l for [], u₂ is maximal in p for w, inj : U p → U r preserves
+--   maximality (≥-Max-Preserve), and no non-empty split of c∷w exists across l and r,
+--   then PairU e₁ (inj u₂) is maximal in l●r for c∷w.
+-- Usage: Core lemma for two-level LNE ordering (lnegen), used when the second component
+--   carries the non-empty word and the first is constrained to empty by the split premise.
+-- Proof idea: (1) Show flat(PairU e₁ (inj u₂)) ≡ c∷w via flat e₁ ≡ [] and sound-ev.
+--   (2) For competitor PairU v₁ v₂, case on length(flat v₁): if 0, flat v₂ ≡ c∷w by
+--   cancellation → both components maximal → lift to pair via pair-≥-from-comp;
+--   if non-zero, v₁ and v₂ witness a non-empty split of c∷w, contradicting ¬split.
+
 ≥-max-pres-snd : ∀ { p l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   { inj : U p → U r }
   { sound-ev : ∀ ( x : U p ) → proj₁ (flat {r} (inj x)) ≡ c ∷ proj₁ (flat {p} x) }
@@ -402,9 +476,18 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
 ≥-max-pres-snd {p} {l} {r} {ε∈l} {loc} {c} {inj} {sound-ev} (≥-max-pres preserve) e₁ u₂ w max-e₁ max-u₂ ¬split =
   ≥-max (c ∷ w) (mkinjSnd {l} {r} {p} {loc} inj e₁ u₂) flat-mkinjSnd≡c∷w helper
   where
+    -- flat-e₁≡[]: e₁ produces the empty word.
+    -- Statement: proj₁(flat e₁) ≡ [], extracted from max-e₁.
+    -- Usage: Used in flat-mkinjSnd≡c∷w to simplify flat(PairU e₁ (inj u₂)) to flat(inj u₂).
+    -- Proof idea: Pattern-match on ≥-max to extract the flat equality field.
     flat-e₁≡[] : proj₁ (flat {l} e₁) ≡ []
     flat-e₁≡[] = ≥-max-word max-e₁
 
+    -- flat-mkinjSnd≡c∷w: The constructed pair produces the expected word c∷w.
+    -- Statement: proj₁(flat(PairU e₁ (inj u₂))) ≡ c∷w.
+    -- Usage: Passed as flat-eq to ≥-max constructor in the conclusion of ≥-max-pres-snd.
+    -- Proof idea: Unfold flat of PairU to concat, substitute flat e₁ ≡ [], cancel left
+    --   identity, apply sound-ev for inj u₂, then substitute flat u₂ ≡ w.
     flat-mkinjSnd≡c∷w : proj₁ (flat {l ● r ` loc} (mkinjSnd {l} {r} {p} {loc} inj e₁ u₂)) ≡ c ∷ w
     flat-mkinjSnd≡c∷w =
       begin
@@ -421,15 +504,34 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         c ∷ w
       ∎
 
+    -- len>0-pair-e₁: The pair (e₁, inj u₂) has non-empty flat word.
+    -- Statement: length(proj₁(flat(PairU e₁ (inj u₂)))) > 0.
+    -- Usage: Length proof for bne constructor in pair-≥-from-comp (seq₁ and seq₂ cases).
+    -- Proof idea: Rewrite with flat-mkinjSnd≡c∷w; length(c∷w) = 1 > 0.
     len>0-pair-e₁ : length (proj₁ (flat {l ● r ` loc} (PairU {l} {r} {loc} e₁ (inj u₂)))) Nat.> 0
     len>0-pair-e₁ rewrite flat-mkinjSnd≡c∷w = Nat.s≤s Nat.z≤n
 
+    -- len>0-pair-v: Any competitor v with flat v ≡ c∷w has non-empty flat word.
+    -- Statement: For any v with flat v ≡ c∷w, length(flat v) > 0.
+    -- Usage: Second argument of bne in pair-≥-from-comp.
+    -- Proof idea: Subst length(c∷w) = 1 > 0 via the given equality.
     len>0-pair-v : (v : U (l ● r ` loc)) → proj₁ (flat {l ● r ` loc} v) ≡ c ∷ w → length (proj₁ (flat {l ● r ` loc} v)) Nat.> 0
     len>0-pair-v v eq = subst (λ x → suc zero ≤ x) (cong length (sym eq)) (Nat.s≤s Nat.z≤n)
 
+    -- ≥-max-μ: Extract the comparison function μ from ≥-max (general version).
+    -- Statement: Given ≥-Max w u and competitor v with flat v ≡ w, yields r' ⊢ u ≥ v.
+    -- Usage: Used in helper to apply max-e₁ and inj-u₂-max to competitors v₁ and v₂.
+    -- Proof idea: Pattern-match on ≥-max to expose the underlying μ function.
     ≥-max-μ : ∀ {r' : RE} {w' : List Char} {u : U r'} → ≥-Max {r'} w' u → (v : U r') → proj₁ (flat {r'} v) ≡ w' → r' ⊢ u ≥ v
     ≥-max-μ (≥-max _ _ _ μ) v flat-v≡w = μ v flat-v≡w
 
+    -- pair-≥-from-comp: Lift component-wise ≥ to pair ≥ for non-empty words.
+    -- Statement: Given l ⊢ e₁ ≥ v₁ and r ⊢ inj u₂ ≥ v₂ and flat(PairU v₁ v₂) ≡ c∷w,
+    --   yields l●r ⊢ PairU e₁ (inj u₂) ≥ PairU v₁ v₂.
+    -- Usage: Used in helper to combine e₁ ≥ v₁ and inj u₂ ≥ v₂ into pair comparison.
+    -- Proof idea: Case on the two component comparisons: (a) e₁ > v₁ → seq₁;
+    --   (b) e₁ ≡ v₁ and inj u₂ > v₂ → seq₂; (c) both equal → refl. All use bne
+    --   since c∷w is non-empty.
     pair-≥-from-comp : (v₁ : U l) (v₂ : U r)
       → l ⊢ e₁ ≥ v₁
       → r ⊢ inj u₂ ≥ v₂
@@ -446,9 +548,20 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
     pair-≥-from-comp _ _ (inj₂ refl) (inj₂ refl) _ =
       inj₂ refl
 
+    -- inj-u₂-max: inj u₂ is maximal in r for c∷w.
+    -- Statement: ≥-Max (c ∷ w) (inj u₂), from ≥-Max-Preserve applied to max-u₂.
+    -- Usage: Used in helper to compare v₂ against inj u₂ when flat v₂ ≡ c∷w.
+    -- Proof idea: Direct application of preserve (from ≥-max-pres) to max-u₂.
     inj-u₂-max : ≥-Max {r} (c ∷ w) (inj u₂)
     inj-u₂-max = preserve u₂ w max-u₂
 
+    -- helper: Main competitor handler for ≥-max-pres-snd.
+    -- Statement: For any competitor v with flat v ≡ c∷w, shows PairU e₁ (inj u₂) ≥ v.
+    -- Usage: Passed as μ to ≥-max constructor in the conclusion of ≥-max-pres-snd.
+    -- Proof idea: Case on length(flat v₁): (a) if 0, flat v₁ ≡ [] → cancel to get
+    --   flat v₂ ≡ c∷w → both components maximal → lift via pair-≥-from-comp;
+    --   (b) if non-zero, flat v₁ and flat v₂ witness a non-empty split of c∷w,
+    --   contradicting ¬split via proj₂(flat v₁) ∈⟦l⟧ and proj₂(flat v₂) ∈⟦r⟧.
     helper : (v : U (l ● r ` loc)) → proj₁ (flat {l ● r ` loc} v) ≡ c ∷ w → l ● r ` loc ⊢ mkinjSnd {l} {r} {p} {loc} inj e₁ u₂ ≥ v
     helper (PairU v₁ v₂) flat-v≡c∷w
       with length (proj₁ (flat {l} v₁)) Nat.≟ 0

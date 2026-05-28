@@ -1589,6 +1589,6 @@ Lemma: ≼ is wellfounded given a fix flatten word.
 ```agda
 ≼-wellfounded : ∀ { r : RE } { w : List Char }
   → w ∈⟦ r ⟧ 
-  → ∃[ u ] ( proj₁ (flat u) ≡ w ) → ( v : U r ) → (proj₁ (flat v) ≡ w) →  r ⊢ u ≼ v )
+  → ∃[ u ] ( ( proj₁ (flat u) ≡ w ) → ( v : U r ) → (proj₁ (flat v) ≡ w) →  r ⊢ u ≼ v )
 ≼-wellfounded = {!!} 
 ```

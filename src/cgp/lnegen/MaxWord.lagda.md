@@ -590,4 +590,19 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
           (¬[] ,
             (flat-v≡c∷w , (proj₂ (flat {l} v₁) , proj₂ (flat {r} v₂)))))))   
 
+
+
+≥-max-pres-star : ∀ { p r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  { inj : U p → U r }
+  { sound-ev : ∀ ( x : U p ) → proj₁ (flat {r} (inj x)) ≡ c ∷ proj₁ (flat {p} x) }
+  → ≥-Max-Preserve {r} {c} (pdinstance inj sound-ev)
+  → ( u : U p ) → ( us : U (r * ε∉r ` loc)  )
+  → ( w : List Char )
+  → ≥-Max { p ● (r * ε∉r ` loc ) ` loc } w (PairU u us)
+  → ≥-Max {r * ε∉r ` loc} (proj₁ (flat us)) us
+  → ( ∀ ( v : U r ) → proj₁ (flat {r} v) ≢ c ∷ proj₁ (flat {p} u) → r ⊢ inj u > v )
+  → ≥-Max {r * ε∉r ` loc} (c ∷ w) (mkinjList inj (PairU u us))
+≥-max-pres-star  = {!!} 
+
+
 ```

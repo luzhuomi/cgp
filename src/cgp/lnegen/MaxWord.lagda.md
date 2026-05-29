@@ -659,25 +659,6 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
       → ≥-Max w' u → ( v : U (l' ● r' ` loc') ) → proj₁ (flat v) ≡ w' → l' ● r' ` loc' ⊢ u ≥ v
     ≥-max-pair-all (≥-max _ _ _ μ) v flat-v≡w = μ v flat-v≡w
 
-    -- flat-pair-cong: Congruence of flat on the first component of a pair.
-    -- Statement: If flat(u₁) ≡ flat(u₁'), then flat(PairU u₁ u₂) ≡ flat(PairU u₁' u₂).
-    -- Usage: Not directly used in ≥-max-pres-star; available for related proofs where the
-    --   first component changes but the second stays fixed.
-    -- Proof idea: Unfold flat to concat, substitute in the first component, re-fold.
-    flat-pair-cong : ∀ {l' r' : RE} {loc' : ℕ} {u₁ u₁' : U l'} {u₂ : U r'}
-      → proj₁ (flat u₁) ≡ proj₁ (flat u₁')
-      → proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁ u₂)) ≡ proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
-    flat-pair-cong {l'} {r'} {loc'} {u₁} {u₁'} {u₂} eq =
-      begin
-        proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁ u₂))
-      ≡⟨ refl ⟩
-        proj₁ (flat {l'} u₁) ++ proj₁ (flat {r'} u₂)
-      ≡⟨ cong (_++ proj₁ (flat {r'} u₂)) eq ⟩
-        proj₁ (flat {l'} u₁') ++ proj₁ (flat {r'} u₂)
-      ≡⟨ refl ⟩
-        proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
-      ∎
-
     -- len-flat-pair: Length of flat(PairU a b) decomposes as sum of component lengths.
     -- Statement: length(flat(PairU a b)) ≡ length(flat a) + length(flat b).
     -- Usage: Used in extract-≥-fst to decompose length of pair when reasoning about lne.

@@ -592,6 +592,19 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
 
 
 
+-- ≥-max-pres-star: Lifting maximality through pdinstance on a star (list) parse tree.
+-- Statement: If PairU u us is maximal in p●r* for w, us is maximal in r* for flat(us),
+--   and inj : U p → U r preserves maximality and dominates competitors whose word ≠ c∷flat(u),
+--   then mkinjList inj (PairU u us) is maximal in r* for c∷w.
+-- Usage: Core lemma for two-level LNE ordering (lnegen), used when the first element of the
+--   star tree carries the distinguished character c and subsequent elements may or may not match.
+-- Proof idea: (1) Show flat(mkinjList ...) ≡ c∷w via sound-ev and max-pair.
+--   (2) For competitor ListU(ws), case on length of head w₁:
+--   (a) if 0, inj u > w₁ by lne (len>0 vs 0) → star-head;
+--   (b) if non-zero, check flat(w₁) ≟ c∷flat(u): if yes, compare heads via inj-u-max;
+--       if inj u > w₁ → star-head; if inj u ≡ w₁ → cancel, recurse on tail via max-us;
+--       if no, use dom premise directly → star-head.
+
 ≥-max-pres-star : ∀ { p r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
   { inj : U p → U r }
   { sound-ev : ∀ ( x : U p ) → proj₁ (flat {r} (inj x)) ≡ c ∷ proj₁ (flat {p} x) }
@@ -605,6 +618,11 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
 ≥-max-pres-star {p} {r} {ε∉r} {loc} {c} {inj} {sound-ev} (≥-max-pres preserve) u (ListU vs) w max-pair max-us dom =
   ≥-max (c ∷ w) (mkinjList inj (PairU u (ListU vs))) flat-mkinj≡c∷w helper
   where
+    -- flat-mkinj≡c∷w: The constructed star parse tree produces the expected word c∷w.
+    -- Statement: proj₁(flat(mkinjList inj (PairU u (ListU vs)))) ≡ c∷w.
+    -- Usage: Passed as flat-eq to ≥-max constructor in the conclusion of ≥-max-pres-star.
+    -- Proof idea: Unfold flat of mkinjList to concat, apply sound-ev for inj u,
+    --   recombine into flat(PairU u (ListU vs)), then substitute with ≥-max-word max-pair.
     flat-mkinj≡c∷w : proj₁ (flat {r * ε∉r ` loc} (mkinjList inj (PairU u (ListU vs)))) ≡ c ∷ w
     flat-mkinj≡c∷w =
       begin
@@ -619,6 +637,10 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         c ∷ w
       ∎
 
+    -- flat-mkinj≡c∷w': Intermediate equality relating expanded form to c∷w.
+    -- Statement: c∷proj₁(flat u) ++ proj₁(flat(ListU vs)) ≡ c∷w.
+    -- Usage: Used in helper-inj to simplify the tail equality when canceling the head.
+    -- Proof idea: Same derivation as flat-mkinj≡c∷w but without the mkinjList unfolding step.
     flat-mkinj≡c∷w' : c ∷ proj₁ (flat {p} u) ++ proj₁ (flat {r * ε∉r ` loc} (ListU vs)) ≡ c ∷ w
     flat-mkinj≡c∷w' =
       begin
@@ -629,10 +651,19 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         c ∷ w
       ∎
 
+    -- ≥-max-pair-all: Extract the comparison function μ from ≥-max (generalized version).
+    -- Statement: Given ≥-Max w' u and competitor v with flat v ≡ w', yields r' ⊢ u ≥ v.
+    -- Usage: Used in u-max to apply max-pair to the competitor PairU v (ListU vs).
+    -- Proof idea: Pattern-match on ≥-max to expose the underlying μ function.
     ≥-max-pair-all : ∀ { l' r' : RE } { loc' : ℕ } { w' : List Char } { u : U (l' ● r' ` loc') }
       → ≥-Max w' u → ( v : U (l' ● r' ` loc') ) → proj₁ (flat v) ≡ w' → l' ● r' ` loc' ⊢ u ≥ v
     ≥-max-pair-all (≥-max _ _ _ μ) v flat-v≡w = μ v flat-v≡w
 
+    -- flat-pair-cong: Congruence of flat on the first component of a pair.
+    -- Statement: If flat(u₁) ≡ flat(u₁'), then flat(PairU u₁ u₂) ≡ flat(PairU u₁' u₂).
+    -- Usage: Not directly used in ≥-max-pres-star; available for related proofs where the
+    --   first component changes but the second stays fixed.
+    -- Proof idea: Unfold flat to concat, substitute in the first component, re-fold.
     flat-pair-cong : ∀ {l' r' : RE} {loc' : ℕ} {u₁ u₁' : U l'} {u₂ : U r'}
       → proj₁ (flat u₁) ≡ proj₁ (flat u₁')
       → proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁ u₂)) ≡ proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
@@ -647,6 +678,10 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} u₁' u₂))
       ∎
 
+    -- len-flat-pair: Length of flat(PairU a b) decomposes as sum of component lengths.
+    -- Statement: length(flat(PairU a b)) ≡ length(flat a) + length(flat b).
+    -- Usage: Used in extract-≥-fst to decompose length of pair when reasoning about lne.
+    -- Proof idea: Unfold flat to concat, apply length-++ lemma.
     len-flat-pair : ∀ {l' r' : RE} {loc' : ℕ} {a : U l'} {b : U r'}
       → length (proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} a b))) ≡ length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
     len-flat-pair {l'} {r'} {loc'} {a = a} {b = b} =
@@ -662,6 +697,12 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
       ∎
 
+    -- extract-≥-fst: Extract first-component ≥ from pair ≥ when second components match.
+    -- Statement: If PairU u₁ u₂ ≥ PairU u₁' u₂ (with same u₂), then u₁ ≥ u₁'.
+    -- Usage: Used in u-max to show u ≥ v by showing PairU u (ListU vs) ≥ PairU v (ListU vs).
+    -- Proof idea: Case on the pair comparison: (a) seq₁ → extract first >;
+    --   (b) seq₂ → extract first ≡; (c) lne with len≡0 on pair → decompose via len-flat-pair
+    --   to get len(u₂)≡0, then show lne on first component; (d) refl → refl.
     extract-≥-fst : (l' r' : RE) (loc' : ℕ) (u₁ u₁' : U l') (u₂ : U r')
       → l' ● r' ` loc' ⊢ PairU u₁ u₂ ≥ PairU u₁' u₂ → l' ⊢ u₁ ≥ u₁'
     extract-≥-fst _ _ _ _ _ _ (inj₁ (be _ _ (seq₁ u₁>u₁'))) = inj₁ u₁>u₁'
@@ -682,6 +723,12 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
       in inj₁ (lne len-u₁>0 len-u₁'≡0)
     extract-≥-fst _ _ _ _ _ _ (inj₂ refl) = inj₂ refl
 
+    -- u-max: u is maximal in p for its own word.
+    -- Statement: ≥-Max (proj₁(flat u)) u.
+    -- Usage: Feeds into inj-u-max via preserve, which is then used in helper-inj to compare w₁ against inj u.
+    -- Proof idea: Show flat u ≡ flat u, then for competitor v with flat v ≡ flat u,
+    --   construct PairU v (ListU vs) as competitor for PairU u (ListU vs) using flat-pair-cong,
+    --   apply max-pair, then extract first component via extract-≥-fst.
     u-max : ≥-Max {p} (proj₁ (flat {p} u)) u
     u-max = ≥-max (proj₁ (flat {p} u)) u refl λ v flat-v≡flat-u →
       extract-≥-fst p (r * ε∉r ` loc) loc u v (ListU {r} {ε∉r} {loc} vs)
@@ -694,18 +741,38 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
             w
           ∎))
 
+    -- inj-u-max: inj u is maximal in r for c∷flat(u).
+    -- Statement: ≥-Max (c ∷ proj₁(flat u)) (inj u).
+    -- Usage: Used in helper-inj to case-split competitors w₁ against inj u when flat(w₁) ≡ c∷flat(u).
+    -- Proof idea: Apply preserve (from ≥-max-pres) to u-max.
     inj-u-max : ≥-Max {r} (c ∷ proj₁ (flat {p} u)) (inj u)
     inj-u-max = preserve u (proj₁ (flat {p} u)) u-max
 
+    -- len>0-inj: inj u has non-empty flat word.
+    -- Statement: length(proj₁(flat(inj u))) > 0.
+    -- Usage: Used in helper (case len-w₁≡0) to show lne inj u > w₁.
+    -- Proof idea: Rewrite with sound-ev (flat(inj u) = c∷flat u), length(c∷flat u) = 1 > 0.
     len>0-inj : length (proj₁ (flat {r} (inj u))) Nat.> 0
     len>0-inj rewrite sound-ev u = Nat.s≤s Nat.z≤n
 
+    -- len>0-list-inj: The constructed star tree has non-empty flat word.
+    -- Statement: length(proj₁(flat(mkinjList ...))) > 0.
+    -- Usage: First length argument of bne in helper and helper-inj-μ (for star-head/star-tail).
+    -- Proof idea: Rewrite with flat-mkinj≡c∷w; length(c∷w) = 1 > 0.
     len>0-list-inj : length (proj₁ (flat {r * ε∉r ` loc} (mkinjList inj (PairU u (ListU vs))))) Nat.> 0
     len>0-list-inj rewrite flat-mkinj≡c∷w = Nat.s≤s Nat.z≤n
 
+    -- len>0-list-v: Competitor with flat v ≡ c∷w has non-empty flat word.
+    -- Statement: For any v with flat v ≡ c∷w, length(flat v) > 0.
+    -- Usage: Second length argument of bne in helper and helper-inj-μ.
+    -- Proof idea: Subst length(c∷w) = 1 > 0 via the given equality.
     len>0-list-v : (v : U (r * ε∉r ` loc)) → proj₁ (flat {r * ε∉r ` loc} v) ≡ c ∷ w → length (proj₁ (flat {r * ε∉r ` loc} v)) Nat.> 0
     len>0-list-v v eq = subst (λ x → suc zero ≤ x) (cong length (sym eq)) (Nat.s≤s Nat.z≤n)
 
+    -- list-≟: Decision procedure for list equality on Char.
+    -- Statement: Decidable equality for List Char.
+    -- Usage: Used in helper to check whether flat(w₁) ≡ c∷flat(u) for case-splitting.
+    -- Proof idea: Standard recursive structural equality on lists, using Char.≟ for elements.
     list-≟ : (xs ys : List Char) → Dec (xs ≡ ys)
     list-≟ [] [] = yes refl
     list-≟ [] (_ ∷ _) = no (λ ())
@@ -715,9 +782,18 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
     ... | no ¬x≡y | _         = no (λ eq → ¬x≡y (proj₁ (Utils.∷-inj eq)))
     ... | yes _   | no ¬xs≡ys = no (λ eq → ¬xs≡ys (proj₂ (Utils.∷-inj eq)))
 
+    -- ≥-max-μ: Extract the comparison function μ from ≥-max (local version for r*).
+    -- Statement: Given ≥-Max w' u and competitor v with flat v ≡ w', yields r' ⊢ u ≥ v.
+    -- Usage: Used in helper-inj to apply max-us to ListU ws'.
+    -- Proof idea: Pattern-match on ≥-max to expose the underlying μ function.
     ≥-max-μ : ∀ {r' : RE} {w' : List Char} {u : U r'} → ≥-Max {r'} w' u → (v : U r') → proj₁ (flat {r'} v) ≡ w' → r' ⊢ u ≥ v
     ≥-max-μ (≥-max _ _ _ μ) v flat-v≡w = μ v flat-v≡w
 
+    -- helper-inj-μ: Handle star competitor when head matches inj u exactly (equality case).
+    -- Statement: Given inj u ≡ w₁ and tail comparison vs ≥ ws', shows mkinjList ≥ ListU(w₁∷ws').
+    -- Usage: Called by helper-inj when inj u ≡ w₁, after canceling head equality to get tail comparison.
+    -- Proof idea: Case on vs ≥ ws': (a) if strict >, wrap with star-tail;
+    --   (b) if equal, reassemble via cong₂ using eq-inj for head and unListU for tail.
     helper-inj-μ : (w₁ : U r) (ws' : List (U r)) → inj u ≡ w₁ → proj₁ (flat {r * ε∉r ` loc} (ListU {r} {ε∉r} {loc} (w₁ ∷ ws'))) ≡ c ∷ w
       → r * ε∉r ` loc ⊢ ListU {r} {ε∉r} {loc} vs ≥ ListU {r} {ε∉r} {loc} ws'
       → r * ε∉r ` loc ⊢ mkinjList inj (PairU u (ListU vs)) ≥ ListU {r} {ε∉r} {loc} (w₁ ∷ ws')
@@ -728,6 +804,13 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
     helper-inj-μ w₁ ws' eq-inj flat-v≡c∷w (inj₂ eq-us) =
       inj₂ (cong₂ (λ x xs → ListU {r} {ε∉r} {loc} (x ∷ xs)) eq-inj (cong unListU eq-us))
 
+    -- helper-inj: Handle star competitor when head word matches c∷flat(u).
+    -- Statement: Given flat(w₁) ≡ c∷flat(u) and flat(ListU(w₁∷ws')) ≡ c∷w,
+    --   shows mkinjList ≥ ListU(w₁∷ws').
+    -- Usage: Called by helper (case no ¬len-w₁≡0, yes eq) when head word matches.
+    -- Proof idea: Case-split inj-u-max on w₁: (a) if inj u > w₁ → star-head;
+    --   (b) if inj u ≡ w₁ → cancel head from both sides to get tail equality,
+    --   then recurse via helper-inj-μ using max-us on tail.
     helper-inj : (w₁ : U r) (ws' : List (U r)) → proj₁ (flat {r} w₁) ≡ c ∷ proj₁ (flat {p} u) → proj₁ (flat {r * ε∉r ` loc} (ListU {r} {ε∉r} {loc} (w₁ ∷ ws'))) ≡ c ∷ w
       → r * ε∉r ` loc ⊢ mkinjList inj (PairU u (ListU vs)) ≥ ListU {r} {ε∉r} {loc} (w₁ ∷ ws')
     helper-inj w₁ ws' eq flat-v≡c∷w
@@ -748,6 +831,14 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
       in helper-inj-μ w₁ ws' eq-inj flat-v≡c∷w
            (≥-max-μ max-us (ListU {r} {ε∉r} {loc} ws') tail-eq)
 
+    -- helper: Main competitor handler for ≥-max-pres-star.
+    -- Statement: For any competitor v with flat v ≡ c∷w, shows mkinjList ≥ v.
+    -- Usage: Passed as μ to ≥-max constructor in the conclusion of ≥-max-pres-star.
+    -- Proof idea: Case on v: (a) empty list → impossible (flat ≠ c∷w);
+    --   (b) non-empty ListU(w₁∷ws') → case on length(flat w₁):
+    --   (i) if 0, inj u > w₁ by lne (len>0 vs 0) → star-head;
+    --   (ii) if non-zero, check flat(w₁) ≟ c∷flat(u):
+    --        if yes, delegate to helper-inj; if no, use dom premise → star-head.
     helper : (v : U (r * ε∉r ` loc)) → proj₁ (flat {r * ε∉r ` loc} v) ≡ c ∷ w → r * ε∉r ` loc ⊢ mkinjList inj (PairU u (ListU vs)) ≥ v
     helper (ListU []) ()
     helper (ListU (w₁ ∷ ws')) flat-v≡c∷w

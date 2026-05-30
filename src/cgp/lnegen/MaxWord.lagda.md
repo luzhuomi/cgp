@@ -837,4 +837,17 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         (star-head {r} {loc} {ε∉r} {inj u} {w₁} {vs} {ws'} (dom w₁ ¬eq)))
 
 
+data ≥-Max-Preserve-List : ∀ { r : RE } { c : Char } → List (PDInstance r c) → Set where
+  ≥-max-pres-nil : ∀ {r : RE } { c : Char} → ≥-Max-Preserve-List {r} {c} []
+  ≥-max-pres-cons : ∀ { r : RE } { c : Char }
+      → (pdi : PDInstance r c)
+      → (pdis : List (PDInstance r c))
+      → ≥-Max-Preserve {r} {c} pdi
+      →  ≥-Max-Preserve-List {r} {c} (pdi ∷ pdis)
+      
+pdU-≥-max-left-most-pres : ∀ { r : RE } { c : Char }
+  → ≥-Max-Preserve-List {r} {c} pdU[ r , c ]
+pdU-≥-max-left-most-pres {ε} {c} = ≥-max-pres-nil
+
+  
 ```

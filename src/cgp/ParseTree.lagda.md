@@ -113,10 +113,10 @@ flat { l + r ` loc } (LeftU {l} {r} {loc}  u)    with flat u
 flat { l + r ` loc } (RightU {l} {r} {loc} u)   with flat u
 ...                                    | xs , xs∈r = xs , ( l +R xs∈r ) 
 flat { l ● r ` loc } (PairU {l} {r} {loc} u v)  with flat u     | flat v
-...                                                | xs , xs∈l | ys , ys∈r = xs ++ ys , ( xs∈l ● ys∈r ⧺ refl)
+...                                                | xs , xs∈l | ys , ys∈r = xs ++ ys , _●_⧺_ xs ys xs∈l ys∈r refl
 flat { r * nε ` loc }   (ListU {r} {.nε} {loc} [])        = [] , (( (r ● (r * nε ` loc) ` loc ) +L ε ) *)       -- no  ⧺ because the ● is the RE constructor
 flat { r * nε ` loc }   (ListU {r} {.nε} {loc} (u ∷ us)) with flat u  | flat (ListU {r} {nε} {loc} us)
-...                                   | x , x∈r  | xs , xs∈r* = ( x ++ xs ) , ((ε +R (x∈r ● xs∈r* ⧺ refl)) *) 
+...                                   | x , x∈r  | xs , xs∈r* = ( x ++ xs ) , ((ε +R (_●_⧺_ x xs x∈r xs∈r* refl)) *) 
 ```
 
 The above is inspired by the `flat` definition from [1]. 
@@ -136,9 +136,9 @@ unflat {ε}          {[]}         ε          = EmptyU
 unflat {$ c ` loc } { _ ∷ [] }  ( $ c )    = LetterU c
 unflat {l + r ` loc } {xs} ( r +L xs∈l )   = LeftU {l} {r} {loc} (unflat {l} {xs} xs∈l )
 unflat {l + r ` loc } {xs} ( l +R xs∈r )   = RightU {l} {r} {loc} (unflat {r} {xs} xs∈r ) 
-unflat {l ● r ` loc } {xs++ys} (xs∈l ● ys∈r ⧺ eq )                 = PairU (unflat xs∈l ) ( unflat ys∈r )
+unflat {l ● r ` loc } {xs++ys} (_●_⧺_ xs ys xs∈l ys∈r eq )                 = PairU (unflat xs∈l ) ( unflat ys∈r )
 unflat {r * nε ` loc } (( (r ● (r * nε ` loc ) ` loc ) +L ε ) *)     = ListU []
-unflat {r * nε ` loc } (( ε +R (x∈r ● xs∈r* ⧺ eq ) ) *)            =
+unflat {r * nε ` loc } (( ε +R (_●_⧺_ x xs x∈r xs∈r* eq ) ) *)            =
    ListU ((unflat x∈r) ∷ (unListU (unflat xs∈r*)))
 
 -- the following is an alt implenentation using `with` clause, we still prefer using the named function `unListU` to remove the ListU tag, which makes the proof unflat∘proj₂∘flat slightly easier.
@@ -160,7 +160,7 @@ unflat_a = unflat ( $ 'a' )
 
 
 unflat_a* : U  (($ 'a' ` 1 ) * ε∉$ ` 2)
-unflat_a* = unflat (( ε +R ( a∈$a ● ( ( ( a ● (a * ε∉$ ` 2) ` 2 ) +L ε ) *) ⧺ refl ))  * )
+unflat_a* = unflat (( ε +R ( _●_⧺_ ('a' ∷ []) [] a∈$a ( ( ( a ● (a * ε∉$ ` 2) ` 2 ) +L ε ) * ) refl ))  * )
   where
     a∈$a : [ 'a' ] ∈⟦ $ 'a' ` 1  ⟧ 
     a∈$a = $ 'a'
@@ -287,7 +287,7 @@ flat∘unflat {l + r ` loc } {xs}       ( r +L xs∈l ) =
   -}
 flat∘unflat {l + r ` loc } {xs}       ( l +R xs∈r ) = cong (λ w → ( (proj₁ w) , ( l +R (proj₂ w) ))  ) (flat∘unflat {r} {xs} xs∈r ) -- short version
 
-flat∘unflat {l ● r ` loc } {xs++ys} (xs∈l ● ys∈r ⧺ eq) rewrite flat∘unflat xs∈l | flat∘unflat ys∈r with eq
+flat∘unflat {l ● r ` loc } {xs++ys} (_●_⧺_ xs ys xs∈l ys∈r eq) rewrite flat∘unflat xs∈l | flat∘unflat ys∈r with eq
 ...                                                                                            | refl = refl -- short version
 -- detailed version
 {-
@@ -306,7 +306,7 @@ flat∘unflat {l ● r ` loc } {xs++ys} (xs∈l ● ys∈r ⧺ eq) with eq
 
 flat∘unflat {r * nε ` loc }   {[]}     (( (r ● (r * nε `  loc ) ` loc ) +L ε ) *) = refl
 
-flat∘unflat {r * nε ` loc }   {x++xs}  ((ε +R (x∈r ● xs∈r* ⧺ eq)) *) rewrite flat∘unflat x∈r | listU∘unListU {r} {nε} {loc} {unflat xs∈r*} | flat∘unflat xs∈r* with eq
+flat∘unflat {r * nε ` loc }   {x++xs}  ((ε +R (_●_⧺_ x xs x∈r xs∈r* eq)) *) rewrite flat∘unflat x∈r | listU∘unListU {r} {nε} {loc} {unflat xs∈r*} | flat∘unflat xs∈r* with eq
 ...                                                                                                                                                                  | refl = refl  -- short version
 -- detailed version
 {- 

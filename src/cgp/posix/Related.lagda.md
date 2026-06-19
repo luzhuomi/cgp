@@ -54,13 +54,16 @@ open PartialDerivative using ( pdU[_,_] ; -- pdUConcat ;
 
 
 import cgp.posix.Order as PosixOrder
-open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ; 
+open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   _⊢_>ⁱ_ ; seq₁ ; seq₂ ;
   choice-ll ; choice-rr ;
   choice-lr ;
   choice-rl ; star-head ; star-cons-nil ; star-tail ;
-  >→¬≡ 
+  >→¬≡
   )
+
+import cgp.posix.InMembershipToParseTree as InMembershipToParseTree
+open InMembershipToParseTree using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ )
 
 import Data.Char as Char
 open Char using (Char )
@@ -97,6 +100,11 @@ open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _�
 import Data.Product as Product
 open Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_ )
 open Σ using (proj₁ ; proj₂)
+
+-- List left cancellation (works with with-abstracted params)
+cancel-left : (xs ys zs : List Char) → xs ++ ys ≡ xs ++ zs → ys ≡ zs
+cancel-left [] ys zs refl = refl
+cancel-left (x ∷ xs) ys zs p = cancel-left xs ys zs (proj₂ (∷-injective p))
 
 
 import Data.Sum as Sum
@@ -177,44 +185,7 @@ P*
 (s1 ++ s2, r* ) --> ListU (v ∷ vs)
 
 
-It seems that the relationship is weaker. It fixes a particular word. 
-
-```agda
-infix 4 _,_⇒_
-
-data _,_⇒_ : ∀ ( w : List Char ) → ( r : RE ) → U r → Set where
-  p₁  : [] , ε ⇒ EmptyU 
-  pc  : ∀ {c : Char} {loc : ℕ}  → [ c ] , $ c ` loc ⇒ LetterU c
-  p+l : ∀ { w : List Char } { l r : RE } { loc : ℕ } { v : U l }
-    →  w , l ⇒ v   
-    ------------------------------------------------------------
-    → w , l + r ` loc ⇒ LeftU v
-  p+r : ∀ { w : List Char } { l r : RE } { loc : ℕ } { v : U r } 
-    →  w , r ⇒ v
-    → ¬ ( w ∈⟦ l ⟧ )
-    ------------------------------------------------------------
-    → w , l + r ` loc ⇒ RightU v
-  ps : ∀ { w₁ w₂ w : List Char } { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    →  w ≡ w₁ ++ w₂  -- having a separate index variable w make the proof easier  
-    →  w₁ , l ⇒ v₁
-    →  w₂ , r ⇒ v₂
-    → ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) × (w₃ ++ w₄ ≡ w₂) × ( (w₁ ++ w₃) ∈⟦ l ⟧ ) × w₄ ∈⟦ r ⟧ )
-    -----------------s-------------------------------------------
-    → w , l ● r ` loc ⇒ PairU v₁ v₂
-    
-  p[] : ∀ { r : RE } {ε∉r : ε∉ r } { loc : ℕ } -- why we need this case if ε∉r ? because w.r.t to empty word [], ListU [] is the posix parse tree.
-    → [] , r * ε∉r ` loc ⇒ ListU []
-    
-  p* : ∀ { w₁ w₂ w : List Char } { r : RE } {ε∉r : ε∉ r } { loc : ℕ } {v : U r } { vs : List (U r) }
-    →  w ≡ w₁ ++ w₂  -- having a separate index variable w make the proof easier
-    →  w₁ , r ⇒ v
-    →  w₂ , r * ε∉r ` loc ⇒ ListU vs
-    →  ¬ w₁ ≡ []
-    → ¬ ( ∃[ w₃ ] ∃[ w₄ ] ( ¬ w₃ ≡ [] ) × (w₃ ++ w₄ ≡ w₂) × ( (w₁ ++ w₃) ∈⟦ r ⟧ ) × w₄ ∈⟦ r * ε∉r ` loc ⟧ )
-    -----------------------------------------------------------
-    → w , r * ε∉r ` loc ⇒ ListU (v ∷ vs)
-    
-```
+It seems that the relationship is weaker. It fixes a particular word.
 
 Lemma : a posix parse tree must be flattened to the indexed word. 
 
@@ -1583,6 +1554,9 @@ Lemma: _ ⊢ _ ≼ _ is anti symmetric
 ≼-antisym (inj₁ u₁≺u₂) (inj₁ u₂≺u₁) = Nullary.contradiction u₁≺u₂ (≺-asym u₂≺u₁)  
 
 ```
+Lemma: given ∈⟦ evidence, construct a ⇒ proof (POSIX parse tree)
+
+(See `cgp.posix.InMembershipToParseTree` for the `∈⟦→⇒` implementation.)
 
 Lemma: ≼ is wellfounded given a fix flatten word.
 

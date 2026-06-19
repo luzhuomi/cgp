@@ -68,7 +68,7 @@ Let w be word, r be regular expression, we define the membership relationship as
 data _∈⟦_⟧ : List Char → RE → Set where
   ε      : [] ∈⟦ ε ⟧
   $_      : ∀ { loc : ℕ } ( c : Char ) → [ c ] ∈⟦ $ c ` loc ⟧ 
-  _●_⧺_  : ∀ (xs ys : List Char) {zs : List Char} { l r : RE } { loc : ℕ }
+  _●_⧺_  : ∀ {xs ys zs : List Char} { l r : RE } { loc : ℕ }
         → xs ∈⟦ l ⟧
         → ys ∈⟦ r ⟧
         → xs ++ ys ≡ zs            -- this evidence is essential, without which the pair case in the unflat will not type-check, why?
@@ -128,7 +128,7 @@ Then ¬ ( ε∉ r ).
 []∈⟦r⟧→¬ε∉r : ∀ { r : RE } → [] ∈⟦ r ⟧  → ¬ ( ε∉ r )
 []∈⟦r⟧→¬ε∉r {ε} = λ x ε∉ε →  (ε∉r→¬ε∈r ε∉ε) ε∈ε
 []∈⟦r⟧→¬ε∉r {$ c ` loc } = λ()
-[]∈⟦r⟧→¬ε∉r { s ● t ` loc } ( _●_⧺_ [] [] []∈s []∈t eq ) ε∉s●t with  ε∉s●t
+[]∈⟦r⟧→¬ε∉r { s ● t ` loc } ( _●_⧺_ {[]} {[]} {[]} {s} {t} {loc} []∈s []∈t eq ) ε∉s●t with  ε∉s●t
 ...                         | ε∉fst  ε∉s = ([]∈⟦r⟧→¬ε∉r  []∈s) ε∉s
 ...                         | ε∉snd  ε∉t = ([]∈⟦r⟧→¬ε∉r  []∈t) ε∉t
 []∈⟦r⟧→¬ε∉r { s + t ` loc } (  _+L_ {s} {[]} {loc} t []∈s ) ε∉s+t with ε∉s+t

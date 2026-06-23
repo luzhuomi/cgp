@@ -11,8 +11,8 @@ open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  ;
   w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ ;
   w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ ;
   ¬m>n→n≡m⊎n>m ;
-  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ ; concatmap-λx→[]-xs≡[]
-  {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
+  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ ; concatmap-λx→[]-xs≡[] ;
+  length≡0→[] ; ¬≡[]→¬length≡0)
 
 
 import cgp.Word as Word
@@ -63,7 +63,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   )
 
 import cgp.posix.InMembershipToParseTree as InMembershipToParseTree
-open InMembershipToParseTree using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ )
+open InMembershipToParseTree using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* )
 
 import Data.Char as Char
 open Char using (Char )
@@ -72,9 +72,9 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
 
 import Data.Nat.Properties as NatProperties
-open import Data.Nat using (_<_ ; _≤_ ; zero ; suc ; _+_ ; _∸_ ; s<s)
+open import Data.Nat using (_<_ ; _≤_ ; zero ; suc ; _+_ ; _∸_ ; s<s ; z<s ; z≤n ; s≤s)
 open import Data.Empty using (⊥ ; ⊥-elim)
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ ; ≤-antisymmetric ; <↔¬≥ )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -94,7 +94,7 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁻ ; ∈
 
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst; inspect)
+open Eq using (_≡_; refl; trans; sym; cong; cong₂; cong-app; subst; inspect; _≢_)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 
 import Data.Product as Product
@@ -106,6 +106,44 @@ cancel-left : (xs ys zs : List Char) → xs ++ ys ≡ xs ++ zs → ys ≡ zs
 cancel-left [] ys zs refl = refl
 cancel-left (x ∷ xs) ys zs p = cancel-left xs ys zs (proj₂ (∷-injective p))
 
+longer-prefix-split-helper : (xs ys us vs : List Char) → xs ++ ys ≡ us ++ vs → length us ≤ length xs
+  → Σ (List Char) (λ w₃ → xs ≡ us ++ w₃ × vs ≡ w₃ ++ ys)
+longer-prefix-split-helper [] ys [] vs xs++ys≡us++vs z≤n = [] , (refl , sym xs++ys≡us++vs)
+longer-prefix-split-helper (x ∷ xs) ys [] vs xs++ys≡us++vs le = x ∷ xs , (refl , sym xs++ys≡us++vs)
+longer-prefix-split-helper (x ∷ xs) ys (u ∷ us) vs xs++ys≡us++vs (s≤s le)
+  with longer-prefix-split-helper xs ys us vs (proj₂ (∷-injective xs++ys≡us++vs)) le
+... | w₃ , (xs≡usw₃ , vs≡w₃ys) = w₃ , (cong₂ _∷_ x≡u xs≡usw₃ , vs≡w₃ys)
+  where
+    x≡u : x ≡ u
+    x≡u = proj₁ (∷-injective xs++ys≡us++vs)
+
+≤-step : ∀ {m n} → m ≤ n → m ≤ suc n
+≤-step z≤n = z≤n
+≤-step (s≤s m≤n) = s≤s (≤-step m≤n)
+
+longer-prefix-split : (xs ys us vs : List Char) → xs ++ ys ≡ us ++ vs → length xs > length us
+  → Σ (List Char) (λ w₃ → w₃ ≢ [] × xs ≡ us ++ w₃ × vs ≡ w₃ ++ ys)
+longer-prefix-split (x ∷ xs) ys us vs xs++ys≡us++vs (s≤s le)
+  with longer-prefix-split-helper (x ∷ xs) ys us vs xs++ys≡us++vs (≤-step le)
+... | w₃ , (xs≡usw₃ , vs≡w₃ys) = w₃ , (w₃≢[] , (xs≡usw₃ , vs≡w₃ys))
+  where
+    w₃≢[] : w₃ ≢ []
+    w₃≢[] w₃≡[] = ⊥-elim (¬>refl (subst (_> length us) (trans (cong length xs≡usw₃) (trans (cong length (cong (us ++_) w₃≡[])) (cong length (++-identityʳ us)))) (s≤s le)))
+      where
+        ¬>refl : ∀ {n} → n > n → ⊥
+        ¬>refl {zero} ()
+        ¬>refl {suc n} (s≤s le) = ¬>refl {n} le
+
+same-len-prefix : (xs ys us vs : List Char) → xs ++ ys ≡ us ++ vs → length xs ≡ length us
+  → xs ≡ us
+same-len-prefix [] ys [] vs xs++ys≡[] eq = refl
+same-len-prefix (x ∷ _) ys [] vs xs++ys≡[] eq = ⊥-elim (¬suc≡0 eq)
+  where
+    ¬suc≡0 : suc _ ≡ 0 → ⊥
+    ¬suc≡0 ()
+same-len-prefix [] ys (u ∷ us) vs xs++ys≡u∷us ()
+same-len-prefix (x ∷ xs) ys (u ∷ us) vs xs++ys≡u∷us eq with same-len-prefix xs ys us vs (proj₂ (∷-injective xs++ys≡u∷us)) (cong (λ n → n ∸ 1) eq)
+... | xs≡us rewrite xs≡us | proj₁ (∷-injective xs++ys≡u∷us) = refl
 
 import Data.Sum as Sum
 open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
@@ -117,6 +155,24 @@ open All using (All ; _∷_ ; [] ; map)
 import Relation.Nullary as Nullary 
 import Relation.Nullary.Negation using (contradiction; contraposition)
 open Nullary using (¬_)
+
+¬≤↔< : (m n : ℕ) → ¬ m ≤ n → n < m
+¬≤↔< zero n ¬zero≤n = ⊥-elim (¬zero≤n z≤n)
+¬≤↔< (suc m) zero _ = z<s
+¬≤↔< (suc m) (suc n) ¬msuc≤nsuc = s<s (¬≤↔< m n (s≤s→≤ ¬msuc≤nsuc))
+  where
+    s≤s→≤ : ¬ suc m ≤ suc n → ¬ m ≤ n
+    s≤s→≤ nm≤n s≤ = nm≤n (s≤s s≤)
+
+≤-to-<⊎≡ : ∀ {m n} → m ≤ n → m < n ⊎ m ≡ n
+≤-to-<⊎≡ {m} {zero} z≤n = inj₂ refl
+≤-to-<⊎≡ {m} {suc n} z≤n = inj₁ z<s
+≤-to-<⊎≡ {suc m} {suc n} (s≤s m≤n) = go
+  where
+    go : suc m < suc n ⊎ suc m ≡ suc n
+    go with ≤-to-<⊎≡ m≤n
+    ... | inj₁ lt = inj₁ (s<s lt)
+    ... | inj₂ eq = inj₂ (cong suc eq)
 
 open import Relation.Binary.Definitions using (Tri ; tri< ; tri≈ ; tri>)
 
@@ -795,9 +851,9 @@ subval {l ● r ` loc} {s} (0 ∷ xs) (sub-●-0 p) (PairU u _) = subval xs p u
 subval {l ● r ` loc} {s} (1 ∷ xs) (sub-●-1 p) (PairU _ v) = subval xs p v
 subval {l + r ` loc} {l + r ` loc} [] sub-+ u = u
 subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (LeftU u) = subval xs p u
-subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (RightU v) = subval (0 ∷ xs) (sub-+-0 p) (RightU {l} {r} {loc} v) 
+-- subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (RightU v) = subval (0 ∷ xs) (sub-+-0 p) (RightU {l} {r} {loc} v) 
 subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (RightU u) = subval xs p u
-subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (LeftU v) = subval (1 ∷ xs) (sub-+-1 p) (LeftU {l} {r} {loc} v)
+-- subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (LeftU v) = subval (1 ∷ xs) (sub-+-1 p) (LeftU {l} {r} {loc} v)
 subval {r * ε∉r ` loc} {r * ε∉r ` loc} [] sub-* u = u
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) with drop n us
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | x ∷ _ = subval xs p x
@@ -947,7 +1003,7 @@ infix 4  _,_⊢_≺_
 data _,_⊢_≺_ : ( r : RE ) → (List ℕ) → U r → U r → Set where
   ≺p : ∀ { r : RE } ( u v : U r )
     → ( p : List ℕ )
-    → SubLen< {r} p u v
+    → SubLen< {r} p v u
     → ( ( q : List ℕ )
       → q ∈ (pos {r} u) ++ (pos {r} v)
       → q ≺Lex p
@@ -1100,6 +1156,32 @@ map-inv : ∀ { n : ℕ } { xs : List ℕ } ( ys : List (List ℕ) ) → (n ∷ 
 map-inv (y ∷ ys') (here p) rewrite proj₂ (∷-injective p) = here refl
 map-inv (y ∷ ys') (there x∈xs) = there (map-inv ys' x∈xs)
 
+-- Shift position membership from RightU++RightU to sub-unit++sub-unit.
+shift-pos-right : ∀ (pu pv : List (List ℕ)) (xs : List ℕ) → 1 ∷ xs ∈ ([] ∷ List.map (1 ∷_) pu) ++ ([] ∷ List.map (1 ∷_) pv) → xs ∈ pu ++ pv
+shift-pos-right pu pv xs (here ())
+shift-pos-right pu pv xs (there mp) = go (∈-++⁻ (List.map (1 ∷_) pu) mp)
+  where
+    go-right-tail : 1 ∷ xs ∈ ([] ∷ List.map (1 ∷_) pv) → xs ∈ pu ++ pv
+    go-right-tail (here ())
+    go-right-tail (there mp') = ∈-++⁺ʳ _ (map-inv pv mp')
+    go : _ ⊎ _ → xs ∈ pu ++ pv
+    go (inj₁ mp) = ∈-++⁺ˡ (map-inv pu mp)
+    go (inj₂ mp) = go-right-tail mp
+
+-- Shift position membership from LeftU++LeftU to sub-unit++sub-unit.
+shift-pos-left : ∀ (pu pv : List (List ℕ)) (xs : List ℕ) → 0 ∷ xs ∈ ([] ∷ List.map (0 ∷_) pu) ++ ([] ∷ List.map (0 ∷_) pv) → xs ∈ pu ++ pv
+shift-pos-left pu pv xs (here ())
+shift-pos-left pu pv xs (there mp) = go (∈-++⁻ (List.map (0 ∷_) pu) mp)
+  where
+    go-left-tail : 0 ∷ xs ∈ ([] ∷ List.map (0 ∷_) pv) → xs ∈ pu ++ pv
+    go-left-tail (here ())
+    go-left-tail (there mp') = ∈-++⁺ʳ _ (map-inv pv mp')
+    go : _ ⊎ _ → xs ∈ pu ++ pv
+    go (inj₁ mp) = ∈-++⁺ˡ (map-inv pu mp)
+    go (inj₂ mp) = go-left-tail mp
+
+
+
 -- Extract prefix equality from mapped list membership.
 -- If suc n ∷ xs' is in map (_∷_ k) ys, then suc n ≡ k.
 -- Used in sublen-∈-just to eliminate impossible prefix mismatches.
@@ -1171,6 +1253,18 @@ go-pos-shift {r} k (v ∷ vs) {n} {xs} y∈ = helper y∈
 ¬suc≡0 : ∀ {n : ℕ} → ¬ (suc n ≡ 0)
 ¬suc≡0 ()
 
+¬suc2<1 : ∀ {n : ℕ} → ¬ (suc (suc n) < 1)
+¬suc2<1 (s<s ())
+
+¬suc2≡1 : ∀ {n : ℕ} → ¬ (suc (suc n) ≡ 1)
+¬suc2≡1 ()
+
+¬suc2∷≺Lex1∷-helper : ∀ {n : ℕ} {xs ps : List ℕ} (q≺p : suc (suc n) ∷ xs ≺Lex 1 ∷ ps) → ⊥
+¬suc2∷≺Lex1∷-helper q≺p with q≺p
+... | ≺lex-head lt = ¬suc2<1 lt
+¬suc2∷≺Lex1∷ : ∀ {n : ℕ} {xs ps : List ℕ} → suc (suc n) ∷ xs ≺Lex 1 ∷ ps → ⊥
+¬suc2∷≺Lex1∷ q≺p = ¬suc2∷≺Lex1∷-helper q≺p
+
 -- suc (suc n) is never equal to 1. Used in prefix mismatch eliminations.
 ¬suc-suc≡1 : ∀ {n : ℕ} → ¬ (suc (suc n) ≡ 1)
 ¬suc-suc≡1 {n} eq = ¬suc≡0 (suc-injective eq)
@@ -1204,6 +1298,14 @@ sublen-nil-∈ {l + r ` loc} (RightU u) with length (proj₁ (flat (RightU {l} {
 ... | k = k , refl
 sublen-nil-∈ {r * ε∉r ` loc} (ListU us) with length (proj₁ (flat (ListU {r} {ε∉r} {loc} us)))
 ... | k = k , refl
+
+sublen-nil-flat : ∀ {r : RE} (u : U r) → sublen u [] ≡ just (length (proj₁ (flat u)))
+sublen-nil-flat {ε} EmptyU = refl
+sublen-nil-flat {$ c ` loc} (LetterU c) = refl
+sublen-nil-flat {l ● r ` loc} (PairU u v) rewrite proj₂ (sublen-nil-∈ (PairU u v)) = refl
+sublen-nil-flat {l + r ` loc} (LeftU u) rewrite proj₂ (sublen-nil-∈ (LeftU u)) = refl
+sublen-nil-flat {l + r ` loc} (RightU u) rewrite proj₂ (sublen-nil-∈ (RightU u)) = refl
+sublen-nil-flat {r * ε∉r ` loc} (ListU us) rewrite proj₂ (sublen-nil-∈ (ListU us)) = refl
 
 -- Convert position membership to a proof that sublen returns just.
 -- Used throughout ≺-trans to bridge between membership and sublen equality.
@@ -1320,26 +1422,55 @@ eq-cond-q-helper {r} u₁ u₂ u₃ p q cond₁ cond₂ q≺p q' q'∈ q'≺q = 
 -- Given u₁ ≺ u₂ with witness p and u₂ ≺ u₃ with witness q,
 -- we case-analyse on the trichotomy of p and q (using ≺Lex-trichotomous)
 -- to build a witness for u₁ ≺ u₃.
+
+-- Transport MaybeNat< along sublen equality.
+-- Given sublen u₂ p ≡ sublen u₃ p and MaybeNat< (sublen u₂ p) (sublen u₁ p),
+-- produces MaybeNat< (sublen u₃ p) (sublen u₁ p).
+subst-MaybeNat<-left : ∀ { r : RE } (u₁ u₂ u₃ : U r) (p : List ℕ)
+  → sublen u₂ p ≡ sublen u₃ p
+  → MaybeNat< (sublen u₂ p) (sublen u₁ p)
+  → MaybeNat< (sublen u₃ p) (sublen u₁ p)
+subst-MaybeNat<-left u₁ u₂ u₃ p eq mb =
+  subst (λ w → MaybeNat< w (sublen u₁ p)) eq mb
+
+-- Handle the nothing/just cases of sublen u₂ p and sublen u₃ p
+-- for the p≺q branch of ≺-trans.
+-- Uses explicit equality threading to avoid `with`-abstraction conflicts with cond₂.
+≺-trans-mb : ∀ { r : RE } (u₁ u₂ u₃ : U r) (p q : List ℕ)
+  → ( cond₂ : ∀ (q' : List ℕ) → q' ∈ pos u₂ ++ pos u₃ → q' ≺Lex q → sublen u₂ q' ≡ sublen u₃ q' )
+  → ( mb₁ : MaybeNat< (sublen u₂ p) (sublen u₁ p) )
+  → p ≺Lex q
+  → MaybeNat< (sublen u₃ p) (sublen u₁ p)
+≺-trans-mb u₁ u₂ u₃ p q cond₂ mb₁ p≺q = go-su₂ (sublen u₂ p) refl
+  where
+    go-su₂ : (su₂ : Maybe ℕ) → sublen u₂ p ≡ su₂ → MaybeNat< (sublen u₃ p) (sublen u₁ p)
+    go-su₂ (just x) eq₂ = subst (λ w → MaybeNat< w (sublen u₁ p)) (cond₂ p (∈-++⁺ˡ (sublen-just-∈-pos {u = u₂} (x , eq₂))) p≺q) mb₁
+    go-su₂ nothing eq₂ = go-su₃ (sublen u₃ p) refl eq₂
+      where
+        go-su₃ : (su₃ : Maybe ℕ) → sublen u₃ p ≡ su₃ → sublen u₂ p ≡ nothing → MaybeNat< (sublen u₃ p) (sublen u₁ p)
+        go-su₃ nothing eq₃ eq₂ = subst (λ w → MaybeNat< w (sublen u₁ p)) (trans eq₂ (sym eq₃)) mb₁
+        go-su₃ (just m) eq₃ eq₂ = ⊥-elim (¬just≡nothing eq-nothing-just)
+          where
+            step1 : nothing ≡ sublen u₂ p
+            step1 = sym eq₂
+
+            step2 : sublen u₂ p ≡ sublen u₃ p
+            step2 = cond₂ p (∈-++⁺ʳ (pos u₂) {pos u₃} (sublen-just-∈-pos {u = u₃} (m , eq₃))) p≺q
+
+            eq-nothing-just : just m ≡ nothing
+            eq-nothing-just = sym (trans (trans step1 step2) eq₃)
+
 ≺-trans : ∀ { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ ≺ u₂
   → r ⊢ u₂ ≺ u₃
   --------------
   → r ⊢ u₁ ≺ u₃
-≺-trans {r} {u₁} {u₂} {u₃} (≺ _ _ (p , ≺p _ _ p (sublen< _ _ p mb₁) cond₁)) (≺ _ _ (q , ≺p _ _ q (sublen< _ _ q mb₂) cond₂))
+≺-trans {r} {u₁} {u₂} {u₃} (≺ _ _ (p , ≺p _ _ p (sublen< u₂ u₁ p mb₁) cond₁)) (≺ _ _ (q , ≺p _ _ q (sublen< u₃ u₂ q mb₂) cond₂))
    with ≺Lex-trichotomous p q
-... | inj₁ p≺q = ≺ u₁ u₃ (p , ≺p u₁ u₃ p (sublen< u₁ u₃ p mb) eq-cond)
+... | inj₁ p≺q = ≺ u₁ u₃ (p , ≺p u₁ u₃ p (sublen< u₃ u₁ p mb) eq-cond)
    where
-    p∈u₂-just : ∃ λ n → sublen u₂ p ≡ just n
-    p∈u₂-just = MaybeNat<-just-r (sublen u₁ p) (sublen u₂ p) mb₁
-
-    p∈u₂-pos : p ∈ pos u₂
-    p∈u₂-pos = sublen-just-∈-pos p∈u₂-just
-
-    sublen-u₂-p≡u₃-p : sublen u₂ p ≡ sublen u₃ p
-    sublen-u₂-p≡u₃-p = cond₂ p (∈-++⁺ˡ p∈u₂-pos) p≺q
-
-    mb : MaybeNat< (sublen u₁ p) (sublen u₃ p)
-    mb = subst (λ y → MaybeNat< (sublen u₁ p) y) sublen-u₂-p≡u₃-p mb₁
+    mb : MaybeNat< (sublen u₃ p) (sublen u₁ p)
+    mb = ≺-trans-mb u₁ u₂ u₃ p q cond₂ mb₁ p≺q
 
     eq-cond : ∀ (q' : List ℕ) → q' ∈ pos u₁ ++ pos u₃ → q' ≺Lex p → sublen u₁ q' ≡ sublen u₃ q'
     eq-cond q' q'∈ q'≺p with ∈-++⁻ {v = q'} (pos u₁) q'∈
@@ -1385,7 +1516,7 @@ eq-cond-q-helper {r} u₁ u₂ u₃ p q cond₁ cond₂ q≺p q' q'∈ q'≺q = 
 ... | inj₂ (inj₁ q≺p) = helper₂ (sublen u₂ q) refl
   where
     helper₂ : (x : Maybe ℕ) → sublen u₂ q ≡ x → r ⊢ u₁ ≺ u₃
-    helper₂ (just x) eq = ≺ u₁ u₃ (q , ≺p u₁ u₃ q (sublen< u₁ u₃ q mb-q) eq-cond-q)
+    helper₂ (just x) eq = ≺ u₁ u₃ (q , ≺p u₁ u₃ q (sublen< u₃ u₁ q mb-q) eq-cond-q)
       where
         q∈u₂ : q ∈ pos u₂
         q∈u₂ = sublen-just-∈-pos (x , eq)
@@ -1393,12 +1524,12 @@ eq-cond-q-helper {r} u₁ u₂ u₃ p q cond₁ cond₂ q≺p q' q'∈ q'≺q = 
         sublen-u₁-q≡u₂-q : sublen u₁ q ≡ sublen u₂ q
         sublen-u₁-q≡u₂-q = cond₁ q (∈-++⁺ʳ _ q∈u₂) q≺p
 
-        mb-q : MaybeNat< (sublen u₁ q) (sublen u₃ q)
-        mb-q = subst (λ z → MaybeNat< z (sublen u₃ q)) (sym sublen-u₁-q≡u₂-q) mb₂
+        mb-q : MaybeNat< (sublen u₃ q) (sublen u₁ q)
+        mb-q = subst (λ z → MaybeNat< (sublen u₃ q) z) (sym sublen-u₁-q≡u₂-q) mb₂
 
         eq-cond-q = eq-cond-q-helper u₁ u₂ u₃ p q cond₁ cond₂ q≺p
 
-    helper₂ nothing eq = ≺ u₁ u₃ (q , ≺p u₁ u₃ q (sublen< u₁ u₃ q mb-q) eq-cond-q)
+    helper₂ nothing eq = ≺ u₁ u₃ (q , ≺p u₁ u₃ q (sublen< u₃ u₁ q mb-q) eq-cond-q)
       where
         sublen-u₁-q≡nothing : sublen u₁ q ≡ nothing
         sublen-u₁-q≡nothing = lemma (sublen u₁ q) refl
@@ -1407,15 +1538,15 @@ eq-cond-q-helper {r} u₁ u₂ u₃ p q cond₁ cond₂ q≺p q' q'∈ q'≺q = 
             lemma nothing eq' = eq'
             lemma (just x) eq' = ⊥-elim (¬nothing≡just (trans (sym eq) (trans (sym (cond₁ q (∈-++⁺ˡ (sublen-just-∈-pos {r} {u₁} (x , eq'))) q≺p)) eq')))
 
-        mb-q : MaybeNat< (sublen u₁ q) (sublen u₃ q)
-        mb-q = subst (λ z → MaybeNat< z (sublen u₃ q)) (trans eq (sym sublen-u₁-q≡nothing)) mb₂
+        mb-q : MaybeNat< (sublen u₃ q) (sublen u₁ q)
+        mb-q = subst (λ z → MaybeNat< (sublen u₃ q) z) (trans eq (sym sublen-u₁-q≡nothing)) mb₂
 
         eq-cond-q = eq-cond-q-helper u₁ u₂ u₃ p q cond₁ cond₂ q≺p
 
-... | inj₂ (inj₂ p≡q) = ≺ u₁ u₃ (p , ≺p u₁ u₃ p (sublen< u₁ u₃ p mb-eq) eq-cond-eq)
+... | inj₂ (inj₂ p≡q) = ≺ u₁ u₃ (p , ≺p u₁ u₃ p (sublen< u₃ u₁ p mb-eq) eq-cond-eq)
    where
-    mb-eq : MaybeNat< (sublen u₁ p) (sublen u₃ p)
-    mb-eq rewrite p≡q = ≺Nat<-trans mb₁ mb₂
+    mb-eq : MaybeNat< (sublen u₃ p) (sublen u₁ p)
+    mb-eq rewrite p≡q = ≺Nat<-trans mb₂ mb₁
 
     eq-cond-eq : ∀ (q' : List ℕ) → q' ∈ pos u₁ ++ pos u₃ → q' ≺Lex p → sublen u₁ q' ≡ sublen u₃ q'
     eq-cond-eq q' q'∈ q'≺p with ∈-++⁻ {v = q'} (pos u₁) q'∈
@@ -1475,28 +1606,28 @@ open-exist (≺ u v e) = e
   -------------
   → ¬ ( r ⊢ u₂ ≺ u₁)
 ≺-asym {r} {u₁} {u₂} u₁≺u₂ u₂≺u₁ with open-exist u₁≺u₂
-... | pw₁ , ≺p _ _ pw₁ (sublen< _ _ pw₁ mb₁) cond₁ = go u₂≺u₁
+... | pw₁ , ≺p _ _ pw₁ (sublen< u₂ u₁ pw₁ mb₁) cond₁ = go u₂≺u₁
   where
     go : r ⊢ u₂ ≺ u₁ → ⊥
-    go (≺ _ _ (pw₂ , ≺p _ _ pw₂ (sublen< _ _ pw₂ mb₂) cond₂))
+    go (≺ _ _ (pw₂ , ≺p _ _ pw₂ (sublen< u₁ u₂ pw₂ mb₂) cond₂))
       with ≺Lex-trichotomous pw₁ pw₂
-    ... | inj₁ pw₁≺pw₂ = maybeNatAsym (sublen u₁ pw₁) (sublen u₂ pw₁) mb₁ (sym (cond₂ pw₁ (∈-++⁺ˡ pw₁∈u₂) pw₁≺pw₂))
+    ... | inj₁ pw₁≺pw₂ = maybeNatAsym (sublen u₂ pw₁) (sublen u₁ pw₁) mb₁ (cond₂ pw₁ (∈-++⁺ʳ _ pw₁∈u₁) pw₁≺pw₂)
       where
-        pw₁∈u₂-just : ∃ λ n → sublen u₂ pw₁ ≡ just n
-        pw₁∈u₂-just = MaybeNat<-just-r (sublen u₁ pw₁) (sublen u₂ pw₁) mb₁
+        pw₁∈u₁-just : ∃ λ n → sublen u₁ pw₁ ≡ just n
+        pw₁∈u₁-just = MaybeNat<-just-r (sublen u₂ pw₁) (sublen u₁ pw₁) mb₁
 
-        pw₁∈u₂ : pw₁ ∈ pos u₂
-        pw₁∈u₂ = sublen-just-∈-pos {r} {u₂} pw₁∈u₂-just
+        pw₁∈u₁ : pw₁ ∈ pos u₁
+        pw₁∈u₁ = sublen-just-∈-pos {r} {u₁} pw₁∈u₁-just
 
-    ... | inj₂ (inj₁ pw₂≺pw₁) = maybeNatAsym (sublen u₂ pw₂) (sublen u₁ pw₂) mb₂ (sym (cond₁ pw₂ (∈-++⁺ˡ pw₂∈u₁) pw₂≺pw₁))
+    ... | inj₂ (inj₁ pw₂≺pw₁) = maybeNatAsym (sublen u₁ pw₂) (sublen u₂ pw₂) mb₂ (cond₁ pw₂ (∈-++⁺ʳ _ pw₂∈u₂) pw₂≺pw₁)
       where
-        pw₂∈u₁-just : ∃ λ n → sublen u₁ pw₂ ≡ just n
-        pw₂∈u₁-just = MaybeNat<-just-r (sublen u₂ pw₂) (sublen u₁ pw₂) mb₂
+        pw₂∈u₂-just : ∃ λ n → sublen u₂ pw₂ ≡ just n
+        pw₂∈u₂-just = MaybeNat<-just-r (sublen u₁ pw₂) (sublen u₂ pw₂) mb₂
 
-        pw₂∈u₁ : pw₂ ∈ pos u₁
-        pw₂∈u₁ = sublen-just-∈-pos {r} {u₁} pw₂∈u₁-just
+        pw₂∈u₂ : pw₂ ∈ pos u₂
+        pw₂∈u₂ = sublen-just-∈-pos {r} {u₂} pw₂∈u₂-just
 
-    ... | inj₂ (inj₂ pw₁≡pw₂) = maybeNat<-asym {sublen u₁ pw₁} {sublen u₂ pw₁} mb₁ (subst (λ y → MaybeNat< (sublen u₂ y) (sublen u₁ y)) (sym pw₁≡pw₂) mb₂)
+    ... | inj₂ (inj₂ pw₁≡pw₂) = maybeNat<-asym {sublen u₂ pw₁} {sublen u₁ pw₁} mb₁ (subst (λ y → MaybeNat< (sublen u₁ y) (sublen u₂ y)) (sym pw₁≡pw₂) mb₂)
 
 ```
 
@@ -1561,8 +1692,553 @@ Lemma: given ∈⟦ evidence, construct a ⇒ proof (POSIX parse tree)
 Lemma: ≼ is wellfounded given a fix flatten word.
 
 ```agda
+-- ≼-wellfounded: for a fixed word w ∈⟦ r ⟧, the POSIX parse tree from ∈⟦→⇒
+-- is the ≼-minimum among all units that flatten to w.
+--
+-- Proof strategy: induction on the structure of r, using ∈⟦→⇒ to construct u,
+-- then proving u ≼ v for any v with flat v ≡ w.
+--
+-- Key sublemas needed:
+--   ● : POSIX longest split implies PairU u₁ u₂ ≼ PairU v₁ v₂
+--   + : when w ∈⟦ l ⟧, LeftU ≺ RightU (at first differing position)
+--   * : POSIX longest first element implies ListU (u₁ ∷ u₁s) ≼ ListU vs
+¬any≺Lex-empty : (xs : List ℕ) → xs ≺Lex [] → ⊥
+¬any≺Lex-empty [] ()
+¬any≺Lex-empty (x ∷ xs) ()
+
+∈⟦→⇒-member : ∀ {r : RE} {w : List Char} {u : U r} → w , r ⇒ u → w ∈⟦ r ⟧
+∈⟦→⇒-member p₁ = ε
+∈⟦→⇒-member (pc {c} {loc}) = $ c
+∈⟦→⇒-member (p+l w⇒v) = _ +L w∈l
+  where w∈l = ∈⟦→⇒-member w⇒v
+∈⟦→⇒-member (p+r w⇒v ¬w∈l) = _ +R w∈r
+  where w∈r = ∈⟦→⇒-member w⇒v
+∈⟦→⇒-member (ps {w₁} {w₂} w≡w₁w₂ w₁⇒u₁ w₂⇒u₂ _) = w∈lr
+  where
+    w₁∈l = ∈⟦→⇒-member w₁⇒u₁
+    w₂∈r = ∈⟦→⇒-member w₂⇒u₂
+    w₁w₂∈lr = _●_⧺_ {w₁} {w₂} w₁∈l w₂∈r refl
+    w∈lr = subst (λ xs → xs ∈⟦ _ ● _ ` _ ⟧) (sym w≡w₁w₂) w₁w₂∈lr
+∈⟦→⇒-member {r = r' * ε∉r' ` loc'} (p[] {r'} {ε∉r'} {loc'}) = ∈⟦-*-empty-r* r' ε∉r' loc'
+∈⟦→⇒-member {r = ri * ε∉ri ` loci} (p* {w₁} {w₂} {._} {ri} {ε∉ri} {loci} w≡w₁w₂ w₁⇒v w₂⇒vs ¬w₁≡[] _) = _* (ε +R w∈lr)
+  where
+    w₁∈r = ∈⟦→⇒-member w₁⇒v
+    w₂∈r* = ∈⟦→⇒-member w₂⇒vs
+    w₁w₂∈lr = _●_⧺_ {w₁} {w₂} w₁∈r w₂∈r* refl
+    w∈lr = subst (λ xs → xs ∈⟦ _ ● _ ` _ ⟧) (sym w≡w₁w₂) w₁w₂∈lr
+
+⇒-cat-split-aux : ∀ {l r : RE} {loc : ℕ} {w : List Char} {u : U (l ● r ` loc)}
+  → w , (l ● r ` loc) ⇒ u
+  → Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+      w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ w
+      × ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ l ⟧) × w₄ ∈⟦ r ⟧)))
+⇒-cat-split-aux (ps {w₁} {w₂} w≡w₁w₂ w₁⇒u₁ w₂⇒u₂ longest-ev) =
+  w₁ , w₂ , ∈⟦→⇒-member w₁⇒u₁ , ∈⟦→⇒-member w₂⇒u₂ , sym w≡w₁w₂ , longest-ev
+
+⇒-cat-split : ∀ {l r : RE} {loc : ℕ} {w : List Char} {u : U (l ● r ` loc)}
+  → w , (l ● r ` loc) ⇒ u
+  → Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+      w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ w
+      × ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ l ⟧) × w₄ ∈⟦ r ⟧)))
+⇒-cat-split p with ⇒-cat-split-aux p
+⇒-cat-split p | aux = aux
+
+⇒-flat-eq : ∀ {r : RE} {w : List Char} {u : U r} → w , r ⇒ u → proj₁ (flat u) ≡ w
+⇒-flat-eq p₁ = refl
+⇒-flat-eq pc = refl
+⇒-flat-eq (p+l w⇒v) rewrite ⇒-flat-eq w⇒v = refl
+⇒-flat-eq (p+r w⇒v _) rewrite ⇒-flat-eq w⇒v = refl
+⇒-flat-eq (ps w≡w₁w₂ w₁⇒u₁ w₂⇒u₂ _) rewrite ⇒-flat-eq w₁⇒u₁ | ⇒-flat-eq w₂⇒u₂ | sym w≡w₁w₂ = refl
+⇒-flat-eq p[] = refl
+⇒-flat-eq (p* w≡w₁w₂ w₁⇒v w₂⇒vs _ _) rewrite ⇒-flat-eq w₁⇒v | ⇒-flat-eq w₂⇒vs | sym w≡w₁w₂ = refl
+
+⇒-star-split-aux : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} {w : List Char} {u : U (r * nε ` loc)}
+  → w , (r * nε ` loc) ⇒ u
+  → w ≢ []
+  → Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+      w₁ ∈⟦ r ⟧ × w₂ ∈⟦ r * nε ` loc ⟧ × w₁ ++ w₂ ≡ w × ¬ w₁ ≡ []
+      × ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ r ⟧) × w₄ ∈⟦ r * nε ` loc ⟧)))
+⇒-star-split-aux (p* {w₁} {w₂} w≡w₁w₂ w₁⇒v w₂⇒vs ¬w₁≡[] longest-ev) w≢[] =
+  w₁ , w₂ , ∈⟦→⇒-member w₁⇒v , ∈⟦→⇒-member w₂⇒vs , sym w≡w₁w₂ , ¬w₁≡[] , longest-ev
+
+⇒-star-split : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} {w : List Char} {u : U (r * nε ` loc)}
+  → w , (r * nε ` loc) ⇒ u
+  → w ≢ []
+  → Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+      w₁ ∈⟦ r ⟧ × w₂ ∈⟦ r * nε ` loc ⟧ × w₁ ++ w₂ ≡ w × ¬ w₁ ≡ []
+      × ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ r ⟧) × w₄ ∈⟦ r * nε ` loc ⟧)))
+⇒-star-split p w≢[] with ⇒-star-split-aux p w≢[]
+⇒-star-split p w≢[] | aux = aux
+
+¬suc<zero : (x : ℕ) → ¬(suc x < 0)
+¬suc<zero x ()
+
+¬suc∷≺Lex-zero∷ : (x : ℕ) (xs : List ℕ) → suc x ∷ xs ≺Lex 0 ∷ [] → ⊥
+¬suc∷≺Lex-zero∷ x xs (≺lex-head ())
+
+¬1<1 : ¬(1 < 1)
+¬1<1 (s<s p) = ¬0<0 p
+  where
+    ¬0<0 : ¬(0 < 0)
+    ¬0<0 ()
+
+
+-- TODO: prove proj₁ (flat u) ≡ w from w , r ⇒ u
+
+-- (blocked by with-abstraction of flat for composite constructors)
+
+-- flat-pair≡: proj₁ (flat (PairU u v)) ≡ proj₁ (flat u) ++ proj₁ (flat v)
+-- Uses with on flat (PairU u v) | flat u | flat v.
+-- The with clause of flat for PairU evaluates flat u and flat v internally,
+-- producing ys' and zs' such that xs = ys' ++ zs'.
+-- Our separate flat u and flat v produce ys and zs.
+-- Since flat is deterministic, ys = ys' and zs = zs', so xs = ys ++ zs.
+flat-pair≡ : ∀ {l r : RE} {loc : ℕ} (u : U l) (v : U r) → proj₁ (flat {l ● r ` loc} (PairU u v)) ≡ proj₁ (flat u) ++ proj₁ (flat v)
+flat-pair≡ u v with flat u | flat v
+... | xs , _ | ys , _ = refl
+
+cancel-left-eq : ∀ {l r : RE} {loc : ℕ} (w w₁ w₂ : List Char) (vl : U l) (vr : U r)
+  → proj₁ (flat vl) ≡ w₁
+  → proj₁ (flat {l ● r ` loc} (PairU vl vr)) ≡ proj₁ (flat vl) ++ proj₁ (flat vr)
+  → proj₁ (flat {l ● r ` loc} (PairU vl vr)) ≡ w
+  → w ≡ w₁ ++ w₂
+  → proj₁ (flat vr) ≡ w₂
+cancel-left-eq w w₁ w₂ vl vr flat-vl≡w₁' flat-pair flat-v-eq w≡split =
+  cancel-left w₁ (proj₁ (flat vr)) w₂ (trans (sym (cong₂ _++_ flat-vl≡w₁' refl)) (trans flat-pair (trans flat-v-eq w≡split)))
+
+¬0∷≡1∷ : (xs : List ℕ) → 0 ∷ xs ≡ 1 ∷ xs → ⊥
+¬0∷≡1∷ xs p = ¬0≡1 (proj₁ (∷-injective p))
+
+¬∷≡[] : {A : Set} (x : A) (xs : List A) → x ∷ xs ≡ [] → ⊥
+¬∷≡[] x xs ()
+
+-- map-inv specialized to 0∷ prefix
+map-inv-0 : ∀ {xs : List ℕ} (ys : List (List ℕ)) → (0 ∷ xs) ∈ List.map (0 ∷_) ys → xs ∈ ys
+map-inv-0 [] ()
+map-inv-0 (y ∷ ys') (here p) rewrite proj₂ (∷-injective p) = here refl
+map-inv-0 (y ∷ ys') (there mp) = there (map-inv-0 ys' mp)
+
+-- map-inv specialized to 1∷ prefix
+map-inv-1 : ∀ {xs : List ℕ} (ys : List (List ℕ)) → (1 ∷ xs) ∈ List.map (1 ∷_) ys → xs ∈ ys
+map-inv-1 [] ()
+map-inv-1 (y ∷ ys') (here p) rewrite proj₂ (∷-injective p) = here refl
+map-inv-1 (y ∷ ys') (there mp) = there (map-inv-1 ys' mp)
+
+-- 1∷ prefix cannot be in 0∷ mapped list
+¬1∷∈map0 : ∀ {xs : List ℕ} (ys : List (List ℕ)) → (1 ∷ xs) ∈ List.map (0 ∷_) ys → ⊥
+¬1∷∈map0 [] ()
+¬1∷∈map0 (y ∷ ys') (here p) = ¬0≡1 (sym (proj₁ (∷-injective p)))
+¬1∷∈map0 (y ∷ ys') (there mp) = ¬1∷∈map0 ys' mp
+
+-- 0∷ prefix cannot be in 1∷ mapped list
+¬0∷∈map1 : ∀ {xs : List ℕ} (ys : List (List ℕ)) → (0 ∷ xs) ∈ List.map (1 ∷_) ys → ⊥
+¬0∷∈map1 [] ()
+¬0∷∈map1 (y ∷ ys') (here p) = ¬0≡1 (proj₁ (∷-injective p))
+¬0∷∈map1 (y ∷ ys') (there mp) = ¬0∷∈map1 ys' mp
+
+-- shift-pos for PairU: strip prefix from position membership.
+-- pos(PairU u v) = [] ∷ 0∷pos(u) ++ 1∷pos(v)
+-- pos(PairU ul ur) ++ pos(PairU vl vr) = [] ∷ 0∷pos(ul) ++ 1∷pos(ur) ++ [] ∷ 0∷pos(vl) ++ 1∷pos(vr)
+
+-- skip 1∷ elements in a list, return ⊥ if element is not 0∷_
+¬0∷∈1∷map : ∀ {xs : List ℕ} (ys : List (List ℕ)) → 0 ∷ xs ∈ List.map (1 ∷_) ys → ⊥
+¬0∷∈1∷map [] ()
+¬0∷∈1∷map (_ ∷ ys') (here p) = ¬0≡1 (proj₁ (∷-injective p))
+¬0∷∈1∷map (y ∷ ys') (there mp) = ¬0∷∈1∷map ys' mp
+
+-- skip 0∷ elements in a list, return ⊥ if element is not 1∷_
+¬1∷∈0∷map : ∀ {xs : List ℕ} (ys : List (List ℕ)) → 1 ∷ xs ∈ List.map (0 ∷_) ys → ⊥
+¬1∷∈0∷map [] ()
+¬1∷∈0∷map (_ ∷ ys') (here p) = ¬0≡1 (sym (proj₁ (∷-injective p)))
+¬1∷∈0∷map (y ∷ ys') (there mp) = ¬1∷∈0∷map ys' mp
+
+-- shift-pos-pair-left: 0∷xs ∈ pos(PairU ul ur) ++ pos(PairU vl vr) → xs ∈ pos(ul) ++ pos(vl)
+-- Structure: [] ∷ 0∷pos(ul) ++ 1∷pos(ur) ++ [] ∷ 0∷pos(vl) ++ 1∷pos(vr)
+-- After stripping first [], we need to find 0∷xs in:
+--   0∷pos(ul) ++ 1∷pos(ur) ++ [] ∷ 0∷pos(vl) ++ 1∷pos(vr)
+shift-pos-pair-left : ∀ (pu1 pu2 pv1 pv2 : List (List ℕ)) (xs : List ℕ)
+  → 0 ∷ xs ∈ ([] ∷ List.map (0 ∷_) pu1 ++ List.map (1 ∷_) pv1) ++ ([] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2)
+  → xs ∈ pu1 ++ pu2
+shift-pos-pair-left pu1 pu2 pv1 pv2 xs (here ())
+shift-pos-pair-left pu1 pu2 pv1 pv2 xs (there mp) = go mp
+  where
+    go₁ : 0 ∷ xs ∈ List.map (0 ∷_) pu1 ++ List.map (1 ∷_) pv1
+      → xs ∈ pu1 ++ pu2
+    go₁ mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = ∈-++⁺ˡ (map-inv-0 pu1 mp')
+    ... | inj₂ mp' = ⊥-elim (¬0∷∈1∷map pv1 mp')
+
+    go₄ : 0 ∷ xs ∈ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2
+      → xs ∈ pu1 ++ pu2
+    go₄ mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = ∈-++⁺ʳ pu1 (map-inv-0 pu2 mp')
+    ... | inj₂ mp' = ⊥-elim (¬0∷∈1∷map pv2 mp')
+
+    go₃ : 0 ∷ xs ∈ [] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2
+      → xs ∈ pu1 ++ pu2
+    go₃ (here ())
+    go₃ (there mp) = go₄ mp
+
+    go₂ : 0 ∷ xs ∈ List.map (1 ∷_) pv1 ++ ([] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2)
+      → xs ∈ pu1 ++ pu2
+    go₂ mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = ⊥-elim (¬0∷∈1∷map pv1 mp')
+    ... | inj₂ mp' = go₃ mp'
+
+    go : 0 ∷ xs ∈ (List.map (0 ∷_) pu1 ++ List.map (1 ∷_) pv1) ++ ([] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2)
+      → xs ∈ pu1 ++ pu2
+    go mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = go₁ mp'
+    ... | inj₂ mp' = go₃ mp'
+
+-- shift-pos-pair-right: 1∷xs ∈ pos(PairU ul ur) ++ pos(PairU vl vr) → xs ∈ pos(ur) ++ pos(vr)
+shift-pos-pair-right : ∀ (pu1 pu2 pv1 pv2 : List (List ℕ)) (xs : List ℕ)
+  → 1 ∷ xs ∈ ([] ∷ List.map (0 ∷_) pu1 ++ List.map (1 ∷_) pv1) ++ ([] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2)
+  → xs ∈ pv1 ++ pv2
+shift-pos-pair-right pu1 pu2 pv1 pv2 xs (here ())
+shift-pos-pair-right pu1 pu2 pv1 pv2 xs (there mp) = go mp
+  where
+    go₁ : 1 ∷ xs ∈ List.map (0 ∷_) pu1 ++ List.map (1 ∷_) pv1
+      → xs ∈ pv1 ++ pv2
+    go₁ mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = ⊥-elim (¬1∷∈0∷map pu1 mp')
+    ... | inj₂ mp' = ∈-++⁺ˡ (map-inv-1 pv1 mp')
+
+    go₄ : 1 ∷ xs ∈ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2
+      → xs ∈ pv1 ++ pv2
+    go₄ mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = ⊥-elim (¬1∷∈0∷map pu2 mp')
+    ... | inj₂ mp' = ∈-++⁺ʳ pv1 (map-inv-1 pv2 mp')
+
+    go₃ : 1 ∷ xs ∈ [] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2
+      → xs ∈ pv1 ++ pv2
+    go₃ (here ())
+    go₃ (there mp) = go₄ mp
+
+    go₂ : 1 ∷ xs ∈ List.map (1 ∷_) pv1 ++ ([] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2)
+      → xs ∈ pv1 ++ pv2
+    go₂ mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = ∈-++⁺ˡ (map-inv-1 pv1 mp')
+    ... | inj₂ mp' = go₃ mp'
+
+    go : 1 ∷ xs ∈ (List.map (0 ∷_) pu1 ++ List.map (1 ∷_) pv1) ++ ([] ∷ List.map (0 ∷_) pu2 ++ List.map (1 ∷_) pv2)
+      → xs ∈ pv1 ++ pv2
+    go mp with ∈-++⁻ _ mp
+    ... | inj₁ mp' = go₁ mp'
+    ... | inj₂ mp' = go₃ mp'
+
+-- sublen equality at 0∷xs when both PairUs have the same left component
+sublen-zero-∷-equal : ∀ {l r : RE} (ul vl : U l) (xs : List ℕ)
+  → xs ∈ pos {l} ul ++ pos {l} vl
+  → sublen {l} ul xs ≡ sublen {l} vl xs
+  → ∀ (ur vr : U r) (loc : ℕ)
+    → sublen {l ● r ` loc} (PairU ul ur) (0 ∷ xs) ≡ sublen {l ● r ` loc} (PairU vl vr) (0 ∷ xs)
+sublen-zero-∷-equal ul vl xs _ sublen-eq ur vr loc = sublen-eq
+
+-- sublen equality at 1∷xs when both PairUs have the same right component
+sublen-one-∷-equal : ∀ {l r : RE} (ur vr : U r) (xs : List ℕ)
+  → xs ∈ pos {r} ur ++ pos {r} vr
+  → sublen {r} ur xs ≡ sublen {r} vr xs
+  → ∀ (ul vl : U l) (loc : ℕ)
+    → sublen {l ● r ` loc} (PairU ul ur) (1 ∷ xs) ≡ sublen {l ● r ` loc} (PairU ul vr) (1 ∷ xs)
+sublen-one-∷-equal ur vr xs _ sublen-eq ul vl loc = sublen-eq
+
 ≼-wellfounded : ∀ { r : RE } { w : List Char }
-  → w ∈⟦ r ⟧ 
-  → ∃[ u ] ( ( proj₁ (flat u) ≡ w ) → ( v : U r ) → (proj₁ (flat v) ≡ w) →  r ⊢ u ≼ v )
-≼-wellfounded = {!!} 
+  → w ∈⟦ r ⟧
+  → Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U r) → proj₁ (flat v) ≡ w → r ⊢ u ≼ v))
+≼-wellfounded {ε} {[]} ε = EmptyU , refl , λ v flat-v-eq → inj₂ (EmptyU≡EmptyU v)
+  where
+    EmptyU≡EmptyU : (u : U ε) → EmptyU ≡ u
+    EmptyU≡EmptyU EmptyU = refl
+≼-wellfounded {$ c ` loc} {c ∷ []} ($ c) = LetterU c , refl , λ v flat-v-eq → inj₂ (letterU-unique v)
+  where
+    letterU-unique : (v : U ($ c ` loc)) → LetterU c ≡ v
+    letterU-unique (LetterU .c) = refl
+≼-wellfounded {l + r ` loc} {w} w∈lr with ∈⟦-decides {l} {w}
+... | no ¬w∈l = right-only
+  where
+    w∈r : w ∈⟦ r ⟧
+    w∈r with ∈⟦-+-elim w∈lr
+    ... | inj₁ w∈l' = ⊥-elim (¬w∈l w∈l')
+    ... | inj₂ w∈r = w∈r
+
+    right-only : Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ u ≼ v))
+    right-only with ≼-wellfounded {r} {w} w∈r
+    ... | u₂ , flat-u₂≡w , wf = RightU u₂ , flat-u₂≡w , λ v flat-v-eq → go v flat-v-eq
+      where
+        left-impossible : (v₁ : U l) → proj₁ (flat (LeftU v₁)) ≡ w → ⊥
+        left-impossible v₁ flat-v = ¬w∈l (subst (λ xs → xs ∈⟦ l ⟧) flat-v xs∈l)
+          where
+            xs∈l : proj₁ (flat (LeftU v₁)) ∈⟦ l ⟧
+            xs∈l with ∈⟦-+-elim (proj₂ (flat (LeftU v₁)))
+            ... | inj₁ xs∈l = xs∈l
+            ... | inj₂ ()
+
+        go : (v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ (RightU u₂) ≼ v
+        go (LeftU v₁) flat-v = ⊥-elim (left-impossible v₁ flat-v)
+        go (RightU v₂) flat-v = RightU-≼-lift (wf v₂ flat-v)
+          where
+            flat-eq≡flat-v : proj₁ (flat (RightU u₂)) ≡ proj₁ (flat (RightU v₂))
+            flat-eq≡flat-v = trans flat-u₂≡w (sym flat-v)
+
+            ≺p-RightU-lift : ∀ (p' : List ℕ) → r , p' ⊢ u₂ ≺ v₂ → (l + r ` loc) , (1 ∷ p') ⊢ (RightU u₂) ≺ (RightU v₂)
+            ≺p-RightU-lift p' (≺p _ _ .p' (sublen< _ _ _ mb) cond) = ≺p (RightU u₂) (RightU v₂) (1 ∷ p') (sublen< (RightU v₂) (RightU u₂) (1 ∷ p') mb) (cond-RightU cond)
+              where
+                sublen-equal-len : sublen {l + r ` loc} (RightU u₂) [] ≡ sublen {l + r ` loc} (RightU v₂) []
+                sublen-equal-len = trans (proj₂ (sublen-nil-∈ {l + r ` loc} (RightU u₂))) (trans (cong just (cong length flat-eq≡flat-v)) (sym (proj₂ (sublen-nil-∈ {l + r ` loc} (RightU v₂)))))
+
+                q∈-shift-RightU : (xs : List ℕ) → 1 ∷ xs ∈ pos {l + r ` loc} (RightU u₂) ++ pos {l + r ` loc} (RightU v₂) → xs ∈ pos u₂ ++ pos v₂
+                q∈-shift-RightU xs q∈ = shift-pos-right (pos u₂) (pos v₂) xs q∈
+
+                ¬suc-suc<1 : ∀ {n} → ¬(suc (suc n) < 1)
+                ¬suc-suc<1 (s<s p) = ¬suc<0 p
+                  where
+                    ¬suc<0 : ∀ {n} → ¬(suc n < 0)
+                    ¬suc<0 ()
+
+                cond-RightU : ((q : List ℕ) → q ∈ pos u₂ ++ pos v₂ → q ≺Lex p' → sublen u₂ q ≡ sublen v₂ q)
+                  → (q : List ℕ) → q ∈ pos {l + r ` loc} (RightU u₂) ++ pos {l + r ` loc} (RightU v₂) → q ≺Lex (1 ∷ p') → sublen {l + r ` loc} (RightU u₂) q ≡ sublen {l + r ` loc} (RightU v₂) q
+                cond-RightU cond [] q∈ q≺ = sublen-equal-len
+                cond-RightU cond (0 ∷ xs) q∈ q≺ = refl
+                cond-RightU cond (1 ∷ xs) q∈ (≺lex-head lt11) = ⊥-elim (¬1<1 lt11)
+                cond-RightU cond (1 ∷ xs) q∈ (≺lex-tail xs≺p) = cond xs (q∈-shift-RightU xs q∈) xs≺p
+                cond-RightU cond (suc (suc n) ∷ xs) q∈ (≺lex-head lt) = ⊥-elim (¬suc-suc<1 lt)
+
+            RightU-≼-lift : r ⊢ u₂ ≼ v₂ → (l + r ` loc) ⊢ (RightU u₂) ≼ (RightU v₂)
+            RightU-≼-lift (inj₁ (≺ _ _ (p , prf))) = inj₁ (≺ (RightU u₂) (RightU v₂) (1 ∷ p , ≺p-RightU-lift p prf))
+            RightU-≼-lift (inj₂ u≡v) = inj₂ (cong RightU u≡v)
+... | yes w∈l = left-pref
+  where
+    left-pref : Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ u ≼ v))
+    left-pref with ≼-wellfounded {l} {w} w∈l
+    ... | u₁ , flat-u₁≡w , wf = LeftU u₁ , flat-u₁≡w , λ v flat-v-eq → go v flat-v-eq
+      where
+        go : (v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ (LeftU u₁) ≼ v
+        go (LeftU v₁) flat-v = LeftU-≼-lift (wf v₁ flat-v)
+          where
+            flat-eq≡flat-v : proj₁ (flat (LeftU u₁)) ≡ proj₁ (flat (LeftU v₁))
+            flat-eq≡flat-v = trans flat-u₁≡w (sym flat-v)
+
+            ≺p-LeftU-lift : ∀ (p' : List ℕ) → l , p' ⊢ u₁ ≺ v₁ → (l + r ` loc) , (0 ∷ p') ⊢ (LeftU u₁) ≺ (LeftU v₁)
+            ≺p-LeftU-lift p' (≺p _ _ .p' (sublen< _ _ _ mb) cond) = ≺p (LeftU u₁) (LeftU v₁) (0 ∷ p') (sublen< (LeftU v₁) (LeftU u₁) (0 ∷ p') mb) (cond-LeftU cond)
+              where
+                sublen-equal-len : sublen {l + r ` loc} (LeftU u₁) [] ≡ sublen {l + r ` loc} (LeftU v₁) []
+                sublen-equal-len = trans (proj₂ (sublen-nil-∈ {l + r ` loc} (LeftU u₁))) (trans (cong just (cong length flat-eq≡flat-v)) (sym (proj₂ (sublen-nil-∈ {l + r ` loc} (LeftU v₁)))))
+
+                q∈-shift-LeftU : (xs : List ℕ) → 0 ∷ xs ∈ pos {l + r ` loc} (LeftU u₁) ++ pos {l + r ` loc} (LeftU v₁) → xs ∈ pos u₁ ++ pos v₁
+                q∈-shift-LeftU xs q∈ = shift-pos-left (pos u₁) (pos v₁) xs q∈
+
+                cond-LeftU : ((q : List ℕ) → q ∈ pos u₁ ++ pos v₁ → q ≺Lex p' → sublen u₁ q ≡ sublen v₁ q)
+                  → (q : List ℕ) → q ∈ pos {l + r ` loc} (LeftU u₁) ++ pos {l + r ` loc} (LeftU v₁) → q ≺Lex (0 ∷ p') → sublen {l + r ` loc} (LeftU u₁) q ≡ sublen {l + r ` loc} (LeftU v₁) q
+                cond-LeftU cond [] q∈ q≺ = sublen-equal-len
+                cond-LeftU cond (0 ∷ xs) q∈ (≺lex-tail xs≺p) = cond xs (q∈-shift-LeftU xs q∈) xs≺p
+                cond-LeftU cond (suc x ∷ _) q∈ (≺lex-head lt) = ⊥-elim (¬suc<zero x lt)
+
+            LeftU-≼-lift : l ⊢ u₁ ≼ v₁ → (l + r ` loc) ⊢ (LeftU u₁) ≼ (LeftU v₁)
+            LeftU-≼-lift (inj₁ (≺ _ _ (p , prf))) = inj₁ (≺ (LeftU u₁) (LeftU v₁) (0 ∷ p , ≺p-LeftU-lift p prf))
+            LeftU-≼-lift (inj₂ u≡v) = inj₂ (cong LeftU u≡v)
+
+        go (RightU v₂) flat-v = inj₁ (≺ {l + r ` loc} (LeftU u₁) (RightU v₂) ((0 ∷ []) , (≺p (LeftU u₁) (RightU v₂) (0 ∷ []) (sublen< (RightU v₂) (LeftU u₁) (0 ∷ []) mb) cond)))
+          where
+            sublen-equal-len : sublen {l + r ` loc} (LeftU u₁) [] ≡ sublen {l + r ` loc} (RightU v₂) []
+            sublen-equal-len = begin
+              sublen {l + r ` loc} (LeftU u₁) []
+                ≡⟨ proj₂ (sublen-nil-∈ {l + r ` loc} (LeftU u₁)) ⟩
+              just (length (proj₁ (flat (LeftU u₁))))
+                ≡⟨ cong just (cong length flat-u₁≡w) ⟩
+              just (length w)
+                ≡⟨ sym (cong just (cong length flat-v)) ⟩
+              just (length (proj₁ (flat (RightU v₂))))
+                ≡⟨ sym (proj₂ (sublen-nil-∈ {l + r ` loc} (RightU v₂))) ⟩
+              sublen {l + r ` loc} (RightU v₂) []
+              ∎
+
+            mb : MaybeNat< (sublen {l + r ` loc} (RightU v₂) (0 ∷ [])) (sublen {l + r ` loc} (LeftU u₁) (0 ∷ []))
+            mb with sublen-nil-∈ {l} u₁
+            ... | n , eq = subst (λ x → MaybeNat< (sublen {l + r ` loc} (RightU v₂) (0 ∷ [])) x) (sym eq) maybenat-nothing-just
+
+            cond : ∀ (q : List ℕ) → q ∈ pos {l + r ` loc} (LeftU u₁) ++ pos {l + r ` loc} (RightU v₂) → q ≺Lex (0 ∷ []) → sublen {l + r ` loc} (LeftU u₁) q ≡ sublen {l + r ` loc} (RightU v₂) q
+            cond [] q∈ ≺lex-[] = sublen-equal-len
+            cond (0 ∷ xs) q∈ (≺lex-tail xs≺[]) = ⊥-elim (¬any≺Lex-empty xs xs≺[])
+            cond (suc x ∷ xs) q∈ q≺ = ⊥-elim (¬suc∷≺Lex-zero∷ x xs q≺)
+
+≼-wellfounded {l ● r ` loc} {w} w∈lr = wellf-cat
+  where
+    wellf-cat : Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U (l ● r ` loc)) → proj₁ (flat v) ≡ w → (l ● r ` loc) ⊢ u ≼ v))
+    wellf-cat with ⇒-cat-split (proj₂ (∈⟦→⇒ w∈lr))
+    wellf-cat | w₁' , w₂' , w₁'∈l , w₂'∈r , w≡split , longest-ev = PairU ul ur , flat-pair≡w , go
+      where
+        wf-l' : Σ _ (λ ul → (proj₁ (flat ul) ≡ w₁') × ((vl : U l) → proj₁ (flat vl) ≡ w₁' → l ⊢ ul ≼ vl))
+        wf-l' = ≼-wellfounded w₁'∈l
+
+        ul : U l
+        ul = proj₁ wf-l'
+
+        flat-ul≡w₁' : proj₁ (flat ul) ≡ w₁'
+        flat-ul≡w₁' = proj₁ (proj₂ wf-l')
+
+        wf-l : (vl : U l) → proj₁ (flat vl) ≡ w₁' → l ⊢ ul ≼ vl
+        wf-l = proj₂ (proj₂ wf-l')
+
+        wf-r' : Σ _ (λ ur → (proj₁ (flat ur) ≡ w₂') × ((vr : U r) → proj₁ (flat vr) ≡ w₂' → r ⊢ ur ≼ vr))
+        wf-r' = ≼-wellfounded w₂'∈r
+
+        ur : U r
+        ur = proj₁ wf-r'
+
+        flat-ur≡w₂' : proj₁ (flat ur) ≡ w₂'
+        flat-ur≡w₂' = proj₁ (proj₂ wf-r')
+
+        wf-r : (vr : U r) → proj₁ (flat vr) ≡ w₂' → r ⊢ ur ≼ vr
+        wf-r = proj₂ (proj₂ wf-r')
+
+        flat-pair≡w : proj₁ (flat {l ● r ` loc} (PairU ul ur)) ≡ w
+        flat-pair≡w rewrite flat-ul≡w₁' | flat-ur≡w₂' | w≡split = refl
+
+        q∈-shift-pair-left : (vl : U l) → (vr : U r) → (xs : List ℕ) → 0 ∷ xs ∈ pos {l ● r ` loc} (PairU ul ur) ++ pos {l ● r ` loc} (PairU vl vr) → xs ∈ pos {l} ul ++ pos {l} vl
+        q∈-shift-pair-left vl vr xs q∈ = shift-pos-pair-left (pos {l} ul) (pos {l} vl) (pos {r} ur) (pos {r} vr) xs q∈
+
+        q∈-shift-pair-right : (vl : U l) → (vr : U r) → (xs : List ℕ) → 1 ∷ xs ∈ pos {l ● r ` loc} (PairU ul ur) ++ pos {l ● r ` loc} (PairU vl vr) → xs ∈ pos {r} ur ++ pos {r} vr
+        q∈-shift-pair-right vl vr xs q∈ = shift-pos-pair-right (pos {l} ul) (pos {l} vl) (pos {r} ur) (pos {r} vr) xs q∈
+
+        sublen-equal-len : (vl : U l) → (vr : U r) → (feq : proj₁ (flat {l ● r ` loc} (PairU ul ur)) ≡ proj₁ (flat {l ● r ` loc} (PairU vl vr))) → sublen {l ● r ` loc} (PairU ul ur) [] ≡ sublen {l ● r ` loc} (PairU vl vr) []
+        sublen-equal-len vl vr feq = trans (proj₂ (sublen-nil-∈ {l ● r ` loc} (PairU ul ur))) (trans (cong just (cong length feq)) (sym (proj₂ (sublen-nil-∈ {l ● r ` loc} (PairU vl vr)))))
+
+        mb-transport-right : (p : List ℕ) → (ul : U l) → (vl : U l) → (vr : U r) → (ur : U r) → MaybeNat< (sublen {r} vr p) (sublen {r} ur p) → MaybeNat< (sublen {l ● r ` loc} (PairU vl vr) (1 ∷ p)) (sublen {l ● r ` loc} (PairU ul ur) (1 ∷ p))
+        mb-transport-right p ul vl vr ur mb = subst (λ y → MaybeNat< (sublen {l ● r ` loc} (PairU vl vr) (1 ∷ p)) y) sublen-ur-eq (subst (λ x → MaybeNat< x (sublen {r} ur p)) sublen-vr-eq mb)
+          where
+            sublen-vr-eq : sublen {r} vr p ≡ sublen {l ● r ` loc} (PairU vl vr) (1 ∷ p)
+            sublen-vr-eq = refl
+            sublen-ur-eq : sublen {r} ur p ≡ sublen {l ● r ` loc} (PairU ul ur) (1 ∷ p)
+            sublen-ur-eq = refl
+
+        mb-transport-left : (p : List ℕ) → (ur : U r) → (vl : U l) → (ul : U l) → MaybeNat< (sublen {l} vl p) (sublen {l} ul p) → MaybeNat< (sublen {l ● r ` loc} (PairU vl ur) (0 ∷ p)) (sublen {l ● r ` loc} (PairU ul ur) (0 ∷ p))
+        mb-transport-left p ur vl ul mb = subst (λ y → MaybeNat< (sublen {l ● r ` loc} (PairU vl ur) (0 ∷ p)) y) sublen-ul-eq (subst (λ x → MaybeNat< x (sublen {l} ul p)) sublen-vl-eq mb)
+          where
+            sublen-vl-eq : sublen {l} vl p ≡ sublen {l ● r ` loc} (PairU vl ur) (0 ∷ p)
+            sublen-vl-eq = refl
+            sublen-ul-eq : sublen {l} ul p ≡ sublen {l ● r ` loc} (PairU ul ur) (0 ∷ p)
+            sublen-ul-eq = refl
+
+        flat-pair-eq : proj₁ (flat ul) ≡ w₁' → proj₁ (flat ur) ≡ w₂' → (vl : U l) → (vr : U r) → proj₁ (flat vl) ≡ w₁' → proj₁ (flat vr) ≡ w₂' → proj₁ (flat {l ● r ` loc} (PairU ul ur)) ≡ proj₁ (flat {l ● r ` loc} (PairU vl vr))
+        flat-pair-eq flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂' rewrite flat-ul≡w₁' | flat-vl≡w₁' | flat-ur≡w₂' | flat-vr≡w₂' | sym w≡split | w≡split = refl
+
+        go-same : proj₁ (flat ul) ≡ w₁' → proj₁ (flat ur) ≡ w₂' → (vl : U l) → (vr : U r) → proj₁ (flat vl) ≡ w₁' → proj₁ (flat vr) ≡ w₂' → (l ● r ` loc) ⊢ (PairU ul ur) ≼ (PairU vl vr)
+        go-same flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂' with wf-l vl flat-vl≡w₁' | wf-r vr flat-vr≡w₂'
+        go-same flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂' | inj₂ ul≡vl | inj₂ ur≡vr rewrite ul≡vl | ur≡vr = inj₂ refl
+        go-same flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂' | inj₂ ul≡vl | inj₁ (≺ _ _ (p , ≺p _ _ .p (sublen< _ _ .p mb₂) cond₂)) = inj₁ (≺ (PairU ul ur) (PairU vl vr) (1 ∷ p , ≺p (PairU ul ur) (PairU vl vr) (1 ∷ p) (sublen< (PairU vl vr) (PairU ul ur) (1 ∷ p) (mb-transport-right p ul vl vr ur mb₂)) eq-cond-seq₂))
+          where
+            flat-pe : proj₁ (flat {l ● r ` loc} (PairU ul ur)) ≡ proj₁ (flat {l ● r ` loc} (PairU vl vr))
+            flat-pe = flat-pair-eq flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂'
+            eq-cond-seq₂ : ∀ (q' : List ℕ) → q' ∈ pos {l ● r ` loc} (PairU ul ur) ++ pos {l ● r ` loc} (PairU vl vr) → q' ≺Lex (1 ∷ p) → sublen {l ● r ` loc} (PairU ul ur) q' ≡ sublen {l ● r ` loc} (PairU vl vr) q'
+            eq-cond-seq₂ [] q∈ q≺ = sublen-equal-len vl vr flat-pe
+            eq-cond-seq₂ (0 ∷ xs) q∈ q≺p = cong (λ u → sublen {l ● r ` loc} (PairU u ur) (0 ∷ xs)) ul≡vl
+            eq-cond-seq₂ (1 ∷ xs) q∈ (≺lex-tail xs≺p) = cond₂ xs (q∈-shift-pair-right vl vr xs q∈) xs≺p
+            eq-cond-seq₂ (1 ∷ xs) _ (≺lex-head lt) = ⊥-elim (¬1<1 lt)
+            eq-cond-seq₂ (suc (suc n) ∷ xs) _ q≺p = ⊥-elim (¬suc2∷≺Lex1∷ q≺p)
+        go-same flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂' | inj₁ (≺ _ _ (p , ≺p _ _ .p (sublen< _ _ .p mb₁) cond₁)) | _ = inj₁ (≺ (PairU ul ur) (PairU vl vr) (0 ∷ p , ≺p (PairU ul ur) (PairU vl vr) (0 ∷ p) (sublen< (PairU vl vr) (PairU ul ur) (0 ∷ p) (mb-transport-left p ur vl ul mb₁)) eq-cond-seq₁))
+          where
+            flat-pe : proj₁ (flat {l ● r ` loc} (PairU ul ur)) ≡ proj₁ (flat {l ● r ` loc} (PairU vl vr))
+            flat-pe = flat-pair-eq flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂'
+            eq-cond-seq₁ : ∀ (q' : List ℕ) → q' ∈ pos {l ● r ` loc} (PairU ul ur) ++ pos {l ● r ` loc} (PairU vl vr) → q' ≺Lex (0 ∷ p) → sublen {l ● r ` loc} (PairU ul ur) q' ≡ sublen {l ● r ` loc} (PairU vl vr) q'
+            eq-cond-seq₁ [] q∈ q≺ = sublen-equal-len vl vr flat-pe
+            eq-cond-seq₁ (0 ∷ xs) q∈ (≺lex-tail xs≺p) = cond₁ xs (q∈-shift-pair-left vl vr xs q∈) xs≺p
+
+        go-shorter-l : proj₁ (flat ul) ≡ w₁' → proj₁ (flat ur) ≡ w₂' → (vl : U l) → (vr : U r) → proj₁ (flat vl) ≢ w₁' → proj₁ (flat (PairU vl vr)) ≡ w → (l ● r ` loc) ⊢ (PairU ul ur) ≼ (PairU vl vr)
+        go-shorter-l flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≢w₁' flat-v-eq with sublen-nil-∈ {l} vl
+        ... | nvl , eq-vl with sublen-nil-∈ {l} ul
+        ... | nul , eq-ul = inj₁ (≺ (PairU ul ur) (PairU vl vr) (0 ∷ [] , ≺p (PairU ul ur) (PairU vl vr) (0 ∷ []) (sublen< (PairU vl vr) (PairU ul ur) (0 ∷ []) (mb-transport-vl-ul (maybenat-just-just flat-vl-lt))) cond))
+          where
+            flat-pe : proj₁ (flat {l ● r ` loc} (PairU ul ur)) ≡ proj₁ (flat {l ● r ` loc} (PairU vl vr))
+            flat-pe = trans flat-pair≡w (sym flat-v-eq)
+
+            flat-vl-lt : nvl < nul
+            flat-vl-lt = lt-by-contradiction
+              where
+                flat-vl : List Char
+                flat-vl = proj₁ (flat vl)
+
+                flat-vr : List Char
+                flat-vr = proj₁ (flat vr)
+
+                flat-vl∈l : flat-vl ∈⟦ l ⟧
+                flat-vl∈l = proj₂ (flat vl)
+
+                flat-vr∈r : flat-vr ∈⟦ r ⟧
+                flat-vr∈r = proj₂ (flat vr)
+
+                flat-vl-vr-eq : flat-vl ++ flat-vr ≡ w₁' ++ w₂'
+                flat-vl-vr-eq rewrite flat-pair≡ vl vr | flat-v-eq | sym w≡split = refl
+
+                vl-nvl : length flat-vl ≡ nvl
+                vl-nvl = sym (just-inj (trans (sym eq-vl) (sublen-nil-flat vl)))
+
+                ul-nul : nul ≡ length w₁'
+                ul-nul = trans (just-inj (trans (sym eq-ul) (sublen-nil-flat ul))) (cong length flat-ul≡w₁')
+
+                transport-gt : nvl > nul → length flat-vl > length w₁'
+                transport-gt gt = subst (λ x → length flat-vl > x) ul-nul (subst (λ x → x > nul) (sym vl-nvl) gt)
+
+                -- If nvl > nul, then length flat-vl > length w₁', so flat-vl extends w₁' by some non-empty w₃
+                -- and w₂' = w₃ ++ flat-vr, contradicting longest-ev
+                ¬nvl>nul : ¬ nvl > nul
+                ¬nvl>nul gt with longer-prefix-split flat-vl flat-vr w₁' w₂' flat-vl-vr-eq (transport-gt gt)
+                ... | w₃ , (w₃≢[] , (flat-vl≡w₁'w₃ , w₂'≡w₃flat-vr)) =
+                  longest-ev (w₃ , (flat-vr , (w₃≢[] , (sym w₂'≡w₃flat-vr , (subst (_∈⟦ l ⟧) (flat-vl≡w₁'w₃) flat-vl∈l , flat-vr∈r)))))
+
+                -- If nvl = nul, then flat-vl ≡ w₁' (same-length prefixes of w)
+                ¬nvl≡nul : ¬ nvl ≡ nul
+                ¬nvl≡nul eq with same-len-prefix flat-vl flat-vr w₁' w₂' flat-vl-vr-eq (trans vl-nvl (trans eq ul-nul))
+                ... | flat-vl≡w₁' = flat-vl≢w₁' flat-vl≡w₁'
+
+                ¬nvl≥nul : ¬ nul ≤ nvl
+                ¬nvl≥nul le with ≤-to-<⊎≡ {m = nul} {n = nvl} le
+                ... | inj₁ lt = ¬nvl>nul lt
+                ... | inj₂ eq = ¬nvl≡nul (sym eq)
+
+                lt-by-contradiction : nvl < nul
+                lt-by-contradiction = ¬≤↔< nul nvl ¬nvl≥nul
+
+            mb-transport-vl-ul : MaybeNat< (just nvl) (just nul) → MaybeNat< (sublen {l} vl []) (sublen {l} ul [])
+            mb-transport-vl-ul mb = subst (λ y → MaybeNat< (sublen vl []) y) (sym eq-ul) (subst (λ x → MaybeNat< x (just nul)) (sym eq-vl) mb)
+
+            cond : ∀ (q : List ℕ) → q ∈ pos {l ● r ` loc} (PairU ul ur) ++ pos {l ● r ` loc} (PairU vl vr) → q ≺Lex (0 ∷ []) → sublen {l ● r ` loc} (PairU ul ur) q ≡ sublen {l ● r ` loc} (PairU vl vr) q
+            cond [] q∈ q≺ = sublen-equal-len vl vr flat-pe
+            cond (x ∷ _) _ (≺lex-head lt) with x
+            ... | zero = ⊥-elim (lt-zero lt)
+              where
+                lt-zero : 1 ≤ 0 → ⊥
+                lt-zero ()
+            ... | suc x' = ⊥-elim (¬suc<zero x' lt)
+
+        go-shorter-r : proj₁ (flat ul) ≡ w₁' → proj₁ (flat ur) ≡ w₂' → (vl : U l) → (vr : U r) → proj₁ (flat vl) ≡ w₁' → proj₁ (flat vr) ≢ w₂' → proj₁ (flat (PairU vl vr)) ≡ w → (l ● r ` loc) ⊢ (PairU ul ur) ≼ (PairU vl vr)
+        go-shorter-r flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≢w₂' flat-v-eq = ⊥-elim (flat-vr≢w₂' flat-vr≡w₂')
+          where
+            flat-vr≡w₂' : proj₁ (flat vr) ≡ w₂'
+            flat-vr≡w₂' = cancel-left-eq w w₁' w₂' vl vr flat-vl≡w₁' (flat-pair≡ vl vr) flat-v-eq (sym w≡split)
+
+        go : (v : U (l ● r ` loc)) → proj₁ (flat v) ≡ w → (l ● r ` loc) ⊢ (PairU ul ur) ≼ v
+        go (PairU vl vr) flat-v-eq with list≡-decides (proj₁ (flat vl)) w₁'
+        go (PairU vl vr) flat-v-eq | yes flat-vl≡w₁' with list≡-decides (proj₁ (flat vr)) w₂'
+        go (PairU vl vr) flat-v-eq | yes flat-vl≡w₁' | yes flat-vr≡w₂' = go-same flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂'
+        go (PairU vl vr) flat-v-eq | yes flat-vl≡w₁' | no flat-vr≢w₂' = go-shorter-r flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≢w₂' flat-v-eq
+        go (PairU vl vr) flat-v-eq | no flat-vl≢w₁' = go-shorter-l flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≢w₁' flat-v-eq
+≼-wellfounded {r * nε ` loc} {[]} _ = ListU [] , refl , λ v flat-v-eq → go-star-nil v flat-v-eq
+  where
+    listU-empty : (vs : List (U r)) → proj₁ (flat (ListU vs)) ≡ [] → ListU [] ≡ ListU vs
+    listU-empty [] _ = refl
+    listU-empty (u ∷ us) flat-eq = ⊥-elim (¬|list-u∷us|≡[] flat-eq)
+
+    go-star-nil : (v : U (r * nε ` loc)) → proj₁ (flat v) ≡ [] → (r * nε ` loc) ⊢ ListU [] ≼ v
+    go-star-nil (ListU vs) flat-v-eq = inj₂ (listU-empty vs flat-v-eq)
+
+≼-wellfounded {r * nε ` loc} {c ∷ cs} w∈r* = wellf-star
+  where
+    result : Σ (U (r * nε ` loc)) (λ u → (c ∷ cs) , (r * nε ` loc) ⇒ u)
+    result = ∈⟦→⇒ w∈r*
+    u : U (r * nε ` loc)
+    u = proj₁ result
+
+    wellf-star : Σ _ (λ u → (proj₁ (flat u) ≡ c ∷ cs) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ c ∷ cs → (r * nε ` loc) ⊢ u ≼ v))
+    wellf-star = u , {!!}
 ```

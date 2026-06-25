@@ -638,10 +638,4 @@ mutual
 
   ∈⟦→⇒-$ : (c : Char) (loc : ℕ) → proj₁ (∈⟦→⇒ {$ c ` loc} {c ∷ []} ($ c)) ≡ LetterU c
   ∈⟦→⇒-$ c loc = refl
-
-  ∈⟦→⇒-cat-go-det : (l r : RE) (loc : ℕ) (full : List Char) → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ → w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ full))) → ∈⟦→⇒●-go l r loc full fls₁ ≡ ∈⟦→⇒●-go l r loc full fls₂
-  ∈⟦→⇒-cat-go-det l r loc full fls₁ fls₂ = {!cat-go-det!}
-
-  ∈⟦→⇒-star-go-det : (r : RE) (nε : ε∉ r) (loc : ℕ) (full : List Char) → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ → w₁ ∈⟦ r ⟧ × w₂ ∈⟦ r * nε ` loc ⟧ × w₁ ++ w₂ ≡ full))) → ∈⟦→⇒*-go r nε loc full fls₁ ≡ ∈⟦→⇒*-go r nε loc full fls₂
-  ∈⟦→⇒-star-go-det r nε loc full fls₁ fls₂ = {!star-go-det!}
 ```

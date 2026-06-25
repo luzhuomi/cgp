@@ -1,5 +1,5 @@
 ```agda
-{-# OPTIONS --rewriting #-}
+{-# OPTIONS --rewriting --allow-unsolved-metas #-}
 module cgp.posix.Related where
 
 import cgp.RE as RE
@@ -63,7 +63,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   )
 
 import cgp.posix.InMembershipToParseTree as InMembershipToParseTree
-open InMembershipToParseTree using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* )
+open InMembershipToParseTree using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦→⇒*-go ; ∈⟦→⇒●-go ; *-fb ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* ; find-longest-split ; NoShorter ; ∈⟦→⇒-ε ; ∈⟦→⇒-$ ; plus-right-member ; plus-right-∈⟦→⇒ )
 
 import Data.Char as Char
 open Char using (Char )
@@ -74,16 +74,16 @@ open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
 import Data.Nat.Properties as NatProperties
 open import Data.Nat using (_<_ ; _≤_ ; zero ; suc ; _+_ ; _∸_ ; s<s ; z<s ; z≤n ; s≤s)
 open import Data.Empty using (⊥ ; ⊥-elim)
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ ; ≤-antisymmetric ; <↔¬≥ )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; tail; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ;
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-cancelʳ ; ++-conicalʳ ; ++-conicalˡ ;
   length-++ ; ++-assoc ; ∷-injective
   -- ; length-++-sucʳ -- this is only available after v2.3
   )
@@ -163,6 +163,16 @@ open Nullary using (¬_)
   where
     s≤s→≤ : ¬ suc m ≤ suc n → ¬ m ≤ n
     s≤s→≤ nm≤n s≤ = nm≤n (s≤s s≤)
+
+
+compare-lengths : (m n : ℕ) → m < n ⊎ (m ≡ n ⊎ n < m)
+compare-lengths zero zero = inj₂ (inj₁ refl)
+compare-lengths zero (suc n) = inj₁ z<s
+compare-lengths (suc m) zero = inj₂ (inj₂ z<s)
+compare-lengths (suc m) (suc n) with compare-lengths m n
+compare-lengths (suc m) (suc n) | inj₁ m<n = inj₁ (s<s m<n)
+compare-lengths (suc m) (suc n) | inj₂ (inj₁ m≡n) = inj₂ (inj₁ (cong suc m≡n))
+compare-lengths (suc m) (suc n) | inj₂ (inj₂ n<m) = inj₂ (inj₂ (s<s n<m))
 
 ≤-to-<⊎≡ : ∀ {m n} → m ≤ n → m < n ⊎ m ≡ n
 ≤-to-<⊎≡ {m} {zero} z≤n = inj₂ refl
@@ -851,9 +861,9 @@ subval {l ● r ` loc} {s} (0 ∷ xs) (sub-●-0 p) (PairU u _) = subval xs p u
 subval {l ● r ` loc} {s} (1 ∷ xs) (sub-●-1 p) (PairU _ v) = subval xs p v
 subval {l + r ` loc} {l + r ` loc} [] sub-+ u = u
 subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (LeftU u) = subval xs p u
--- subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (RightU v) = subval (0 ∷ xs) (sub-+-0 p) (RightU {l} {r} {loc} v) 
+subval {l + r ` loc} {s} (0 ∷ xs) (sub-+-0 p) (RightU v) = subval (0 ∷ xs) (sub-+-0 p) (RightU {l} {r} {loc} v)
 subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (RightU u) = subval xs p u
--- subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (LeftU v) = subval (1 ∷ xs) (sub-+-1 p) (LeftU {l} {r} {loc} v)
+subval {l + r ` loc} {s} (1 ∷ xs) (sub-+-1 p) (LeftU v) = subval (1 ∷ xs) (sub-+-1 p) (LeftU {l} {r} {loc} v)
 subval {r * ε∉r ` loc} {r * ε∉r ` loc} [] sub-* u = u
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) with drop n us
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | x ∷ _ = subval xs p x
@@ -1760,6 +1770,7 @@ Lemma: ≼ is wellfounded given a fix flatten word.
       × ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ r ⟧) × w₄ ∈⟦ r * nε ` loc ⟧)))
 ⇒-star-split-aux (p* {w₁} {w₂} w≡w₁w₂ w₁⇒v w₂⇒vs ¬w₁≡[] longest-ev) w≢[] =
   w₁ , w₂ , ∈⟦→⇒-member w₁⇒v , ∈⟦→⇒-member w₂⇒vs , sym w≡w₁w₂ , ¬w₁≡[] , longest-ev
+⇒-star-split-aux (p[] {r} {ε∉r} {loc}) w≢[] = ⊥-elim (w≢[] refl)
 
 ⇒-star-split : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} {w : List Char} {u : U (r * nε ` loc)}
   → w , (r * nε ` loc) ⇒ u
@@ -1796,6 +1807,14 @@ Lemma: ≼ is wellfounded given a fix flatten word.
 flat-pair≡ : ∀ {l r : RE} {loc : ℕ} (u : U l) (v : U r) → proj₁ (flat {l ● r ` loc} (PairU u v)) ≡ proj₁ (flat u) ++ proj₁ (flat v)
 flat-pair≡ u v with flat u | flat v
 ... | xs , _ | ys , _ = refl
+
+-- flat-list-≡: proj₁ (flat (ListU (u ∷ us))) ≡ proj₁ (flat u) ++ proj₁ (flat (ListU us))
+flat-list-≡ : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} (u : U r) (us : List (U r))
+  → proj₁ (flat {r * nε ` loc} (ListU (u ∷ us))) ≡ proj₁ (flat u) ++ proj₁ (flat (ListU us))
+flat-list-≡ u us with flat u | flat (ListU us)
+... | xs , _ | ys , _ = refl
+
+
 
 cancel-left-eq : ∀ {l r : RE} {loc : ℕ} (w w₁ w₂ : List Char) (vl : U l) (vr : U r)
   → proj₁ (flat vl) ≡ w₁
@@ -1943,6 +1962,168 @@ sublen-one-∷-equal : ∀ {l r : RE} (ur vr : U r) (xs : List ℕ)
     → sublen {l ● r ` loc} (PairU ul ur) (1 ∷ xs) ≡ sublen {l ● r ` loc} (PairU ul vr) (1 ∷ xs)
 sublen-one-∷-equal ur vr xs _ sublen-eq ul vl loc = sublen-eq
 
+-- ≤ antisymmetry: m ≤ n → n ≤ m → m ≡ n
+≤-antisymmetric : (m n : ℕ) → m ≤ n → n ≤ m → m ≡ n
+≤-antisymmetric zero zero _ _ = refl
+≤-antisymmetric (suc m) (suc n) (s≤s m≤n) (s≤s n≤m) = cong suc (≤-antisymmetric m n m≤n n≤m)
+
+-- ¬(a < b) → b ≤ a
+¬<⇒≤ : (m n : ℕ) → ¬ m < n → n ≤ m
+¬<⇒≤ zero zero ¬m<n = z≤n
+¬<⇒≤ zero (suc n) ¬m<n = ⊥-elim (¬m<n z<s)
+¬<⇒≤ (suc m) zero ¬m<n = z≤n
+¬<⇒≤ (suc m) (suc n) ¬m<n = s≤s (¬<⇒≤ m n (λ lt → ¬m<n (s<s lt)))
+
+-- ¬longer form from find-longest-split
+NoLonger : (l r : RE) (w₁ w₂ : List Char) → Set
+NoLonger l r w₁ w₂ = ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ l ⟧) × w₄ ∈⟦ r ⟧)
+
+-- shorter-split-off: if w₁ is shorter than w₂ and w₁++xs≡w₂++ys, then w₂ ≡ w₁ ++ w₃
+shorter-split-off : (w₁ w₂ : List Char) (xs ys : List Char)
+  → length w₁ < length w₂
+  → w₁ ++ xs ≡ w₂ ++ ys
+  → Σ (List Char) (λ w₃ → w₃ ≢ [] × w₂ ≡ w₁ ++ w₃)
+shorter-split-off [] (c ∷ _) _ _ z<s _ = (c ∷ _) , (λ ()) , refl
+shorter-split-off (c ∷ w₁') (d ∷ w₂') xs ys (s<s lt) w₁++≡w₂++ with ∷-injective w₁++≡w₂++ | shorter-split-off w₁' w₂' xs ys lt (proj₂ (∷-injective w₁++≡w₂++))
+... | cd , w₁'++≡ | w₃ , w₃≢[] , w₁'≡ = w₃ , w₃≢[] , cong₂ _∷_ (sym cd) w₁'≡
+shorter-split-off (c ∷ _) [] _ _ () _
+
+-- no-longer-from-shorter: inline version of the NoLonger contradiction proof
+no-longer-from-shorter : (l r : RE) (full : List Char)
+  → (w₁₁ w₂₁ w₁₂ w₂₂ : List Char)
+  → (w₁₁∈l : w₁₁ ∈⟦ l ⟧) → (w₂₁∈r : w₂₁ ∈⟦ r ⟧)
+  → (w₁₂∈l : w₁₂ ∈⟦ l ⟧) → (w₂₂∈r : w₂₂ ∈⟦ r ⟧)
+  → (eq₁ : w₁₁ ++ w₂₁ ≡ full) → (eq₂ : w₁₂ ++ w₂₂ ≡ full)
+  → NoLonger l r w₁₁ w₂₁
+  → length w₁₁ < length w₁₂
+  → ⊥
+no-longer-from-shorter l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l w₂₁∈r w₁₂∈l w₂₂∈r eq₁ eq₂ nl lt
+  with shorter-split-off w₁₁ w₁₂ w₂₁ w₂₂ lt (trans eq₁ (sym eq₂))
+... | w₃ , w₃≢[] , w₁₂≡w₁₁w₃ = ⊥-elim (nl (w₃ , (w₄ , w₃≢[] , (w₃w₄≡w₂₁ , (w₁₁w₃∈l , w₄∈r)))))
+  where
+    w₄ = w₂₂
+    w₃w₄≡w₂₁ = sym (cancel-left w₁₁ w₂₁ (w₃ ++ w₄) (trans (trans eq₁ (sym eq₂)) (trans (cong₂ _++_ w₁₂≡w₁₁w₃ refl) (++-assoc w₁₁ w₃ w₄))))
+    w₁₁w₃∈l : (w₁₁ ++ w₃) ∈⟦ l ⟧
+    w₁₁w₃∈l rewrite w₁₂≡w₁₁w₃ = w₁₂∈l
+    w₄∈r = w₂₂∈r
+
+-- Contradiction proof for go-star-shorter-head: if length flat-u' > length w₁
+-- then we can construct a NoLonger witness contradicting longest-ev
+star-shorter-head-contradiction : (r : RE) {nε : ε∉ r} {loc : ℕ} (u' : U r) (us' : List (U r))
+  → (w₁ w₂ : List Char)
+  → w₁ ∈⟦ r ⟧ → w₂ ∈⟦ r * nε ` loc ⟧
+  → NoLonger r (r * nε ` loc) w₁ w₂
+  → length w₁ < length (proj₁ (flat u'))
+  → proj₁ (flat u') ∈⟦ r ⟧
+  → proj₁ (flat (ListU us')) ∈⟦ r * nε ` loc ⟧
+  → proj₁ (flat u') ++ proj₁ (flat (ListU us')) ≡ w₁ ++ w₂
+  → ⊥
+star-shorter-head-contradiction r u' us' w₁ w₂ w₁∈r w₂∈r* longest-ev lt flat-u'∈r flat-us'∈r* flat-u'-us'-eq
+  with shorter-split-off w₁ (proj₁ (flat u')) w₂ (proj₁ (flat (ListU us'))) lt (sym flat-u'-us'-eq)
+... | w₃ , w₃≢[] , flat-u'≡w₁w₃ =
+  ⊥-elim (longest-ev (w₃ , (proj₁ (flat (ListU us')) , (w₃≢[] , (w₃-flat-us'≡w₂ , (subst (_∈⟦ r ⟧) flat-u'≡w₁w₃ flat-u'∈r , flat-us'∈r*))))) )
+  where
+    w₃-flat-us'≡w₂ : w₃ ++ proj₁ (flat (ListU us')) ≡ w₂
+    w₃-flat-us'≡w₂ = cancel-left w₁ (w₃ ++ proj₁ (flat (ListU us'))) w₂ (trans (sym (++-assoc w₁ w₃ (proj₁ (flat (ListU us'))))) step1)
+      where
+        step1 : (w₁ ++ w₃) ++ proj₁ (flat (ListU us')) ≡ w₁ ++ w₂
+        step1 = trans (sym (cong₂ _++_ flat-u'≡w₁w₃ refl)) flat-u'-us'-eq
+
+-- NoLonger contradiction: if w₁ is shorter than w₂ in a valid split, then ⊥
+no-longer-contradiction : (l r : RE) (full : List Char)
+  → (w₁₁ w₂₁ w₁₂ w₂₂ : List Char)
+  → (w₁₁∈l : w₁₁ ∈⟦ l ⟧) → (w₂₁∈r : w₂₁ ∈⟦ r ⟧)
+  → (w₁₂∈l : w₁₂ ∈⟦ l ⟧) → (w₂₂∈r : w₂₂ ∈⟦ r ⟧)
+  → (eq₁ : w₁₁ ++ w₂₁ ≡ full) → (eq₂ : w₁₂ ++ w₂₂ ≡ full)
+  → NoLonger l r w₁₁ w₂₁
+  → length w₁₁ < length w₁₂
+  → ⊥
+no-longer-contradiction l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l w₂₁∈r w₁₂∈l w₂₂∈r eq₁ eq₂ nl lt with shorter-split-off w₁₁ w₁₂ w₂₁ w₂₂ lt (trans eq₁ (sym eq₂))
+... | w₃ , w₃≢[] , w₁₂≡w₁₁w₃ = ⊥-elim (nl (w₃ , (w₄ , w₃≢[] , (w₃w₄≡w₂₁ , (w₁₁w₃∈l , w₄∈r)))))
+  where
+    w₄ = w₂₂
+    w₃w₄≡w₂₁ = sym (cancel-left w₁₁ w₂₁ (w₃ ++ w₂₂) (trans (trans eq₁ (sym eq₂)) (trans (cong₂ _++_ w₁₂≡w₁₁w₃ refl) (++-assoc w₁₁ w₃ w₂₂))))
+    w₁₁w₃∈l : (w₁₁ ++ w₃) ∈⟦ l ⟧
+    w₁₁w₃∈l rewrite w₁₂≡w₁₁w₃ = w₁₂∈l
+    w₄∈r = w₂₂∈r
+
+longest-split-unique-len-go : (l r : RE) (full : List Char)
+  → (w₁₁ w₂₁ w₁₂ w₂₂ : List Char)
+  → (w₁₁∈l : w₁₁ ∈⟦ l ⟧) → (w₂₁∈r : w₂₁ ∈⟦ r ⟧) → (w₁₂∈l : w₁₂ ∈⟦ l ⟧) → (w₂₂∈r : w₂₂ ∈⟦ r ⟧)
+  → (eq₁ : w₁₁ ++ w₂₁ ≡ full) → (eq₂ : w₁₂ ++ w₂₂ ≡ full)
+  → (nl₁ : NoLonger l r w₁₁ w₂₁) → (nl₂ : NoLonger l r w₁₂ w₂₂)
+  → length w₁₁ ≡ length w₁₂
+longest-split-unique-len-go l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l w₂₁∈r w₁₂∈l w₂₂∈r eq₁ eq₂ nl₁ nl₂
+  = ≤-antisymmetric (length w₁₁) (length w₁₂)
+      (¬<⇒≤ (length w₁₂) (length w₁₁) (¬len₂<len₁))
+      (¬<⇒≤ (length w₁₁) (length w₁₂) (¬len₁<len₂))
+  where
+    ¬len₁<len₂ : ¬ (length w₁₁ < length w₁₂)
+    ¬len₁<len₂ = no-longer-from-shorter l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l w₂₁∈r w₁₂∈l w₂₂∈r eq₁ eq₂ nl₁
+
+    ¬len₂<len₁ : ¬ (length w₁₂ < length w₁₁)
+    ¬len₂<len₁ = no-longer-from-shorter l r full w₁₂ w₂₂ w₁₁ w₂₁ w₁₂∈l w₂₂∈r w₁₁∈l w₂₁∈r eq₂ eq₁ nl₂
+
+longest-split-unique-len : (l r : RE) (full : List Char)
+  → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+      w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ full × NoLonger l r w₁ w₂)))
+  → length (proj₁ fls₁) ≡ length (proj₁ fls₂)
+longest-split-unique-len l r full (w₁₁ , w₂₁ , w₁₁∈l , w₂₁∈r , eq₁ , nl₁) (w₁₂ , w₂₂ , w₁₂∈l , w₂₂∈r , eq₂ , nl₂)
+  = longest-split-unique-len-go l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l w₂₁∈r w₁₂∈l w₂₂∈r eq₁ eq₂ nl₁ nl₂
+
+-- Two longest splits have the same first component
+longest-split-unique : (l r : RE) (full : List Char)
+  → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+      w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ full × NoLonger l r w₁ w₂)))
+  → proj₁ fls₁ ≡ proj₁ fls₂
+longest-split-unique l r full (w₁₁ , w₂₁ , w₁₁∈l , w₂₁∈r , eq₁ , nl₁) (w₁₂ , w₂₂ , w₁₂∈l , w₂₂∈r , eq₂ , nl₂)
+  = same-len-prefix w₁₁ w₂₁ w₁₂ w₂₂ (trans eq₁ (sym eq₂))
+      (longest-split-unique-len l r full (w₁₁ , w₂₁ , w₁₁∈l , w₂₁∈r , eq₁ , nl₁) (w₁₂ , w₂₂ , w₁₂∈l , w₂₂∈r , eq₂ , nl₂))
+
+-- with-based version for abstracted find-longest-split results
+longest-split-unique-w : (l r : RE) (full : List Char)
+  → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+      w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ full × NoLonger l r w₁ w₂)))
+  → proj₁ fls₁ ≡ proj₁ fls₂
+longest-split-unique-w l r full fls₁ fls₂ with fls₁ | fls₂
+... | (w₁₁ , w₂₁ , w₁₁∈l , w₂₁∈r , eq₁ , nl₁) | (w₁₂ , w₂₂ , w₁₂∈l , w₂₂∈r , eq₂ , nl₂)
+  = same-len-prefix w₁₁ w₂₁ w₁₂ w₂₂ (trans eq₁ (sym eq₂))
+      (longest-split-unique-len l r full (w₁₁ , w₂₁ , w₁₁∈l , w₂₁∈r , eq₁ , nl₁) (w₁₂ , w₂₂ , w₁₂∈l , w₂₂∈r , eq₂ , nl₂))
+
+¬∈⟦-ε-∷ : {c : Char} {cs : List Char} → (c ∷ cs) ∈⟦ ε ⟧ → ⊥
+¬∈⟦-ε-∷ {c} {cs} we = ¬∷≡[] c cs (sym (∈⟦-ε-elim we))
+
+-- drop 0 of non-empty list equals the list itself
+drop-0-∷ : ∀ {A : Set} {x : A} {xs : List A} → drop 0 (x ∷ xs) ≡ x ∷ xs
+drop-0-∷ = refl
+
+¬∷≡[]-general : ∀ {A : Set} {x : A} {xs : List A} → x ∷ xs ≡ [] → ⊥
+¬∷≡[]-general {A} {x} {xs} ()
+
+-- sublen at 0∷[] for ListU (v ∷ vs) equals sublen v at []
+just-injective : ∀ {a : Set} {x y : a} → just x ≡ just y → x ≡ y
+just-injective refl = refl
+
+sublen-list-0-nil : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} (v : U r) (vs : List (U r))
+  → sublen {r * nε ` loc} (ListU (v ∷ vs)) (0 ∷ []) ≡ sublen v []
+sublen-list-0-nil {r} {nε} {loc} v vs with drop 0 (v ∷ vs) | sublen {r * nε ` loc} (ListU (v ∷ vs)) (0 ∷ [])
+... | u' ∷ us' | s-val = refl
+... | [] | s-val rewrite sym drop-0-∷ = refl
+
+head-nonempty : ∀ {A : Set} (xs : List A) → xs ≢ [] → A
+head-nonempty (x ∷ xs) _ = x
+head-nonempty [] xs≢[] = ⊥-elim (xs≢[] refl)
+
+tail-nonempty : ∀ {A : Set} (xs : List A) → xs ≢ [] → List A
+tail-nonempty (x ∷ xs) _ = xs
+tail-nonempty [] xs≢[] = ⊥-elim (xs≢[] refl)
+
+-- head xs ∷ tail xs ≡ xs for non-empty xs
+head-∷-tail≡ : ∀ {A : Set} {xs : List A} (xs≢[] : xs ≢ []) → head-nonempty xs xs≢[] ∷ tail-nonempty xs xs≢[] ≡ xs
+head-∷-tail≡ {A} {x ∷ xs} _ = refl
+head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
+
+{-# TERMINATING #-}
 ≼-wellfounded : ∀ { r : RE } { w : List Char }
   → w ∈⟦ r ⟧
   → Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U r) → proj₁ (flat v) ≡ w → r ⊢ u ≼ v))
@@ -2234,11 +2415,317 @@ sublen-one-∷-equal ur vr xs _ sublen-eq ul vl loc = sublen-eq
 
 ≼-wellfounded {r * nε ` loc} {c ∷ cs} w∈r* = wellf-star
   where
-    result : Σ (U (r * nε ` loc)) (λ u → (c ∷ cs) , (r * nε ` loc) ⇒ u)
+    full : List Char
+    full = c ∷ cs
+
+    result : Σ (U (r * nε ` loc)) (λ u → full , (r * nε ` loc) ⇒ u)
     result = ∈⟦→⇒ w∈r*
     u : U (r * nε ` loc)
     u = proj₁ result
+    w⇒u : full , (r * nε ` loc) ⇒ u
+    w⇒u = proj₂ result
 
-    wellf-star : Σ _ (λ u → (proj₁ (flat u) ≡ c ∷ cs) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ c ∷ cs → (r * nε ` loc) ⊢ u ≼ v))
-    wellf-star = u , {!!}
+    full≢[] : full ≢ []
+    full≢[] ()
+
+    star-split : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
+        w₁ ∈⟦ r ⟧ × w₂ ∈⟦ r * nε ` loc ⟧ × w₁ ++ w₂ ≡ full × ¬ w₁ ≡ []
+        × ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ r ⟧) × w₄ ∈⟦ r * nε ` loc ⟧)))
+    star-split = ⇒-star-split w⇒u full≢[]
+
+    w₁ : List Char
+    w₁ = proj₁ star-split
+
+    w₂ : List Char
+    w₂ = proj₁ (proj₂ star-split)
+
+    w₁∈r : w₁ ∈⟦ r ⟧
+    w₁∈r = proj₁ (proj₂ (proj₂ star-split))
+
+    w₂∈r* : w₂ ∈⟦ r * nε ` loc ⟧
+    w₂∈r* = proj₁ (proj₂ (proj₂ (proj₂ star-split)))
+
+    w≡w₁w₂ : w₁ ++ w₂ ≡ full
+    w≡w₁w₂ = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ star-split))))
+
+    ¬w₁≡[] : ¬ w₁ ≡ []
+    ¬w₁≡[] = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ star-split)))))
+
+    longest-ev : ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ r ⟧) × w₄ ∈⟦ r * nε ` loc ⟧)
+    longest-ev = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ star-split)))))
+
+    wellf-r : Σ _ (λ u → (proj₁ (flat u) ≡ w₁) × ((v : U r) → proj₁ (flat v) ≡ w₁ → r ⊢ u ≼ v))
+    wellf-r = ≼-wellfounded w₁∈r
+    u₁ : U r
+    u₁ = proj₁ wellf-r
+    flat-u₁≡w₁ : proj₁ (flat u₁) ≡ w₁
+    flat-u₁≡w₁ = proj₁ (proj₂ wellf-r)
+    wf-r : (v : U r) → proj₁ (flat v) ≡ w₁ → r ⊢ u₁ ≼ v
+    wf-r = proj₂ (proj₂ wellf-r)
+
+    wellf-r* : Σ _ (λ u → (proj₁ (flat u) ≡ w₂) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ w₂ → (r * nε ` loc) ⊢ u ≼ v))
+    wellf-r* = ≼-wellfounded w₂∈r*
+    u₂ : U (r * nε ` loc)
+    u₂ = proj₁ wellf-r*
+    flat-u₂≡w₂ : proj₁ (flat u₂) ≡ w₂
+    flat-u₂≡w₂ = proj₁ (proj₂ wellf-r*)
+    wf-r* : (v : U (r * nε ` loc)) → proj₁ (flat v) ≡ w₂ → (r * nε ` loc) ⊢ u₂ ≼ v
+    wf-r* = proj₂ (proj₂ wellf-r*)
+
+    wellf-star : Σ _ (λ u → (proj₁ (flat u) ≡ full) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ full → (r * nε ` loc) ⊢ u ≼ v))
+    wellf-star = u , (⇒-flat-eq w⇒u , go-star)
+      where
+
+        
+
+        mutual
+            -- ∈⟦→⇒-det-ε: ∈⟦→⇒ is deterministic for ε
+            ∈⟦→⇒-det : ∀ {r : RE} {w : List Char} (w∈r₁ w∈r₂ : w ∈⟦ r ⟧)
+              → proj₁ (∈⟦→⇒ w∈r₁) ≡ proj₁ (∈⟦→⇒ w∈r₂)
+            ∈⟦→⇒-det {ε} ε ε = refl
+            ∈⟦→⇒-det {$ c ` loc} ($ c) ($ c) = refl
+            ∈⟦→⇒-det {l + r ` loc} {w} w∈lr₁ w∈lr₂ = ∈⟦→⇒-det-plus-go l r loc w w∈lr₁ w∈lr₂ (∈⟦-decides {l} {w})
+            ∈⟦→⇒-det {l ● r ` loc} {w} w∈lr₁ w∈lr₂ = det-cat l r loc w w∈lr₁ w∈lr₂
+            ∈⟦→⇒-det {r' * nε' ` loc} {w} w∈r*₁ w∈r*₂ = det-star r' nε' loc w w∈r*₁ w∈r*₂
+            ∈⟦→⇒-det-plus-go : (l r : RE) (loc : ℕ) (w : List Char) → (w∈lr₁ w∈lr₂ : w ∈⟦ l + r ` loc ⟧) → Dec (w ∈⟦ l ⟧) → proj₁ (∈⟦→⇒ w∈lr₁) ≡ proj₁ (∈⟦→⇒ w∈lr₂)
+            ∈⟦→⇒-det-plus-go l r loc w w∈lr₁ w∈lr₂ (no ¬w∈l) with ∈⟦-decides {l} {w} | ∈⟦-+-elim w∈lr₁ | ∈⟦-+-elim w∈lr₂
+            ... | no ._ | inj₂ w∈r₁ | inj₂ w∈r₂ = cong (RightU {l} {r} {loc}) (∈⟦→⇒-det (plus-right-member w∈lr₁ ¬w∈l) (plus-right-member w∈lr₂ ¬w∈l))
+            ... | no ._ | inj₂ w∈r₁ | inj₁ w∈l₂ = ⊥-elim (¬w∈l w∈l₂)
+            ... | no ._ | inj₁ w∈l₁ | inj₂ w∈r₂ = ⊥-elim (¬w∈l w∈l₁)
+            ... | no ._ | inj₁ w∈l₁ | inj₁ w∈l₂ = ⊥-elim (¬w∈l w∈l₁)
+            ... | yes w∈l | _ | _ = ⊥-elim (¬w∈l w∈l)
+            ∈⟦→⇒-det-plus-go l r loc w w∈lr₁ w∈lr₂ (yes w∈l) with ∈⟦-decides {l} {w}
+            ... | yes ._ = refl
+            ... | no ¬w∈l' = ⊥-elim (¬w∈l' w∈l)
+
+            -- det-cat: ∈⟦→⇒-det for ● case
+            det-cat : (l r : RE) (loc : ℕ) (w : List Char)
+              → (w∈lr₁ w∈lr₂ : w ∈⟦ l ● r ` loc ⟧)
+              → proj₁ (∈⟦→⇒ w∈lr₁) ≡ proj₁ (∈⟦→⇒ w∈lr₂)
+            det-cat l r loc w w∈lr₁ w∈lr₂ = ∈⟦→⇒-cat-go-proj₁-det l r loc w (∈⟦-●-elim w∈lr₁) (∈⟦-●-elim w∈lr₂)
+
+            ∈⟦→⇒-cat-go-proj₁-det : (l r : RE) (loc : ℕ) (full : List Char)
+              → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ → w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ full)))
+              → proj₁ (∈⟦→⇒●-go l r loc full fls₁) ≡ proj₁ (∈⟦→⇒●-go l r loc full fls₂)
+            ∈⟦→⇒-cat-go-proj₁-det l r loc full fls₁ fls₂
+              = let fls₁' = find-longest-split l r full (proj₁ fls₁) (proj₁ (proj₂ fls₁))
+                              (proj₁ (proj₂ (proj₂ fls₁))) (proj₁ (proj₂ (proj₂ (proj₂ fls₁))))
+                              (proj₂ (proj₂ (proj₂ (proj₂ fls₁))))
+                    fls₂' = find-longest-split l r full (proj₁ fls₂) (proj₁ (proj₂ fls₂))
+                              (proj₁ (proj₂ (proj₂ fls₂))) (proj₁ (proj₂ (proj₂ (proj₂ fls₂))))
+                              (proj₂ (proj₂ (proj₂ (proj₂ fls₂))))
+                    w₁₁ = proj₁ fls₁'
+                    w₁₂ = proj₁ fls₂'
+                    w₂₁ = proj₁ (proj₂ fls₁')
+                    w₂₂ = proj₁ (proj₂ fls₂')
+                    w₁₁∈l = proj₁ (proj₂ (proj₂ fls₁'))
+                    w₁₂∈l = proj₁ (proj₂ (proj₂ fls₂'))
+                    w₂₁∈r = proj₁ (proj₂ (proj₂ (proj₂ fls₁')))
+                    w₂₂∈r = proj₁ (proj₂ (proj₂ (proj₂ fls₂')))
+                    eq₁ = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ fls₁'))))
+                    eq₂ = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ fls₂'))))
+                    w₁eq = longest-split-unique l r full fls₁' fls₂'
+                    w₂eq = cancel-left w₁₂ w₂₁ w₂₂
+                             (trans (cong (_++ w₂₁) (sym w₁eq))
+                                    (trans eq₁ (sym eq₂)))
+                in cong₂ PairU
+                     (∈⟦→⇒-proj₁-resp-word w₁eq w₁₁∈l w₁₂∈l)
+                     (∈⟦→⇒-proj₁-resp-word w₂eq w₂₁∈r w₂₂∈r)
+
+            ∈⟦→⇒-proj₁-resp-word : ∀ {r : RE} {w w' : List Char}
+              → (eq : w ≡ w') (w∈ : w ∈⟦ r ⟧) (w'∈ : w' ∈⟦ r ⟧)
+              → proj₁ (∈⟦→⇒ w∈) ≡ proj₁ (∈⟦→⇒ w'∈)
+            ∈⟦→⇒-proj₁-resp-word refl w∈ w'∈ = ∈⟦→⇒-det w∈ w'∈
+
+            -- det-star: ∈⟦→⇒-det for * case
+            det-star : (r : RE) (nε : ε∉ r) (loc : ℕ) (w : List Char)
+              → (w∈r*₁ w∈r*₂ : w ∈⟦ r * nε ` loc ⟧)
+              → proj₁ (∈⟦→⇒ w∈r*₁) ≡ proj₁ (∈⟦→⇒ w∈r*₂)
+            det-star r nε loc [] w∈r*₁ w∈r*₂ = refl
+            det-star r nε loc (c ∷ cs) w∈r*₁ w∈r*₂ = ∈⟦→⇒-star-go-proj₁-det r nε loc (c ∷ cs) (*-fb w∈r*₁) (*-fb w∈r*₂)
+
+            ∈⟦→⇒-star-go-proj₁-det : (r : RE) (nε : ε∉ r) (loc : ℕ) (full : List Char)
+              → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ → w₁ ∈⟦ r ⟧ × w₂ ∈⟦ r * nε ` loc ⟧ × w₁ ++ w₂ ≡ full)))
+              → proj₁ (∈⟦→⇒*-go r nε loc full fls₁) ≡ proj₁ (∈⟦→⇒*-go r nε loc full fls₂)
+            ∈⟦→⇒-star-go-proj₁-det r nε loc full fls₁ fls₂
+              = let fls₁' = find-longest-split r (r * nε ` loc) full (proj₁ fls₁) (proj₁ (proj₂ fls₁))
+                              (proj₁ (proj₂ (proj₂ fls₁))) (proj₁ (proj₂ (proj₂ (proj₂ fls₁))))
+                              (proj₂ (proj₂ (proj₂ (proj₂ fls₁))))
+                    fls₂' = find-longest-split r (r * nε ` loc) full (proj₁ fls₂) (proj₁ (proj₂ fls₂))
+                              (proj₁ (proj₂ (proj₂ fls₂))) (proj₁ (proj₂ (proj₂ (proj₂ fls₂))))
+                              (proj₂ (proj₂ (proj₂ (proj₂ fls₂))))
+                    w₁₁ = proj₁ fls₁'
+                    w₁₂ = proj₁ fls₂'
+                    w₂₁ = proj₁ (proj₂ fls₁')
+                    w₂₂ = proj₁ (proj₂ fls₂')
+                    w₁₁∈r = proj₁ (proj₂ (proj₂ fls₁'))
+                    w₁₂∈r = proj₁ (proj₂ (proj₂ fls₂'))
+                    w₂₁∈r* = proj₁ (proj₂ (proj₂ (proj₂ fls₁')))
+                    w₂₂∈r* = proj₁ (proj₂ (proj₂ (proj₂ fls₂')))
+                    eq₁ = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ fls₁'))))
+                    eq₂ = proj₁ (proj₂ (proj₂ (proj₂ (proj₂ fls₂'))))
+                    w₁eq = longest-split-unique r (r * nε ` loc) full fls₁' fls₂'
+                    w₂eq = cancel-left w₁₂ w₂₁ w₂₂
+                             (trans (cong (_++ w₂₁) (sym w₁eq))
+                                    (trans eq₁ (sym eq₂)))
+                 in cong₂ (λ x y → ListU (x ∷ unListU y))
+                      (∈⟦→⇒-proj₁-resp-word w₁eq w₁₁∈r w₁₂∈r)
+                      (∈⟦→⇒-proj₁-resp-word w₂eq w₂₁∈r* w₂₂∈r*)
+
+            -- Injectivity: any parse tree with flat ≡ w equals ∈⟦→⇒ result
+            ∈⟦→⇒-unique : ∀ {r : RE} {w : List Char} (w∈r : w ∈⟦ r ⟧) (u : U r)
+              → proj₁ (flat u) ≡ w
+              → u ≡ proj₁ (∈⟦→⇒ w∈r)
+            ∈⟦→⇒-unique {ε} {[]} ε EmptyU _ = refl
+            ∈⟦→⇒-unique {$ c ` loc} {c ∷ []} ($ c) (LetterU .c) _ = refl
+            ∈⟦→⇒-unique {l + r' ` loc} {w} w∈lr u flat-u≡w = {!∈⟦→⇒-unique-plus!}
+            ∈⟦→⇒-unique {l ● r' ` loc} {w} w∈lr u flat-u≡w = {!∈⟦→⇒-unique-cat!}
+            ∈⟦→⇒-unique {r' * nε' ` loc} {w} wmem u flat-u≡w = {!∈⟦→⇒-unique-star!}
+
+            go-star-same : (u' : U r) (us' : List (U r))
+              → proj₁ (flat u') ≡ w₁
+              → proj₁ (flat (ListU us')) ≡ w₂
+              → proj₁ (flat (ListU (u' ∷ us'))) ≡ full
+              → (r * nε ` loc) ⊢ u ≼ ListU (u' ∷ us')
+            go-star-same = {!go-star-same!}
+
+            go-star-shorter-head : (u' : U r) (us' : List (U r))
+              → proj₁ (flat u') ≢ w₁
+              → proj₁ (flat (ListU (u' ∷ us'))) ≡ full
+              → (r * nε ` loc) ⊢ u ≼ ListU (u' ∷ us')
+            go-star-shorter-head u' us' flat-u'≢w₁ flat-v-eq = {!!}
+              where
+                flat-pe : proj₁ (flat u) ≡ proj₁ (flat (ListU (u' ∷ us')))
+                flat-pe = trans (⇒-flat-eq w⇒u) (sym flat-v-eq)
+
+                su' = sublen-nil-∈ u'
+                nu' = proj₁ su'
+                eq-u' = proj₂ su'
+
+                su₁ = sublen-nil-∈ u₁
+                nu₁ = proj₁ su₁
+                eq-u₁ = proj₂ su₁
+
+                flat-u'-lt : nu' < nu₁
+                flat-u'-lt = lt-by-contradiction
+                  where
+                    flat-u' : List Char
+                    flat-u' = proj₁ (flat u')
+
+                    flat-us' : List Char
+                    flat-us' = proj₁ (flat (ListU us'))
+
+                    flat-u'∈r : flat-u' ∈⟦ r ⟧
+                    flat-u'∈r = proj₂ (flat u')
+
+                    flat-us'∈r* : flat-us' ∈⟦ r * nε ` loc ⟧
+                    flat-us'∈r* = proj₂ (flat (ListU us'))
+
+                    flat-u'-us'-eq : flat-u' ++ flat-us' ≡ w₁ ++ w₂
+                    flat-u'-us'-eq = trans (trans (sym (flat-list-≡ u' us')) flat-v-eq) (sym w≡w₁w₂)
+
+                    u'-nu' : length flat-u' ≡ nu'
+                    u'-nu' = sym (just-inj (trans (sym eq-u') (sublen-nil-flat u')))
+
+                    u₁-nu₁ : nu₁ ≡ length w₁
+                    u₁-nu₁ = trans (just-inj (trans (sym eq-u₁) (sublen-nil-flat u₁))) (cong length flat-u₁≡w₁)
+
+                    transport-gt : nu' > nu₁ → length flat-u' > length w₁
+                    transport-gt gt = subst (λ x → length flat-u' > x) u₁-nu₁ (subst (λ x → x > nu₁) (sym u'-nu') gt)
+
+                    ¬nu'>nu₁ : ¬ nu' > nu₁
+                    ¬nu'>nu₁ gt = star-shorter-head-contradiction r u' us' w₁ w₂ w₁∈r w₂∈r* longest-ev (transport-gt gt) flat-u'∈r flat-us'∈r* flat-u'-us'-eq
+
+                    ¬nu'≡nu₁ : ¬ nu' ≡ nu₁
+                    ¬nu'≡nu₁ eq with same-len-prefix flat-u' flat-us' w₁ w₂ flat-u'-us'-eq (trans u'-nu' (trans eq u₁-nu₁))
+                    ... | flat-u'≡w₁ = flat-u'≢w₁ flat-u'≡w₁
+
+                    ¬nu'≥nu₁ : ¬ nu₁ ≤ nu'
+                    ¬nu'≥nu₁ le with ≤-to-<⊎≡ {m = nu₁} {n = nu'} le
+                    ... | inj₁ lt = ¬nu'>nu₁ lt
+                    ... | inj₂ eq = ¬nu'≡nu₁ (sym eq)
+
+                    lt-by-contradiction : nu' < nu₁
+                    lt-by-contradiction = ¬≤↔< nu₁ nu' ¬nu'≥nu₁
+
+                mb-transport-u'-u₁ : MaybeNat< (just nu') (just nu₁) → MaybeNat< (sublen {r} u' []) (sublen {r} u₁ [])
+                mb-transport-u'-u₁ mb = subst (λ y → MaybeNat< (sublen {r} u' []) y) (sym eq-u₁) (subst (λ x → MaybeNat< x (just nu₁)) (sym eq-u') mb)
+
+                sublen-u'-eq : sublen {r} u' [] ≡ sublen {r * nε ` loc} (ListU (u' ∷ us')) (0 ∷ [])
+                sublen-u'-eq = refl
+
+                sublen-u₁-to-just : sublen {r} u₁ [] ≡ just (length w₁)
+                sublen-u₁-to-just rewrite sublen-nil-flat u₁ | flat-u₁≡w₁ = refl
+
+                unListU-u≢[] : unListU u ≢ []
+                unListU-u≢[] unlist-eq-nil = full≢[] (trans (trans (sym (⇒-flat-eq w⇒u)) (cong proj₁ (cong flat listU∘unListU))) (cong proj₁ (cong flat (cong ListU unlist-eq-nil))))
+
+                h = head-nonempty (unListU u) unListU-u≢[]
+
+                flat-u≡flat-head++flat-tail : proj₁ (flat u) ≡ proj₁ (flat h) ++ proj₁ (flat (ListU (tail-nonempty (unListU u) unListU-u≢[])))
+                flat-u≡flat-head++flat-tail rewrite sym listU∘unListU = flat-list-≡ h (tail-nonempty (unListU u) unListU-u≢[])
+
+                h≡u₁ : h ≡ u₁
+                h≡u₁ = {!!}
+
+                flat-head-unlist-u≡w₁ : proj₁ (flat h) ≡ w₁
+                flat-head-unlist-u≡w₁ rewrite h≡u₁ | flat-u₁≡w₁ = refl
+
+                sublen-nil-flat-head : sublen {r} h [] ≡ just (length w₁)
+                sublen-nil-flat-head = {!!}
+
+                sublen-u-0-∷-to-just : sublen {r * nε ` loc} u (0 ∷ []) ≡ just (length w₁)
+                sublen-u-0-∷-to-just = {!!}
+
+                sublen-u₁-eq : sublen {r} u₁ [] ≡ sublen {r * nε ` loc} u (0 ∷ [])
+                sublen-u₁-eq = {!!}
+
+                mb-transport : MaybeNat< (sublen {r * nε ` loc} (ListU (u' ∷ us')) (0 ∷ [])) (sublen {r * nε ` loc} u (0 ∷ []))
+                mb-transport = {!!}
+
+                sublen-equal-len : (proj₁ (flat u) ≡ proj₁ (flat (ListU (u' ∷ us')))) → sublen {r * nε ` loc} u [] ≡ sublen {r * nε ` loc} (ListU (u' ∷ us')) []
+                sublen-equal-len feq = trans (proj₂ (sublen-nil-∈ u)) (trans (cong just (cong length feq)) (sym (proj₂ (sublen-nil-∈ (ListU (u' ∷ us'))))))
+
+                cond : ∀ (q : List ℕ) → q ∈ pos {r * nε ` loc} u ++ pos {r * nε ` loc} (ListU (u' ∷ us')) → q ≺Lex (0 ∷ []) → sublen {r * nε ` loc} u q ≡ sublen {r * nε ` loc} (ListU (u' ∷ us')) q
+                cond [] q∈ q≺ = sublen-equal-len flat-pe
+                cond (x ∷ _) _ (≺lex-head lt) with x
+                ... | zero = ⊥-elim (lt-zero lt)
+                  where
+                    lt-zero : 1 ≤ 0 → ⊥
+                    lt-zero ()
+                ... | suc x' = ⊥-elim (¬suc<zero x' lt)
+
+            go-star-shorter-tail : (u' : U r) (us' : List (U r))
+              → proj₁ (flat u') ≡ w₁
+              → proj₁ (flat (ListU us')) ≢ w₂
+              → proj₁ (flat (ListU (u' ∷ us'))) ≡ full
+              → (r * nε ` loc) ⊢ u ≼ ListU (u' ∷ us')
+            go-star-shorter-tail u' us' flat-u'≡w₁ flat-us'≢w₂ flat-v-eq = ⊥-elim (flat-us'≢w₂ flat-us'≡w₂)
+              where
+                flat-us'≡w₂ : proj₁ (flat (ListU us')) ≡ w₂
+                flat-us'≡w₂ = cancel-left w₁ (proj₁ (flat (ListU us'))) w₂ eq
+                  where
+                    transport-eq : proj₁ (flat u') ++ proj₁ (flat (ListU us')) ≡ w₁ ++ proj₁ (flat (ListU us'))
+                    transport-eq = cong (λ xs → xs ++ proj₁ (flat (ListU us'))) flat-u'≡w₁
+
+                    left-eq : proj₁ (flat u') ++ proj₁ (flat (ListU us')) ≡ w₁ ++ w₂
+                    left-eq = trans (trans (sym (flat-list-≡ u' us')) flat-v-eq) (sym w≡w₁w₂)
+
+                    eq : w₁ ++ proj₁ (flat (ListU us')) ≡ w₁ ++ w₂
+                    eq = subst (λ x → x ≡ w₁ ++ w₂) transport-eq left-eq
+
+            go-star-list : (vs : List (U r)) → proj₁ (flat (ListU vs)) ≡ full → (r * nε ` loc) ⊢ u ≼ ListU vs
+            go-star-list [] flat-v-eq = ⊥-elim (¬[]≡full flat-v-eq)
+              where
+                ¬[]≡full : [] ≡ full → ⊥
+                ¬[]≡full ()
+
+            go-star-list (u' ∷ us') flat-v-eq with list≡-decides (proj₁ (flat u')) w₁
+            go-star-list (u' ∷ us') flat-v-eq | yes flat-u'≡w₁ with list≡-decides (proj₁ (flat (ListU us'))) w₂
+            go-star-list (u' ∷ us') flat-v-eq | yes flat-u'≡w₁ | yes flat-us'≡w₂ = go-star-same u' us' flat-u'≡w₁ flat-us'≡w₂ flat-v-eq
+            go-star-list (u' ∷ us') flat-v-eq | yes flat-u'≡w₁ | no flat-us'≢w₂ = go-star-shorter-tail u' us' flat-u'≡w₁ flat-us'≢w₂ flat-v-eq
+            go-star-list (u' ∷ us') flat-v-eq | no flat-u'≢w₁ = go-star-shorter-head u' us' flat-u'≢w₁ flat-v-eq
+
+            go-star : (v : U (r * nε ` loc)) → proj₁ (flat v) ≡ full → (r * nε ` loc) ⊢ u ≼ v
+            go-star (ListU vs) flat-v-eq = go-star-list vs flat-v-eq
 ```

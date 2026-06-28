@@ -2123,6 +2123,20 @@ head-∷-tail≡ : ∀ {A : Set} {xs : List A} (xs≢[] : xs ≢ []) → head-no
 head-∷-tail≡ {A} {x ∷ xs} _ = refl
 head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
 
+-- Extracts (w₁ , w₁⇒v) from p* constructor, giving the head's ⇒ proof
+⇒-star-head⇒ : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} {w : List Char} {u : U (r * nε ` loc)}
+  → (w⇒u : w , (r * nε ` loc) ⇒ u) → (w≢[] : w ≢ []) → (unListU-u≢[] : unListU u ≢ [])
+  → Σ (List Char) (λ w₁ → w₁ , r ⇒ head-nonempty (unListU u) unListU-u≢[])
+⇒-star-head⇒ (p* {w₁} {w₂} w≡w₁w₂ w₁⇒v w₂⇒vs ¬w₁≡[] longest-ev) w≢[] unListU-u≢[] = w₁ , w₁⇒v
+⇒-star-head⇒ p[] w≢[] unListU-u≢[] = ⊥-elim (w≢[] refl)
+
+-- Extracts the tail ListU's ⇒ proof from a p* constructor
+⇒-star-tail⇒ : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} {w : List Char} {u : U (r * nε ` loc)}
+  → (w⇒u : w , (r * nε ` loc) ⇒ u) → (w≢[] : w ≢ []) → (unListU-u≢[] : unListU u ≢ [])
+  → Σ (List Char) (λ w₂ → w₂ , (r * nε ` loc) ⇒ ListU (tail-nonempty (unListU u) unListU-u≢[]))
+⇒-star-tail⇒ (p* {w₁} {w₂} w≡w₁w₂ w₁⇒v w₂⇒vs ¬w₁≡[] longest-ev) w≢[] unListU-u≢[] = w₂ , w₂⇒vs
+⇒-star-tail⇒ p[] w≢[] unListU-u≢[] = ⊥-elim (w≢[] refl)
+
 {-# TERMINATING #-}
 ≼-wellfounded : ∀ { r : RE } { w : List Char }
   → w ∈⟦ r ⟧
@@ -2572,16 +2586,6 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
                       (∈⟦→⇒-proj₁-resp-word w₁eq w₁₁∈r w₁₂∈r)
                       (∈⟦→⇒-proj₁-resp-word w₂eq w₂₁∈r* w₂₂∈r*)
 
-            -- Injectivity: any parse tree with flat ≡ w equals ∈⟦→⇒ result
-            ∈⟦→⇒-unique : ∀ {r : RE} {w : List Char} (w∈r : w ∈⟦ r ⟧) (u : U r)
-              → proj₁ (flat u) ≡ w
-              → u ≡ proj₁ (∈⟦→⇒ w∈r)
-            ∈⟦→⇒-unique {ε} {[]} ε EmptyU _ = refl
-            ∈⟦→⇒-unique {$ c ` loc} {c ∷ []} ($ c) (LetterU .c) _ = refl
-            ∈⟦→⇒-unique {l + r' ` loc} {w} w∈lr u flat-u≡w = {!∈⟦→⇒-unique-plus!}
-            ∈⟦→⇒-unique {l ● r' ` loc} {w} w∈lr u flat-u≡w = {!∈⟦→⇒-unique-cat!}
-            ∈⟦→⇒-unique {r' * nε' ` loc} {w} wmem u flat-u≡w = {!∈⟦→⇒-unique-star!}
-
             go-star-same : (u' : U r) (us' : List (U r))
               → proj₁ (flat u') ≡ w₁
               → proj₁ (flat (ListU us')) ≡ w₂
@@ -2589,11 +2593,13 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
               → (r * nε ` loc) ⊢ u ≼ ListU (u' ∷ us')
             go-star-same = {!go-star-same!}
 
+            
+
             go-star-shorter-head : (u' : U r) (us' : List (U r))
               → proj₁ (flat u') ≢ w₁
               → proj₁ (flat (ListU (u' ∷ us'))) ≡ full
               → (r * nε ` loc) ⊢ u ≼ ListU (u' ∷ us')
-            go-star-shorter-head u' us' flat-u'≢w₁ flat-v-eq = {!!}
+            go-star-shorter-head u' us' flat-u'≢w₁ flat-v-eq = inj₁ (≺ u (ListU (u' ∷ us')) ((0 ∷ []) , ≺p u (ListU (u' ∷ us')) (0 ∷ []) (sublen< (ListU (u' ∷ us')) u (0 ∷ []) mb-transport) cond))
               where
                 flat-pe : proj₁ (flat u) ≡ proj₁ (flat (ListU (u' ∷ us')))
                 flat-pe = trans (⇒-flat-eq w⇒u) (sym flat-v-eq)
@@ -2605,6 +2611,9 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
                 su₁ = sublen-nil-∈ u₁
                 nu₁ = proj₁ su₁
                 eq-u₁ = proj₂ su₁
+
+                u₁-nu₁ : nu₁ ≡ length w₁
+                u₁-nu₁ = trans (just-inj (trans (sym eq-u₁) (sublen-nil-flat u₁))) (cong length flat-u₁≡w₁)
 
                 flat-u'-lt : nu' < nu₁
                 flat-u'-lt = lt-by-contradiction
@@ -2626,9 +2635,6 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
 
                     u'-nu' : length flat-u' ≡ nu'
                     u'-nu' = sym (just-inj (trans (sym eq-u') (sublen-nil-flat u')))
-
-                    u₁-nu₁ : nu₁ ≡ length w₁
-                    u₁-nu₁ = trans (just-inj (trans (sym eq-u₁) (sublen-nil-flat u₁))) (cong length flat-u₁≡w₁)
 
                     transport-gt : nu' > nu₁ → length flat-u' > length w₁
                     transport-gt gt = subst (λ x → length flat-u' > x) u₁-nu₁ (subst (λ x → x > nu₁) (sym u'-nu') gt)
@@ -2665,23 +2671,20 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
                 flat-u≡flat-head++flat-tail : proj₁ (flat u) ≡ proj₁ (flat h) ++ proj₁ (flat (ListU (tail-nonempty (unListU u) unListU-u≢[])))
                 flat-u≡flat-head++flat-tail rewrite sym listU∘unListU = flat-list-≡ h (tail-nonempty (unListU u) unListU-u≢[])
 
-                h≡u₁ : h ≡ u₁
-                h≡u₁ = {!!}
-
-                flat-head-unlist-u≡w₁ : proj₁ (flat h) ≡ w₁
-                flat-head-unlist-u≡w₁ rewrite h≡u₁ | flat-u₁≡w₁ = refl
+                flat-h≡w₁ : proj₁ (flat h) ≡ w₁
+                flat-h≡w₁ = ⇒-flat-eq (proj₂ (⇒-star-head⇒ w⇒u full≢[] unListU-u≢[]))
 
                 sublen-nil-flat-head : sublen {r} h [] ≡ just (length w₁)
-                sublen-nil-flat-head = {!!}
+                sublen-nil-flat-head rewrite sublen-nil-flat h | flat-h≡w₁ = refl
 
                 sublen-u-0-∷-to-just : sublen {r * nε ` loc} u (0 ∷ []) ≡ just (length w₁)
-                sublen-u-0-∷-to-just = {!!}
+                sublen-u-0-∷-to-just rewrite sym listU∘unListU | sublen-nil-flat-head = refl
 
                 sublen-u₁-eq : sublen {r} u₁ [] ≡ sublen {r * nε ` loc} u (0 ∷ [])
-                sublen-u₁-eq = {!!}
+                sublen-u₁-eq rewrite sublen-nil-flat u₁ | flat-u₁≡w₁ | sym sublen-u-0-∷-to-just = refl
 
                 mb-transport : MaybeNat< (sublen {r * nε ` loc} (ListU (u' ∷ us')) (0 ∷ [])) (sublen {r * nε ` loc} u (0 ∷ []))
-                mb-transport = {!!}
+                mb-transport rewrite sublen-u'-eq | eq-u' | sublen-u-0-∷-to-just = maybenat-just-just (subst (λ y → nu' < y) u₁-nu₁ flat-u'-lt)
 
                 sublen-equal-len : (proj₁ (flat u) ≡ proj₁ (flat (ListU (u' ∷ us')))) → sublen {r * nε ` loc} u [] ≡ sublen {r * nε ` loc} (ListU (u' ∷ us')) []
                 sublen-equal-len feq = trans (proj₂ (sublen-nil-∈ u)) (trans (cong just (cong length feq)) (sym (proj₂ (sublen-nil-∈ (ListU (u' ∷ us'))))))

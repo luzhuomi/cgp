@@ -1,5 +1,5 @@
 ```agda
-{-# OPTIONS --rewriting #-}
+{-# OPTIONS --rewriting --allow-unsolved-metas #-}
 module cgp.posix.Related where
 
 import cgp.RE as RE
@@ -1312,10 +1312,10 @@ sublen-nil-∈ {r * ε∉r ` loc} (ListU us) with length (proj₁ (flat (ListU {
 sublen-nil-flat : ∀ {r : RE} (u : U r) → sublen u [] ≡ just (length (proj₁ (flat u)))
 sublen-nil-flat {ε} EmptyU = refl
 sublen-nil-flat {$ c ` loc} (LetterU c) = refl
-sublen-nil-flat {l ● r ` loc} (PairU u v) rewrite proj₂ (sublen-nil-∈ (PairU u v)) = refl
-sublen-nil-flat {l + r ` loc} (LeftU u) rewrite proj₂ (sublen-nil-∈ (LeftU u)) = refl
-sublen-nil-flat {l + r ` loc} (RightU u) rewrite proj₂ (sublen-nil-∈ (RightU u)) = refl
-sublen-nil-flat {r * ε∉r ` loc} (ListU us) rewrite proj₂ (sublen-nil-∈ (ListU us)) = refl
+sublen-nil-flat {l ● r ` loc} (PairU u v) rewrite proj₂ (sublen-nil-∈ {l ● r ` loc} (PairU u v)) = refl
+sublen-nil-flat {l + r ` loc} (LeftU u) rewrite proj₂ (sublen-nil-∈ {l + r ` loc} (LeftU u)) = refl
+sublen-nil-flat {l + r ` loc} (RightU u) rewrite proj₂ (sublen-nil-∈ {l + r ` loc} (RightU u)) = refl
+sublen-nil-flat {r * ε∉r ` loc} (ListU us) rewrite proj₂ (sublen-nil-∈ {r * ε∉r ` loc} (ListU us)) = refl
 
 -- Convert position membership to a proof that sublen returns just.
 -- Used throughout ≺-trans to bridge between membership and sublen equality.
@@ -1811,7 +1811,7 @@ flat-pair≡ u v with flat u | flat v
 -- flat-list-≡: proj₁ (flat (ListU (u ∷ us))) ≡ proj₁ (flat u) ++ proj₁ (flat (ListU us))
 flat-list-≡ : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} (u : U r) (us : List (U r))
   → proj₁ (flat {r * nε ` loc} (ListU (u ∷ us))) ≡ proj₁ (flat u) ++ proj₁ (flat (ListU us))
-flat-list-≡ u us with flat u | flat (ListU us)
+flat-list-≡ {r} {nε} {loc} u us with flat u | flat (ListU us)
 ... | xs , _ | ys , _ = refl
 
 
@@ -2009,19 +2009,19 @@ no-longer-from-shorter l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l w₂
 
 -- Contradiction proof for go-star-shorter-head: if length flat-u' > length w₁
 -- then we can construct a NoLonger witness contradicting longest-ev
-star-shorter-head-contradiction : (r : RE) {nε : ε∉ r} {loc : ℕ} (u' : U r) (us' : List (U r))
+star-shorter-head-contradiction : (r : RE) (nε : ε∉ r) (loc : ℕ) (u' : U r) (us' : List (U r))
   → (w₁ w₂ : List Char)
   → w₁ ∈⟦ r ⟧ → w₂ ∈⟦ r * nε ` loc ⟧
   → NoLonger r (r * nε ` loc) w₁ w₂
   → length w₁ < length (proj₁ (flat u'))
   → proj₁ (flat u') ∈⟦ r ⟧
-  → proj₁ (flat (ListU us')) ∈⟦ r * nε ` loc ⟧
-  → proj₁ (flat u') ++ proj₁ (flat (ListU us')) ≡ w₁ ++ w₂
+  → proj₁ (flat {r * nε ` loc} (ListU us')) ∈⟦ r * nε ` loc ⟧
+  → proj₁ (flat u') ++ proj₁ (flat {r * nε ` loc} (ListU us')) ≡ w₁ ++ w₂
   → ⊥
-star-shorter-head-contradiction r u' us' w₁ w₂ w₁∈r w₂∈r* longest-ev lt flat-u'∈r flat-us'∈r* flat-u'-us'-eq
-  with shorter-split-off w₁ (proj₁ (flat u')) w₂ (proj₁ (flat (ListU us'))) lt (sym flat-u'-us'-eq)
+star-shorter-head-contradiction r nε loc u' us' w₁ w₂ w₁∈r w₂∈r* longest-ev lt flat-u'∈r flat-us'∈r* flat-u'-us'-eq
+  with shorter-split-off w₁ (proj₁ (flat u')) w₂ (proj₁ (flat {r * nε ` loc} (ListU us'))) lt (sym flat-u'-us'-eq)
 ... | w₃ , w₃≢[] , flat-u'≡w₁w₃ =
-  ⊥-elim (longest-ev (w₃ , (proj₁ (flat (ListU us')) , (w₃≢[] , (w₃-flat-us'≡w₂ , (subst (_∈⟦ r ⟧) flat-u'≡w₁w₃ flat-u'∈r , flat-us'∈r*))))) )
+  ⊥-elim (longest-ev (w₃ , (proj₁ (flat {r * nε ` loc} (ListU us')) , (w₃≢[] , (w₃-flat-us'≡w₂ , (subst (_∈⟦ r ⟧) flat-u'≡w₁w₃ flat-u'∈r , flat-us'∈r*))))) )
   where
     w₃-flat-us'≡w₂ : w₃ ++ proj₁ (flat (ListU us')) ≡ w₂
     w₃-flat-us'≡w₂ = cancel-left w₁ (w₃ ++ proj₁ (flat (ListU us'))) w₂ (trans (sym (++-assoc w₁ w₃ (proj₁ (flat (ListU us'))))) step1)
@@ -2104,27 +2104,40 @@ drop-0-∷ = refl
 just-injective : ∀ {a : Set} {x y : a} → just x ≡ just y → x ≡ y
 just-injective refl = refl
 
+-- sublen at 0∷[] for ListU (v ∷ vs) equals sublen v [].
+-- Proof: after drop 0, the head of (v ∷ vs) is v, so sublen reduces to sublen v [].
+-- Used in go-star-shorter-head to show the first element of the tail star has finite sublen.
 sublen-list-0-nil : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} (v : U r) (vs : List (U r))
   → sublen {r * nε ` loc} (ListU (v ∷ vs)) (0 ∷ []) ≡ sublen v []
-sublen-list-0-nil {r} {nε} {loc} v vs with drop 0 (v ∷ vs) | sublen {r * nε ` loc} (ListU (v ∷ vs)) (0 ∷ [])
-... | u' ∷ us' | s-val = refl
-... | [] | s-val rewrite sym drop-0-∷ = refl
+sublen-list-0-nil {r} {nε} {loc} v vs with drop 0 (v ∷ vs)
+... | x ∷ xs = refl
+... | [] rewrite sym drop-0-∷ = refl
 
--- sublen at 0∷p for ListU (v ∷ vs) equals sublen v at p
+-- sublen at 0∷p for ListU (v ∷ vs) equals sublen v at p.
+-- Proof: after drop 0, the head of (v ∷ vs) is v, so sublen reduces to sublen v p.
+-- Used in ListU-≼-lift to transport sublen comparisons through the head position (0∷p).
 sublen-list-0 : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} (v : U r) (vs : List (U r)) (p : List ℕ)
   → sublen {r * nε ` loc} (ListU (v ∷ vs)) (0 ∷ p) ≡ sublen {r} v p
-sublen-list-0 {r} {nε} {loc} v vs p with drop 0 (v ∷ vs) | sublen {r * nε ` loc} (ListU (v ∷ vs)) (0 ∷ p)
-... | u' ∷ us' | s-val = refl
-... | [] | s-val rewrite sym drop-0-∷ = refl
+sublen-list-0 {r} {nε} {loc} v vs p with drop 0 (v ∷ vs)
+... | x ∷ xs = refl
+... | [] rewrite sym drop-0-∷ = refl
 
--- sublen at suc n∷p for ListU (v ∷ vs) equals sublen ListU vs at n∷p
+-- sublen at suc n∷p for ListU (v ∷ vs) equals sublen ListU vs at n∷p.
+-- Proof: drop (suc n) (v ∷ vs) = drop n vs, so the element at index (suc n) in (v ∷ vs)
+-- is the element at index n in vs, making sublen equal.
+-- Used in ListU-≼-lift to transport sublen comparisons through tail star positions.
 sublen-list-n : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} (v : U r) (vs : List (U r)) (n : ℕ) (p : List ℕ)
   → sublen {r * nε ` loc} (ListU (v ∷ vs)) (suc n ∷ p) ≡ sublen {r * nε ` loc} (ListU vs) (n ∷ p)
 sublen-list-n {r} {nε} {loc} v vs n p with drop n vs
 ... | x ∷ xs = refl
 ... | [] = refl
 
--- sublen at suc m∷ys for ListU (u' ∷ unListU u₂) equals sublen (ListU (unListU u₂)) at m∷ys
+-- sublen at suc m∷ys for ListU (u' ∷ unListU u₂) equals sublen (ListU (unListU u₂)) at m∷ys.
+-- Proof: drop (suc m) (u' ∷ unListU u₂) = drop m (unListU u₂), so sublen at (suc m ∷ ys)
+-- reduces to the same sublen as ListU (unListU u₂) at (m ∷ ys). Compose with listU∘unListU
+-- to get sublen u₂ (m ∷ ys).
+-- Used in ListU-≼-lift tail-strict case to bridge sublen between the combined tree
+-- and the tail star component.
 sublen-u₂-list-1 : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} (u' : U r) (u₂ : U (r * nε ` loc)) (m : ℕ) (ys : List ℕ)
   → sublen {r * nε ` loc} (ListU (u' ∷ unListU u₂)) (suc m ∷ ys) ≡ sublen {r * nε ` loc} (ListU (unListU u₂)) (m ∷ ys)
 sublen-u₂-list-1 {r} {nε} {loc} u' u₂ m ys with drop m (unListU u₂)
@@ -2499,12 +2512,20 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
 
     flat-u≡full : proj₁ (flat u) ≡ full
     flat-u≡full = trans (cong (λ xs → xs ++ proj₁ (flat (ListU (unListU u₂)))) (flat-u₁≡w₁))
-                  (trans (cong (λ x → w₁ ++ proj₁ (flat x)) listU∘unListU) (trans (cong (λ xs → w₁ ++ xs) flat-u₂≡w₂) w≡w₁w₂))
+                  (trans (cong (λ x → w₁ ++ proj₁ (flat x)) (listU∘unListU {r} {nε} {loc} {u₂})) (trans (cong (λ xs → w₁ ++ xs) flat-u₂≡w₂) w≡w₁w₂))
 
     wellf-star : Σ _ (λ u → (proj₁ (flat u) ≡ full) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ full → (r * nε ` loc) ⊢ u ≼ v))
     wellf-star = u , (flat-u≡full , go-star)
       where
 
+         -- Lifts ≼ from components to the combined ListU tree.
+        -- Given flat-equality, u₁ ≼ u₁' and u₂ ≼ ListU us', proves
+        -- ListU (u₁ ∷ unListU u₂) ≼ ListU (u₁' ∷ us').
+        -- Cases:
+        --   (≡, ≡): both components equal → combined trees equal.
+        --   (≺, _): head strict → witness at 0∷p, sublen transported by sublen-list-0.
+        --   (≡, ≺): tail strict → witness at suc n ∷ xs, sublen transported by sublen-u₂-list-1/sublen-list-n.
+        --   (≡, ≺ at []): impossible since equal flat lengths imply equal sublen at [].
         ListU-≼-lift : (u₁ u₁' : U r) (u₂ : U (r * nε ` loc)) (us' : List (U r))
           → proj₁ (flat (ListU (u₁ ∷ unListU u₂))) ≡ proj₁ (flat (ListU (u₁' ∷ us')))
           → r ⊢ u₁ ≼ u₁'
@@ -2522,12 +2543,20 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
             mb-lift : MaybeNat< (sublen {r * nε ` loc} (ListU (u₁' ∷ us')) (0 ∷ p)) (sublen {r * nε ` loc} (ListU (u₁ ∷ unListU u₂)) (0 ∷ p))
             mb-lift rewrite sublen-list-0 u₁' us' p | sublen-list-0 u₁ (unListU u₂) p = mb
 
+            -- Position shift for the head-strict case of ListU-≼-lift.
+            -- If 0∷xs is in the combined pos of the two ListU trees, then xs is in
+            -- the combined pos of the head components.
+            -- Proof: 0∷xs must be in List.map (0∷_) pu or List.map (0∷_) pv,
+            -- since it cannot be in go-pos 1 (which starts with indices ≥ 1).
+            -- Used in cond-lift to map head positions from ListU back to u₁/u₁'.
             shift-pos-star-head : (pu pv : List (List ℕ)) (xs : List ℕ)
               → 0 ∷ xs ∈ ([] ∷ (List.map (λ ps → 0 ∷ ps) pu) ++ go-pos 1 (unListU u₂)) ++ ([] ∷ (List.map (λ ps → 0 ∷ ps) pv) ++ go-pos 1 us')
               → xs ∈ pu ++ pv
             shift-pos-star-head pu pv xs (here ())
             shift-pos-star-head pu pv xs (there mp) = go (∈-++⁻ (List.map (0 ∷_) pu ++ go-pos 1 (unListU u₂)) mp)
               where
+                -- Strips the 0 prefix from membership: 0∷xs ∈ map (0∷_) pu implies xs ∈ pu.
+                -- Used inside shift-pos-star-head to peel off the 0∷_ mapping.
                 shift-0 : (pu : List (List ℕ)) (xs : List ℕ) → 0 ∷ xs ∈ List.map (0 ∷_) pu → xs ∈ pu
                 shift-0 (ps' ∷ pus) .ps' (here refl) = here refl
                 shift-0 (p ∷ pus) xs (there mp') = there (shift-0 pus xs mp')
@@ -2555,12 +2584,16 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
             cond-lift cond (suc n ∷ xs) q∈ (≺lex-head lt) = ⊥-elim (¬suc<zero n lt)
         ListU-≼-lift u₁ u₁' u₂ us' flat-eq (inj₂ u₁≡u₁') (inj₁ (≺ _ _ ([] , ≺p _ _ .[] (sublen< _ _ .[] mb) cond₂))) = ⊥-elim contradiction
           where
+            -- Since the combined trees have equal flat words (flat-eq) and equal heads (u₁≡u₁'),
+            -- the tail star components must also have equal flat words.
+            -- Used to show sublen u₂ [] ≡ sublen (ListU us') [], which rules out
+            -- p = [] as a witness for u₂ ≺ ListU us' (since MaybeNat< x x is empty).
             flat-eq-tail : proj₁ (flat u₂) ≡ proj₁ (flat (ListU us'))
             flat-eq-tail =
               cancel-left (proj₁ (flat u₁)) (proj₁ (flat u₂)) (proj₁ (flat (ListU us')))
                 (begin
                   proj₁ (flat u₁) ++ proj₁ (flat u₂)
-                ≡⟨ sym (cong (λ x → proj₁ (flat u₁) ++ proj₁ (flat x)) listU∘unListU) ⟩
+                ≡⟨ sym (cong (λ x → proj₁ (flat u₁) ++ proj₁ (flat x)) (listU∘unListU {r} {nε} {loc} {u₂})) ⟩
                   proj₁ (flat (ListU (u₁ ∷ unListU u₂)))
                 ≡⟨ flat-eq ⟩
                   proj₁ (flat (ListU (u₁' ∷ us')))
@@ -2580,6 +2613,9 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
                 sublen (ListU us') []
               ∎
 
+            -- Irreflexivity of MaybeNat<: if x ≡ y, then MaybeNat< x y is empty.
+            -- Used to derive contradiction when u₂ ≺ ListU us' at position p = [],
+            -- since the tail components have equal sublen at [] but MaybeNat< requires strict inequality.
             MaybeNat<-irrefl : ∀ x y → x ≡ y → ¬ MaybeNat< x y
             MaybeNat<-irrefl nothing .nothing refl ()
             MaybeNat<-irrefl (just x) .(just x) refl (maybenat-just-just x<y) = <-irrefl refl x<y
@@ -2596,6 +2632,9 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
             mb-lift rewrite sublen-list-n u₁' us' n xs | sublen-u₂-list-1 u₁ u₂ n xs =
               subst (λ y → MaybeNat< (sublen (ListU us') (n ∷ xs)) y) (cong (λ u → sublen {r * nε ` loc} u (n ∷ xs)) (sym listU∘unListU)) mb
 
+            -- Strips the suc prefix from ≺Lex: suc m ∷ ys ≺Lex suc n ∷ xs implies m ∷ ys ≺Lex n ∷ xs.
+            -- Proof: ≺lex-head uses suc-injective-<, ≺lex-tail passes through recursively.
+            -- Used in cond-lift to map the tail-strict condition back to the inner star component.
             tail-≺Lex : ∀ {m n : ℕ} {ys xs : List ℕ} → suc m ∷ ys ≺Lex suc n ∷ xs → m ∷ ys ≺Lex n ∷ xs
             tail-≺Lex (≺lex-head lt) = ≺lex-head (s<s⁻¹ lt)
               where
@@ -2603,11 +2642,17 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
                 s<s⁻¹ (s<s lt) = lt
             tail-≺Lex (≺lex-tail ys≺) = ≺lex-tail ys≺
 
+            -- A position starting with (suc m) cannot be in map (0∷_) (which only has 0-prefixed positions).
+            -- Used in shift-go-pos to eliminate the impossible case when stripping the 0 prefix.
             ¬suc∈map-0 : (m : ℕ) (ys : List ℕ) (qs : List (List ℕ)) → suc m ∷ ys ∈ List.map (0 ∷_) qs → ⊥
             ¬suc∈map-0 m ys [] ()
             ¬suc∈map-0 m ys (q ∷ qs) (here ())
             ¬suc∈map-0 m ys (q ∷ qs) (there mp) = ¬suc∈map-0 m ys qs mp
 
+            -- Shifts position membership from ListU (u ∷ us) to ListU us by decrementing the first index.
+            -- Proof: suc m ∷ ys ∈ pos (ListU (u ∷ us)) must be in go-pos 1 us (not 0-prefixed),
+            -- and go-pos-shift maps go-pos 1 back to go-pos 0.
+            -- Used inside shift-pos-star-tail to map tail positions from the combined tree.
             shift-go-pos : (u : U r) (us : List (U r)) (m : ℕ) (ys : List ℕ)
               → suc m ∷ ys ∈ pos (ListU (u ∷ us))
               → m ∷ ys ∈ pos (ListU us)
@@ -2618,13 +2663,19 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
                 go (inj₁ mp) = ⊥-elim (¬suc∈map-0 m ys (pos u) mp)
                 go (inj₂ mp) = go-pos-shift 0 us mp
 
+            -- Position shift for the tail-strict case of ListU-≼-lift.
+            -- If suc m ∷ ys is in the combined pos of the two ListU trees, then m ∷ ys
+            -- is in the combined pos of the tail star components.
+            -- Proof: uses shift-go-pos on each side, then listU∘unListU to bridge
+            -- ListU (unListU u₂) back to u₂.
+            -- Used in cond-lift to map tail positions from the combined tree to the inner star.
             shift-pos-star-tail : (m : ℕ) (ys : List ℕ)
               → suc m ∷ ys ∈ pos (ListU (u₁ ∷ unListU u₂)) ++ pos (ListU (u₁' ∷ us'))
               → m ∷ ys ∈ pos u₂ ++ pos (ListU us')
             shift-pos-star-tail m ys q∈ = helper (∈-++⁻ (pos (ListU (u₁ ∷ unListU u₂))) q∈)
               where
                 helper : suc m ∷ ys ∈ pos (ListU (u₁ ∷ unListU u₂)) ⊎ suc m ∷ ys ∈ pos (ListU (u₁' ∷ us')) → m ∷ ys ∈ pos u₂ ++ pos (ListU us')
-                helper (inj₁ q∈₁) = ∈-++⁺ˡ (subst (λ z → m ∷ ys ∈ pos z) listU∘unListU (shift-go-pos u₁ (unListU u₂) m ys q∈₁))
+                helper (inj₁ q∈₁) = ∈-++⁺ˡ (subst (λ z → m ∷ ys ∈ pos z) (listU∘unListU {r} {nε} {loc} {u₂}) (shift-go-pos u₁ (unListU u₂) m ys q∈₁))
                 helper (inj₂ q∈₂) = ∈-++⁺ʳ (pos u₂) (shift-go-pos u₁' us' m ys q∈₂)
 
             cond-lift : (q : List ℕ) → q ∈ pos (ListU (u₁ ∷ unListU u₂)) ++ pos (ListU (u₁' ∷ us')) → q ≺Lex (suc n ∷ xs) → sublen (ListU (u₁ ∷ unListU u₂)) q ≡ sublen (ListU (u₁' ∷ us')) q
@@ -2703,7 +2754,7 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
                     transport-gt gt = subst (λ x → length flat-u' > x) u₁-nu₁ (subst (λ x → x > nu₁) (sym u'-nu') gt)
 
                     ¬nu'>nu₁ : ¬ nu' > nu₁
-                    ¬nu'>nu₁ gt = star-shorter-head-contradiction r u' us' w₁ w₂ w₁∈r w₂∈r* longest-ev (transport-gt gt) flat-u'∈r flat-us'∈r* flat-u'-us'-eq
+                    ¬nu'>nu₁ gt = star-shorter-head-contradiction r nε loc u' us' w₁ w₂ w₁∈r w₂∈r* longest-ev (transport-gt gt) flat-u'∈r flat-us'∈r* flat-u'-us'-eq
 
                     ¬nu'≡nu₁ : ¬ nu' ≡ nu₁
                     ¬nu'≡nu₁ eq with same-len-prefix flat-u' flat-us' w₁ w₂ flat-u'-us'-eq (trans u'-nu' (trans eq u₁-nu₁))

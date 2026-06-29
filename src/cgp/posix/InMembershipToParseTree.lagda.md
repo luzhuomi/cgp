@@ -1,5 +1,4 @@
 ```agda
--- {-# OPTIONS --rewriting --allow-unsolved-metas #-}
 {-# OPTIONS --rewriting #-}
 module cgp.posix.InMembershipToParseTree where
 
@@ -572,9 +571,9 @@ mutual
   ... | inj₁ w∈ε = ⊥-elim (Utils.¬∷≡[] (sym (∈⟦-ε-elim w∈ε)))
   ... | inj₂ w∈● = ∈⟦-●-elim w∈●
 
-  -- Concatenation case: given a split of full, find the POSIX longest-match split.
+ -- Concatenation case: given a split of full, find the POSIX longest-match split.
   -- IDEA:  Feed the split into find-longest-split to obtain (w₁',w₂') with longest-ev.
-  --        Recursively build parse trees for each side, then combine with PairU and ps.
+  --        Then recursively build parse trees for each side, then combine with PairU and ps.
   -- USED:  ∈⟦→⇒ for l●r.
   ∈⟦→⇒●-go : (l r : RE) (loc : ℕ) (full : List Char)
     → Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ → w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ full))

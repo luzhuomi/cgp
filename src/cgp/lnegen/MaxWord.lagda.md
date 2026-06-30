@@ -1536,6 +1536,8 @@ extract-Recons (here recons-v₁) = _ , here refl , recons-v₁
 extract-Recons (there v₁∈pdis) with extract-Recons v₁∈pdis
 ... | pdi , pdi∈ , recons-v₁ = pdi , there pdi∈ , recons-v₁
 
+{-
+-- too strong, we have a weaken version below 
 -- the dom-lemma is bogus, is u₂ : U r used any where? 
 dom-lemma : ∀ {p l r loc c} {inj : U p → U l} {sound-ev}
   → (pdis : List (PDInstance l c))
@@ -1563,11 +1565,6 @@ dom-lemma {inj = inj} {sound-ev} [] pdU≡ sorted u₁ u₂ w max v₁ ¬eq ¬[]
   with first-char-lemma (proj₁ (flat v₁)) ¬[] first-char-lemma-outer
 ... | cs₁ , eq  with pdU-complete v₁ eq
 ...               | v₁∈pdU rewrite pdU≡
-{-   = case v₁∈pdU of λ {
-    (here recons-v₁) → {!!} ; 
-    (there v₁∈pdis) → ⊥-elim (¬Any[] v₁∈pdis)
-  }
--}                                     with v₁∈pdU
 ...                                      |  here (recons .v₁ ( w₁∈⟦p⟧ , inj∘unflatw₁∈⟦p⟧≡v₁ )) = {!!} -- no need to prove, we abandon this lemma? 
 ...                                      |  there v₁∈pdis  = ⊥-elim (¬Any[] v₁∈pdis)
 -- since (pdi inj) is max preserve, l ⊢ max (inj u) <=> p ⊢ max u
@@ -1595,7 +1592,21 @@ dom-lemma {inj = inj} {sound-ev} (pdi' ∷ pdis') pdU≡ sorted u₁ u₂ w max 
         (there v₁∈pdis-inj) → {!!} -- no need to prove, we abandon this lemma? 
       }
   }
+-} 
 
+
+>-wellfounded : ∀ { r : RE} { w : List Char }
+  → w ∈⟦ r ⟧
+  → ∃[ v ] ( ≥-Max {r}  w v )
+>-wellfounded {r} {w} w∈⟦r⟧ = {!!}
+
+
+pdU-complete-max : ∀ { r : RE  } { c : Char } { w : List Char }
+  → ( u : U r )
+  → ( proj₁ (flat {r} u) ≡ c ∷ w )
+  → ≥-Max {r} (c ∷ w) u
+  → ∃[ pdi ] ∃[ pdis ] ( pdU[ r , c ] ≡ pdi ∷ pdis × (Recons {r} {c} u) pdi)
+pdU-complete-max = {!!}   
 
 
 -- dom-lemma-weak and pdU-≥-max-left-most-pres are mutually recursive .
@@ -1626,7 +1637,7 @@ dom-lemma-weak : ∀ {p l r loc c} {inj : U p → U l} {sound-ev}
 pdU-≥-max-left-most-pres : ∀ { r : RE } { c : Char }
   → {pdi : PDInstance r c}
   → head pdU[ r , c ] ≡ just pdi
-  → ≥-Max-Preserve pdi
+  → ≥-Max-Preserve-Bd pdi
 
 
 dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡pdi-inj∷[]         sorted u₁ u₂ w
@@ -1639,10 +1650,10 @@ dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡p
                                             = inju₁≥v₁
                                               -- unflat w₁∈⟦p⟧ is v₁'
                                               where
-                                                pdi-inj-sev-max-pres :  ≥-Max-Preserve (pdinstance inj sound-ev)
+                                                pdi-inj-sev-max-pres :  ≥-Max-Preserve-Bd (pdinstance inj sound-ev)
                                                 pdi-inj-sev-max-pres rewrite pdU-lc≡pdi-inj∷[] = pdU-≥-max-left-most-pres {!!} -- this hole should be easy  
-                                                c∷|pair-unflatw∈⟦p₁⟧-v₂|≡|pairv₁v₂| : ( c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂))))  ≡ (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
-                                                c∷|pair-unflatw∈⟦p₁⟧-v₂|≡|pairv₁v₂| =
+                                                c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂| : ( c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂))))  ≡ (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                                                c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂| =
                                                   begin
                                                     c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)))
                                                   ≡⟨⟩ 
@@ -1656,10 +1667,10 @@ dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡p
                                                   ≡⟨⟩ 
                                                    proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) 
                                                   ∎
-                                                |pairv₁v₂|≡c∷|pair-unflatw∈⟦p₁⟧-v₂| :  proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)))
-                                                |pairv₁v₂|≡c∷|pair-unflatw∈⟦p₁⟧-v₂| = sym c∷|pair-unflatw∈⟦p₁⟧-v₂|≡|pairv₁v₂|
-                                                |pair-unflatw∈⟦p₁⟧-v₂|≡w : proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)) ≡ w 
-                                                |pair-unflatw∈⟦p₁⟧-v₂|≡w = proj₂ (Utils.∷-inj (trans (sym |pairv₁v₂|≡c∷|pair-unflatw∈⟦p₁⟧-v₂|) |v₁v₂|≡c∷w)) 
+                                                |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂| :  proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)))
+                                                |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂| = sym c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂|
+                                                |pair-unflatw₁∈⟦p⟧-v₂|≡w : proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)) ≡ w 
+                                                |pair-unflatw₁∈⟦p⟧-v₂|≡w = proj₂ (Utils.∷-inj (trans (sym |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂|) |v₁v₂|≡c∷w)) 
                                                 u₁≥unflatw₁∈⟦p⟧ : p ⊢ u₁ ≥ (unflat w₁∈⟦p⟧)
                                                 u₁≥unflatw₁∈⟦p⟧ = ≥-max-pair-fst-prefix→>2 {p} {r} {loc} u₁ u₂ (≥-max (proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))) (PairU u₁ u₂) refl prf₁)  (unflat w₁∈⟦p⟧) v₂ prf₂ 
                                                   where
@@ -1668,7 +1679,7 @@ dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡p
                                                            → (p ● r ` loc) ⊢ PairU u₁ u₂ ≥ v
                                                     prf₁ rewrite  |u₁u₂|≡w = v→|v|≡w→pair-u₁u₂≥v
                                                     prf₂ : proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)) ≡ proj₁ (flat (PairU {p} {r} {loc} u₁ u₂)) 
-                                                    prf₂ rewrite  |u₁u₂|≡w  =  |pair-unflatw∈⟦p₁⟧-v₂|≡w
+                                                    prf₂ rewrite  |u₁u₂|≡w  =  |pair-unflatw₁∈⟦p⟧-v₂|≡w
                                                 max-u₁ :  ≥-Max {p} (proj₁ (flat u₁)) u₁ 
                                                 max-u₁ = ≥-max-pair-fst-prefix→>3 {p} {r} {loc} u₁ u₂ max-pair-u₁u₂ 
                                                   where
@@ -1681,9 +1692,32 @@ dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡p
 
                                                 inju₁≥v₁ : l ⊢ inj u₁ ≥ v₁
                                                 inju₁≥v₁ with pdi-inj-sev-max-pres
-                                                ... | ≥-max-pres u→w→maxwu→max-c∷w-inj-u with u→w→maxwu→max-c∷w-inj-u u₁ (proj₁ (flat u₁)) max-u₁ 
-                                                ...      | ≥-max c∷|u₁| inju₁ _ v→|v|≡c∷|u₁|→inju₁≥v =  v→|v|≡c∷|u₁|→inju₁≥v v₁ {!!}   -- |v₁|≡ c∷|u₁| how do get this? we only have |v₁v₂|≡c∷w≡c∷|u₁u₂|, can we derive another property for max pair u₁ u₂ when |u₁|≢[], then not exist a longer prefix v₁ and shorter suffix v₂ |u₁u₂|≡|v₁v₂| 
+                                                ... | ≥-max-pres-bd u→w→maxwu→max-c∷w-inj-u u→w→max-c∷w-inj-u→maxwu  with >-trichotomy (inj u₁) v₁
+                                                ...      | inj₁ inj-u₁>v₁        = inj₁ inj-u₁>v₁
+                                                ...      | inj₂ (inj₂ inj-u₁≡v₁) = inj₂ inj-u₁≡v₁
+                                                ...      | inj₂ (inj₁ v₁>inj-u₁) rewrite (sym inj∘unflatw₁∈⟦p⟧≡v₁) = prf -- we need a contradiction
+                                                          -- the idea: find max t₁, where |v₁|≡|t₁| (we need a wellfoundedness lemma of >) then  we have t₁≥v₁>inj-u₁
+                                                          -- how do we know t₁ is recons from the same inj? we don't have to ??  (not sure #1)
+                                                          -- by completeness of pdU[ r , c ], there exist inj' and t₁' such that t₁ ≡ inj' t₁'
+                                                          -- is inj' leftmost? let's assume so (not sure #2)
+                                                          -- by  u→w→max-c∷w-inj-u→maxwu  max-t₁ we have max-t₁'
+                                                          -- by defn of ≥-Max, we have max |t₁'v₂| (pair t₁' v₂)
+                                                          -- by ≥-max-pair-fst-prefix→>2  max (pair t₁' v₂), we have p ⊢ t₁' > u₁
+                                                          -- by ≥-max-pair-fst-prefix→>2  max (pair u₁ u₂), we have p ⊢ u₁ > t₁'
+                                                          -- question: is inj' same as inj? if so, the above will be easier.
+                                                          where
+                                                            t₁-max-|v₁|-t₁ : ∃[ t₁ ] ≥-Max {l} (proj₁ (flat v₁)) t₁
+                                                            t₁-max-|v₁|-t₁ = >-wellfounded {l} {proj₁ (flat v₁)} (proj₂ (flat v₁) )
+                                                            
+                                                            prf :  l ⊢ inj u₁ > inj (unflat w₁∈⟦p⟧) ⊎ inj u₁ ≡ inj (unflat w₁∈⟦p⟧)
+                                                            prf with t₁-max-|v₁|-t₁
+                                                            ... | t₁ , max-|v₁|-t₁ =  {!!}
+                                                              where 
+                                                                
 
+
+                                                -- ... | ≥-max-pres-bd u→w→maxwu→max-c∷w-inj-u u→w→max-c∷w-inj-u→maxwu  with u→w→maxwu→max-c∷w-inj-u u₁ (proj₁ (flat u₁)) max-u₁ 
+                                                -- ...      | ≥-max c∷|u₁| inju₁ _ v→|v|≡c∷|u₁|→inju₁≥v =  v→|v|≡c∷|u₁|→inju₁≥v v₁ {!!}   -- |v₁|≡ c∷|u₁| how do get this? we only have |v₁v₂|≡c∷w≡c∷|u₁u₂|, can we derive another property
 
 
 dom-lemma-weak {p} {l} {r} {loc} {c} {inj} {sound-ev}  (pdi' ∷ pdis') pdU-lc≡pdi-inj∷pdi'∷pdis' sorted u₁ u₂ w max v₁ ¬eq ¬[] first-char-lemma-outer ( v₂ , |v₁v₂|≡c∷w ) =  {!!} 
@@ -1691,7 +1725,7 @@ dom-lemma-weak {p} {l} {r} {loc} {c} {inj} {sound-ev}  (pdi' ∷ pdis') pdU-lc�
 
 
 pdU-≥-max-left-most-pres {ε} {c} {pdi} eq = ⊥-elim (¬nothing≡just eq)
-
+{-
 pdU-≥-max-left-most-pres {$ c' ` loc} {c} {pdinstance inj sound-ev} eq with c' Char.≟ c
 ... | no ¬c'≡c
   rewrite pdU[$c]≡[] ¬c'≡c
@@ -1779,6 +1813,8 @@ pdU-≥-max-left-most-pres {r * ε∉r ` loc} {c} {pdi} eq
   with pdU[ r , c ]
 ... | [] = ⊥-elim (¬nothing≡just eq)
 ... | pdi_r ∷ pdis_r = {!!}
+
+-} 
 {-
   with pdU-≥-max-left-most-pres {r} {c} refl
 ... | ind-hyp-r =

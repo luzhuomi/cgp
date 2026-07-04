@@ -39,8 +39,16 @@ import cgp.lnegen.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; 
   advance-pdi*-with-c ; 
   pdUMany[_,_]; pdUMany-aux ;
-  mkinjLetter ; mkinjLetterSound 
+  mkinjLetter ; mkinjLetterSound ;
+  parseAll[_,_] ; buildU ;
+  pdUMany-complete ; buildU-complete ; buildU-sound
   ) 
+
+import Data.List.Membership.Propositional as Membership
+open Membership using (_∈_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+import Data.List.Membership.Propositional.Properties as MembershipProperties
+open MembershipProperties using (∈-concat⁺′ ; ∈-concat⁻′ ; ∈-map⁺ ; ∈-map⁻)
 
 import cgp.lnegen.Order as Order
 open Order -- TODO: we should only whitelist those are used here 
@@ -60,7 +68,7 @@ import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length ; foldr )
 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ ; ++-assoc )
@@ -79,7 +87,9 @@ import Data.Sum as Sum
 open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 
 import Data.List.Relation.Unary.All as All
-open All using (All ; _∷_ ; [] ; map)
+open All using (All ; _∷_ ; [] ; map ; lookup)
+import Data.List.Relation.Unary.All.Properties as AllProperties
+open AllProperties using (++⁺)
 
 import Relation.Nullary as Nullary
 import Relation.Nullary.Negation using (contradiction; contraposition)
@@ -589,5 +599,153 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
         (proj₁ (flat {r} v₂) ,
           (¬[] ,
             (flat-v≡c∷w , (proj₂ (flat {l} v₁) , proj₂ (flat {r} v₂)))))))   
+
+```
+
+
+```agda
+
+-- extract-any turns an Any proof into the witnessing element, the proof it satisfies P,
+-- and the membership evidence. Used to extract a reconstructing PDInstance* from
+-- pdUMany-complete.
+extract-any : ∀ {A : Set} {P : A → Set} {xs : List A}
+  → Any P xs
+  → ∃[ x ] (P x × x ∈ xs)
+extract-any (here px) = _ , px , here refl
+extract-any (there p) with extract-any p
+... | x , px , x∈xs = x , px , there x∈xs
+
+-- parseAll-complete: every parse tree u for w occurs in parseAll[ r , w ].
+-- Proof: pdUMany-complete gives a PDInstance* that reconstructs u; buildU-complete
+-- shows u is built by that PDInstance*; map and concat membership lift this to parseAll.
+parseAll-complete : ∀ {r : RE} {w : List Char} (u : U r)
+  → proj₁ (flat u) ≡ w
+  → u ∈ parseAll[ r , w ]
+parseAll-complete {r} {w} u flat-u≡w =
+  subst (λ x → u ∈ parseAll[ r , x ]) flat-u≡w helper
+  where
+    helper : u ∈ parseAll[ r , proj₁ (flat u) ]
+    helper
+      with extract-any (pdUMany-complete u)
+    ... | pdi , recons*-u-pdi , pdi∈pdUMany =
+      ∈-concat⁺′ (buildU-complete u pdi recons*-u-pdi) (∈-map⁺ buildU pdi∈pdUMany)
+
+-- parseAll-sound: every element of parseAll[ r , w ] flattens to w.
+-- Proof: each buildU pdi only contains trees flattening to w (buildU-sound), and
+-- parseAll is a concatenation of such buildU results.
+parseAll-sound : ∀ {r : RE} {w : List Char} (u : U r)
+  → u ∈ parseAll[ r , w ]
+  → proj₁ (flat u) ≡ w
+parseAll-sound {r} {w} u u∈parseAll
+  with ∈-concat⁻′ (List.map buildU (pdUMany[ r , w ])) u∈parseAll
+... | ys , u∈ys , ys∈map-buildU-pdUMany
+  with ∈-map⁻ buildU ys∈map-buildU-pdUMany
+... | pdi , pdi∈pdUMany , ys≡buildU-pdi =
+  lookup (buildU-sound pdi) (subst (λ zs → u ∈ zs) ys≡buildU-pdi u∈ys)
+
+-- parseAll-nonempty: if w ∈⟦ r ⟧ then parseAll[ r , w ] is non-empty.
+-- Proof: unflat w∈r is a parse tree for w, and parseAll-complete puts it in the list.
+parseAll-nonempty : ∀ {r : RE} {w : List Char}
+  → w ∈⟦ r ⟧
+  → parseAll[ r , w ] ≢ []
+parseAll-nonempty {r} {w} w∈r = extract-nonempty (parseAll-complete (unflat w∈r) flat-unflat≡w)
+  where
+    flat-unflat≡w : proj₁ (flat (unflat w∈r)) ≡ w
+    flat-unflat≡w = cong proj₁ (flat∘unflat w∈r)
+
+    extract-nonempty : ∀ {A : Set} {x : A} {xs : List A} → x ∈ xs → xs ≢ []
+    extract-nonempty (here refl) ()
+    extract-nonempty (there p) = λ ()
+
+-- pick returns the greater of two parse trees according to the total LNE order.
+pick : ∀ {r : RE} → U r → U r → U r
+pick v best
+  with >-trichotomy best v
+... | inj₁ best>v   = best
+... | inj₂ (inj₁ v>best) = v
+... | inj₂ (inj₂ best≡v) = best
+
+-- pick preserves the flattened word: if both candidates flatten to w, so does the pick.
+pick-preserves-flat : ∀ {r : RE} {w : List Char} (v best : U r)
+  → proj₁ (flat v) ≡ w
+  → proj₁ (flat best) ≡ w
+  → proj₁ (flat (pick v best)) ≡ w
+pick-preserves-flat v best flat-v≡w flat-best≡w
+  with >-trichotomy best v
+... | inj₁ best>v = flat-best≡w
+... | inj₂ (inj₁ v>best) = flat-v≡w
+... | inj₂ (inj₂ best≡v) = flat-best≡w
+
+-- maximum selects the largest element of a non-empty list of parse trees using foldr
+-- and the total LNE order. Used to obtain the maximal parse tree from parseAll.
+maximum : ∀ {r : RE} (us : List (U r)) → us ≢ [] → U r
+maximum [] neq = ⊥-elim (neq refl)
+maximum (u ∷ us) neq = foldr pick u us
+
+-- parseAll-all-sound: every element of parseAll[ r , w ] flattens to w.
+parseAll-all-sound : ∀ {r : RE} {w : List Char}
+  → All (λ u → proj₁ (flat u) ≡ w) (parseAll[ r , w ])
+parseAll-all-sound {r} {w} =
+  all-buildU-sound (pdUMany[ r , w ])
+  where
+    all-buildU-sound : (pdis : List (PDInstance* r w))
+      → All (λ u → proj₁ (flat u) ≡ w) (concatMap buildU pdis)
+    all-buildU-sound [] = []
+    all-buildU-sound (pdi ∷ pdis) = ++⁺ (buildU-sound pdi) (all-buildU-sound pdis)
+
+-- maximum-flat: if all elements of a non-empty list flatten to w, so does their maximum.
+maximum-flat : ∀ {r : RE} {w : List Char} (us : List (U r)) (neq : us ≢ [])
+  → All (λ u → proj₁ (flat u) ≡ w) us
+  → proj₁ (flat (maximum us neq)) ≡ w
+maximum-flat {r} {w} [] neq _ = ⊥-elim (neq refl)
+maximum-flat {r} {w} (u ∷ us) neq all-flat = foldr-flat u us all-flat
+  where
+    foldr-flat : (u : U r) (us : List (U r))
+      → All (λ u → proj₁ (flat u) ≡ w) (u ∷ us)
+      → proj₁ (flat (foldr pick u us)) ≡ w
+    foldr-flat u [] (flat-u≡w ∷ []) = flat-u≡w
+    foldr-flat u (v ∷ us) (flat-u≡w ∷ flat-v≡w ∷ all-flat) =
+      pick-preserves-flat v (foldr pick u us)
+        flat-v≡w
+        (foldr-flat u us (flat-u≡w ∷ all-flat))
+
+-- maximum-≥-all: the element returned by maximum is ≥ every element of the list.
+maximum-≥-all : ∀ {r : RE} (us : List (U r)) (neq : us ≢ []) (v : U r)
+  → v ∈ us
+  → r ⊢ maximum us neq ≥ v
+maximum-≥-all [] neq _ _ = ⊥-elim (neq refl)
+maximum-≥-all {r} (u ∷ us) neq v v∈ = foldr-≥ u us v v∈
+  where
+    foldr-≥ : (u : U r) (us : List (U r)) (v : U r)
+      → v ∈ (u ∷ us)
+      → r ⊢ foldr pick u us ≥ v
+    foldr-≥ u [] .u (here refl) = ≥-refl
+    foldr-≥ u [] v (there ())
+    foldr-≥ u (w ∷ us) .u (here refl)
+      with >-trichotomy (foldr pick u us) w
+    ... | inj₁ best>w = foldr-≥ u us u (here refl)
+    ... | inj₂ (inj₁ w>best) = ≥-trans (inj₁ w>best) (foldr-≥ u us u (here refl))
+    ... | inj₂ (inj₂ best≡w) = foldr-≥ u us u (here refl)
+    foldr-≥ u (w ∷ us) .w (there (here refl))
+      with >-trichotomy (foldr pick u us) w
+    ... | inj₁ best>w = inj₁ best>w
+    ... | inj₂ (inj₁ w>best) = ≥-refl
+    ... | inj₂ (inj₂ best≡w) = inj₂ best≡w
+    foldr-≥ u (w ∷ us) v (there (there v∈''))
+      with >-trichotomy (foldr pick u us) w
+    ... | inj₁ best>w = foldr-≥ u us v (there v∈'')
+    ... | inj₂ (inj₁ w>best) = ≥-trans (inj₁ w>best) (foldr-≥ u us v (there v∈''))
+    ... | inj₂ (inj₂ best≡w) = foldr-≥ u us v (there v∈'')
+
+-- >-wellfounded: every word w ∈⟦ r ⟧ has a ≥-Max parse tree under the LNE order.
+-- Proof: enumerate all parse trees with parseAll, take their maximum using the total
+-- order, and use parseAll-completeness to show every competitor appears in the list.
+>-wellfounded : ∀ { r : RE} { w : List Char }
+  → w ∈⟦ r ⟧
+  → ∃[ v ] ( ≥-Max {r}  w v )
+>-wellfounded {r} {w} w∈r =
+  let v = maximum (parseAll[ r , w ]) (parseAll-nonempty w∈r)
+  in v , ≥-max w v (maximum-flat _ _ (parseAll-all-sound {r} {w}))
+       (λ u flat-u≡w → maximum-≥-all _ _ u (parseAll-complete u flat-u≡w))
 
 ```

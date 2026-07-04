@@ -63,7 +63,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   )
 
 import cgp.posix.RelatedWorkCUrban as RelatedWorkCUrban
-open RelatedWorkCUrban  using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦→⇒*-go ; ∈⟦→⇒●-go ; *-fb ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* ; find-longest-split ; NoShorter ; ∈⟦→⇒-ε ; ∈⟦→⇒-$ ; plus-right-member ; plus-right-∈⟦→⇒ ; ⇒-member ; ⇒→>-max ; >-anti-sym )
+open RelatedWorkCUrban  using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦→⇒*-go ; ∈⟦→⇒●-go ; *-fb ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* ; find-longest-split ; NoShorter ; ∈⟦→⇒-ε ; ∈⟦→⇒-$ ; plus-right-member ; plus-right-∈⟦→⇒ ; ⇒-member ; ⇒→>-max ; >-anti-sym ; >-max→⇒ ; intersect-memberʳ ; >→¬< )
 
 import Data.Char as Char
 open Char using (Char )
@@ -2402,18 +2402,36 @@ r⇒u→u≼v {w} {r} u w⇒u v flat-v≡w =
 
 ```
 
-Theorem 15 
+Theorem 15  from C Urban POSIX Lexing with Derivatives of Regular Expressions
 
 ```agda
 
 ¬v≺u→r⇒u : ∀ { w : List Char } { r : RE }
   → ( u : U r )
   → ( proj₁ (flat u)) ≡ w
-  → ( v : U r )
-  → ( proj₁ (flat v)) ≡ w
-  → ¬ ( r ⊢ v ≺ u )
+  → ( ( v : U r )
+    → ( proj₁ (flat v)) ≡ w
+    → ¬ ( r ⊢ v ≺ u ) )
   → w , r ⇒ u
-  
-¬v≺u→r⇒u = ? 
+¬v≺u→r⇒u {w} {r} u flat-u≡w all¬v≺u =
+  subst (λ x → w , r ⇒ x) (sym u≡umin) w⇒umin
+  where
+    w∈r : w ∈⟦ r ⟧
+    w∈r = subst (λ x → x ∈⟦ r ⟧) flat-u≡w (proj₂ (flat u))
+
+    result = ≼-wellfounded w∈r
+    umin = proj₁ result
+    w⇒umin = proj₁ (proj₂ result)
+    flat-umin≡w = proj₁ (proj₂ (proj₂ result))
+    wf = proj₂ (proj₂ (proj₂ result))
+
+    umin≼u : r ⊢ umin ≼ u
+    umin≼u = wf u flat-u≡w
+
+    u≡umin : u ≡ umin
+    u≡umin with umin≼u
+    ... | inj₂ umin≡u = sym umin≡u
+    ... | inj₁ umin≺u = ⊥-elim (all¬v≺u umin flat-umin≡w umin≺u)
+
 
 ```

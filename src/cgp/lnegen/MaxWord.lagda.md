@@ -39,11 +39,12 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 
 
 import cgp.lnegen.PartialDerivative as PartialDerivative
-open PartialDerivative using ( pdU[_,_] ; 
+open PartialDerivative using ( pdU[_,_] ;  pdU-complete ; 
   advance-pdi*-with-c ; 
   pdUMany[_,_]; pdUMany-aux ;
   mkinjLetter ; mkinjLetterSound ;
-  pdU-complete
+  parseAll[_,_] ; buildU ;
+  pdUMany-complete ; buildU-complete ; buildU-sound 
   ) 
 
 import cgp.lnegen.Order as Order
@@ -72,15 +73,19 @@ import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length ; foldr )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ ; ++-assoc )
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ ; ++-assoc ; ∷-injective )
 
 open import Data.List.Relation.Unary.Any using (Any; here; there ; map)
 
 import Data.List.Membership.Propositional as Membership
 open Membership using (_∈_)
+
+import Data.List.Membership.Propositional.Properties as MembershipProperties
+open MembershipProperties using (∈-concat⁺′ ; ∈-concat⁻′ ; ∈-map⁺ ; ∈-map⁻)
+
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; trans; sym; cong; cong₂; cong-app; subst)
@@ -95,7 +100,9 @@ import Data.Sum as Sum
 open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 
 import Data.List.Relation.Unary.All as All
-open All using (All ; _∷_ ; [] ; map)
+open All using (All ; _∷_ ; [] ; map ; lookup )
+import Data.List.Relation.Unary.All.Properties as AllProperties
+open AllProperties using (++⁺)
 
 import Relation.Nullary as Nullary
 import Relation.Nullary.Negation using (contradiction; contraposition)
@@ -1595,18 +1602,175 @@ dom-lemma {inj = inj} {sound-ev} (pdi' ∷ pdis') pdU≡ sorted u₁ u₂ w max 
 -} 
 
 
+
+-- ------ >-wellfounded lemma ----------------------
+
+-- extract-any turns an Any proof into the witnessing element, the proof it satisfies P,
+-- and the membership evidence. Used to extract a reconstructing PDInstance* from
+-- pdUMany-complete.
+extract-any : ∀ {A : Set} {P : A → Set} {xs : List A}
+  → Any P xs
+  → ∃[ x ] (P x × x ∈ xs)
+extract-any (here px) = _ , px , here refl
+extract-any (there p) with extract-any p
+... | x , px , x∈xs = x , px , there x∈xs
+
+-- parseAll-complete: every parse tree u for w occurs in parseAll[ r , w ].
+-- Proof: pdUMany-complete gives a PDInstance* that reconstructs u; buildU-complete
+-- shows u is built by that PDInstance*; map and concat membership lift this to parseAll.
+parseAll-complete : ∀ {r : RE} {w : List Char} (u : U r)
+  → proj₁ (flat u) ≡ w
+  → u ∈  (parseAll[ r , w ] )
+parseAll-complete {r} {w} u flat-u≡w =
+  subst (λ x → u ∈ parseAll[ r , x ]) flat-u≡w helper
+  where
+    helper : u ∈ parseAll[ r , proj₁ (flat u) ]
+    helper
+      with extract-any (pdUMany-complete u)
+    ... | pdi , recons*-u-pdi , pdi∈pdUMany =
+      ∈-concat⁺′ (buildU-complete u pdi recons*-u-pdi) (∈-map⁺ buildU pdi∈pdUMany)
+
+-- parseAll-sound: every element of parseAll[ r , w ] flattens to w.
+-- Proof: each buildU pdi only contains trees flattening to w (buildU-sound), and
+-- parseAll is a concatenation of such buildU results.
+parseAll-sound : ∀ {r : RE} {w : List Char} (u : U r)
+  → u ∈ parseAll[ r , w ]
+  → proj₁ (flat u) ≡ w
+parseAll-sound {r} {w} u u∈parseAll
+  with ∈-concat⁻′ (List.map buildU (pdUMany[ r , w ])) u∈parseAll
+... | ys , u∈ys , ys∈map-buildU-pdUMany
+  with ∈-map⁻ buildU ys∈map-buildU-pdUMany
+... | pdi , pdi∈pdUMany , ys≡buildU-pdi =
+  lookup (buildU-sound pdi) (subst (λ zs → u ∈ zs) ys≡buildU-pdi u∈ys)
+
+-- parseAll-nonempty: if w ∈⟦ r ⟧ then parseAll[ r , w ] is non-empty.
+-- Proof: unflat w∈r is a parse tree for w, and parseAll-complete puts it in the list.
+parseAll-nonempty : ∀ {r : RE} {w : List Char}
+  → w ∈⟦ r ⟧
+  → parseAll[ r , w ] ≢ []
+parseAll-nonempty {r} {w} w∈r = extract-nonempty (parseAll-complete (unflat w∈r) flat-unflat≡w)
+  where
+    flat-unflat≡w : proj₁ (flat (unflat w∈r)) ≡ w
+    flat-unflat≡w = cong proj₁ (flat∘unflat w∈r)
+
+    extract-nonempty : ∀ {A : Set} {x : A} {xs : List A} → x ∈ xs → xs ≢ []
+    extract-nonempty (here refl) ()
+    extract-nonempty (there p) = λ ()
+
+-- pick returns the greater of two parse trees according to the total LNE order.
+pick : ∀ {r : RE} → U r → U r → U r
+pick v best
+  with >-trichotomy best v
+... | inj₁ best>v   = best
+... | inj₂ (inj₁ v>best) = v
+... | inj₂ (inj₂ best≡v) = best
+
+-- pick preserves the flattened word: if both candidates flatten to w, so does the pick.
+pick-preserves-flat : ∀ {r : RE} {w : List Char} (v best : U r)
+  → proj₁ (flat v) ≡ w
+  → proj₁ (flat best) ≡ w
+  → proj₁ (flat (pick v best)) ≡ w
+pick-preserves-flat v best flat-v≡w flat-best≡w
+  with >-trichotomy best v
+... | inj₁ best>v = flat-best≡w
+... | inj₂ (inj₁ v>best) = flat-v≡w
+... | inj₂ (inj₂ best≡v) = flat-best≡w
+
+-- maximum selects the largest element of a non-empty list of parse trees using foldr
+-- and the total LNE order. Used to obtain the maximal parse tree from parseAll.
+maximum : ∀ {r : RE} (us : List (U r)) → us ≢ [] → U r
+maximum [] neq = ⊥-elim (neq refl)
+maximum (u ∷ us) neq = foldr pick u us
+
+-- parseAll-all-sound: every element of parseAll[ r , w ] flattens to w.
+parseAll-all-sound : ∀ {r : RE} {w : List Char}
+  → All (λ u → proj₁ (flat u) ≡ w) (parseAll[ r , w ])
+parseAll-all-sound {r} {w} =
+  all-buildU-sound (pdUMany[ r , w ])
+  where
+    all-buildU-sound : (pdis : List (PDInstance* r w))
+      → All (λ u → proj₁ (flat u) ≡ w) (concatMap buildU pdis)
+    all-buildU-sound [] = []
+    all-buildU-sound (pdi ∷ pdis) = ++⁺ (buildU-sound pdi) (all-buildU-sound pdis)
+
+-- maximum-flat: if all elements of a non-empty list flatten to w, so does their maximum.
+maximum-flat : ∀ {r : RE} {w : List Char} (us : List (U r)) (neq : us ≢ [])
+  → All (λ u → proj₁ (flat u) ≡ w) us
+  → proj₁ (flat (maximum us neq)) ≡ w
+maximum-flat {r} {w} [] neq _ = ⊥-elim (neq refl)
+maximum-flat {r} {w} (u ∷ us) neq all-flat = foldr-flat u us all-flat
+  where
+    foldr-flat : (u : U r) (us : List (U r))
+      → All (λ u → proj₁ (flat u) ≡ w) (u ∷ us)
+      → proj₁ (flat (foldr pick u us)) ≡ w
+    foldr-flat u [] (flat-u≡w ∷ []) = flat-u≡w
+    foldr-flat u (v ∷ us) (flat-u≡w ∷ flat-v≡w ∷ all-flat) =
+      pick-preserves-flat v (foldr pick u us)
+        flat-v≡w
+        (foldr-flat u us (flat-u≡w ∷ all-flat))
+
+-- maximum-≥-all: the element returned by maximum is ≥ every element of the list.
+maximum-≥-all : ∀ {r : RE} (us : List (U r)) (neq : us ≢ []) (v : U r)
+  → v ∈ us
+  → r ⊢ maximum us neq ≥ v
+maximum-≥-all [] neq _ _ = ⊥-elim (neq refl)
+maximum-≥-all {r} (u ∷ us) neq v v∈ = foldr-≥ u us v v∈
+  where
+    foldr-≥ : (u : U r) (us : List (U r)) (v : U r)
+      → v ∈ (u ∷ us)
+      → r ⊢ foldr pick u us ≥ v
+    foldr-≥ u [] .u (here refl) = ≥-refl
+    foldr-≥ u [] v (there ())
+    foldr-≥ u (w ∷ us) .u (here refl)
+      with >-trichotomy (foldr pick u us) w
+    ... | inj₁ best>w = foldr-≥ u us u (here refl)
+    ... | inj₂ (inj₁ w>best) = ≥-trans (inj₁ w>best) (foldr-≥ u us u (here refl))
+    ... | inj₂ (inj₂ best≡w) = foldr-≥ u us u (here refl)
+    foldr-≥ u (w ∷ us) .w (there (here refl))
+      with >-trichotomy (foldr pick u us) w
+    ... | inj₁ best>w = inj₁ best>w
+    ... | inj₂ (inj₁ w>best) = ≥-refl
+    ... | inj₂ (inj₂ best≡w) = inj₂ best≡w
+    foldr-≥ u (w ∷ us) v (there (there v∈''))
+      with >-trichotomy (foldr pick u us) w
+    ... | inj₁ best>w = foldr-≥ u us v (there v∈'')
+    ... | inj₂ (inj₁ w>best) = ≥-trans (inj₁ w>best) (foldr-≥ u us v (there v∈''))
+    ... | inj₂ (inj₂ best≡w) = foldr-≥ u us v (there v∈'')
+
+-- >-wellfounded: every word w ∈⟦ r ⟧ has a ≥-Max parse tree under the LNE order.
+-- Proof: enumerate all parse trees with parseAll, take their maximum using the total
+-- order, and use parseAll-completeness to show every competitor appears in the list.
 >-wellfounded : ∀ { r : RE} { w : List Char }
   → w ∈⟦ r ⟧
   → ∃[ v ] ( ≥-Max {r}  w v )
->-wellfounded {r} {w} w∈⟦r⟧ = {!!}
+>-wellfounded {r} {w} w∈r =
+  let v = maximum (parseAll[ r , w ]) (parseAll-nonempty w∈r)
+  in v , ≥-max w v (maximum-flat _ _ (parseAll-all-sound {r} {w}))
+       (λ u flat-u≡w → maximum-≥-all _ _ u (parseAll-complete u flat-u≡w))
 
-
+-- counter example
+-- r = a + a ● b
+-- c = 'a'
+-- w = '"b"
+-- pdU[ r , 'a' ] = [ left-pdi , right-pdi ] 
+-- left pdi can only reconstruct Left 'a'
+-- then 
 pdU-complete-max : ∀ { r : RE  } { c : Char } { w : List Char }
   → ( u : U r )
   → ( proj₁ (flat {r} u) ≡ c ∷ w )
   → ≥-Max {r} (c ∷ w) u
-  → ∃[ pdi ] ∃[ pdis ] ( pdU[ r , c ] ≡ pdi ∷ pdis × (Recons {r} {c} u) pdi)
-pdU-complete-max = {!!}   
+  → ∃[ pdi ] ∃[ pdis ] ( pdU[ r , c ] ≡ pdi ∷ pdis ) × (Recons {r} {c} u pdi)
+pdU-complete-max = {!!}
+
+
+
+recons-cong : ∀ { r : RE } { c : Char }
+   { p : PDInstance r c } { q : PDInstance r c }
+   → p ≡ q
+   → ( u : U r )
+   → Recons {r} u p 
+   → Recons {r} u q
+recons-cong = {!!}    
 
 
 -- dom-lemma-weak and pdU-≥-max-left-most-pres are mutually recursive .
@@ -1634,6 +1798,8 @@ dom-lemma-weak : ∀ {p l r loc c} {inj : U p → U l} {sound-ev}
   --  v₁ > inj u, i.e. inj v₁' > inj u from the ← direction of ≥-Max-preserve inj,
   --       we have v₁' is max, by ≥-max-pair-fst-prefix→>2 we have v₁' > u which leads to a contradiction 
 
+-- this is too weak.. we have the same issue with the counter example to pdU-complete-max
+-- shouldn't this be all? not really, provided we eliminate the overlapping w.
 pdU-≥-max-left-most-pres : ∀ { r : RE } { c : Char }
   → {pdi : PDInstance r c}
   → head pdU[ r , c ] ≡ just pdi
@@ -1644,80 +1810,132 @@ dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡p
   max@(≥-max .(w) (PairU .u₁ .u₂) |u₁u₂|≡w v→|v|≡w→pair-u₁u₂≥v) v₁ ¬eq ¬[] first-char-lemma-outer ( v₂ , |v₁v₂|≡c∷w )
   with first-char-lemma (proj₁ (flat v₁)) ¬[] first-char-lemma-outer
 ... | cs₁ , eq  with pdU-complete v₁ eq
-...               | v₁∈pdU rewrite pdU-lc≡pdi-inj∷[] with v₁∈pdU
-...                                      |  there v₁∈pdis  = ⊥-elim (¬Any[] v₁∈pdis)
-...                                      |  here (recons .v₁ ( w₁∈⟦p⟧ , inj∘unflatw₁∈⟦p⟧≡v₁ ))
-                                            = inju₁≥v₁
-                                              -- unflat w₁∈⟦p⟧ is v₁'
-                                              where
-                                                pdi-inj-sev-max-pres :  ≥-Max-Preserve-Bd (pdinstance inj sound-ev)
-                                                pdi-inj-sev-max-pres rewrite pdU-lc≡pdi-inj∷[] = pdU-≥-max-left-most-pres {!!} -- this hole should be easy  
-                                                c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂| : ( c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂))))  ≡ (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
-                                                c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂| =
-                                                  begin
-                                                    c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)))
-                                                  ≡⟨⟩ 
-                                                   c ∷ ((proj₁ (flat (unflat w₁∈⟦p⟧))) ++ (proj₁ (flat v₂)))
-                                                  ≡⟨⟩ 
-                                                   (c ∷ (proj₁ (flat (unflat w₁∈⟦p⟧)))) ++ (proj₁ (flat v₂))
-                                                  ≡⟨ cong (λ x → x ++ (proj₁ (flat v₂))) (sym ( sound-ev (unflat w₁∈⟦p⟧) ) ) ⟩
-                                                   (proj₁ (flat (inj (unflat w₁∈⟦p⟧) ))) ++ (proj₁ (flat v₂))
-                                                  ≡⟨ cong (λ x → (proj₁ (flat x)) ++ (proj₁ (flat v₂))) inj∘unflatw₁∈⟦p⟧≡v₁ ⟩ 
-                                                   (proj₁ (flat v₁)) ++ (proj₁ (flat v₂))                                                  
-                                                  ≡⟨⟩ 
-                                                   proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) 
-                                                  ∎
-                                                |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂| :  proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)))
-                                                |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂| = sym c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂|
-                                                |pair-unflatw₁∈⟦p⟧-v₂|≡w : proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)) ≡ w 
-                                                |pair-unflatw₁∈⟦p⟧-v₂|≡w = proj₂ (Utils.∷-inj (trans (sym |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂|) |v₁v₂|≡c∷w)) 
-                                                u₁≥unflatw₁∈⟦p⟧ : p ⊢ u₁ ≥ (unflat w₁∈⟦p⟧)
-                                                u₁≥unflatw₁∈⟦p⟧ = ≥-max-pair-fst-prefix→>2 {p} {r} {loc} u₁ u₂ (≥-max (proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))) (PairU u₁ u₂) refl prf₁)  (unflat w₁∈⟦p⟧) v₂ prf₂ 
-                                                  where
-                                                    prf₁ : ∀ (v : U (p ● r ` loc))
-                                                           → proj₁ (flat v) ≡ proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))
-                                                           → (p ● r ` loc) ⊢ PairU u₁ u₂ ≥ v
-                                                    prf₁ rewrite  |u₁u₂|≡w = v→|v|≡w→pair-u₁u₂≥v
-                                                    prf₂ : proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)) ≡ proj₁ (flat (PairU {p} {r} {loc} u₁ u₂)) 
-                                                    prf₂ rewrite  |u₁u₂|≡w  =  |pair-unflatw₁∈⟦p⟧-v₂|≡w
-                                                max-u₁ :  ≥-Max {p} (proj₁ (flat u₁)) u₁ 
-                                                max-u₁ = ≥-max-pair-fst-prefix→>3 {p} {r} {loc} u₁ u₂ max-pair-u₁u₂ 
-                                                  where
-                                                    v→|v|≡|u₁u₂|→pair-u₁u₂≥v : (v : U (p ● r ` loc))
-                                                        → proj₁ (flat v) ≡ proj₁ (flat (PairU  {p} {r} {loc} u₁ u₂))
-                                                        → (p ● r ` loc) ⊢ PairU u₁ u₂ ≥ v
-                                                    v→|v|≡|u₁u₂|→pair-u₁u₂≥v  rewrite |u₁u₂|≡w =  v→|v|≡w→pair-u₁u₂≥v 
-                                                    max-pair-u₁u₂ : ≥-Max (proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))) (PairU u₁ u₂) 
-                                                    max-pair-u₁u₂  = ≥-max (proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))) (PairU u₁ u₂) refl v→|v|≡|u₁u₂|→pair-u₁u₂≥v 
+...   | v₁∈pdU rewrite pdU-lc≡pdi-inj∷[] with v₁∈pdU
+...     | there v₁∈pdis  = ⊥-elim (¬Any[] v₁∈pdis)
+...     | here (recons .v₁ ( w₁∈⟦p⟧ , inj∘unflatw₁∈⟦p⟧≡v₁ )) = inju₁≥v₁
+           -- unflat w₁∈⟦p⟧ is v₁'
+           where
+             pdi-inj-sev-max-pres :  ≥-Max-Preserve-Bd (pdinstance inj sound-ev)
+             pdi-inj-sev-max-pres rewrite pdU-lc≡pdi-inj∷[] = pdU-≥-max-left-most-pres {!!} -- this hole should be easy  
 
-                                                inju₁≥v₁ : l ⊢ inj u₁ ≥ v₁
-                                                inju₁≥v₁ with pdi-inj-sev-max-pres
-                                                ... | ≥-max-pres-bd u→w→maxwu→max-c∷w-inj-u u→w→max-c∷w-inj-u→maxwu  with >-trichotomy (inj u₁) v₁
-                                                ...      | inj₁ inj-u₁>v₁        = inj₁ inj-u₁>v₁
-                                                ...      | inj₂ (inj₂ inj-u₁≡v₁) = inj₂ inj-u₁≡v₁
-                                                ...      | inj₂ (inj₁ v₁>inj-u₁) rewrite (sym inj∘unflatw₁∈⟦p⟧≡v₁) = prf -- we need a contradiction
-                                                          -- the idea: find max t₁, where |v₁|≡|t₁| (we need a wellfoundedness lemma of >) then  we have t₁≥v₁>inj-u₁
-                                                          -- how do we know t₁ is recons from the same inj? we don't have to ??  (not sure #1)
-                                                          -- by completeness of pdU[ r , c ], there exist inj' and t₁' such that t₁ ≡ inj' t₁'
-                                                          -- is inj' leftmost? let's assume so (not sure #2)
-                                                          -- by  u→w→max-c∷w-inj-u→maxwu  max-t₁ we have max-t₁'
-                                                          -- by defn of ≥-Max, we have max |t₁'v₂| (pair t₁' v₂)
-                                                          -- by ≥-max-pair-fst-prefix→>2  max (pair t₁' v₂), we have p ⊢ t₁' > u₁
-                                                          -- by ≥-max-pair-fst-prefix→>2  max (pair u₁ u₂), we have p ⊢ u₁ > t₁'
-                                                          -- question: is inj' same as inj? if so, the above will be easier.
-                                                          where
-                                                            t₁-max-|v₁|-t₁ : ∃[ t₁ ] ≥-Max {l} (proj₁ (flat v₁)) t₁
-                                                            t₁-max-|v₁|-t₁ = >-wellfounded {l} {proj₁ (flat v₁)} (proj₂ (flat v₁) )
+             c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂| : ( c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂))))  ≡ (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+             c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂| =
+                begin
+                  c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)))
+                ≡⟨⟩ 
+                  c ∷ ((proj₁ (flat (unflat w₁∈⟦p⟧))) ++ (proj₁ (flat v₂)))
+                ≡⟨⟩ 
+                  (c ∷ (proj₁ (flat (unflat w₁∈⟦p⟧)))) ++ (proj₁ (flat v₂))
+                ≡⟨ cong (λ x → x ++ (proj₁ (flat v₂))) (sym ( sound-ev (unflat w₁∈⟦p⟧) ) ) ⟩
+                  (proj₁ (flat (inj (unflat w₁∈⟦p⟧) ))) ++ (proj₁ (flat v₂))
+                ≡⟨ cong (λ x → (proj₁ (flat x)) ++ (proj₁ (flat v₂))) inj∘unflatw₁∈⟦p⟧≡v₁ ⟩ 
+                  (proj₁ (flat v₁)) ++ (proj₁ (flat v₂))                                                  
+                ≡⟨⟩ 
+                  proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) 
+                ∎
+             |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂| :  proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ c ∷ (proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)))
+             |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂| = sym c∷|pair-unflatw₁∈⟦p⟧-v₂|≡|pairv₁v₂|
+
+             |pair-unflatw₁∈⟦p⟧-v₂|≡w : proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)) ≡ w 
+             |pair-unflatw₁∈⟦p⟧-v₂|≡w = proj₂ (Utils.∷-inj (trans (sym |pairv₁v₂|≡c∷|pair-unflatw₁∈⟦p⟧-v₂|) |v₁v₂|≡c∷w)) 
+
+             u₁≥unflatw₁∈⟦p⟧ : p ⊢ u₁ ≥ (unflat w₁∈⟦p⟧)
+             u₁≥unflatw₁∈⟦p⟧ = ≥-max-pair-fst-prefix→>2 {p} {r} {loc} u₁ u₂ (≥-max (proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))) (PairU u₁ u₂) refl prf₁)  (unflat w₁∈⟦p⟧) v₂ prf₂ 
+               where
+                 prf₁ : ∀ (v : U (p ● r ` loc))
+                      → proj₁ (flat v) ≡ proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))
+                      → (p ● r ` loc) ⊢ PairU u₁ u₂ ≥ v
+                 prf₁ rewrite  |u₁u₂|≡w = v→|v|≡w→pair-u₁u₂≥v
+                 prf₂ : proj₁ (flat (PairU {p} {r} {loc} (unflat w₁∈⟦p⟧) v₂)) ≡ proj₁ (flat (PairU {p} {r} {loc} u₁ u₂)) 
+                 prf₂ rewrite  |u₁u₂|≡w  =  |pair-unflatw₁∈⟦p⟧-v₂|≡w
+                 max-u₁ :  ≥-Max {p} (proj₁ (flat u₁)) u₁ 
+                 max-u₁ = ≥-max-pair-fst-prefix→>3 {p} {r} {loc} u₁ u₂ max-pair-u₁u₂ 
+                   where
+                     v→|v|≡|u₁u₂|→pair-u₁u₂≥v : (v : U (p ● r ` loc))
+                                              → proj₁ (flat v) ≡ proj₁ (flat (PairU  {p} {r} {loc} u₁ u₂))
+                                              → (p ● r ` loc) ⊢ PairU u₁ u₂ ≥ v
+                     v→|v|≡|u₁u₂|→pair-u₁u₂≥v  rewrite |u₁u₂|≡w =  v→|v|≡w→pair-u₁u₂≥v 
+                     max-pair-u₁u₂ : ≥-Max (proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))) (PairU u₁ u₂) 
+                     max-pair-u₁u₂  = ≥-max (proj₁ (flat (PairU {p} {r} {loc} u₁ u₂))) (PairU u₁ u₂) refl v→|v|≡|u₁u₂|→pair-u₁u₂≥v 
+
+             inju₁≥v₁ : l ⊢ inj u₁ ≥ v₁
+             inju₁≥v₁ with pdi-inj-sev-max-pres
+             ... | ≥-max-pres-bd u→w→maxwu→max-c∷w-inj-u u→w→max-c∷w-inj-u→maxwu  with >-trichotomy (inj u₁) v₁
+             ...      | inj₁ inj-u₁>v₁        = inj₁ inj-u₁>v₁
+             ...      | inj₂ (inj₂ inj-u₁≡v₁) = inj₂ inj-u₁≡v₁
+             ...      | inj₂ (inj₁ v₁>inj-u₁) rewrite (sym inj∘unflatw₁∈⟦p⟧≡v₁) = prf -- we need a contradiction
+                        -- the idea: find t₁, where |v₁|≡|t₁| and max t₁ (we need a wellfoundedness lemma of >) then  we have t₁≥v₁>inj-u₁
+                        -- how do we know t₁ is recons from the same inj? we don't have to ??  (not sure #1)
+                        -- by completeness of pdU[ r , c ], there exist inj' and t₁' such that t₁ ≡ inj' t₁'
+                        -- is inj' leftmost? let's assume so (not sure #2)
+                        -- by  u→w→max-c∷w-inj-u→maxwu  max-t₁ we have max-t₁' (here)
+                        -- by defn of ≥-Max, we have max |t₁'v₂| (pair t₁' v₂)
+                        -- by ≥-max-pair-fst-prefix→>2  max (pair t₁' v₂), we have p ⊢ t₁' > u₁
+                        -- by ≥-max-pair-fst-prefix→>2  max (pair u₁ u₂), we have p ⊢ u₁ > t₁'
+                        -- question: is inj' same as inj? if so, the above will be easier.
+                        where
+                          t₁-max-|v₁|-t₁ : ∃[ t₁ ] ≥-Max {l} (proj₁ (flat v₁)) t₁                  -- found t₁ which is amx 
+                          t₁-max-|v₁|-t₁ = >-wellfounded {l} {proj₁ (flat v₁)} (proj₂ (flat v₁) )
+
                                                             
-                                                            prf :  l ⊢ inj u₁ > inj (unflat w₁∈⟦p⟧) ⊎ inj u₁ ≡ inj (unflat w₁∈⟦p⟧)
-                                                            prf with t₁-max-|v₁|-t₁
-                                                            ... | t₁ , max-|v₁|-t₁ =  {!!}
-                                                              where 
+                          prf :  l ⊢ inj u₁ > inj (unflat w₁∈⟦p⟧) ⊎ inj u₁ ≡ inj (unflat w₁∈⟦p⟧)   -- inj (unflat w₁∈⟦p⟧ ≡ v₁
+                          prf with t₁-max-|v₁|-t₁
+                          ... | t₁ , max-|v₁|-t₁@(≥-max |v₁| .t₁ |t₁|≡|v₁| t₂→|t₂|≡|v₁|→t₁≥t₂) =  inner -- how do I know |v₁|≡c∷w₁' ? because inj∘unflatw₁∈⟦p⟧≡v₁
+                              -- we need to find out that t₁ is reconstructible from inj
+                              where
+                                
+                                |t₁|≡c∷w₁ : proj₁ (flat t₁) ≡ c ∷ (proj₁ (flat (unflat w₁∈⟦p⟧)))
+                                |t₁|≡c∷w₁ =
+                                  begin
+                                    proj₁ (flat t₁)
+                                  ≡⟨  |t₁|≡|v₁| ⟩
+                                    proj₁ (flat v₁)
+                                  ≡⟨ cong (λ x → (proj₁ (flat x))) (sym inj∘unflatw₁∈⟦p⟧≡v₁) ⟩ 
+                                    proj₁ (flat (inj (unflat w₁∈⟦p⟧)))
+                                  ≡⟨ sound-ev (unflat w₁∈⟦p⟧) ⟩ 
+                                    c ∷ (proj₁ (flat (unflat w₁∈⟦p⟧)))
+                                  ∎
+                                max-c∷w₁-t₁ : ≥-Max (c ∷ Product.proj₁ (flat (unflat w₁∈⟦p⟧))) t₁
+                                max-c∷w₁-t₁ rewrite  sym inj∘unflatw₁∈⟦p⟧≡v₁ |  sound-ev (unflat w₁∈⟦p⟧) = ≥-max (c ∷ Product.proj₁ (flat (unflat w₁∈⟦p⟧))) t₁ |t₁|≡|v₁|
+                                                                                                                        t₂→|t₂|≡|v₁|→t₁≥t₂ 
+                                ∃qdi∃qdispdU-l-c≡qdi∷qdis×recons-l-t₁-qdi : ∃[ qdi ] ∃[ qdis ] ( pdU[ l , c ] ≡ qdi ∷ qdis ) × (Recons {l} {c} t₁ qdi)
+                                ∃qdi∃qdispdU-l-c≡qdi∷qdis×recons-l-t₁-qdi  = pdU-complete-max t₁  |t₁|≡c∷w₁ max-c∷w₁-t₁
+
+                                inner : l ⊢ inj u₁ > inj (unflat w₁∈⟦p⟧) ⊎ inj u₁ ≡ inj (unflat w₁∈⟦p⟧)
+                                inner with ∃qdi∃qdispdU-l-c≡qdi∷qdis×recons-l-t₁-qdi
+                                ... | qdi@(pdinstance {p'} .{l} .{c} inj' sound-ev') , qdis , pdu-l-c≡qdi∷qdis , recons-t₁-qdi  with recons-cong (sym (proj₁ ( ∷-injective (trans ( sym pdU-lc≡pdi-inj∷[] ) pdu-l-c≡qdi∷qdis) ) ) ) t₁ recons-t₁-qdi   -- we use pdu-l-c≡qdi∷qdis to derive qdi ≡ pdi
+
+                                ...      | recons .t₁ ( w₂∈⟦p⟧ , inj∘unflatw₂∈⟦p⟧≡t₁ )   = {!!}
+                                  where
+                                    -- unflat w₂∈⟦p⟧ = t₁'
+                                    -- so that we have max t₁'
+                                    |t₁|≡c∷|unflat-w₂∈⟦p⟧| : proj₁ (flat t₁) ≡ c ∷ proj₁ (flat (unflat w₂∈⟦p⟧))
+                                    |t₁|≡c∷|unflat-w₂∈⟦p⟧| rewrite sym (sound-ev (unflat w₂∈⟦p⟧)) |  inj∘unflatw₂∈⟦p⟧≡t₁  = refl
+
+                                    v→|v|≡c∷|t₁'|→t₁≥v : (v : U l)
+                                       → proj₁ (flat v) ≡ c ∷ proj₁ (flat (unflat w₂∈⟦p⟧))
+                                       → l ⊢ t₁ ≥ v
+                                    v→|v|≡c∷|t₁'|→t₁≥v v |v|≡c∷|unflat-w₂∈⟦p⟧| = t₂→|t₂|≡|v₁|→t₁≥t₂ v (trans |v|≡c∷|unflat-w₂∈⟦p⟧| (trans (sym  |t₁|≡c∷|unflat-w₂∈⟦p⟧| ) |t₁|≡|v₁|  )  )  
+                                    
+                                    max-c∷w₂-inj-unflat-w₂∈⟦p⟧ : ≥-Max (c ∷ proj₁ (flat (unflat w₂∈⟦p⟧))) (inj (unflat w₂∈⟦p⟧)) 
+                                    max-c∷w₂-inj-unflat-w₂∈⟦p⟧ rewrite  inj∘unflatw₂∈⟦p⟧≡t₁  = ≥-max (c ∷ proj₁ (flat (unflat w₂∈⟦p⟧))) t₁  |t₁|≡c∷|unflat-w₂∈⟦p⟧| v→|v|≡c∷|t₁'|→t₁≥v
+                                                 
+
+                                    max-unflat-w₂∈⟦p⟧ : ≥-Max {p} (proj₁ (flat (unflat w₂∈⟦p⟧))) (unflat w₂∈⟦p⟧)
+                                    max-unflat-w₂∈⟦p⟧ = u→w→max-c∷w-inj-u→maxwu  (unflat w₂∈⟦p⟧)  (proj₁ (flat (unflat w₂∈⟦p⟧)))  max-c∷w₂-inj-unflat-w₂∈⟦p⟧
+
+                                    ev : (v : U (p ● r ` loc))
+                                       → proj₁ (flat v) ≡ (proj₁ (flat (unflat w₂∈⟦p⟧))) ++ (proj₁ (flat v₂)) 
+                                       → (p ● r ` loc) ⊢ PairU (unflat w₂∈⟦p⟧) v₂ ≥ v
+                                    ev (PairU {p} {r} {loc} v₃ v₄)  |v₃v₄|≡|t₁'|++|v₂| = {!!}  -- only when (unflat w₂∈⟦p⟧) is not null
+
+                                    max-|t₁'v₂|-pair-t₁'-v₂ : ≥-Max {p ● r ` loc } (proj₁ (flat (PairU {p} {r} {loc} ( unflat w₂∈⟦p⟧ ) v₂))) (PairU ( unflat w₂∈⟦p⟧ ) v₂)
+                                    max-|t₁'v₂|-pair-t₁'-v₂ = ≥-max (flat (unflat w₂∈⟦p⟧) .Product.proj₁ ++ flat v₂ .Product.proj₁) (PairU (unflat w₂∈⟦p⟧) v₂) refl ev 
                                                                 
 
 
-                                                -- ... | ≥-max-pres-bd u→w→maxwu→max-c∷w-inj-u u→w→max-c∷w-inj-u→maxwu  with u→w→maxwu→max-c∷w-inj-u u₁ (proj₁ (flat u₁)) max-u₁ 
-                                                -- ...      | ≥-max c∷|u₁| inju₁ _ v→|v|≡c∷|u₁|→inju₁≥v =  v→|v|≡c∷|u₁|→inju₁≥v v₁ {!!}   -- |v₁|≡ c∷|u₁| how do get this? we only have |v₁v₂|≡c∷w≡c∷|u₁u₂|, can we derive another property
+                                    -- ... | ≥-max-pres-bd u→w→maxwu→max-c∷w-inj-u u→w→max-c∷w-inj-u→maxwu  with u→w→maxwu→max-c∷w-inj-u u₁ (proj₁ (flat u₁)) max-u₁ 
+                                    -- ...      | ≥-max c∷|u₁| inju₁ _ v→|v|≡c∷|u₁|→inju₁≥v =  v→|v|≡c∷|u₁|→inju₁≥v v₁ {!!}   -- |v₁|≡ c∷|u₁| how do get this? we only have |v₁v₂|≡c∷w≡c∷|u₁u₂|, can we derive another property
 
 
 dom-lemma-weak {p} {l} {r} {loc} {c} {inj} {sound-ev}  (pdi' ∷ pdis') pdU-lc≡pdi-inj∷pdi'∷pdis' sorted u₁ u₂ w max v₁ ¬eq ¬[] first-char-lemma-outer ( v₂ , |v₁v₂|≡c∷w ) =  {!!} 
@@ -1823,4 +2041,41 @@ pdU-≥-max-left-most-pres {r * ε∉r ` loc} {c} {pdi} eq
 -}    
 ```
 
+Let me give a correct counterexample.
 
+We need two trees u and v both flattening to c ∷ w,
+reconstructed by pdis where the one for u is to the right of the one for v.
+
+Consider r = ($'a' ● $'b') + ($'a' ● $'b'), c = 'a', w = "b".
+
+Then there are two pdis in pdU[ r , 'a' ],
+both reconstructing the same (or isomorphic) PairU trees.
+
+Let u be the tree from the right pdi and v from the left pdi.
+u is maximal (only tree for "ab"), but pdi (right) is after qdi (left).
+
+So no suffix pdis with (pdi ∷ pdis) ∈ tails pdU can contain qdi.
+
+
+
+```agda
+
+head-parseAll-is-max : ∀ { r : RE } { w : List Char }
+  → ( u : U r )
+  → just u ≡ head parseAll[ r , w ]
+  → ≥-Max w u
+head-parseAll-is-max = ?   
+
+
+
+max-is-head-parseAll : ∀ { r : RE } { w : List Char }
+  → ( u : U r )
+  → ≥-Max w u
+  → just u ≡ head parseAll[ r , w ] 
+max-is-head-parseAll = {!!}
+
+
+
+
+
+```

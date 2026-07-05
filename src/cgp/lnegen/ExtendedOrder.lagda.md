@@ -62,14 +62,8 @@ open LNEOrder using ( _⊢_>_ ; seq₁ ; seq₂ ;
   be ; bne ; lne ; choice-ll ; choice-lr ; choice-rr  ; star-head ; star-cons-nil ;
   >-sorted ; >-nil ; >-cons ; concat-sorted ; 
   mkAllEmptyU-sorted ;
-  >-maybe ; >-nothing ; >-just ;
-  _⊢_≅_ ; ≅-Preserve ; ≅-pres ; pdU-≅-preserve ;
-  ≅-Preserve* ; ≅-pres* ; 
-  mkAllEmptyU-≅ ; All-≅ ;  all-≅-nil ;  all-≅-cons ; All-≅→All ; 
-  >-trans ; >-Inc-≅ ; >-inc ; 
-  *>-Inc-≅  ; *>-inc ;
-  concatmap-advance-pdi*-with-c-*>inc ;
-  pdUMany-*>-inc )   
+  >-trans ;
+  >-maybe ; >-just ; >-nothing   )   
 
 
 import Data.Char as Char
@@ -174,7 +168,7 @@ inj-inhabit {r} {c} (pdinstance {p} {r} {c} inj _ ) = inj
 s-ev-inhabit : ∀ { r : RE } { c : Char } → (pdi : PDInstance r c) → ( ( u : U (p-inhabit pdi)) → proj₁ (flat ((inj-inhabit pdi) u)) ≡ c ∷ (proj₁ (flat u))   )
 s-ev-inhabit {r} {c} (pdinstance {p} {r} {c} inj s-ev ) = s-ev
 
-
+{-
 data _,_⊢_≥_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInstance r c → Set where
   ≥-pdi-= : ∀ { r  : RE } { c : Char }
     → ( pdi : PDInstance r c )
@@ -191,18 +185,34 @@ data _,_⊢_≥_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInsta
     → ¬ (p-inhabit pdi₁ ≡ p-inhabit pdi₂)
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons u₁ pdi₁ ) → (Recons u₂ pdi₂) →  r ⊢ u₁ > u₂ )
     → r , c ⊢ pdi₁ ≥ pdi₂
+-}
 
 
-{- we don't need this? , we have not defined pdi-∃ 
->-pdi-trans : ∀ { r : RE } { c : Char } 
+U-inhabited : ∀ (r : RE) → U r
+U-inhabited ε = EmptyU
+U-inhabited ($ c ` loc) = LetterU c
+U-inhabited (l + r ` loc) = LeftU (U-inhabited l)
+U-inhabited (l ● r ` loc) = PairU (U-inhabited l) (U-inhabited r)
+U-inhabited (r * nε ` loc) = ListU []
+
+pdi-∃ : ∀ {r c} (pdi : PDInstance r c) → ∃[ u ] Recons u pdi
+pdi-∃ (pdinstance {p} {r} {c} inj sound-ev) =
+  let u-p : U p
+      u-p = U-inhabited p
+      w = proj₁ (flat u-p)
+      w∈p = proj₂ (flat u-p)
+      u = inj (unflat w∈p)
+  in u , recons u (w∈p , refl)
+
+>-pdi-trans : ∀ { r : RE } { c : Char }
   → { pdi₁ : PDInstance r c }
   → { pdi₂ : PDInstance r c }
   → { pdi₃ : PDInstance r c }
   → r , c ⊢ pdi₁ > pdi₂
   → r , c ⊢ pdi₂ > pdi₃
-  -------------------------------------------  
+  -------------------------------------------
   → r , c ⊢ pdi₁ > pdi₃
->-pdi-trans {r} {c} {pdi₁} {pdi₂} {pdi₃} (>-pdi pdi₁ pdi₂  u₁→u₂→rec₁→rec₂→u₁>u₂)  (>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→u₂>u₃)  = >-pdi pdi₁ pdi₃ >-ev 
+>-pdi-trans {r} {c} {pdi₁} {pdi₂} {pdi₃} (>-pdi pdi₁ pdi₂  u₁→u₂→rec₁→rec₂→u₁>u₂)  (>-pdi .pdi₂ pdi₃ u₂→u₃→rec₂→rec₃→u₂>u₃)  = >-pdi pdi₁ pdi₃ >-ev
   where
     >-ev : ( u₁ : U r )
           → ( u₃ : U r )
@@ -213,8 +223,7 @@ data _,_⊢_≥_ : ∀ ( r : RE ) → (c : Char ) → PDInstance r c → PDInsta
     >-ev u₁ u₃ recons₁ recons₃ =
       let u₂-recons₂ = pdi-∃ pdi₂
       in >-trans (u₁→u₂→rec₁→rec₂→u₁>u₂ u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂))
-                  (u₂→u₃→rec₂→rec₃→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃)  -- where to get u₂ and recons₂ ?
--}
+                  (u₂→u₃→rec₂→rec₃→u₂>u₃ (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃)
 
 ```
 
@@ -246,7 +255,7 @@ data Ex>-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) ) �
     --------------------------------------
     → Ex>-sorted {r} {c} ( pdi ∷ pdis ) 
 
-
+{-
 data Ex≥-maybe : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c ) → ( mpdi : Maybe (PDInstance r c) ) → Set where
   ex≥-nothing : ∀ { r : RE } { c : Char }
     → { pdi : PDInstance r c } 
@@ -268,7 +277,7 @@ data Ex≥-sorted : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
     → Ex≥-maybe {r} {c} pdi (head pdis)
     --------------------------------------
     → Ex≥-sorted {r} {c} ( pdi ∷ pdis ) 
-
+-}
 
 ```
 
@@ -1069,6 +1078,7 @@ We say pdi₁ is LNE greater than pdi₂, r , w  ⊢* pdi₁ > pdi₂ iff
 ```agda
 
 -- a suffice is a member of a pd inhabiting in a pdinstance
+{-
 infix 4 _,_⊢*_∈_
 data _,_⊢*_∈_ : ∀ ( r : RE ) → ( pf : List Char ) → ( sf : List Char ) → PDInstance* r pf → Set where -- pf is prefix , sf is suffix
   *∈-pdi : ∀ { p r : RE } { pf : List Char } { sf : List Char }
@@ -1108,12 +1118,13 @@ data _,_⊢*_>_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf →
       let u₂-recons₂ = pdi*-∃  {r} {pf} pdi₂
       in  >-trans (u₁>u₂-ev u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) )
                   (u₂>u₃-ev (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ ) 
-
+-}
 ```
 
 ### Definition 40 : (Extended) LNE sortedness among pdinstance*'s 
 
 ```agda
+{-
 data Ex*>-maybe : ∀ { r : RE } { pf : List Char } → ( pdi : PDInstance* r pf ) → ( mpdi : Maybe (PDInstance* r pf) ) → Set where
   ex*>-nothing : ∀ { r : RE } { pf : List Char } 
     → { pdi : PDInstance* r pf }
@@ -1126,7 +1137,7 @@ data Ex*>-maybe : ∀ { r : RE } { pf : List Char } → ( pdi : PDInstance* r pf
     ----------------------------------
     → Ex*>-maybe {r} {pf} pdi (just pdi')
 
-{-
+
 data Ex*>-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( r , pf ⊢* sf ∈ pdi ) → ( pdis : List (PDInstance* r pf ) ) → Set where
   ex*>-first-nil : ∀ { r : RE } { pf sf : List Char }
     → { pdi : PDInstance* r pf }
@@ -1153,6 +1164,7 @@ data Ex*>-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r
     → Ex*>-first {r} {pf} {sf} pdi sf∈pdi (pdi' ∷ pdis)
 -} 
 
+{-
 data Ex*>-sorted : ∀ { r : RE } { w : List Char } ( pdis : List (PDInstance* r w) ) → Set where
   ex*>-nil  : ∀ { r : RE } { w : List Char } → Ex*>-sorted {r} {w} []
   ex*>-cons : ∀ { r : RE } { w : List Char } 
@@ -1162,6 +1174,7 @@ data Ex*>-sorted : ∀ { r : RE } { w : List Char } ( pdis : List (PDInstance* r
     → Ex*>-maybe {r} {w} pdi (head pdis)
     --------------------------------------
     → Ex*>-sorted {r} {w} ( pdi ∷ pdis )
+-}
 
 {-
 data Ex*>-weak-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstance* r pf ) → ( pdis : List (PDInstance* r pf ) ) → Set where
@@ -1185,6 +1198,7 @@ data Ex*>-weak-first : ∀ { r : RE } { pf sf : List Char } → ( pdi : PDInstan
 
 
 ```agda
+{-
 p-inhabit* : ∀ { r : RE } { pf : List Char } → PDInstance* r pf → RE 
 p-inhabit* {r} {pf} (pdinstance* {p} {r} {pf} _ _ ) = p
 
@@ -1218,10 +1232,11 @@ data _,_⊢*_≥_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf �
     → ( ∀ ( u₁ : U r ) → ( u₂ : U r ) → (Recons* u₁ pdi₁ ) → (Recons* u₂ pdi₂) → r ⊢ u₁ > u₂ )
     → r , ( c ∷ pf )  ⊢* pdi₁ ≥  pdi₂ 
 
-
+-}
 
 ```
 ```agda
+{-
 *≥-pdi-trans : ∀ { r : RE }  { pf : List Char } 
   → { pdi₁ : PDInstance* r pf }
   → { pdi₂ : PDInstance* r pf }
@@ -1244,11 +1259,12 @@ data _,_⊢*_≥_ : ∀ ( r : RE ) → ( pf : List Char ) → PDInstance* r pf �
       let u₂-recons₂ = pdi*-∃  {r} {c ∷ pf} pdi₂
       in  >-trans (u₁>u₂-ev u₁ (proj₁ u₂-recons₂) recons₁ (proj₂ u₂-recons₂) )
                   (u₂>u₃-ev (proj₁ u₂-recons₂) u₃ (proj₂ u₂-recons₂) recons₃ )     
-
+-}
 
 ``` 
 
 ```agda
+{-
 data Ex*≥-maybe : ∀ { r : RE } { pf : List Char } → ( pdi : PDInstance* r pf ) → ( mpdi : Maybe (PDInstance* r pf) ) → Set where
   ex*≥-nothing : ∀ { r : RE } { pf : List Char } 
     → { pdi : PDInstance* r pf }
@@ -1272,6 +1288,7 @@ data Ex*≥-sorted : ∀ { r : RE } { w : List Char } ( pdis : List (PDInstance*
     → Ex*≥-maybe {r} {w} pdi (head pdis)
     --------------------------------------
     → Ex*≥-sorted {r} {w} ( pdi ∷ pdis )
+-}    
 
 ```
 
@@ -1336,6 +1353,7 @@ Ex*>-first-++ {r} {pf} {sf} {pdi} {sf∈pdi} {pdi' ∷ pdis₁'} {pdis₂} (ex*>
   ex*>-first-cons sf∈pdi' pdi>pdi'
 -} 
 
+{-
 concat-ex*-sorted : ∀ { r : RE } { w : List Char }
     → ( pdis₁ : List ( PDInstance* r w ))
     → ( pdis₂ : List ( PDInstance* r w ))
@@ -1366,6 +1384,9 @@ concat-ex*≥-sorted (pdi₁ ∷ [])             (pdi₂ ∷ pdis₂) pdis₁-so
 concat-ex*≥-sorted (pdi₁ ∷ pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) (ex*≥-cons pdi₁'pdis₁-sorted pdi₁≥head-pdis₁)  pdi₂pdis₂-sorted (ex*≥-just pdi₁≥pdi₂  ∷ pxs)     = ex*≥-cons ind-hyp pdi₁≥head-pdis₁
   where
     ind-hyp = concat-ex*≥-sorted (pdi₁' ∷ pdis₁) (pdi₂ ∷ pdis₂) pdi₁'pdis₁-sorted  pdi₂pdis₂-sorted  pxs
+
+-}
+
 {-
 The below does not work
 
@@ -1471,6 +1492,7 @@ The above counter example is flaw, e.g.
 4) in general, we can't apply d ⊢ _ ≅ _  where d is the top level regex (non partial derivative) .
 -}
 
+{-
 compose-pdi-with-ex*>-head-map-compose-pdi-with : ∀ { d r : RE } { pref : List Char} { c : Char }
   → ( d→r : U d → U r ) -- a part of a pdi*
   → ( s-ev-d-r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) ) -- a part of a pdi* 
@@ -1619,7 +1641,7 @@ advance-pdi*-with-c-sorted {r} {pref} {c} pdi@(pdinstance* {d} {r} {pref} d→r 
                                                  {!!} -- d→r-inc-ev -- d→r-inc-ev
                                                    pdi₁ pdis₁ pdi₁>head-pdis₁  )
 
-
+-}
 
 {- 
 advance-pdi*-with-c-all>head-concatmap-advance-pdi*-with-c : ∀ { r : RE } { pref : List Char } { c : Char }

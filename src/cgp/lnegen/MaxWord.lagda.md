@@ -44,8 +44,15 @@ open PartialDerivative using ( pdU[_,_] ;  pdU-complete ;
   pdUMany[_,_]; pdUMany-aux ;
   mkinjLetter ; mkinjLetterSound ;
   parseAll[_,_] ; buildU ;
-  pdUMany-complete ; buildU-complete ; buildU-sound 
+  pdUMany-complete ; buildU-complete ; buildU-sound
+
   ) 
+
+import Data.List.Membership.Propositional as Membership
+open Membership using (_∈_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+import Data.List.Membership.Propositional.Properties as MembershipProperties
+open MembershipProperties using (∈-concat⁺′ ; ∈-concat⁻′ ; ∈-map⁺ ; ∈-map⁻)
 
 import cgp.lnegen.Order as Order
 open Order -- TODO: we should only whitelist those are used here 
@@ -100,7 +107,7 @@ import Data.Sum as Sum
 open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 
 import Data.List.Relation.Unary.All as All
-open All using (All ; _∷_ ; [] ; map ; lookup )
+open All using (All ; _∷_ ; [] ; map ; lookup)
 import Data.List.Relation.Unary.All.Properties as AllProperties
 open AllProperties using (++⁺)
 
@@ -117,7 +124,8 @@ open Decidable using
 
 open import Function using (_∘_ ; flip ; case_of_)
 
-
+import cgp.lnegen.Efn as Efn
+open Efn using ( Efn ; efn-ε ; efn-● ) 
 ```
 
 
@@ -233,6 +241,21 @@ data ≥-Max-Preserve-Bd : ∀ { r : RE } { c : Char } → PDInstance r c → Se
       → ≥-Max (c ∷ w) (inj u)
       → ≥-Max w u ) -- ← direction 
     → ≥-Max-Preserve-Bd {r} {c} (pdinstance inj sound-ev)
+
+
+data ≥-Max-Preserve-W : ∀ { r : RE } { c : Char } → ( w : List Char ) → PDInstance r c → Set where
+  ≥-max-pres-w : ∀ { p r : RE } { c : Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( w : List Char )
+    → ( ( u : U p )
+      → ≥-Max w u
+      → ≥-Max (c ∷ w) (inj u) ) -- → direction 
+    → ( ( u : U p ) 
+      → ≥-Max (c ∷ w) (inj u)
+      → ≥-Max w u ) -- ← direction 
+    → ≥-Max-Preserve-W {r} {c} w (pdinstance inj sound-ev)
+
+
 
 
 ≥-max-word : ∀ {r : RE} {w : List Char} {u : U r} → ≥-Max w u → proj₁ (flat u) ≡ w
@@ -1620,7 +1643,7 @@ extract-any (there p) with extract-any p
 -- shows u is built by that PDInstance*; map and concat membership lift this to parseAll.
 parseAll-complete : ∀ {r : RE} {w : List Char} (u : U r)
   → proj₁ (flat u) ≡ w
-  → u ∈  (parseAll[ r , w ] )
+  → u ∈ parseAll[ r , w ]
 parseAll-complete {r} {w} u flat-u≡w =
   subst (λ x → u ∈ parseAll[ r , x ]) flat-u≡w helper
   where
@@ -1748,6 +1771,7 @@ maximum-≥-all {r} (u ∷ us) neq v v∈ = foldr-≥ u us v v∈
   in v , ≥-max w v (maximum-flat _ _ (parseAll-all-sound {r} {w}))
        (λ u flat-u≡w → maximum-≥-all _ _ u (parseAll-complete u flat-u≡w))
 
+
 -- counter example
 -- r = a + a ● b
 -- c = 'a'
@@ -1873,6 +1897,12 @@ dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡p
                         -- by ≥-max-pair-fst-prefix→>2  max (pair t₁' v₂), we have p ⊢ t₁' > u₁
                         -- by ≥-max-pair-fst-prefix→>2  max (pair u₁ u₂), we have p ⊢ u₁ > t₁'
                         -- question: is inj' same as inj? if so, the above will be easier.
+
+
+                        -- new idea:   (pdinstance {p} {l} {c} inj sev) ∈ pdU[ l , c] , p is an Efn,
+                        --                  ≥-Max (u : p , u' : r), we have u > v for any |v, v'|≡|u, u'|,
+                        --                  we have inj u > inj v,
+                        --                  for all v : U p, when u is Max, is that true for all Efn? because Efn is of shape ε ● r, or ε, inj 
                         where
                           t₁-max-|v₁|-t₁ : ∃[ t₁ ] ≥-Max {l} (proj₁ (flat v₁)) t₁                  -- found t₁ which is amx 
                           t₁-max-|v₁|-t₁ = >-wellfounded {l} {proj₁ (flat v₁)} (proj₂ (flat v₁) )
@@ -1899,7 +1929,7 @@ dom-lemma-weak {p} {l} {r} {loc} {c}  {inj} {sound-ev} []             pdU-lc≡p
                                 max-c∷w₁-t₁ rewrite  sym inj∘unflatw₁∈⟦p⟧≡v₁ |  sound-ev (unflat w₁∈⟦p⟧) = ≥-max (c ∷ Product.proj₁ (flat (unflat w₁∈⟦p⟧))) t₁ |t₁|≡|v₁|
                                                                                                                         t₂→|t₂|≡|v₁|→t₁≥t₂ 
                                 ∃qdi∃qdispdU-l-c≡qdi∷qdis×recons-l-t₁-qdi : ∃[ qdi ] ∃[ qdis ] ( pdU[ l , c ] ≡ qdi ∷ qdis ) × (Recons {l} {c} t₁ qdi)
-                                ∃qdi∃qdispdU-l-c≡qdi∷qdis×recons-l-t₁-qdi  = pdU-complete-max t₁  |t₁|≡c∷w₁ max-c∷w₁-t₁
+                                ∃qdi∃qdispdU-l-c≡qdi∷qdis×recons-l-t₁-qdi  = pdU-complete-max t₁  |t₁|≡c∷w₁ max-c∷w₁-t₁ --  pdU-complete-max is not provable.
 
                                 inner : l ⊢ inj u₁ > inj (unflat w₁∈⟦p⟧) ⊎ inj u₁ ≡ inj (unflat w₁∈⟦p⟧)
                                 inner with ∃qdi∃qdispdU-l-c≡qdi∷qdis×recons-l-t₁-qdi
@@ -2064,7 +2094,7 @@ head-parseAll-is-max : ∀ { r : RE } { w : List Char }
   → ( u : U r )
   → just u ≡ head parseAll[ r , w ]
   → ≥-Max w u
-head-parseAll-is-max = ?   
+head-parseAll-is-max = {!!}   
 
 
 
@@ -2074,6 +2104,10 @@ max-is-head-parseAll : ∀ { r : RE } { w : List Char }
   → just u ≡ head parseAll[ r , w ] 
 max-is-head-parseAll = {!!}
 
+
+efn-max : ∀ { r : RE } → ( Efn r )
+  → pd
+  
 
 
 

@@ -63,7 +63,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   )
 
 import cgp.posix.RelatedWorkCUrban as RelatedWorkCUrban
-open RelatedWorkCUrban  using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦→⇒*-go ; ∈⟦→⇒●-go ; *-fb ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* ; find-longest-split ; NoShorter ; ∈⟦→⇒-ε ; ∈⟦→⇒-$ ; plus-right-member ; plus-right-∈⟦→⇒ ; ⇒-member )
+open RelatedWorkCUrban  using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦→⇒*-go ; ∈⟦→⇒●-go ; *-fb ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* ; find-longest-split ; NoShorter ; ∈⟦→⇒-ε ; ∈⟦→⇒-$ ; plus-right-member ; plus-right-∈⟦→⇒ ; ⇒-member ; ⇒→>-max ; >-anti-sym ; >-max→⇒ ; intersect-memberʳ ; >→¬< )
 
 import Data.Char as Char
 open Char using (Char )
@@ -106,6 +106,8 @@ cancel-left : (xs ys zs : List Char) → xs ++ ys ≡ xs ++ zs → ys ≡ zs
 cancel-left [] ys zs refl = refl
 cancel-left (x ∷ xs) ys zs p = cancel-left xs ys zs (proj₂ (∷-injective p))
 
+-- Given xs ++ ys ≡ us ++ vs with |us| ≤ |xs|, split xs into us ++ w₃ and vs into w₃ ++ ys.
+-- Used by longer-prefix-split to extract the non-empty overlap when |xs| > |us|.
 longer-prefix-split-helper : (xs ys us vs : List Char) → xs ++ ys ≡ us ++ vs → length us ≤ length xs
   → Σ (List Char) (λ w₃ → xs ≡ us ++ w₃ × vs ≡ w₃ ++ ys)
 longer-prefix-split-helper [] ys [] vs xs++ys≡us++vs z≤n = [] , (refl , sym xs++ys≡us++vs)
@@ -117,10 +119,15 @@ longer-prefix-split-helper (x ∷ xs) ys (u ∷ us) vs xs++ys≡us++vs (s≤s le
     x≡u : x ≡ u
     x≡u = proj₁ (∷-injective xs++ys≡us++vs)
 
+-- Simple lemma: m ≤ n implies m ≤ suc n. Used to weaken the strict prefix hypothesis
+-- in longer-prefix-split.
 ≤-step : ∀ {m n} → m ≤ n → m ≤ suc n
 ≤-step z≤n = z≤n
 ≤-step (s≤s m≤n) = s≤s (≤-step m≤n)
 
+-- Given xs ++ ys ≡ us ++ vs with |xs| > |us|, produce a non-empty w₃ such that
+-- xs ≡ us ++ w₃ and vs ≡ w₃ ++ ys. This captures the overlap when the left prefix is longer.
+-- Used in the concatenation case of ≼-wellfounded (go-shorter-l).
 longer-prefix-split : (xs ys us vs : List Char) → xs ++ ys ≡ us ++ vs → length xs > length us
   → Σ (List Char) (λ w₃ → w₃ ≢ [] × xs ≡ us ++ w₃ × vs ≡ w₃ ++ ys)
 longer-prefix-split (x ∷ xs) ys us vs xs++ys≡us++vs (s≤s le)
@@ -134,6 +141,8 @@ longer-prefix-split (x ∷ xs) ys us vs xs++ys≡us++vs (s≤s le)
         ¬>refl {zero} ()
         ¬>refl {suc n} (s≤s le) = ¬>refl {n} le
 
+-- If xs ++ ys ≡ us ++ vs and |xs| ≡ |us|, then xs ≡ us. The remaining suffixes are equal
+-- by list cancellation. Used to reason about concatenation splits and longest-split uniqueness.
 same-len-prefix : (xs ys us vs : List Char) → xs ++ ys ≡ us ++ vs → length xs ≡ length us
   → xs ≡ us
 same-len-prefix [] ys [] vs xs++ys≡[] eq = refl
@@ -156,6 +165,8 @@ import Relation.Nullary as Nullary
 import Relation.Nullary.Negation using (contradiction; contraposition)
 open Nullary using (¬_)
 
+-- Negated ≤ is equivalent to > (strict inequality). Used to turn contradictions of
+-- non-strict bounds into strict bounds in the concatenation/star cases of ≼-wellfounded.
 ¬≤↔< : (m n : ℕ) → ¬ m ≤ n → n < m
 ¬≤↔< zero n ¬zero≤n = ⊥-elim (¬zero≤n z≤n)
 ¬≤↔< (suc m) zero _ = z<s
@@ -165,6 +176,7 @@ open Nullary using (¬_)
     s≤s→≤ nm≤n s≤ = nm≤n (s≤s s≤)
 
 
+-- Trichotomy for natural number lengths. Compares m and n, returning either m<n, m≡n, or n<m.
 compare-lengths : (m n : ℕ) → m < n ⊎ (m ≡ n ⊎ n < m)
 compare-lengths zero zero = inj₂ (inj₁ refl)
 compare-lengths zero (suc n) = inj₁ z<s
@@ -174,6 +186,8 @@ compare-lengths (suc m) (suc n) | inj₁ m<n = inj₁ (s<s m<n)
 compare-lengths (suc m) (suc n) | inj₂ (inj₁ m≡n) = inj₂ (inj₁ (cong suc m≡n))
 compare-lengths (suc m) (suc n) | inj₂ (inj₂ n<m) = inj₂ (inj₂ (s<s n<m))
 
+-- A non-strict bound m ≤ n refines to either m<n or m≡n. Used to case-split on prefix
+-- length comparisons when showing that the longer split is the unique longest split.
 ≤-to-<⊎≡ : ∀ {m n} → m ≤ n → m < n ⊎ m ≡ n
 ≤-to-<⊎≡ {m} {zero} z≤n = inj₂ refl
 ≤-to-<⊎≡ {m} {suc n} z≤n = inj₁ z<s
@@ -207,6 +221,10 @@ pos extracts the set of positions in a parse tree.
 
 ```agda
 
+-- pos computes the list of positions of a parse tree. Positions are encoded as lists of
+-- natural numbers following the tree structure (0 = left, 1 = right, n = star child index).
+-- Used throughout the Okui-Suzuki order definition and related lemmas.
+
 mutual
   pos : ∀ { r : RE } → U r → List (List ℕ)
   pos {ε} EmptyU = [] ∷ []
@@ -216,6 +234,8 @@ mutual
   pos {l ● r ` loc} (PairU u v) = [] ∷ (List.map (λ ps → 0 ∷ ps ) (pos u)) ++ (List.map (λ ps → 1 ∷ ps ) (pos v))
   pos {r * ε∉r ` loc } (ListU vs) = [] ∷ (go-pos 0 vs)
 
+  -- go-pos computes positions for the elements of a star list, tagging each element's
+  -- positions with its index so that later repetitions can be distinguished.
   go-pos : ∀ { r : RE } → ℕ → List (U r) → List (List ℕ)
   go-pos id [] = []
   go-pos id (u ∷ us) = (List.map (λ ps → id ∷ ps ) (pos u)) ++ go-pos (suc id) us
@@ -236,6 +256,8 @@ test_pos = pos test_e
 ```
 
 ```agda
+-- subre traverses a regular expression along a position path and returns the sub-regex
+-- at that position, if the path is valid. It mirrors the structure of IsSubAt.
 subre : RE → List ℕ → Maybe RE
 subre r           [] = just r
 subre (l + r ` loc) (0 ∷ xs) = subre l xs
@@ -311,12 +333,16 @@ PairU v₁ v₂ ↓ 1∷ps  = v₂ ↓ ps
 ListU vs ↓ n∷ps     = vs[n] ↓ ps  
 ```agda
 
+-- drop removes the first n elements from a list. Used to implement sublen at
+-- positions that skip over a prefix of the flattened word.
 drop : ∀ {A : Set} → ℕ → List A → List A
 drop zero xs = xs
 drop (suc n) [] = []
 drop (suc n) (_ ∷ xs) = drop n xs
 
 {-# TERMINATING #-}
+-- subval takes a parse tree and a position, and extracts the sub parse tree at that
+-- position. Used by sublen to compute the length of the subtree selected by a position.
 subval : ∀ {r s : RE } → (pos : List ℕ) → (IsSubAt r pos s)  → U r → U s
 subval {ε} {ε} [] sub-ε u = u
 subval {$ c ` loc} {$ c ` loc} [] sub-$ u = u
@@ -333,6 +359,9 @@ subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) with drop n us
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | x ∷ _ = subval xs p x
 subval {r * ε∉r ` loc} {s} (n ∷ xs) (sub-*-n p) (ListU us) | [] = subval (n ∷ xs) (sub-*-n p) (ListU {r} {ε∉r} {loc} us)
 
+-- subval-maybe is the partial/maybe version of subval: it returns nothing when the
+-- position does not match the shape of the parse tree (e.g. descending into the wrong
+-- branch of a choice). Currently unused in the rest of the development.
 subval-maybe : ∀ {r s : RE } → (pos : List ℕ) → (IsSubAt r pos s)  → U r → Maybe (U s)
 subval-maybe {ε} {ε} [] sub-ε u = just u
 subval-maybe {$ c ` loc} {$ c ` loc} [] sub-$ u = just u
@@ -369,6 +398,9 @@ v : U r
 
 
 ```agda
+-- sublen computes the length of the sub parse tree selected by a position, represented
+-- as Maybe ℕ: just (length |v ↓ p|) when the position is valid for v, nothing otherwise.
+-- This is the core measure used by the Okui-Suzuki order _⊢_≺_.
 sublen : ∀ {r : RE } → U r → List ℕ → Maybe ℕ
 sublen {ε} EmptyU [] = just 0
 sublen {ε} EmptyU (_ ∷ _) = nothing
@@ -505,6 +537,8 @@ _⊢_≼_ r u v = (_⊢_≺_ r u v) ⊎ (u ≡ v )
 Lemma:  _≺Lex_ is total
 
 ```agda
+-- Lift the lexicographic ordering result from tails to cons lists. Used in the
+-- recursive step of ≺Lex-trichotomous.
 ≺Lex-cong-∷ : ∀ {m n : ℕ} {ms ns : List ℕ}
   → m ≡ n
   → ms ≺Lex ns ⊎ ns ≺Lex ms ⊎ ms ≡ ns
@@ -513,6 +547,9 @@ Lemma:  _≺Lex_ is total
 ≺Lex-cong-∷ refl (inj₂ (inj₁ q<p)) = inj₂ (inj₁ (≺lex-tail q<p))
 ≺Lex-cong-∷ refl (inj₂ (inj₂ refl)) = inj₂ (inj₂ refl)
 
+-- ≺Lex-trichotomous proves that the lexicographic order on positions is total:
+-- for any two positions, one is smaller, or they are equal. Used in ≺-trans to
+-- compare the witness positions of two ordering assumptions.
 ≺Lex-trichotomous : ∀ ( p q : List ℕ )
   → p ≺Lex q ⊎ q ≺Lex p ⊎ p ≡ q
 ≺Lex-trichotomous []          []          = inj₂ (inj₂ refl)
@@ -532,6 +569,8 @@ Lemma:  _≺Lex_ is transitive
 ```agda
 
 
+-- ≺Lex-trans shows that the lexicographic order on positions is transitive.
+-- Used in ≺-trans when composing ordering witnesses along equal positions.
 ≺Lex-trans : ∀ (p q r : List ℕ) → p ≺Lex q → q ≺Lex r → p ≺Lex r
 ≺Lex-trans [] q (rh ∷ rt) ≺lex-[] (≺lex-head qr′) = ≺lex-[]
 ≺Lex-trans [] (qh ∷ qt) (qh ∷ rt) ≺lex-[] (≺lex-tail qr′) = ≺lex-[]
@@ -773,6 +812,8 @@ sublen-nil-∈ {l + r ` loc} (RightU u) with length (proj₁ (flat (RightU {l} {
 sublen-nil-∈ {r * ε∉r ` loc} (ListU us) with length (proj₁ (flat (ListU {r} {ε∉r} {loc} us)))
 ... | k = k , refl
 
+-- Proof that sublen u [] ≡ just (length (proj₁ (flat u))).
+-- Used in length reasoning for the star and concatenation cases of ≼-wellfounded.
 sublen-nil-flat : ∀ {r : RE} (u : U r) → sublen u [] ≡ just (length (proj₁ (flat u)))
 sublen-nil-flat {ε} EmptyU = refl
 sublen-nil-flat {$ c ` loc} (LetterU c) = refl
@@ -934,6 +975,10 @@ subst-MaybeNat<-left u₁ u₂ u₃ p eq mb =
             eq-nothing-just : just m ≡ nothing
             eq-nothing-just = sym (trans (trans step1 step2) eq₃)
 
+-- ≺-trans proves transitivity of the Okui-Suzuki order. Given u₁≺u₂ witnessed by p
+-- and u₂≺u₃ witnessed by q, we compare p and q lexicographically. If p≺Lex q we use p
+-- as the witness; if q≺Lex p we use q; if p≡q the sublen inequalities compose directly.
+-- Used to establish that ≼ is a preorder and in asymmetry/irreflexivity proofs.
 ≺-trans : ∀ { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ ≺ u₂
   → r ⊢ u₂ ≺ u₃
@@ -1072,9 +1117,14 @@ maybeNat<-asym {just mx} {just my} (maybenat-just-just mn) (maybenat-just-just n
     mm : mx < mx
     mm = <-trans mn nm
 
+-- Extract the witness position from an Okui-Suzuki ordering proof.
+-- Used in ≺-asym to compare the witness positions of opposite order assumptions.
 open-exist : ∀ {r : RE} {u v : U r} → r ⊢ u ≺ v → Σ (List ℕ) (λ p → r , p ⊢ u ≺ v)
 open-exist (≺ u v e) = e
 
+-- ≺-asym proves asymmetry of the Okui-Suzuki order: u≺v implies ¬(v≺u).
+-- It compares the two witness positions using ≺Lex-trichotomous and derives a contradiction
+-- from the anti-symmetry of MaybeNat<. Used in ≺-irrefl.
 ≺-asym : ∀ {r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ ≺ u₂
   -------------
@@ -1108,6 +1158,7 @@ open-exist (≺ u v e) = e
 Lemma: _ ⊢ _ ≺ _ is irreflexive
 
 ```agda
+-- ≺-irrefl: the Okui-Suzuki order is irreflexive. Immediate from asymmetry.
 ≺-irrefl : ∀ { r : RE } { u₁ u₂ : U r }
   → u₁ ≡ u₂
   ------------------
@@ -1120,6 +1171,8 @@ Lemma: _ ⊢ _ ≼ _ is transitive
 
 
 ```agda
+-- ≼-trans: the non-strict Okui-Suzuki order (≺ or equality) is transitive.
+-- Used implicitly to reason about the POSIX-minimal parse tree in ≼-wellfounded.
 ≼-trans : ∀ { r : RE } { u₁ u₂ u₃ : U r }
   → r ⊢ u₁ ≼ u₂
   → r ⊢ u₂ ≼ u₃
@@ -1140,6 +1193,7 @@ Lemma: _ ⊢ _ ≼ _ is transitive
 Lemma: _ ⊢ _ ≼ _ is reflexive
 
 ```agda
+-- ≼-refl: the non-strict Okui-Suzuki order is reflexive by definition (equality branch).
 ≼-refl : ∀ { r : RE } { u : U r }
   → r ⊢ u ≼ u
 ≼-refl {r} {u} = inj₂ refl 
@@ -1149,6 +1203,8 @@ Lemma: _ ⊢ _ ≼ _ is reflexive
 Lemma: _ ⊢ _ ≼ _ is anti symmetric
 
 ```agda
+-- ≼-antisym: the non-strict Okui-Suzuki order is antisymmetric. The two strict branches
+-- would give opposite ≺ assumptions, contradicting asymmetry.
 ≼-antisym : ∀ { r : RE } { u₁ u₂ : U r }
   → r ⊢ u₁ ≼ u₂
   → r ⊢ u₂ ≼ u₁
@@ -1161,7 +1217,7 @@ Lemma: _ ⊢ _ ≼ _ is anti symmetric
 ```
 Lemma: given ∈⟦ evidence, construct a ⇒ proof (POSIX parse tree)
 
-(See `cgp.posix.InMembershipToParseTree` for the `∈⟦→⇒` implementation.)
+(See `cgp.posix.RelatedWorkCUrban` for the `∈⟦→⇒` implementation.)
 
 Lemma: ≼ is wellfounded given a fix flatten word.
 
@@ -1176,10 +1232,14 @@ Lemma: ≼ is wellfounded given a fix flatten word.
 --   ● : POSIX longest split implies PairU u₁ u₂ ≼ PairU v₁ v₂
 --   + : when w ∈⟦ l ⟧, LeftU ≺ RightU (at first differing position)
 --   * : POSIX longest first element implies ListU (u₁ ∷ u₁s) ≼ ListU vs
+-- ¬any≺Lex-empty: no position is lexicographically smaller than the empty position.
+-- Used as a contradiction lemma in the choice cases of ≼-wellfounded.
 ¬any≺Lex-empty : (xs : List ℕ) → xs ≺Lex [] → ⊥
 ¬any≺Lex-empty [] ()
 ¬any≺Lex-empty (x ∷ xs) ()
 
+-- ∈⟦→⇒-member converts a POSIX parse-tree judgment into a membership proof w ∈⟦ r ⟧.
+-- Used in ≼-wellfounded and r⇒u→u≼v to feed the wellfoundedness construction.
 ∈⟦→⇒-member : ∀ {r : RE} {w : List Char} {u : U r} → w , r ⇒ u → w ∈⟦ r ⟧
 ∈⟦→⇒-member p₁ = ε
 ∈⟦→⇒-member (pc {c} {loc}) = $ c
@@ -1201,6 +1261,8 @@ Lemma: ≼ is wellfounded given a fix flatten word.
     w₁w₂∈lr = _●_⧺_ {w₁} {w₂} w₁∈r w₂∈r* refl
     w∈lr = subst (λ xs → xs ∈⟦ _ ● _ ` _ ⟧) (sym w≡w₁w₂) w₁w₂∈lr
 
+-- ⇒-cat-split-aux extracts the witness split w₁,w₂ and the "no longer split" property
+-- from a POSIX concatenation parse tree. Used by ⇒-cat-split.
 ⇒-cat-split-aux : ∀ {l r : RE} {loc : ℕ} {w : List Char} {u : U (l ● r ` loc)}
   → w , (l ● r ` loc) ⇒ u
   → Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
@@ -1209,6 +1271,8 @@ Lemma: ≼ is wellfounded given a fix flatten word.
 ⇒-cat-split-aux (ps {w₁} {w₂} w≡w₁w₂ w₁⇒u₁ w₂⇒u₂ longest-ev) =
   w₁ , w₂ , ∈⟦→⇒-member w₁⇒u₁ , ∈⟦→⇒-member w₂⇒u₂ , sym w≡w₁w₂ , longest-ev
 
+-- ⇒-cat-split is the user-facing version of ⇒-cat-split-aux. It exposes the split
+-- of w into w₁ ++ w₂ that makes the concatenation rule ps valid.
 ⇒-cat-split : ∀ {l r : RE} {loc : ℕ} {w : List Char} {u : U (l ● r ` loc)}
   → w , (l ● r ` loc) ⇒ u
   → Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
@@ -1217,6 +1281,8 @@ Lemma: ≼ is wellfounded given a fix flatten word.
 ⇒-cat-split p with ⇒-cat-split-aux p
 ⇒-cat-split p | aux = aux
 
+-- ⇒-flat-eq: a POSIX parse tree flattens to the word it parses. Used in ⇒-det and
+-- r⇒u→u≼v to relate the parse-tree word to the input word.
 ⇒-flat-eq : ∀ {r : RE} {w : List Char} {u : U r} → w , r ⇒ u → proj₁ (flat u) ≡ w
 ⇒-flat-eq p₁ = refl
 ⇒-flat-eq pc = refl
@@ -1226,6 +1292,8 @@ Lemma: ≼ is wellfounded given a fix flatten word.
 ⇒-flat-eq p[] = refl
 ⇒-flat-eq (p* w≡w₁w₂ w₁⇒v w₂⇒vs _ _) rewrite ⇒-flat-eq w₁⇒v | ⇒-flat-eq w₂⇒vs | sym w≡w₁w₂ = refl
 
+-- ⇒-star-split-aux extracts the first-occurrence split w₁,w₂ and the "no longer split"
+-- property from a non-empty POSIX star parse tree. Used by ⇒-star-split.
 ⇒-star-split-aux : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} {w : List Char} {u : U (r * nε ` loc)}
   → w , (r * nε ` loc) ⇒ u
   → w ≢ []
@@ -1236,6 +1304,8 @@ Lemma: ≼ is wellfounded given a fix flatten word.
   w₁ , w₂ , ∈⟦→⇒-member w₁⇒v , ∈⟦→⇒-member w₂⇒vs , sym w≡w₁w₂ , ¬w₁≡[] , longest-ev
 ⇒-star-split-aux (p[] {r} {ε∉r} {loc}) w≢[] = ⊥-elim (w≢[] refl)
 
+-- ⇒-star-split exposes the first split of a non-empty POSIX star parse tree.
+-- Used in the non-empty star case of ≼-wellfounded.
 ⇒-star-split : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ} {w : List Char} {u : U (r * nε ` loc)}
   → w , (r * nε ` loc) ⇒ u
   → w ≢ []
@@ -1258,9 +1328,6 @@ Lemma: ≼ is wellfounded given a fix flatten word.
     ¬0<0 ()
 
 
--- TODO: prove proj₁ (flat u) ≡ w from w , r ⇒ u
-
--- (blocked by with-abstraction of flat for composite constructors)
 
 -- flat-pair≡: proj₁ (flat (PairU u v)) ≡ proj₁ (flat u) ++ proj₁ (flat v)
 -- Uses with on flat (PairU u v) | flat u | flat v.
@@ -1280,6 +1347,9 @@ flat-list-≡ {r} {nε} {loc} u us with flat u | flat {r * nε ` loc} (ListU us)
 
 
 
+-- cancel-left-eq: given a concatenation PairU vl vr flattening to w ≡ w₁ ++ w₂, and
+-- knowing vl flattens to w₁, deduce that vr flattens to w₂. Used in the concatenation
+-- case of ≼-wellfounded to recover the right-piece flattening from a longer split.
 cancel-left-eq : ∀ {l r : RE} {loc : ℕ} (w w₁ w₂ : List Char) (vl : U l) (vr : U r)
   → proj₁ (flat vl) ≡ w₁
   → proj₁ (flat {l ● r ` loc} (PairU vl vr)) ≡ proj₁ (flat vl) ++ proj₁ (flat vr)
@@ -1511,6 +1581,10 @@ no-longer-contradiction l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l w�
     w₁₁w₃∈l rewrite w₁₂≡w₁₁w₃ = w₁₂∈l
     w₄∈r = w₂₂∈r
 
+-- longest-split-unique-len-go: if two splits of full into w₁₁++w₂₁ and w₁₂++w₂₂ both
+-- satisfy NoLonger (i.e. neither can be extended on the left), then |w₁₁| ≡ |w₁₂|.
+-- Proof: if one were shorter, no-longer-from-shorter would contradict the other's
+-- NoLonger property. Used in longest-split-unique-len.
 longest-split-unique-len-go : (l r : RE) (full : List Char)
   → (w₁₁ w₂₁ w₁₂ w₂₂ : List Char)
   → (w₁₁∈l : w₁₁ ∈⟦ l ⟧) → (w₂₁∈r : w₂₁ ∈⟦ r ⟧) → (w₁₂∈l : w₁₂ ∈⟦ l ⟧) → (w₂₂∈r : w₂₂ ∈⟦ r ⟧)
@@ -1528,6 +1602,8 @@ longest-split-unique-len-go l r full w₁₁ w₂₁ w₁₂ w₂₂ w₁₁∈l
     ¬len₂<len₁ : ¬ (length w₁₂ < length w₁₁)
     ¬len₂<len₁ = no-longer-from-shorter l r full w₁₂ w₂₂ w₁₁ w₂₁ w₁₂∈l w₂₂∈r w₁₁∈l w₂₁∈r eq₂ eq₁ nl₂
 
+-- longest-split-unique-len: two NoLonger splits of the same full word have left pieces
+-- of equal length. Used in longest-split-unique to show the left pieces are equal.
 longest-split-unique-len : (l r : RE) (full : List Char)
   → (fls₁ fls₂ : Σ (List Char) (λ w₁ → Σ (List Char) (λ w₂ →
       w₁ ∈⟦ l ⟧ × w₂ ∈⟦ r ⟧ × w₁ ++ w₂ ≡ full × NoLonger l r w₁ w₂)))
@@ -1623,14 +1699,18 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
 
 {-# TERMINATING #-}
 
+-- ≼-wellfounded constructs the unique POSIX parse tree for a word w ∈⟦ r ⟧ and proves
+-- it is ≼-minimal among all parse trees flattening to w. The construction is by structural
+-- induction on r, delegating to Urban's ∈⟦→⇒ and longest-split properties for +, ● and *.
+-- Used in r⇒u→u≼v and ¬v≺u→r⇒u.
 ≼-wellfounded : ∀ { r : RE } { w : List Char }
   → w ∈⟦ r ⟧
-  → Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U r) → proj₁ (flat v) ≡ w → r ⊢ u ≼ v))
-≼-wellfounded {ε} {[]} ε = EmptyU , refl , λ v flat-v-eq → inj₂ (EmptyU≡EmptyU v)
+  → Σ _ (λ u → (w , r ⇒ u) × (proj₁ (flat u) ≡ w) × ((v : U r) → proj₁ (flat v) ≡ w → r ⊢ u ≼ v))
+≼-wellfounded {ε} {[]} ε = EmptyU , p₁ , refl , λ v flat-v-eq → inj₂ (EmptyU≡EmptyU v)
   where
     EmptyU≡EmptyU : (u : U ε) → EmptyU ≡ u
     EmptyU≡EmptyU EmptyU = refl
-≼-wellfounded {$ c ` loc} {c ∷ []} ($ c) = LetterU c , refl , λ v flat-v-eq → inj₂ (letterU-unique v)
+≼-wellfounded {$ c ` loc} {c ∷ []} ($ c) = LetterU c , pc , refl , λ v flat-v-eq → inj₂ (letterU-unique v)
   where
     letterU-unique : (v : U ($ c ` loc)) → LetterU c ≡ v
     letterU-unique (LetterU .c) = refl
@@ -1642,9 +1722,9 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
     ... | inj₁ w∈l' = ⊥-elim (¬w∈l w∈l')
     ... | inj₂ w∈r = w∈r
 
-    right-only : Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ u ≼ v))
+    right-only : Σ _ (λ u → (w , (l + r ` loc) ⇒ u) × (proj₁ (flat u) ≡ w) × ((v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ u ≼ v))
     right-only with ≼-wellfounded {r} {w} w∈r
-    ... | u₂ , flat-u₂≡w , wf = RightU u₂ , flat-u₂≡w , λ v flat-v-eq → go v flat-v-eq
+    ... | u₂ , w⇒u₂ , flat-u₂≡w , wf = RightU u₂ , p+r w⇒u₂ ¬w∈l , flat-u₂≡w , λ v flat-v-eq → go v flat-v-eq
       where
         left-impossible : (v₁ : U l) → proj₁ (flat {l + r ` loc} (LeftU {l} {r} {loc} v₁)) ≡ w → ⊥
         left-impossible v₁ flat-v = ¬w∈l (subst (λ xs → xs ∈⟦ l ⟧) flat-v xs∈l)
@@ -1688,9 +1768,9 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
             RightU-≼-lift (inj₂ u≡v) = inj₂ (cong RightU u≡v)
 ... | yes w∈l = left-pref
   where
-    left-pref : Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ u ≼ v))
+    left-pref : Σ _ (λ u → (w , (l + r ` loc) ⇒ u) × (proj₁ (flat u) ≡ w) × ((v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ u ≼ v))
     left-pref with ≼-wellfounded {l} {w} w∈l
-    ... | u₁ , flat-u₁≡w , wf = LeftU u₁ , flat-u₁≡w , λ v flat-v-eq → go v flat-v-eq
+    ... | u₁ , w⇒u₁ , flat-u₁≡w , wf = LeftU u₁ , p+l w⇒u₁ , flat-u₁≡w , λ v flat-v-eq → go v flat-v-eq
       where
         go : (v : U (l + r ` loc)) → proj₁ (flat v) ≡ w → (l + r ` loc) ⊢ (LeftU u₁) ≼ v
         go (LeftU v₁) flat-v = LeftU-≼-lift (wf v₁ flat-v)
@@ -1741,35 +1821,51 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
             cond (0 ∷ xs) q∈ (≺lex-tail xs≺[]) = ⊥-elim (¬any≺Lex-empty xs xs≺[])
             cond (suc x ∷ xs) q∈ q≺ = ⊥-elim (¬suc∷≺Lex-zero∷ x xs q≺)
 
-≼-wellfounded {l ● r ` loc} {w} w∈lr = wellf-cat
+≼-wellfounded {l ● r ` loc} {w} w∈lr = wellf-cat (proj₂ (∈⟦→⇒ w∈lr))
   where
-    wellf-cat : Σ _ (λ u → (proj₁ (flat u) ≡ w) × ((v : U (l ● r ` loc)) → proj₁ (flat v) ≡ w → (l ● r ` loc) ⊢ u ≼ v))
-    wellf-cat with ⇒-cat-split (proj₂ (∈⟦→⇒ w∈lr))
-    wellf-cat | w₁' , w₂' , w₁'∈l , w₂'∈r , w≡split , longest-ev = PairU ul ur , flat-pair≡w , go
+    wellf-cat : (w , (l ● r ` loc) ⇒ _) → Σ _ (λ u → (w , (l ● r ` loc) ⇒ u) × (proj₁ (flat u) ≡ w) × ((v : U (l ● r ` loc)) → proj₁ (flat v) ≡ w → (l ● r ` loc) ⊢ u ≼ v))
+    wellf-cat (ps {w₁ = w₁} {w₂ = w₂} w≡split w₁⇒u₁ w₂⇒u₂ longest-ev) = PairU ul ur , ps w≡split w₁⇒ul w₂⇒ur longest-ev , flat-pair≡w , go
       where
-        wf-l' : Σ _ (λ ul → (proj₁ (flat ul) ≡ w₁') × ((vl : U l) → proj₁ (flat vl) ≡ w₁' → l ⊢ ul ≼ vl))
+        w₁' : List Char
+        w₁' = w₁
+
+        w₂' : List Char
+        w₂' = w₂
+
+        w₁'∈l : w₁' ∈⟦ l ⟧
+        w₁'∈l = ∈⟦→⇒-member w₁⇒u₁
+
+        w₂'∈r : w₂' ∈⟦ r ⟧
+        w₂'∈r = ∈⟦→⇒-member w₂⇒u₂
+        wf-l' : Σ _ (λ ul → (w₁' , l ⇒ ul) × (proj₁ (flat ul) ≡ w₁') × ((vl : U l) → proj₁ (flat vl) ≡ w₁' → l ⊢ ul ≼ vl))
         wf-l' = ≼-wellfounded w₁'∈l
 
         ul : U l
         ul = proj₁ wf-l'
 
+        w₁⇒ul : w₁' , l ⇒ ul
+        w₁⇒ul = proj₁ (proj₂ wf-l')
+
         flat-ul≡w₁' : proj₁ (flat ul) ≡ w₁'
-        flat-ul≡w₁' = proj₁ (proj₂ wf-l')
+        flat-ul≡w₁' = proj₁ (proj₂ (proj₂ wf-l'))
 
         wf-l : (vl : U l) → proj₁ (flat vl) ≡ w₁' → l ⊢ ul ≼ vl
-        wf-l = proj₂ (proj₂ wf-l')
+        wf-l = proj₂ (proj₂ (proj₂ wf-l'))
 
-        wf-r' : Σ _ (λ ur → (proj₁ (flat ur) ≡ w₂') × ((vr : U r) → proj₁ (flat vr) ≡ w₂' → r ⊢ ur ≼ vr))
+        wf-r' : Σ _ (λ ur → (w₂' , r ⇒ ur) × (proj₁ (flat ur) ≡ w₂') × ((vr : U r) → proj₁ (flat vr) ≡ w₂' → r ⊢ ur ≼ vr))
         wf-r' = ≼-wellfounded w₂'∈r
 
         ur : U r
         ur = proj₁ wf-r'
 
+        w₂⇒ur : w₂' , r ⇒ ur
+        w₂⇒ur = proj₁ (proj₂ wf-r')
+
         flat-ur≡w₂' : proj₁ (flat ur) ≡ w₂'
-        flat-ur≡w₂' = proj₁ (proj₂ wf-r')
+        flat-ur≡w₂' = proj₁ (proj₂ (proj₂ wf-r'))
 
         wf-r : (vr : U r) → proj₁ (flat vr) ≡ w₂' → r ⊢ ur ≼ vr
-        wf-r = proj₂ (proj₂ wf-r')
+        wf-r = proj₂ (proj₂ (proj₂ wf-r'))
 
         flat-pair≡w : proj₁ (flat {l ● r ` loc} (PairU ul ur)) ≡ w
         flat-pair≡w rewrite flat-ul≡w₁' | flat-ur≡w₂' | w≡split = refl
@@ -1894,7 +1990,7 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
         go-shorter-r flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≢w₂' flat-v-eq = ⊥-elim (flat-vr≢w₂' flat-vr≡w₂')
           where
             flat-vr≡w₂' : proj₁ (flat vr) ≡ w₂'
-            flat-vr≡w₂' = cancel-left-eq {l} {r} {loc} w w₁' w₂' vl vr flat-vl≡w₁' (flat-pair≡ {l} {r} {loc} vl vr) flat-v-eq (sym w≡split)
+            flat-vr≡w₂' = cancel-left-eq {l} {r} {loc} w w₁' w₂' vl vr flat-vl≡w₁' (flat-pair≡ {l} {r} {loc} vl vr) flat-v-eq w≡split
 
         go : (v : U (l ● r ` loc)) → proj₁ (flat v) ≡ w → (l ● r ` loc) ⊢ (PairU ul ur) ≼ v
         go (PairU vl vr) flat-v-eq with list≡-decides (proj₁ (flat vl)) w₁'
@@ -1902,7 +1998,7 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
         go (PairU vl vr) flat-v-eq | yes flat-vl≡w₁' | yes flat-vr≡w₂' = go-same flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≡w₂'
         go (PairU vl vr) flat-v-eq | yes flat-vl≡w₁' | no flat-vr≢w₂' = go-shorter-r flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≡w₁' flat-vr≢w₂' flat-v-eq
         go (PairU vl vr) flat-v-eq | no flat-vl≢w₁' = go-shorter-l flat-ul≡w₁' flat-ur≡w₂' vl vr flat-vl≢w₁' flat-v-eq
-≼-wellfounded {r * nε ` loc} {[]} _ = ListU [] , refl , λ v flat-v-eq → go-star-nil v flat-v-eq
+≼-wellfounded {r * nε ` loc} {[]} _ = ListU [] , p[] , refl , λ v flat-v-eq → go-star-nil v flat-v-eq
   where
     listU-empty : (vs : List (U r)) → proj₁ (flat (ListU vs)) ≡ [] → ListU [] ≡ ListU vs
     listU-empty [] _ = refl
@@ -1952,23 +2048,27 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
     longest-ev : ¬ (∃[ w₃ ] ∃[ w₄ ] (¬ w₃ ≡ []) × (w₃ ++ w₄ ≡ w₂) × ((w₁ ++ w₃) ∈⟦ r ⟧) × w₄ ∈⟦ r * nε ` loc ⟧)
     longest-ev = proj₂ (proj₂ (proj₂ (proj₂ (proj₂ (proj₂ star-split)))))
 
-    wellf-r : Σ _ (λ u → (proj₁ (flat u) ≡ w₁) × ((v : U r) → proj₁ (flat v) ≡ w₁ → r ⊢ u ≼ v))
+    wellf-r : Σ _ (λ u → (w₁ , r ⇒ u) × (proj₁ (flat u) ≡ w₁) × ((v : U r) → proj₁ (flat v) ≡ w₁ → r ⊢ u ≼ v))
     wellf-r = ≼-wellfounded w₁∈r
     u₁ : U r
     u₁ = proj₁ wellf-r
+    w₁⇒u₁ : w₁ , r ⇒ u₁
+    w₁⇒u₁ = proj₁ (proj₂ wellf-r)
     flat-u₁≡w₁ : proj₁ (flat u₁) ≡ w₁
-    flat-u₁≡w₁ = proj₁ (proj₂ wellf-r)
+    flat-u₁≡w₁ = proj₁ (proj₂ (proj₂ wellf-r))
     wf-r : (v : U r) → proj₁ (flat v) ≡ w₁ → r ⊢ u₁ ≼ v
-    wf-r = proj₂ (proj₂ wellf-r)
+    wf-r = proj₂ (proj₂ (proj₂ wellf-r))
 
-    wellf-r* : Σ _ (λ u → (proj₁ (flat u) ≡ w₂) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ w₂ → (r * nε ` loc) ⊢ u ≼ v))
+    wellf-r* : Σ _ (λ u → (w₂ , r * nε ` loc ⇒ u) × (proj₁ (flat u) ≡ w₂) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ w₂ → (r * nε ` loc) ⊢ u ≼ v))
     wellf-r* = ≼-wellfounded w₂∈r*
     u₂ : U (r * nε ` loc)
     u₂ = proj₁ wellf-r*
+    w₂⇒u₂ : w₂ , r * nε ` loc ⇒ u₂
+    w₂⇒u₂ = proj₁ (proj₂ wellf-r*)
     flat-u₂≡w₂ : proj₁ (flat u₂) ≡ w₂
-    flat-u₂≡w₂ = proj₁ (proj₂ wellf-r*)
+    flat-u₂≡w₂ = proj₁ (proj₂ (proj₂ wellf-r*))
     wf-r* : (v : U (r * nε ` loc)) → proj₁ (flat v) ≡ w₂ → (r * nε ` loc) ⊢ u₂ ≼ v
-    wf-r* = proj₂ (proj₂ wellf-r*)
+    wf-r* = proj₂ (proj₂ (proj₂ wellf-r*))
 
     u : U (r * nε ` loc)
     u = ListU (u₁ ∷ unListU u₂)
@@ -1977,8 +2077,8 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
     flat-u≡full = trans (cong (λ xs → xs ++ proj₁ (flat (ListU (unListU u₂)))) (flat-u₁≡w₁))
                   (trans (cong (λ x → w₁ ++ proj₁ (flat x)) (listU∘unListU {r} {nε} {loc} {u₂})) (trans (cong (λ xs → w₁ ++ xs) flat-u₂≡w₂) w≡w₁w₂))
 
-    wellf-star : Σ _ (λ u → (proj₁ (flat u) ≡ full) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ full → (r * nε ` loc) ⊢ u ≼ v))
-    wellf-star = u , (flat-u≡full , go-star)
+    wellf-star : Σ _ (λ u → (full , r * nε ` loc ⇒ u) × (proj₁ (flat u) ≡ full) × ((v : U (r * nε ` loc)) → proj₁ (flat v) ≡ full → (r * nε ` loc) ⊢ u ≼ v))
+    wellf-star = u , p* (sym w≡w₁w₂) w₁⇒u₁ (subst (λ u' → w₂ , r * nε ` loc ⇒ u') (sym listU∘unListU) w₂⇒u₂) ¬w₁≡[] longest-ev , flat-u≡full , go-star
       where
 
          -- Lifts ≼ from components to the combined ListU tree.
@@ -2324,4 +2424,105 @@ head-∷-tail≡ {A} {[]} xs≢[] = ⊥-elim (xs≢[] refl)
 
             go-star : (v : U (r * nε ` loc)) → proj₁ (flat v) ≡ full → (r * nε ` loc) ⊢ u ≼ v
             go-star (ListU vs) flat-v-eq = go-star-list vs flat-v-eq
+
+```
+
+
+Theorem 14 from C Urban POSIX Lexing with Derivatives of Regular Expressions
+
+```agda
+-- ⇒-det: POSIX parse trees are deterministic. If two parse trees parse the same word
+-- under the same regex, they must be equal. Proof: if they differed, ⇒→>-max would make
+-- each greater than the other, contradicting anti-symmetry of >. Used in r⇒u→u≼v and
+-- ¬v≺u→r⇒u.
+⇒-det : ∀ { w : List Char } { r : RE } { u u' : U r }
+  → w , r ⇒ u
+  → w , r ⇒ u'
+  → u ≡ u'
+⇒-det {w} {r} {u} {u'} w⇒u w⇒u' with r ⊢ u ≟ u'
+... | yes u≡u' = u≡u'
+... | no ¬u≡u' = ⊥-elim (¬u≡u' (>-anti-sym u>u' u'>u))
+  where
+    flat-u≡w : proj₁ (flat u) ≡ w
+    flat-u≡w = ⇒-flat-eq w⇒u
+
+    flat-u'≡w : proj₁ (flat u') ≡ w
+    flat-u'≡w = ⇒-flat-eq w⇒u'
+
+    flat-u≡flat-u' : proj₁ (flat u) ≡ proj₁ (flat u')
+    flat-u≡flat-u' = trans flat-u≡w (sym flat-u'≡w)
+
+    u>u' : r ⊢ u > u'
+    u>u' = ⇒→>-max w⇒u u' ¬u≡u' flat-u≡flat-u'
+
+    u'>u : r ⊢ u' > u
+    u'>u = ⇒→>-max w⇒u' u (λ u'≡u → ¬u≡u' (sym u'≡u)) (sym flat-u≡flat-u')
+
+-- r⇒u→u≼v: the POSIX parse tree is ≼-minimal among all parse trees flattening to the
+-- same word. Uses ≼-wellfounded to obtain the unique minimal tree and ⇒-det to show it
+-- equals u. Connects Urban's POSIX semantics to Okui-Suzuki's order.
+r⇒u→u≼v : ∀ { w : List Char } { r : RE }
+  → ( u : U r )
+  → ( w , r ⇒ u )
+  → ( v : U r )
+  → proj₁ (flat (v)) ≡ w
+  → r ⊢ u ≼ v
+r⇒u→u≼v {w} {r} u w⇒u v flat-v≡w =
+  subst (λ x → r ⊢ x ≼ v) (sym u≡umin) umin≼v
+  where
+    w∈r : w ∈⟦ r ⟧
+    w∈r = ∈⟦→⇒-member w⇒u
+
+    result = ≼-wellfounded w∈r
+
+    umin : U r
+    umin = proj₁ result
+
+    w⇒umin : w , r ⇒ umin
+    w⇒umin = proj₁ (proj₂ result)
+
+    umin≼v : r ⊢ umin ≼ v
+    umin≼v = proj₂ (proj₂ (proj₂ result)) v flat-v≡w
+
+    u≡umin : u ≡ umin
+    u≡umin = ⇒-det w⇒u w⇒umin
+
+```
+
+Theorem 15  from C Urban POSIX Lexing with Derivatives of Regular Expressions
+
+```agda
+
+-- ¬v≺u→r⇒u: if every parse tree v flattening to w satisfies ¬(v ≺ u), then u is the
+-- POSIX parse tree of w. Proof: ≼-wellfounded yields the POSIX-minimal tree umin; the
+-- universal negation rules out umin ≺ u, so umin ≡ u, and umin is POSIX by construction.
+-- This is the converse direction linking absence of smaller Okui-Suzuki trees to POSIXness.
+¬v≺u→r⇒u : ∀ { w : List Char } { r : RE }
+  → ( u : U r )
+  → ( proj₁ (flat u)) ≡ w
+  → ( ( v : U r )
+    → ( proj₁ (flat v)) ≡ w
+    → ¬ ( r ⊢ v ≺ u ) )
+  → w , r ⇒ u
+¬v≺u→r⇒u {w} {r} u flat-u≡w all¬v≺u =
+  subst (λ x → w , r ⇒ x) (sym u≡umin) w⇒umin
+  where
+    w∈r : w ∈⟦ r ⟧
+    w∈r = subst (λ x → x ∈⟦ r ⟧) flat-u≡w (proj₂ (flat u))
+
+    result = ≼-wellfounded w∈r
+    umin = proj₁ result
+    w⇒umin = proj₁ (proj₂ result)
+    flat-umin≡w = proj₁ (proj₂ (proj₂ result))
+    wf = proj₂ (proj₂ (proj₂ result))
+
+    umin≼u : r ⊢ umin ≼ u
+    umin≼u = wf u flat-u≡w
+
+    u≡umin : u ≡ umin
+    u≡umin with umin≼u
+    ... | inj₂ umin≡u = sym umin≡u
+    ... | inj₁ umin≺u = ⊥-elim (all¬v≺u umin flat-umin≡w umin≺u)
+
+
 ```

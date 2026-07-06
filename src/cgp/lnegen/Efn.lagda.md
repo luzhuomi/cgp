@@ -1,7 +1,7 @@
 This module contains  the attempt of proving monotoncity of the pd injection over lnegen ordering by restricting to epsilon first normal form efn
 
 ```agda
-{-# OPTIONS --rewriting  #-}
+{-# OPTIONS --rewriting --allow-unsolved-metas #-}
 
 module cgp.lnegen.Efn where
 import cgp.RE as RE
@@ -70,7 +70,7 @@ open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; _≢_; refl; trans; sym; cong; cong₂; cong-app; subst)
-open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
+open Eq.≡-Reasoning using ( begin_; step-≡;  step-≡-∣;  step-≡-⟩ ; _∎ )
 
 
 import Data.Product as Product
@@ -117,10 +117,11 @@ data EfnPDInstance : ∀ {r : RE } { c : Char } → PDInstance r c → Set where
     → Efn p
     → EfnPDInstance {r} {c} (pdinstance {p} {r} {c} inj s-ev)
 
-pdU-isEnf : ∀ { r : RE } { c : Char }
-  → All (EfnPDInstance {r} {c}) pdU[ r , c ]
+pdU-isEnf : ∀ { r : RE } { c : Char } → All (EfnPDInstance {r} {c}) pdU[ r , c ]
 pdU-isEnf = {!!} 
 
+
+{-
 
 -- not in used,  it got stuck below
 data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
@@ -210,6 +211,7 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
       where
         len|pair-u₁v₁|≡0 : length (proj₁ (flat (PairU u₁ v₁))) ≡ 0
         len|pair-u₁v₁|≡0 rewrite len|pair-u₁v₁|≡len|pair-u₂v₂| = len|pair-u₂v₂|≡0
+    -}
     {-
       with length (proj₁ (flat u₁)) Nat.≟ 0
     ... | no ¬len|u₁|≡0 = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| (lne (Utils.¬≡0→>0 ¬len|u₁|≡0) len|u₂|≡0)))
@@ -227,6 +229,8 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 
 
 ```agda
+-- >-Inc is not working, pdU is not monotomic, refer to >-Inc
+
 data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -325,4 +329,40 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
         u₁≡0 rewrite sym (cong (length ∘ proj₁ ∘ flat) (u₁≡u₂-from-flat u₁ u₂ v₁ v₂ uv₁≡uv₂)) = u₂≡0
     inc-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (lne _ uv₂≡0)
       = ⊥-elim (n≡0→¬n>0 (trans (cong length uv₁≡uv₂) uv₂≡0) (Nat.s≤s Nat.z≤n))
+      
 ```
+
+
+counter example from Inc.lagda.md
+
+
+( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
+
+( (a ● (ε + ε) ) ● ( ε + b ) ) ● (ε + b )
+
+/ a ( inj₀ )
+
+
+
+= [ ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b ) ]
+
+/ b ( inj₁ inj₂ inj₃ inj₄ )
+
+= [ ε ● ( ε + b ) , ε  ]
+
+inj₀ : U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b ) → U ( (a ● (ε + ε) ) ● ( ε + b ) ) ● (ε + b )
+inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU)   -- (t1)
+inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)   -- (t2)
+inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU)) (RightU (LetterU b)))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))  -- (t3)
+inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU b))   = PairU (PairU (PairU (LetterU a) (RightU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b)) -- (t4)
+
+
+inj₁ inj₂ : U (ε ● ( ε + b )) → U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b )
+
+inj₁ (PairU EmptyU (LeftU EmptyU)) = PairU (PairU (PairU EmptyU (LeftU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)     -- (s1)   
+inj₂ (PairU EmptyU (LeftU EmptyU)) = PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)    -- (s2)  s1 > s2 
+
+
+inj₃ inj₄ : U ε → U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b )
+inj₃ _ = PairU ( PairU ( PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))                             -- (s3)  s2 > s3
+inj₄ _ = PairU ( PairU ( PairU EmptyU (RightU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))                            -- (s4)  s3 > s4

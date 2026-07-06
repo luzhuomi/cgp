@@ -25,14 +25,14 @@ open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU≢[
 
 
 import cgp.PDInstance as PDI
-open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ; 
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left ; pdinstance-right ;
-  pdinstance-star ; mkinjList ;
+  pdinstance-star ; mkinjList ; mkinjListSoundEv ;
   pdinstance-fst ; mkinjFst ; mkinjFstSoundEv ;
-  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
-  concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
+  pdinstance-snd ; mkinjSnd ; mkinjSndSoundEv ; mk-snd-pdi ;
+  concatmap-pdinstance-snd ; zip-es-flat-[]-es ; concatmap-pdinstance-snd-[]≡[] ;
   pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ;
-  compose-pdi-with 
+  compose-pdi-with
   ) 
 
 
@@ -104,25 +104,255 @@ open import Function using (_∘_ ; flip ; case_of_)
 -- does not work, look at the comment "stuck here" below 
 
 data Efn : ∀ (r : RE ) → Set where
+  -- ε is in efn (base case)
   efn-ε : Efn ε
+  -- p ● r is in efn if p is in efn (the source of any ● node is Efn by construction)
   efn-● : ∀ { p r : RE } { loc : ℕ }
     → Efn p
     ----------------------
     → Efn (p ● r ` loc)
 
 data EfnPDInstance : ∀ {r : RE } { c : Char } → PDInstance r c → Set where
+  -- A pdinstance is an EfnPDInstance if its source regex p is Efn
   efn-pdi : ∀ { p r : RE } { c : Char }
     → ( inj : U p → U r ) 
     → ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
     → Efn p
     → EfnPDInstance {r} {c} (pdinstance {p} {r} {c} inj s-ev)
 
-pdU-isEnf : ∀ { r : RE } { c : Char } → All (EfnPDInstance {r} {c}) pdU[ r , c ]
-pdU-isEnf = {!!} 
+-- Main theorem: all pdinstances in pdU[r, c] have Efn source
+-- Proved by structural induction on r.
+pdU-isEnf : ∀ { r : RE } { c : Char }
+  → All (EfnPDInstance {r} {c}) pdU[ r , c ]
 
+-- LEMMA: pdinstance-left preserves EfnPDInstance.
+-- Proof idea: the source of (pdinstance-left pdi) is p (same as pdi's source),
+-- which is already Efn by the inductive hypothesis. The injection is just wrapped
+-- in LeftU, so the same Efn evidence applies.
+-- Used in: efn-All-map-left (local helper for the + case of pdU-isEnf)
+efn-pdinstance-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ∀ { p : RE } ( inj : U p → U l ) ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
+  → EfnPDInstance {l} {c} (pdinstance {p} {l} {c} inj s-ev)
+  → EfnPDInstance {l + r ` loc} {c} (pdinstance-left (pdinstance {p} {l} {c} inj s-ev))
+efn-pdinstance-left {l} {r} {loc} {c} {p} inj s-ev (efn-pdi {p} {l} {c} .inj .s-ev efn-p) = efn-pdi {p} {l + r ` loc} {c} (λ u → LeftU (inj u)) s-ev efn-p
+
+
+-- LEMMA: pdinstance-right preserves EfnPDInstance.
+-- Proof idea: same as left - source p is unchanged, just wrapped in RightU.
+-- Used in: efn-All-map-right (local helper for the + case of pdU-isEnf)
+efn-pdinstance-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ∀ { p : RE } ( inj : U p → U r ) ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
+  → EfnPDInstance {r} {c} (pdinstance {p} {r} {c} inj s-ev)
+  → EfnPDInstance {l + r ` loc} {c} (pdinstance-right (pdinstance {p} {r} {c} inj s-ev))
+efn-pdinstance-right {l} {r} {loc} {c} {p} inj s-ev (efn-pdi {p} {r} {c} .inj .s-ev efn-p) = efn-pdi {p} {l + r ` loc} {c} (λ u → RightU (inj u)) s-ev efn-p
+
+-- LEMMA: pdinstance-fst preserves EfnPDInstance.
+-- Proof idea: source of (pdinstance-fst pdi) is (p ● r), which is a ● node
+-- and therefore Efn by the efn-● constructor.
+-- Used in: efn-All-map-fst (local helper for the ● case of pdU-isEnf)
+efn-pdinstance-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ∀ { p : RE } ( inj : U p → U l ) ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
+  → EfnPDInstance {l} {c} (pdinstance {p} {l} {c} inj s-ev)
+  → EfnPDInstance {l ● r ` loc} {c} (pdinstance-fst (pdinstance {p} {l} {c} inj s-ev))
+efn-pdinstance-fst {l} {r} {loc} {c} {p} inj s-ev (efn-pdi {p} {l} {c} .inj .s-ev efn-p) = efn-pdi {p ● r ` loc} {l ● r ` loc} {c} (λ u → mkinjFst inj u) (mkinjFstSoundEv inj s-ev) (efn-● efn-p)
+
+-- LEMMA: pdinstance-star preserves EfnPDInstance.
+-- Proof idea: source of (pdinstance-star pdi) is (p ● (r * ε∉r)), which is a ● node
+-- and therefore Efn by the efn-● constructor.
+-- Used in: efn-All-map-star (local helper for the * case of pdU-isEnf)
+efn-pdinstance-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  → ∀ { p : RE } ( inj : U p → U r ) ( s-ev : ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
+  → EfnPDInstance {r} {c} (pdinstance {p} {r} {c} inj s-ev)
+  → EfnPDInstance {r * ε∉r ` loc} {c} (pdinstance-star (pdinstance {p} {r} {c} inj s-ev))
+efn-pdinstance-star {r} {ε∉r} {loc} {c} {p} inj s-ev (efn-pdi {p} {r} {c} .inj .s-ev efn-p) = efn-pdi {p ● (r * ε∉r ` loc) ` loc} {r * ε∉r ` loc} {c} (mkinjList inj) (mkinjListSoundEv inj s-ev) (efn-● efn-p)
+
+-- LEMMA: mk-snd-pdi preserves EfnPDInstance.
+-- Proof idea: source of (mk-snd-pdi e pdi) is p (same as pdi's source),
+-- which is Efn by the inductive hypothesis. The Efn evidence threads through
+-- since mk-snd-pdi only changes the injection, not the source.
+-- Used in: efn-map-pdinstance-snd, which is used in efn-concatmap-pdinstance-snd
+--          for the ● (ε∈l) case of pdU-isEnf
+efn-mk-snd-pdi : ∀ { l r p : RE } { loc : ℕ } { c : Char }
+  → ( e : U l )
+  → ( flat-e≡[] : proj₁ (flat e) ≡ [] )
+  → ( inj : U p → U r )
+  → ( s-ev : ∀ ( u : U p ) → proj₁ (flat (inj u)) ≡ c ∷ proj₁ (flat u))
+  → Efn p
+  → EfnPDInstance {r} {c} (pdinstance {p} {r} {c} inj s-ev)
+  → EfnPDInstance {l ● r ` loc} {c} (mk-snd-pdi {l} {r} {loc} {c} (e , flat-[] e flat-e≡[]) (pdinstance {p} {r} {c} inj s-ev))
+efn-mk-snd-pdi {l} {r} {p} {loc} {c} e flat-e≡[] inj s-ev efn-p (efn-pdi {p} {r} {c} .inj .s-ev _) = efn-pdi {p} {l ● r ` loc} {c} (mkinjSnd inj e) s-ev-snd efn-p
+  where
+    s-ev-snd : ∀ ( u : U p ) → proj₁ (flat {l ● r ` loc} (mkinjSnd inj e u)) ≡ c ∷ proj₁ (flat {p} u)
+    s-ev-snd u = mkinjSndSoundEv {p} {l} {r} {loc} {c} inj s-ev e (flat-[] e flat-e≡[]) u
+
+-- LEMMA: mapping pdinstance-snd (for a single empty parse tree e) over a list
+-- of pdinstances preserves EfnPDInstance.
+-- Proof idea: for each pdi in the list, efn-mk-snd-pdi threads the Efn evidence.
+-- Used in: efn-concatmap-pdinstance-snd (inner loop over each empty parse tree)
+efn-map-pdinstance-snd : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( e-flat : ∃[ e ] Flat-[] l e )
+  → ( pdis : List (PDInstance r c) )
+  → All (EfnPDInstance {r} {c}) pdis
+  → All (EfnPDInstance {l ● r ` loc} {c}) (pdinstance-snd {l} {r} {loc} {c} e-flat pdis)
+efn-map-pdinstance-snd _ [] [] = []
+efn-map-pdinstance-snd {l} {r} {loc} {c} (e , flat-[] .e flat-e≡[]) (_ ∷ ps) ((efn-pdi {p} {r} {c} inj s-ev efn-p) ∷ efns) = efn-mk-snd-pdi {l} {r} {p} {loc} {c} e flat-e≡[] inj s-ev efn-p (efn-pdi inj s-ev efn-p) ∷ efn-map-pdinstance-snd {l} {r} {loc} {c} (e , flat-[] e flat-e≡[]) ps efns
+
+-- LEMMA: All P is preserved over list concatenation.
+-- Proof idea: straightforward structural induction on the first list.
+-- Used in: the + case (combines left and right branches) and the ● (ε∈l) case
+--          (combines fst and snd branches) of pdU-isEnf
+all-++ : ∀ {r : RE} {c : Char} {P : PDInstance r c → Set}
+  → ( xs : List (PDInstance r c) )
+  → ( ys : List (PDInstance r c) )
+  → All P xs
+  → All P ys
+  → All P (xs ++ ys)
+all-++ [] ys [] p₂ = p₂
+all-++ (x ∷ xs) ys (p ∷ ps) p₂ = p ∷ all-++ xs ys ps p₂
+
+-- LEMMA: concatmap-pdinstance-snd preserves EfnPDInstance.
+-- Proof idea: decompose concatmap into a zip of (es × flat-[]-es) to get
+-- a list of (e, Flat-[] e) pairs, then for each pair use efn-map-pdinstance-snd
+-- and concatenate the results with all-++. The Efn evidence threads through
+-- since each mk-snd-pdi preserves it.
+-- Used in: the ● (ε∈l) case of pdU-isEnf for the second (snd) branch
+efn-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance r c) )
+  → All (EfnPDInstance {r} {c}) pdis
+  → All (EfnPDInstance {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
+efn-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis all-efn-pdis = all-efn-concat
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+
+    e-flat-es : List (∃[ e ] Flat-[] l e)
+    e-flat-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+
+    all-efn-zip : All (EfnPDInstance {l ● r ` loc} {c}) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x pdis ) e-flat-es)
+    all-efn-zip = efn-map-zip e-flat-es
+      where
+        efn-map-zip : ∀ (es' : List (∃[ e ] Flat-[] l e))
+          → All (EfnPDInstance {l ● r ` loc} {c}) (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x pdis ) es')
+        efn-map-zip [] = []
+        efn-map-zip ((e , flat-[] .e flat-e≡[]) ∷ xs) = all-++ _ _ (efn-map-pdinstance-snd {l} {r} {loc} {c} (e , flat-[] e flat-e≡[]) pdis all-efn-pdis) (efn-map-zip xs)
+
+    all-efn-concat : All (EfnPDInstance {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
+    all-efn-concat = all-efn-zip
+
+-- LEMMA: concatmap-pdinstance-snd over an empty pdi list yields [].
+-- Proof idea: use subst with concatmap-pdinstance-snd-[]≡[] to rewrite
+-- the result to [], then return [].
+-- Used in: currently unused (left as a convenience lemma)
+efn-concatmap-pdinstance-snd-[] : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  → All (EfnPDInstance {r} {c}) []
+  → All (EfnPDInstance {l ● r ` loc} {c}) (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} [])
+efn-concatmap-pdinstance-snd-[] {l} {r} {ε∈l} {loc} {c} [] = subst (All (EfnPDInstance {l ● r ` loc} {c})) (sym (concatmap-pdinstance-snd-[]≡[] {l} {r} {ε∈l} {loc} {c})) []
+
+-- LEMMA: pdU[$ c, c] computes to the expected singleton list.
+-- Proof idea: pattern-match on the same with clause (c Char.≟ c) as pdU uses,
+-- which reduces pdU[$ c, c] to the concrete list, allowing refl.
+-- Used in: pdU-isEnf-letter (rewrite clause to bridge the with abstraction)
+pdU-letter≡∷ : ∀ { c : Char } { loc : ℕ }
+  → pdU[ $ c ` loc , c ] ≡ [ pdinstance {ε} {$ c ` loc} {c} mkinjLetter mkinjLetterSound ]
+pdU-letter≡∷ {c} {loc} with c Char.≟ c
+... | yes refl = refl
+... | no ¬c≡c = ⊥-elim (¬c≡c refl)
+
+-- LEMMA: the letter case of pdU-isEnf.
+-- Proof idea: match on (rc Char.≟ c) to thread pdU's internal with clause.
+-- In the yes case, rewrite with pdU-letter≡∷ to expose the concrete list,
+-- then construct efn-pdi with efn-ε. In the no case, the list is empty.
+-- Used in: pdU-isEnf for the $ case
+pdU-isEnf-letter : ∀ { rc c : Char } { loc : ℕ }
+  → All (EfnPDInstance {$ rc ` loc} {c}) (pdU[ $ rc ` loc , c ])
+pdU-isEnf-letter {rc} {c} {loc} with rc Char.≟ c
+... | yes refl rewrite pdU-letter≡∷ {rc} {loc} = efn-pdi {ε} {$ rc ` loc} {rc} mkinjLetter mkinjLetterSound efn-ε ∷ []
+... | no ¬rc≡c = []
+
+pdU-isEnf {ε} {c} = []
+pdU-isEnf {$ c' ` loc} {c} = pdU-isEnf-letter {c'} {c} {loc}
+
+-- + case: pdU[l + r, c] = map left pdU[l,c] ++ map right pdU[r,c]
+-- Map each branch through efn-pdinstance-left/right, then combine with all-++.
+pdU-isEnf {l + r ` loc} {c} = all-++ _ _ (efn-All-map-left pdU[ l , c ] ind-hyp-l) (efn-All-map-right pdU[ r , c ] ind-hyp-r)
+  where
+    efn-All-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+      → ( pdis : List (PDInstance l c) )
+      → All (EfnPDInstance {l} {c}) pdis
+      → All (EfnPDInstance {l + r ` loc} {c}) (List.map pdinstance-left pdis)
+    efn-All-map-left [] [] = []
+    efn-All-map-left ((pdinstance {p} {l} {c} inj s-ev) ∷ pdis)
+      (efn-pdi {p} {l} {c} inj s-ev efp ∷ pxs)
+      = efn-pdinstance-left inj s-ev (efn-pdi {p} {l} {c} inj s-ev efp) ∷ efn-All-map-left pdis pxs
+
+    efn-All-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+      → ( pdis : List (PDInstance r c) )
+      → All (EfnPDInstance {r} {c}) pdis
+      → All (EfnPDInstance {l + r ` loc} {c}) (List.map pdinstance-right pdis)
+    efn-All-map-right [] [] = []
+    efn-All-map-right ((pdinstance {p} {r} {c} inj s-ev) ∷ pdis)
+      (efn-pdi {p} {r} {c} inj s-ev efp ∷ pxs)
+      = efn-pdinstance-right inj s-ev (efn-pdi {p} {r} {c} inj s-ev efp) ∷ efn-All-map-right pdis pxs
+
+    ind-hyp-l : All (EfnPDInstance {l} {c}) (pdU[ l , c ])
+    ind-hyp-l = pdU-isEnf {l} {c}
+
+    ind-hyp-r : All (EfnPDInstance {r} {c}) (pdU[ r , c ])
+    ind-hyp-r = pdU-isEnf {r} {c}
+-- * case: pdU[r*, c] = map star pdU[r,c]
+-- Map through efn-pdinstance-star, which constructs efn-● from the Efn evidence of the source.
+pdU-isEnf {r * ε∉r ` loc} {c} = efn-All-map-star pdU[ r , c ] ind-hyp-r
+  where
+    efn-All-map-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+      → ( pdis : List (PDInstance r c) )
+      → All (EfnPDInstance {r} {c}) pdis
+      → All (EfnPDInstance {r * ε∉r ` loc} {c}) (List.map pdinstance-star pdis)
+    efn-All-map-star [] [] = []
+    efn-All-map-star ((pdinstance {p} {r} {c} inj s-ev) ∷ pdis)
+      (efn-pdi {p} {r} {c} inj s-ev efp ∷ pxs)
+      = efn-pdinstance-star inj s-ev (efn-pdi {p} {r} {c} inj s-ev efp) ∷ efn-All-map-star pdis pxs
+
+    ind-hyp-r : All (EfnPDInstance {r} {c}) (pdU[ r , c ])
+    ind-hyp-r = pdU-isEnf {r} {c}
+-- ● case (¬ε∈l): pdU[l ● r, c] = map fst pdU[l,c]
+-- Map through efn-pdinstance-fst, which constructs efn-● from the Efn evidence.
+pdU-isEnf {l ● r ` loc} {c} with ε∈? l
+...                            | no ¬ε∈l = efn-All-map-fst pdU[ l , c ] ind-hyp-l
+  where
+    efn-All-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+      → ( pdis : List (PDInstance l c) )
+      → All (EfnPDInstance {l} {c}) pdis
+      → All (EfnPDInstance {l ● r ` loc} {c}) (List.map pdinstance-fst pdis)
+    efn-All-map-fst [] [] = []
+    efn-All-map-fst ((pdinstance {p} {l} {c} inj s-ev) ∷ pdis)
+      (efn-pdi {p} {l} {c} inj s-ev efp ∷ pxs)
+      = efn-pdinstance-fst inj s-ev (efn-pdi {p} {l} {c} inj s-ev efp) ∷ efn-All-map-fst pdis pxs
+
+    ind-hyp-l : All (EfnPDInstance {l} {c}) (pdU[ l , c ])
+    ind-hyp-l = pdU-isEnf {l} {c}
+-- ● case (ε∈l): pdU[l ● r, c] = map fst pdU[l,c] ++ concatmap-snd pdU[r,c]
+-- First branch maps through efn-pdinstance-fst, second uses efn-concatmap-pdinstance-snd.
+...                            | yes ε∈l = all-++ _ _ (efn-All-map-fst pdU[ l , c ] ind-hyp-l) (efn-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ] ind-hyp-r)
+  where
+    efn-All-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+      → ( pdis : List (PDInstance l c) )
+      → All (EfnPDInstance {l} {c}) pdis
+      → All (EfnPDInstance {l ● r ` loc} {c}) (List.map pdinstance-fst pdis)
+    efn-All-map-fst [] [] = []
+    efn-All-map-fst ((pdinstance {p} {l} {c} inj s-ev) ∷ pdis)
+      (efn-pdi {p} {l} {c} inj s-ev efp ∷ pxs)
+      = efn-pdinstance-fst inj s-ev (efn-pdi {p} {l} {c} inj s-ev efp) ∷ efn-All-map-fst pdis pxs
+
+    ind-hyp-l : All (EfnPDInstance {l} {c}) (pdU[ l , c ])
+    ind-hyp-l = pdU-isEnf {l} {c}
+
+    ind-hyp-r : All (EfnPDInstance {r} {c}) (pdU[ r , c ])
+    ind-hyp-r = pdU-isEnf {r} {c}
 
 {-
-
 -- not in used,  it got stuck below
 data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc-efn : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
@@ -211,7 +441,9 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
       where
         len|pair-u₁v₁|≡0 : length (proj₁ (flat (PairU u₁ v₁))) ≡ 0
         len|pair-u₁v₁|≡0 rewrite len|pair-u₁v₁|≡len|pair-u₂v₂| = len|pair-u₂v₂|≡0
-    -}
+
+    -}         
+
     {-
       with length (proj₁ (flat u₁)) Nat.≟ 0
     ... | no ¬len|u₁|≡0 = bne |injFst-pair-u-v|>0 |injFst-pair-u-v|>0 (seq₁ (u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ len|u₁|≡len|u₂| (lne (Utils.¬≡0→>0 ¬len|u₁|≡0) len|u₂|≡0)))
@@ -229,7 +461,11 @@ data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
 
 
 ```agda
+
 -- >-Inc is not working, pdU is not monotomic, refer to >-Inc
+
+
+{-
 
 data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
   >-inc : ∀ { p r : RE } { c : Char } { inj : U p →  U r }
@@ -329,7 +565,8 @@ data >-Inc : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
         u₁≡0 rewrite sym (cong (length ∘ proj₁ ∘ flat) (u₁≡u₂-from-flat u₁ u₂ v₁ v₂ uv₁≡uv₂)) = u₂≡0
     inc-fst (PairU u₁ v₁) (PairU u₂ v₂) uv₁≡uv₂ (lne _ uv₂≡0)
       = ⊥-elim (n≡0→¬n>0 (trans (cong length uv₁≡uv₂) uv₂≡0) (Nat.s≤s Nat.z≤n))
-      
+-}      
+
 ```
 
 

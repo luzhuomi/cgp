@@ -606,20 +606,29 @@ counter example from Inc.lagda.md
 = [ ε ● ( ε + b ) , ε  ]
 
 inj₀ : U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b ) → U ( (a ● (ε + ε) ) ● ( ε + b ) ) ● (ε + b )
-inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU)   -- (t1)
-inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)   -- (t2)
-inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU)) (RightU (LetterU b)))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))  -- (t3)  t3 > t2
-inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU b))   = PairU (PairU (PairU (LetterU a) (RightU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b)) -- (t4)
+inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU)       -- (t1)
+inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)       -- (t2)
+inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU)) (RightU (LetterU b)))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (LeftU EmptyU) )      (RightU (LetterU b)) -- (t3)  t3 > t2
+inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU b)))  = PairU (PairU (PairU (LetterU a) (RightU EmptyU)) (LeftU EmptyU) )      (RightU (LetterU b)) -- (t4)
 
+
+t1 > t2 is witness by (seq₁ (seq₁ (seq₂ choice-lr))) -- does not change
+t1 > t3 is witness by (seq₁ (seq₂ lne))
+t1 > t4 is witness by (seq₁ (seq₂ lne))
+
+s1 > s2 is witness by (seq₁ (seq₁ (seq₂ choice-lr))) -- choice-lr does not limit the word length 
+s1 > s3 is witness by (seq₁ lne)
+s1 > s4 is witness by (seq₁ lne)
+s2 > s3 is witness by (seq₁ lne)
 
 inj₁ inj₂ : U (ε ● ( ε + b )) → U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b )
 
-inj₁ (PairU EmptyU (LeftU EmptyU)) = PairU (PairU (PairU EmptyU (LeftU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)     -- (s1)   
+inj₁ (PairU EmptyU (LeftU EmptyU)) = PairU (PairU (PairU EmptyU (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU)     -- (s1)   
 inj₂ (PairU EmptyU (LeftU EmptyU)) = PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)    -- (s2)  s1 > s2 
 
 
-inj₃ inj₄ : U ε → U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b )
-inj₃ _ = PairU ( PairU ( PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))                             -- (s3)  s2 > s3
+inj₃ inj₄ : U ε               → U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b )
+inj₃ _ = PairU ( PairU ( PairU EmptyU (LeftU EmptyU))   (LeftU EmptyU) ) (RightU (LetterU b))                             -- (s3)  s2 > s3
 inj₄ _ = PairU ( PairU ( PairU EmptyU (RightU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))                            -- (s4)  s3 > s4
 
 

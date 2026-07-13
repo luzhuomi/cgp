@@ -2230,6 +2230,8 @@ data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c →
     ... | inj₁ u₁u₂>v₁v₂@(bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} )
         -- what we can apply ?
         -- Goal: (l ● r ` loc₁) ⊢ PairU (inj u₁) u₂ >ⁱ PairU (inj v₁) v₂
+        -- the >-inc is not valid when inj change the order differentiator, i.e. the location where lne is applied.
+        -- the >-inc holds when the inj does not change the location where lne is applied 
     ... | inj₁ u₁u₂>v₁v₂@(be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} ) -- |u₁|≡|v₁|≡[] , we can apply  u→max-u→v→|u|≡|v|→inju≥injv
       -- either way it must be bne here.
       -- if |u₁|≡|v₁|, we can apply ? ?

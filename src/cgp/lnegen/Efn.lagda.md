@@ -43,6 +43,13 @@ open PartialDerivative using ( pdU[_,_] ;
   mkinjLetter ; mkinjLetterSound 
   )
 
+
+import Data.List.Membership.Propositional as Membership
+open Membership using (_∈_)
+open import Data.List.Relation.Unary.Any using (Any; here; there)
+import Data.List.Membership.Propositional.Properties as MembershipProperties
+open MembershipProperties using (∈-concat⁺′ ; ∈-concat⁻′ ; ∈-map⁺ ; ∈-map⁻)
+
 import cgp.lnegen.Order as Order
 open Order -- we should only white list those are used here 
 
@@ -352,6 +359,17 @@ pdU-isEnf {l ● r ` loc} {c} with ε∈? l
     ind-hyp-r : All (EfnPDInstance {r} {c}) (pdU[ r , c ])
     ind-hyp-r = pdU-isEnf {r} {c}
 
+
+{-
+why we need this?
+this seems to be unprovable, the set of EfnPDInstance is larger than pdU[r, c]
+efnInpdU : ∀ {r : RE } { c : Char }
+  → (pdi :  PDInstance r c )
+  → EfnPDInstance pdi
+  → Any ( _≡ pdi ) pdU[ r , c ]
+efnInpdU = {!!}
+-}
+
 {-
 -- not in used,  it got stuck below
 data >-Inc-efn : ∀ { r : RE } { c : Char } →  PDInstance r c  → Set where
@@ -590,7 +608,7 @@ counter example from Inc.lagda.md
 inj₀ : U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b ) → U ( (a ● (ε + ε) ) ● ( ε + b ) ) ● (ε + b )
 inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (RightU (LetterU b))) (LeftU EmptyU)   -- (t1)
 inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU))  = PairU (PairU (PairU (LetterU a) (RightU EmptyU)) (RightU (LetterU b))) (LeftU EmptyU)   -- (t2)
-inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU)) (RightU (LetterU b)))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))  -- (t3)
+inj₀ (PairU (PairU (PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU)) (RightU (LetterU b)))  = PairU (PairU (PairU (LetterU a) (LeftU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))  -- (t3)  t3 > t2
 inj₀ (PairU (PairU (PairU EmptyU (RightU EmptyU)) (LeftU EmptyU)) (RightU (LetterU b))   = PairU (PairU (PairU (LetterU a) (RightU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b)) -- (t4)
 
 
@@ -603,3 +621,19 @@ inj₂ (PairU EmptyU (LeftU EmptyU)) = PairU (PairU (PairU EmptyU (RightU EmptyU
 inj₃ inj₄ : U ε → U ( ( ε ● ( ε + ε ) ) ● (ε + b) ) ● (ε + b )
 inj₃ _ = PairU ( PairU ( PairU EmptyU (LeftU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))                             -- (s3)  s2 > s3
 inj₄ _ = PairU ( PairU ( PairU EmptyU (RightU EmptyU))  (LeftU EmptyU) ) (RightU (LetterU b))                            -- (s4)  s3 > s4
+
+
+inj₀ is an injection from a pdinstance, hence pdU are ex>-sorted
+
+
+inj₀ ∘ inj₁ , inj₀ ∘ inj₂ , inj₀ ∘ inj₃  and  inj₀ ∘ inj₄ are injections from pdinstance*  pdUMany are not sorted.
+
+
+all pdinstances's injections are local max preserve, i.e. for all u in p, max {p} |u| u, for all v in p, |u| >= |v|,  inj u > inj v
+  note: it is not max |inj u| (inj u| yet!!! (see MaxWord.lagda.md pdU-preseve-local )
+  we need pdU completeness and pdU sorted
+  the idea is is if each pdinstance is local max preserving, we need all pdinstances are sorted,
+  there should be the max-preserving, starting from r all the way to the pd descendants (each descendants is a pdinstance*)
+  
+
+

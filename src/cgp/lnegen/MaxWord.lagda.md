@@ -243,19 +243,6 @@ data ≥-Max-Preserve-Bd : ∀ { r : RE } { c : Char } → PDInstance r c → Se
     → ≥-Max-Preserve-Bd {r} {c} (pdinstance inj sound-ev)
 
 
-data ≥-Max-Preserve-W : ∀ { r : RE } { c : Char } → ( w : List Char ) → PDInstance r c → Set where
-  ≥-max-pres-w : ∀ { p r : RE } { c : Char } { inj : U p → U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
-    → ( w : List Char )
-    → ( ( u : U p )
-      → ≥-Max w u
-      → ≥-Max (c ∷ w) (inj u) ) -- → direction 
-    → ( ( u : U p ) 
-      → ≥-Max (c ∷ w) (inj u)
-      → ≥-Max w u ) -- ← direction 
-    → ≥-Max-Preserve-W {r} {c} w (pdinstance inj sound-ev)
-
-
 
 
 ≥-max-word : ∀ {r : RE} {w : List Char} {u : U r} → ≥-Max w u → proj₁ (flat u) ≡ w
@@ -2097,6 +2084,44 @@ head-parseAll-is-max : ∀ { r : RE } { w : List Char }
 head-parseAll-is-max = {!!}   
 
 
+_∈?⟦_⟧ : ( w : List Char ) → ( r : RE ) → Dec ( w ∈⟦ r ⟧ )
+_∈?⟦_⟧ [] ε = yes ε
+_∈?⟦_⟧ [] (r * ε∉r ` loc) = yes (((r ● r * ε∉r ` loc ` loc) +L ε) *)
+_∈?⟦_⟧ [] ($ _ ` _) = no λ ()
+_∈?⟦_⟧ [] (l ● r ` loc ) with [] ∈?⟦ l ⟧ | [] ∈?⟦ r ⟧ 
+... | yes []∈⟦l⟧ | yes []∈⟦r⟧ = yes ([]∈⟦l⟧ ● []∈⟦r⟧ ⧺ refl)
+... | no ¬[]∈⟦l⟧ | _          = no ¬[]∈⟦l●r⟧ 
+  where
+    ¬[]∈⟦l●r⟧ : ¬ ([] ∈⟦ l ● r ` loc ⟧)
+    ¬[]∈⟦l●r⟧ (_●_⧺_ {xs} {ys} {[]} xs∈⟦l⟧ ys∈⟦r⟧ xs++ys≡[] ) rewrite (++-conicalˡ xs ys xs++ys≡[])  = ¬[]∈⟦l⟧ xs∈⟦l⟧ 
+... | _          |  no ¬[]∈⟦r⟧ = no ¬[]∈⟦l●r⟧
+  where
+    ¬[]∈⟦l●r⟧ : ¬ ([] ∈⟦ l ● r ` loc ⟧)
+    ¬[]∈⟦l●r⟧ (_●_⧺_ {xs} {ys} {[]} xs∈⟦l⟧ ys∈⟦r⟧ xs++ys≡[] ) rewrite (++-conicalʳ xs ys xs++ys≡[])  = ¬[]∈⟦r⟧ ys∈⟦r⟧
+_∈?⟦_⟧ (c ∷ w) ε  = no λ () 
+    
+_∈?⟦_⟧ (c ∷ []) ($ c' ` loc) with c Char.≟ c'
+... | yes c≡c' rewrite c≡c' = yes ($ c')
+... | no ¬c≡c' = no ¬c∷[]∈⟦c'⟧
+  where
+    ¬c∷[]∈⟦c'⟧ : ¬ ( (c ∷ []) ∈⟦ $ c' ` loc ⟧ )
+    ¬c∷[]∈⟦c'⟧ ($ .(c')) = ¬c≡c' refl 
+_∈?⟦_⟧ (c ∷ d ∷ _ ) ($ c' ` loc)  = no λ () 
+
+_∈?⟦_⟧ w (l + r ` loc ) with w ∈?⟦ l ⟧
+... | yes w∈⟦l⟧ = yes (r +L w∈⟦l⟧)
+... | no ¬w∈⟦l⟧ with w ∈?⟦ r ⟧
+...              | yes w∈⟦r⟧ = yes (l +R w∈⟦r⟧)
+...              | no  ¬w∈⟦r⟧ = no ¬w∈⟦l+r⟧
+  where
+    ¬w∈⟦l+r⟧ : ¬ (w ∈⟦ l + r ` loc ⟧)
+    ¬w∈⟦l+r⟧ (r +L w∈⟦l⟧ ) = ¬w∈⟦l⟧ w∈⟦l⟧
+    ¬w∈⟦l+r⟧ (l +R w∈⟦r⟧ ) = ¬w∈⟦r⟧ w∈⟦r⟧
+
+
+_∈?⟦_⟧ (c ∷ w) (l ● r ` loc ) with ε∈? l
+... | yes ε∈l = {!!}
+... | no ¬ε∈l = {!!} 
 
 max-is-head-parseAll : ∀ { r : RE } { w : List Char }
   → ( u : U r )
@@ -2105,11 +2130,136 @@ max-is-head-parseAll : ∀ { r : RE } { w : List Char }
 max-is-head-parseAll = {!!}
 
 
-efn-max : ∀ { r : RE } → ( Efn r )
-  → pd
+first-inhabit : ∀ { r : RE } { c : Char } { w : List Char } → List (PDInstance r c) → Maybe (PDInstance r c)
+first-inhabit {r} {c} {w} [] = nothing
+first-inhabit {r} {c} {w} ((pdinstance {p} .{r} .{c} inj sev) ∷ pdis )
+  with w ∈?⟦ p ⟧
+... | no ¬w∈⟦p⟧ = first-inhabit {r} {c} {w} pdis
+... | yes w∈⟦p⟧ = just (pdinstance {p} {r} {c} inj sev)
+
+
+{-
+first-inhahib-pdU-max-pres : ∀ { p r : RE } { c : Char } { inj : U p → U r }
+   { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+   → just (pdinstance {p} {r} {c} inj sev)  pdU[ r , c ] 
+-}
+
+
+
+data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
+  ≥-max-pres-local : ∀ { p r : RE } { c : Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( u : U p )
+      → ≥-Max {p} (proj₁ (flat u)) u
+      → ( v : U p ) 
+      → proj₁ (flat u) ≡ proj₁ (flat v)
+      → r ⊢ inj u ≥ inj v ) 
+    → ≥-Max-Preserve-Local {r} {c} (pdinstance inj sound-ev)
+
+
+
+≥-Max-Preserve-Local-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance l c ))
+  → All (≥-Max-Preserve-Local {l} {c}) pdis
+  → All (≥-Max-Preserve-Local {l + r ` loc} {c}) (List.map pdinstance-left pdis)
+≥-Max-Preserve-Local-map-left {l} {r} {loc} {c} [] [] = []
+≥-Max-Preserve-Local-map-left {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c} inj sound-ev) ∷ pdis ) ((≥-max-pres-local u→max-u→v→|u|≡|v|→inju≥injv) ∷ pxs ) = ≥-max-pres-local ev ∷  ≥-Max-Preserve-Local-map-left pdis pxs  
+  where    
+    ev : (u : U p)
+       → ≥-Max (proj₁ (flat u)) u
+       → (v : U p)
+       → proj₁ (flat u) ≡ proj₁ (flat v)
+       → (l + r ` loc) ⊢ LeftU (inj u) ≥ LeftU (inj v)
+    ev u max-u@(≥-max .{p} w .(u) |u|≡w v→|v|≡w→u≥v)  v |u|≡|v| with u→max-u→v→|u|≡|v|→inju≥injv u max-u v |u|≡|v|
+    ... | inj₂ inju≡injv = inj₂ (cong LeftU inju≡injv)
+    ... | inj₁ inju>injv = inj₁ (bne (len>0-inj u) (len>0-inj v) (choice-ll inju>injv) )
+      where
+        len>0-inj : ∀ (x : U p ) → length (proj₁ (flat {l} (inj x))) Nat.> 0
+        len>0-inj x rewrite sound-ev x = Nat.s≤s Nat.z≤n
+      
+
+
+
+≥-Max-Preserve-Local-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance r c ))
+  → All (≥-Max-Preserve-Local {r} {c}) pdis
+  → All (≥-Max-Preserve-Local {l + r ` loc} {c}) (List.map pdinstance-right pdis)
+≥-Max-Preserve-Local-map-right {l} {r} {loc} {c} [] [] = []
+≥-Max-Preserve-Local-map-right {l} {r} {loc} {c} ((pdinstance {p} .{r} .{c} inj sound-ev) ∷ pdis ) ((≥-max-pres-local u→max-u→v→|u|≡|v|→inju≥injv) ∷ pxs ) = ≥-max-pres-local ev ∷  ≥-Max-Preserve-Local-map-right pdis pxs  
+  where    
+    ev : (u : U p)
+       → ≥-Max (proj₁ (flat u)) u
+       → (v : U p)
+       → proj₁ (flat u) ≡ proj₁ (flat v)
+       → (l + r ` loc) ⊢ RightU (inj u) ≥ RightU (inj v)
+    ev u max-u@(≥-max .{p} w .(u) |u|≡w v→|v|≡w→u≥v)  v |u|≡|v| with u→max-u→v→|u|≡|v|→inju≥injv u max-u v |u|≡|v|
+    ... | inj₂ inju≡injv = inj₂ (cong RightU inju≡injv)
+    ... | inj₁ inju>injv = inj₁ (bne (len>0-inj u) (len>0-inj v) (choice-rr inju>injv) )
+      where
+        len>0-inj : ∀ (x : U p ) → length (proj₁ (flat {r} (inj x))) Nat.> 0
+        len>0-inj x rewrite sound-ev x = Nat.s≤s Nat.z≤n
+
+
+≥-Max-Preserve-Local-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance l c ) )
+  → All (≥-Max-Preserve-Local {l} {c}) pdis
+  → All (≥-Max-Preserve-Local {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+≥-Max-Preserve-Local-inc-map-fst [] [] = []
+≥-Max-Preserve-Local-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c}  inj sound-ev) ∷ pdis) ((≥-max-pres-local u→max-u→v→|u|≡|v|→inju≥injv) ∷ pxs ) =  ≥-max-pres-local ev ∷ ≥-Max-Preserve-Local-inc-map-fst pdis pxs
+  where
+    injFst : U (p ● r ` loc)   → U (l ● r ` loc )
+    injFst = mkinjFst inj
   
+    ev : (u : U (p ● r ` loc))
+      → ≥-Max (Product.proj₁ (flat u)) u
+      → (v : U (p ● r ` loc))
+      → Product.proj₁ (flat u) ≡ Product.proj₁ (flat v)
+      →  (l ● r ` loc) ⊢ injFst u ≥ injFst v
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) |u₁u₂|≡|v₁v₂| with v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂  (PairU v₁ v₂) (trans (sym |u₁u₂|≡|v₁v₂|)  |u₁u₂|≡w)
+    ... | inj₂ u₁u₂≡v₁v₂  = inj₂ pair-inj-u₁-u₂≡pair-inj-v₁-v₂
+      where
+        pair-inj-u₁-u₂≡pair-inj-v₁-v₂ : PairU {l} {r} {loc} (inj u₁) u₂ ≡ PairU (inj v₁) v₂
+        pair-inj-u₁-u₂≡pair-inj-v₁-v₂ =
+          begin
+             PairU (inj u₁) u₂
+          ≡⟨ cong (λ x → (PairU (inj x) u₂ )) (proj₁ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂)) ⟩
+             PairU (inj v₁) u₂
+          ≡⟨ cong (λ x → (PairU (inj v₁) x )) (proj₂ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂)) ⟩
+             PairU (inj v₁) v₂
+          ∎
+    ... | inj₁ u₁u₂>v₁v₂@(bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} )
+        -- what we can apply ?
+        -- Goal: (l ● r ` loc₁) ⊢ PairU (inj u₁) u₂ >ⁱ PairU (inj v₁) v₂
+    ... | inj₁ u₁u₂>v₁v₂@(be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} ) -- |u₁|≡|v₁|≡[] , we can apply  u→max-u→v→|u|≡|v|→inju≥injv
+      -- either way it must be bne here.
+      -- if |u₁|≡|v₁|, we can apply ? ?
+    ... | inj₁ u₁u₂>v₁v₂@(lne len|u₁u₂|>0 len|v₁v₂|≡0) = {!!} -- what here? 
+    
 
-
+pdU-preseve-local : ∀ { r : RE } { c : Char }
+  → All ≥-Max-Preserve-Local pdU[ r , c ] 
+pdU-preseve-local {$ c ` loc} {c'} with c Char.≟ c'
+... | no ¬c≡c' = [] 
+... | yes c≡c' rewrite c≡c'  = (≥-max-pres-local ev ) ∷ []
+  where
+    ev : (u : U ε)
+       → ≥-Max (proj₁ (flat u)) u
+       → (v : U ε)
+       → proj₁ (flat u) ≡ proj₁ (flat v)
+       → ($ c' ` loc) ⊢ mkinjLetter u ≥ mkinjLetter v
+    ev EmptyU max-empty EmptyU refl = inj₂ refl        
+pdU-preseve-local {l + r  ` loc} {c} = all-concat (≥-Max-Preserve-Local-map-left pdU[ l , c ] ind-hyp-l ) (≥-Max-Preserve-Local-map-right pdU[ r , c ] ind-hyp-r ) 
+  where
+    ind-hyp-l : All ≥-Max-Preserve-Local pdU[ l , c ]
+    ind-hyp-l = pdU-preseve-local {l} {c}
+    ind-hyp-r : All ≥-Max-Preserve-Local pdU[ r , c ]
+    ind-hyp-r = pdU-preseve-local {r} {c}
+pdU-preseve-local {l ● r  ` loc} {c} with ε∈? l 
+... | no ¬ε∈l =  ≥-Max-Preserve-Local-inc-map-fst pdU[ l , c ] ind-hyp-l 
+  where
+    ind-hyp-l : All ≥-Max-Preserve-Local pdU[ l , c ]
+    ind-hyp-l = pdU-preseve-local {l} {c}
+    
 
 
 ```

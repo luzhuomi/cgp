@@ -538,7 +538,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     → All (>-Inc {l} {c}) pdis
     → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-left pdis)
 >-inc-map-left [] [] = []
->-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+>-inc-map-left {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = >-inc >-inc-ev   ∷ >-inc-map-left pdis pxs
   where
     >-inc-ev : ∀ (u₁ : U p)
@@ -557,7 +557,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     → All (>-Inc {r} {c}) pdis
     → All (>-Inc {l + r ` loc } {c}) (List.map pdinstance-right pdis)
 >-inc-map-right [] [] = []
->-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} {r} {c} inj sound-ev) ∷ pdis) (>-inc  u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+>-inc-map-right {l} {r} {loc} {c} ((pdinstance {p} .{r} .{c} inj sound-ev) ∷ pdis) (>-inc  u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = >-inc >-inc-ev  ∷ >-inc-map-right pdis pxs
   where
     >-inc-ev : ∀ (u₁ : U p)
@@ -575,7 +575,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
                → All (>-Inc {l} {c}) pdis
                → All (>-Inc {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
 >-inc-map-fst [] [] = []
->-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} {l} {c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
+>-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c}  inj sound-ev) ∷ pdis) (>-inc u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ ∷ pxs)
   = (>-inc >-inc-ev)  ∷  >-inc-map-fst pdis pxs
   where
     injFst : U (p ● r ` loc)   → U (l ● r ` loc )

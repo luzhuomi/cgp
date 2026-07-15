@@ -2145,7 +2145,8 @@ first-inhahib-pdU-max-pres : ∀ { p r : RE } { c : Char } { inj : U p → U r }
 -}
 
 
-
+-- let's make this stronger!
+{-
 data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
   ≥-max-pres-local : ∀ { p r : RE } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -2155,9 +2156,21 @@ data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c →
       → proj₁ (flat u) ≡ proj₁ (flat v)
       → r ⊢ inj u ≥ inj v ) 
     → ≥-Max-Preserve-Local {r} {c} (pdinstance inj sound-ev)
+-}
 
 
+data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
+  ≥-max-pres-local : ∀ { p r : RE } { c : Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( u : U p )
+      → ≥-Max {p} (proj₁ (flat u)) u
+      → ( v : U p ) 
+      → p ⊢ u ≥ v
+      → r ⊢ inj u ≥ inj v ) 
+    → ≥-Max-Preserve-Local {r} {c} (pdinstance inj sound-ev)
 
+
+{-
 ≥-Max-Preserve-Local-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance l c ))
   → All (≥-Max-Preserve-Local {l} {c}) pdis
@@ -2176,7 +2189,6 @@ data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c →
       where
         len>0-inj : ∀ (x : U p ) → length (proj₁ (flat {l} (inj x))) Nat.> 0
         len>0-inj x rewrite sound-ev x = Nat.s≤s Nat.z≤n
-      
 
 
 
@@ -2236,7 +2248,6 @@ data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c →
       -- either way it must be bne here.
       -- if |u₁|≡|v₁|, we can apply ? ?
     ... | inj₁ u₁u₂>v₁v₂@(lne len|u₁u₂|>0 len|v₁v₂|≡0) = {!!} -- what here? 
-    
 
 pdU-preseve-local : ∀ { r : RE } { c : Char }
   → All ≥-Max-Preserve-Local pdU[ r , c ] 
@@ -2262,6 +2273,102 @@ pdU-preseve-local {l ● r  ` loc} {c} with ε∈? l
     ind-hyp-l : All ≥-Max-Preserve-Local pdU[ l , c ]
     ind-hyp-l = pdU-preseve-local {l} {c}
     
+-}    
 
 
+
+≥-Max-Preserve-Local-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance l c ))
+  → All (≥-Max-Preserve-Local {l} {c}) pdis
+  → All (≥-Max-Preserve-Local {l + r ` loc} {c}) (List.map pdinstance-left pdis)
+≥-Max-Preserve-Local-map-left {l} {r} {loc} {c} [] [] = []
+≥-Max-Preserve-Local-map-left {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c} inj sound-ev) ∷ pdis ) ((≥-max-pres-local u→max-u→v→u≥v→inju≥injv) ∷ pxs ) = ≥-max-pres-local ev ∷  ≥-Max-Preserve-Local-map-left pdis pxs  
+  where    
+    ev : (u : U p)
+       → ≥-Max (proj₁ (flat u)) u
+       → (v : U p)
+       → p ⊢ u ≥ v
+       → (l + r ` loc) ⊢ LeftU (inj u) ≥ LeftU (inj v)
+    ev u max-u@(≥-max .{p} w .(u) |u|≡w v→|v|≡w→u≥v)  v u≥v with u→max-u→v→u≥v→inju≥injv u max-u v u≥v 
+    ... | inj₂ inju≡injv = inj₂ (cong LeftU inju≡injv)
+    ... | inj₁ inju>injv = inj₁ (bne (len>0-inj u) (len>0-inj v) (choice-ll inju>injv) )
+      where
+        len>0-inj : ∀ (x : U p ) → length (proj₁ (flat {l} (inj x))) Nat.> 0
+        len>0-inj x rewrite sound-ev x = Nat.s≤s Nat.z≤n
+
+
+
+
+
+≥-Max-Preserve-Local-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance r c ))
+  → All (≥-Max-Preserve-Local {r} {c}) pdis
+  → All (≥-Max-Preserve-Local {l + r ` loc} {c}) (List.map pdinstance-right pdis)
+≥-Max-Preserve-Local-map-right {l} {r} {loc} {c} [] [] = []
+≥-Max-Preserve-Local-map-right {l} {r} {loc} {c} ((pdinstance {p} .{r} .{c} inj sound-ev) ∷ pdis ) ((≥-max-pres-local u→max-u→v→u≥v→inju≥injv) ∷ pxs ) = ≥-max-pres-local ev ∷  ≥-Max-Preserve-Local-map-right pdis pxs  
+  where    
+    ev : (u : U p)
+       → ≥-Max (proj₁ (flat u)) u
+       → (v : U p)
+       → p ⊢ u ≥ v
+       → (l + r ` loc) ⊢ RightU (inj u) ≥ RightU (inj v)
+    ev u max-u@(≥-max .{p} w .(u) |u|≡w v→|v|≡w→u≥v)  v  u≥v with u→max-u→v→u≥v→inju≥injv u max-u v u≥v
+    ... | inj₂ inju≡injv = inj₂ (cong RightU inju≡injv)
+    ... | inj₁ inju>injv = inj₁ (bne (len>0-inj u) (len>0-inj v) (choice-rr inju>injv) )
+      where
+        len>0-inj : ∀ (x : U p ) → length (proj₁ (flat {r} (inj x))) Nat.> 0
+        len>0-inj x rewrite sound-ev x = Nat.s≤s Nat.z≤n
+
+
+
+≥-Max-Preserve-Local-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance l c ) )
+  → All (≥-Max-Preserve-Local {l} {c}) pdis
+  → All (≥-Max-Preserve-Local {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+≥-Max-Preserve-Local-inc-map-fst [] [] = []
+≥-Max-Preserve-Local-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c}  inj sound-ev) ∷ pdis) ((≥-max-pres-local u→max-u→v→u≥v→inju≥injv) ∷ pxs ) =  ≥-max-pres-local ev ∷ ≥-Max-Preserve-Local-inc-map-fst pdis pxs
+  where
+    injFst : U (p ● r ` loc)   → U (l ● r ` loc )
+    injFst = mkinjFst inj
+  
+    ev : (u₁u₂ : U (p ● r ` loc))
+      → ≥-Max (Product.proj₁ (flat u₁u₂)) u₁u₂
+      → (v₁v₂ : U (p ● r ` loc))
+      → (p ● r ` loc) ⊢ u₁u₂ ≥ v₁v₂ 
+      → (l ● r ` loc) ⊢ injFst u₁u₂ ≥ injFst v₁v₂
+    ev (PairU u₁ u₂) (≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₂ u₁u₂≡v₁v₂) rewrite proj₁ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂) | proj₂ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂) = inj₂ refl
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₁ u₁>v₁)))
+      with u→max-u→v→u≥v→inju≥injv u₁  (≥-max-pair-fst-prefix→>3 u₁ u₂ max-pair-u₁u₂) v₁ (inj₁ u₁>v₁)
+    ... | inj₂ inju₁≡injv₁ = {!!} -- we should have contradiction. we need a sub lemma forall pd inj, inj u ≡ inj v implies u ≡ v, then we can use >→¬≡ to create contradiction
+    ... | inj₁ inju₁>injv₁ = inj₁ (bne {!!} {!!} (seq₁  inju₁>injv₁) )
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (lne len|u₁u₂|>0 len|v₁v₂|≡0)) = {!!} 
+      -- case |u₁|≡[],
+      -- case ¬|u₁|≡[], we have u₁>v₁ via lne, similar prove as the bne case above
+    -- be case similar to the the bne case above. 
+      -- with u→max-u→v→u≥v→inju≥injv u₁
+      --     (≥-max-pair-fst-prefix→>3 u₁ u₂ max-pair-u₁u₂) v₁
+      --     {!!} -- (≥-max-pair-fst-prefix→>2 u₁ u₂ max-pair-u₁u₂ v₁ v₂ {!!}) 
+    -- ... | _  = {!!} 
+    {-
+    ... | inj₂ u₁u₂≡v₁v₂  = inj₂ pair-inj-u₁-u₂≡pair-inj-v₁-v₂
+      where
+        pair-inj-u₁-u₂≡pair-inj-v₁-v₂ : PairU {l} {r} {loc} (inj u₁) u₂ ≡ PairU (inj v₁) v₂
+        pair-inj-u₁-u₂≡pair-inj-v₁-v₂ =
+          begin
+             PairU (inj u₁) u₂
+          ≡⟨ cong (λ x → (PairU (inj x) u₂ )) (proj₁ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂)) ⟩
+             PairU (inj v₁) u₂
+          ≡⟨ cong (λ x → (PairU (inj v₁) x )) (proj₂ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂)) ⟩
+             PairU (inj v₁) v₂
+          ∎
+    ... | inj₁ u₁u₂>v₁v₂@(bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} )
+        -- what we can apply ?
+        -- Goal: (l ● r ` loc₁) ⊢ PairU (inj u₁) u₂ >ⁱ PairU (inj v₁) v₂
+        -- the >-inc is not valid when inj change the order differentiator, i.e. the location where lne is applied.
+        -- the >-inc holds when the inj does not change the location where lne is applied 
+    ... | inj₁ u₁u₂>v₁v₂@(be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} ) -- |u₁|≡|v₁|≡[] , we can apply  u→max-u→v→|u|≡|v|→inju≥injv
+      -- either way it must be bne here.
+      -- if |u₁|≡|v₁|, we can apply ? ?
+    ... | inj₁ u₁u₂>v₁v₂@(lne len|u₁u₂|>0 len|v₁v₂|≡0) = {!!} -- what here? 
+    -} 
 ```

@@ -44,8 +44,8 @@ open PartialDerivative using ( pdU[_,_] ;  pdU-complete ;
   pdUMany[_,_]; pdUMany-aux ;
   mkinjLetter ; mkinjLetterSound ;
   parseAll[_,_] ; buildU ;
-  pdUMany-complete ; buildU-complete ; buildU-sound
-
+  pdUMany-complete ; buildU-complete ; buildU-sound ; 
+  Bijective ; bijective ; pdU-bijective
   ) 
 
 import Data.List.Membership.Propositional as Membership
@@ -83,7 +83,8 @@ import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length ; foldr )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ ; ++-assoc ; ∷-injective )
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ ; ++-assoc ; ∷-injective ; ≡-dec )
+
 
 open import Data.List.Relation.Unary.Any using (Any; here; there ; map)
 
@@ -2321,16 +2322,26 @@ pdU-preseve-local {l ● r  ` loc} {c} with ε∈? l
 
 
 
+-- Decidable equality for List Char
+_≟C_ : (xs ys : List Char) → Dec (xs ≡ ys)
+_≟C_ = ≡-dec Char._≟_
+
+
+
 ≥-Max-Preserve-Local-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance l c ) )
+  → All (Bijective {l} {c}) pdis 
   → All (≥-Max-Preserve-Local {l} {c}) pdis
   → All (≥-Max-Preserve-Local {l ● r ` loc} {c}) (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
-≥-Max-Preserve-Local-inc-map-fst [] [] = []
-≥-Max-Preserve-Local-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c}  inj sound-ev) ∷ pdis) ((≥-max-pres-local u→max-u→v→u≥v→inju≥injv) ∷ pxs ) =  ≥-max-pres-local ev ∷ ≥-Max-Preserve-Local-inc-map-fst pdis pxs
+≥-Max-Preserve-Local-inc-map-fst [] [] [] = []
+≥-Max-Preserve-Local-inc-map-fst {l} {r} {loc} {c} ((pdinstance {p} .{l} .{c}  inj sound-ev) ∷ pdis) ((bijective u→v→u≡v→inju≡injv u→v→inju≡injv→u≡v ) ∷ bijects)  ((≥-max-pres-local u→max-u→v→u≥v→inju≥injv) ∷ max-preses ) =  ≥-max-pres-local ev ∷ ≥-Max-Preserve-Local-inc-map-fst pdis bijects  max-preses 
   where
     injFst : U (p ● r ` loc)   → U (l ● r ` loc )
     injFst = mkinjFst inj
-  
+    injFstsound-ev : ∀ ( u : U ( p ● r ` loc) ) → (proj₁ (flat { l ● r ` loc } (injFst u )) ≡ c ∷ (proj₁ (flat { p ● r ` loc } u)))
+    injFstsound-ev = mkinjFstSoundEv inj sound-ev
+
+
     ev : (u₁u₂ : U (p ● r ` loc))
       → ≥-Max (Product.proj₁ (flat u₁u₂)) u₁u₂
       → (v₁v₂ : U (p ● r ` loc))
@@ -2339,15 +2350,53 @@ pdU-preseve-local {l ● r  ` loc} {c} with ε∈? l
     ev (PairU u₁ u₂) (≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₂ u₁u₂≡v₁v₂) rewrite proj₁ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂) | proj₂ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂) = inj₂ refl
     ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₁ u₁>v₁)))
       with u→max-u→v→u≥v→inju≥injv u₁  (≥-max-pair-fst-prefix→>3 u₁ u₂ max-pair-u₁u₂) v₁ (inj₁ u₁>v₁)
-    ... | inj₂ inju₁≡injv₁ = {!!} -- we should have contradiction. we need a sub lemma forall pd inj, inj u ≡ inj v implies u ≡ v, then we can use >→¬≡ to create contradiction
-    ... | inj₁ inju₁>injv₁ = inj₁ (bne {!!} {!!} (seq₁  inju₁>injv₁) )
-    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (lne len|u₁u₂|>0 len|v₁v₂|≡0)) = {!!} 
-      -- case |u₁|≡[],
-      -- case ¬|u₁|≡[], we have u₁>v₁ via lne, similar prove as the bne case above
-    -- be case similar to the the bne case above. 
+    ... | inj₂ inju₁≡injv₁ = Nullary.contradiction ( u→v→inju≡injv→u≡v u₁ v₁  inju₁≡injv₁ ) (>→¬≡  u₁>v₁ ) 
+    ... | inj₁ inju₁>injv₁ = inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₁  inju₁>injv₁) ) -- these two holes are easy
+      where
+        len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
+        len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
+        len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
+        len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₂ u₁≡v₁ u₂>v₂))) = {!!}  -- we should have bne seq₂ since inj is bijective 
+        
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (lne len|u₁u₂|>0 len|v₁v₂|≡0)) with proj₁ (flat {p} u₁) ≟C [] 
+    ... | yes |u₁|≡[]  = prf 
+      where
+        |v₁|≡[] : proj₁ (flat v₁) ≡ []
+        |v₁|≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 ) 
+        |v₂|≡[] : proj₁ (flat v₂) ≡ []
+        |v₂|≡[] = ++-conicalʳ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 ) 
+        max-u₁ : ≥-Max {p} (proj₁ (flat u₁)) u₁
+        max-u₁  =  ≥-max-pair-fst-prefix→>3 u₁ u₂  max-pair-u₁u₂
+        |u₁|≡|v₁| : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+        |u₁|≡|v₁| = trans |u₁|≡[] (sym |v₁|≡[]) 
+        len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
+        len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
+        len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
+        len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
+        len|u₂|>0 : length (proj₁ (flat u₂)) Nat.> 0
+        len|u₂|>0 = {!!} 
+        u₁≥v₁ : p ⊢ u₁ ≥ v₁
+        u₁≥v₁ with  max-u₁
+        ... | ≥-max w .u₁ |u₁|≡w v→|v|≡w→u₁≥v = v→|v|≡w→u₁≥v v₁ (sym  |u₁|≡|v₁| )  
+        prf : (l ● r ` loc) ⊢ PairU (inj u₁) u₂ ≥ PairU (inj v₁) v₂ 
+        prf with u→max-u→v→u≥v→inju≥injv u₁ max-u₁ v₁ u₁≥v₁
+        ... | inj₂ inju₁≡injv₁ =  inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₂ inju₁≡injv₁ (lne len|u₂|>0 (Utils.[]→length≡0 |v₂|≡[]) )))
+        ... | inj₁ inju₁>injv₁ =  inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₁ inju₁>injv₁) ) 
+    ... | no ¬|u₁|≡[]  = {!!}
+      where
+        |v₁|≡[] : proj₁ (flat v₁) ≡ []
+        |v₁|≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 ) 
+      
+        -- case ¬|u₁|≡[], we have u₁>v₁ via lne, similar prove as the bne case above
+          
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₁ u₁>v₁))) = {!!}  
+      -- be case similar to the the bne case above. 
       -- with u→max-u→v→u≥v→inju≥injv u₁
       --     (≥-max-pair-fst-prefix→>3 u₁ u₂ max-pair-u₁u₂) v₁
       --     {!!} -- (≥-max-pair-fst-prefix→>2 u₁ u₂ max-pair-u₁u₂ v₁ v₂ {!!}) 
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₂ u₁≡v₁ u₂>v₂))) = {!!}   -- we should have bne seq₂ since inj is bijective 
+
     -- ... | _  = {!!} 
     {-
     ... | inj₂ u₁u₂≡v₁v₂  = inj₂ pair-inj-u₁-u₂≡pair-inj-v₁-v₂

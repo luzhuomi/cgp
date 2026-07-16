@@ -12,7 +12,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* )
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; flat-Uε≡[] ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU  )
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; flat-Uε≡[] ;  inv-flat-pair-fst ; inv-flat-pair-snd ; inv-flat-star ; inv-leftU ; inv-rightU ; inv-pairU ; pair-≡ ; inv-listU;  unListU ; listU∘unListU ; LeftU≢RightU ; RightU≢LeftU ; proj₁∘LeftU≢proj₁∘RightU  )
 
 
 import cgp.PDInstance as PDI
@@ -1405,5 +1405,167 @@ parseAll-r-w≡[]→¬w∈⟦r⟧ {r} {w} parseAll-r-w≡[] = prf
             parseAll[ r , w ] ≡⟨ parseAll-r-w≡[] ⟩
             []                 ∎
 -}            
+
+```
+
+```agda
+data Bijective : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
+  bijective : ∀ { p r : RE } { c : Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( ( u : U p )
+      → ( v : U p )
+      → u ≡ v
+      → inj u ≡ inj v
+      )
+    → ( ( u : U p )
+      → ( v : U p )
+      → inj u ≡ inj v
+      → u ≡ v
+      )
+    → Bijective {r} {c} (pdinstance inj sound-ev)
+    
+
+-- build a Bijective witness from an injectivity proof
+mkBijective : ∀ { p r : RE } { c : Char } { inj : U p → U r }
+  { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+  → ( ( u : U p ) ( v : U p ) → inj u ≡ inj v → u ≡ v )
+  → Bijective {r} {c} (pdinstance inj sound-ev)
+mkBijective {inj = inj} injective = bijective (λ u v eq → cong inj eq) injective
+
+-- injectivity of the atomic coercion functions
+mkinjLetter-inj : ∀ { c : Char } { loc : ℕ }
+  → ( u : U ε ) ( v : U ε )
+  → mkinjLetter {c} {loc} u ≡ mkinjLetter v
+  → u ≡ v
+mkinjLetter-inj EmptyU EmptyU refl = refl
+
+mkinjFst-inj : ∀ { p l r : RE } { loc : ℕ }
+  → ( f : U p → U l )
+  → ( ( u : U p ) ( v : U p ) → f u ≡ f v → u ≡ v )
+  → ( u : U ( p ● r ` loc ) ) ( v : U ( p ● r ` loc ) )
+  → mkinjFst {p} {l} {r} {loc} f u ≡ mkinjFst f v
+  → u ≡ v
+mkinjFst-inj f f-inj (PairU u1 v1) (PairU u2 v2) eq with inv-pairU (f u1) v1 (f u2) v2 eq
+... | eq1 , eq2 = pair-≡ (f-inj u1 u2 eq1) eq2
+
+mkinjSnd-inj : ∀ { p l r : RE } { loc : ℕ }
+  → ( f : U p → U r ) ( e : U l )
+  → ( ( u : U p ) ( v : U p ) → f u ≡ f v → u ≡ v )
+  → ( u : U p ) ( v : U p )
+  → mkinjSnd {l} {r} {p} {loc} f e u ≡ mkinjSnd f e v
+  → u ≡ v
+mkinjSnd-inj f e f-inj u v eq with inv-pairU e (f u) e (f v) eq
+... | refl , eq2 = f-inj u v eq2
+
+mkinjList-inj : ∀ { p r : RE } { nε : ε∉ r } { loc : ℕ }
+  → ( f : U p → U r )
+  → ( ( u : U p ) ( v : U p ) → f u ≡ f v → u ≡ v )
+  → ( u : U ( p ● ( r * nε ` loc ) ` loc ) ) ( v : U ( p ● ( r * nε ` loc ) ` loc ) )
+  → mkinjList {p} {r} {nε} {loc} f u ≡ mkinjList f v
+  → u ≡ v
+mkinjList-inj f f-inj (PairU u1 (ListU vs1)) (PairU u2 (ListU vs2)) eq with inv-listU (f u1) vs1 (f u2) vs2 eq
+... | eq1 , eq2 = pair-≡ (f-inj u1 u2 eq1) (cong ListU eq2)
+
+-- Bijective is preserved by the PDInstance combinators
+bijective-left : ∀ { l r : RE } { c : Char } { loc : ℕ } { pdi : PDInstance l c }
+  → Bijective pdi
+  → Bijective (pdinstance-left {l} {r} {loc} {c} pdi)
+bijective-left {pdi = pdinstance f s-ev} (bijective _ f-inj) = mkBijective (λ u v eq → f-inj u v (inv-leftU (f u) (f v) eq))
+
+bijective-right : ∀ { l r : RE } { c : Char } { loc : ℕ } { pdi : PDInstance r c }
+  → Bijective pdi
+  → Bijective (pdinstance-right {l} {r} {loc} {c} pdi)
+bijective-right {pdi = pdinstance f s-ev} (bijective _ f-inj) = mkBijective (λ u v eq → f-inj u v (inv-rightU (f u) (f v) eq))
+
+bijective-star : ∀ { r : RE } { c : Char } { nε : ε∉ r } { loc : ℕ } { pdi : PDInstance r c }
+  → Bijective pdi
+  → Bijective (pdinstance-star {r} {nε} {loc} {c} pdi)
+bijective-star {pdi = pdinstance f s-ev} (bijective _ f-inj) = mkBijective (mkinjList-inj f f-inj)
+
+bijective-fst : ∀ { l r : RE } { c : Char } { loc : ℕ } { pdi : PDInstance l c }
+  → Bijective pdi
+  → Bijective (pdinstance-fst {l} {r} {loc} {c} pdi)
+bijective-fst {pdi = pdinstance f s-ev} (bijective _ f-inj) = mkBijective (mkinjFst-inj f f-inj)
+
+bijective-snd : ∀ { l r : RE } { c : Char } { loc : ℕ }
+  → ( e-flat : ∃[ e ] Flat-[] l e )
+  → { pdi : PDInstance r c }
+  → Bijective pdi
+  → Bijective (mk-snd-pdi {l} {r} {loc} {c} e-flat pdi)
+bijective-snd (e , flat-[] .(e) prf) {pdi = pdinstance f s-ev} (bijective _ f-inj) = mkBijective (mkinjSnd-inj f e f-inj)
+
+-- All over concatMap
+all-concatMap : ∀ { A B : Set } { P : B → Set }
+  → ( xs : List A ) ( f : A → List B )
+  → ( ∀ x → All P (f x) )
+  → All P (concatMap f xs)
+all-concatMap [] f all-f = []
+all-concatMap (x ∷ xs) f all-f = all-concat (all-f x) (all-concatMap xs f all-f)
+
+all-map-mk-snd-pdi : ∀ { l r : RE } { c : Char } { loc : ℕ }
+  → ( e-flat : ∃[ e ] Flat-[] l e )
+  → { pdis : List (PDInstance r c) }
+  → All Bijective pdis
+  → All Bijective (List.map (mk-snd-pdi {l} {r} {loc} {c} e-flat) pdis)
+all-map-mk-snd-pdi e-flat [] = []
+all-map-mk-snd-pdi e-flat (px ∷ pxs) = bijective-snd e-flat px ∷ all-map-mk-snd-pdi e-flat pxs
+
+all-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char } { pdis : List (PDInstance r c) }
+  → All Bijective pdis
+  → All Bijective (concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
+all-concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} {pdis} all-pdis =
+  all-concatMap zip-es (λ e-flat → List.map (mk-snd-pdi {l} {r} {loc} {c} e-flat) pdis)
+    (λ e-flat → all-map-mk-snd-pdi e-flat all-pdis)
+  where
+    es : List (U l)
+    es = mkAllEmptyU {l} ε∈l
+    flat-[]-es : All (Flat-[] l) es
+    flat-[]-es = mkAllEmptyU-sound {l} ε∈l
+    zip-es : List (∃[ e ] Flat-[] l e)
+    zip-es = zip-es-flat-[]-es {l} {ε∈l} es flat-[]-es
+
+-- All over map
+all-map-left : ∀ { l r : RE } { c : Char } { loc : ℕ } { pdis : List (PDInstance l c) }
+  → All Bijective pdis
+  → All Bijective (List.map (pdinstance-left {l} {r} {loc} {c}) pdis)
+all-map-left [] = []
+all-map-left (px ∷ pxs) = bijective-left px ∷ all-map-left pxs
+
+all-map-right : ∀ { l r : RE } { c : Char } { loc : ℕ } { pdis : List (PDInstance r c) }
+  → All Bijective pdis
+  → All Bijective (List.map (pdinstance-right {l} {r} {loc} {c}) pdis)
+all-map-right [] = []
+all-map-right (px ∷ pxs) = bijective-right px ∷ all-map-right pxs
+
+all-map-star : ∀ { r : RE } { nε : ε∉ r } { c : Char } { loc : ℕ } { pdis : List (PDInstance r c) }
+  → All Bijective pdis
+  → All Bijective (List.map (pdinstance-star {r} {nε} {loc} {c}) pdis)
+all-map-star [] = []
+all-map-star (px ∷ pxs) = bijective-star px ∷ all-map-star pxs
+
+all-map-fst : ∀ { l r : RE } { c : Char } { loc : ℕ } { pdis : List (PDInstance l c) }
+  → All Bijective pdis
+  → All Bijective (List.map (pdinstance-fst {l} {r} {loc} {c}) pdis)
+all-map-fst [] = []
+all-map-fst (px ∷ pxs) = bijective-fst px ∷ all-map-fst pxs
+
+bijective-letter : ∀ { c : Char } { loc : ℕ }
+  → Bijective { $ c ` loc } {c} (pdinstance mkinjLetter mkinjLetterSound)
+bijective-letter = mkBijective mkinjLetter-inj
+
+pdU-bijective : ∀ { r : RE } { c : Char }
+  → All Bijective pdU[ r , c ]
+pdU-bijective {ε} {c} = []
+pdU-bijective {$ c ` loc} {c'} with c Char.≟ c'
+... | yes refl = bijective-letter ∷ []
+... | no _ = []
+pdU-bijective {l + r ` loc} {c} =
+  all-concat (all-map-left (pdU-bijective {l} {c}))
+             (all-map-right (pdU-bijective {r} {c}))
+pdU-bijective {r * nε ` loc} {c} = all-map-star (pdU-bijective {r} {c})
+pdU-bijective {l ● r ` loc} {c} with ε∈? l
+... | no _ = all-map-fst (pdU-bijective {l} {c})
+... | yes _ = all-concat (all-map-fst (pdU-bijective {l} {c}))
+                         (all-concatmap-pdinstance-snd (pdU-bijective {r} {c}))
 
 ```

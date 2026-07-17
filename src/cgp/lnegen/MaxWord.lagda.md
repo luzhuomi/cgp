@@ -2357,8 +2357,15 @@ _≟C_ = ≡-dec Char._≟_
         len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
         len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
         len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
-    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₂ u₁≡v₁ u₂>v₂))) = {!!}  -- we should have bne seq₂ since inj is bijective 
-        
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₂ u₁≡v₁ u₂>v₂))) = prf  -- we should have bne seq₂ since inj is bijective 
+      where
+        len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
+        len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
+        len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
+        len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
+      
+        prf : (l ● r ` loc) ⊢ PairU (inj u₁) u₂ ≥ PairU (inj v₁) v₂ 
+        prf = inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₂ (u→v→u≡v→inju≡injv u₁ v₁ u₁≡v₁) u₂>v₂) )       
     ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (lne len|u₁u₂|>0 len|v₁v₂|≡0)) with proj₁ (flat {p} u₁) ≟C [] 
     ... | yes |u₁|≡[]  = prf 
       where
@@ -2375,7 +2382,7 @@ _≟C_ = ≡-dec Char._≟_
         len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
         len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
         len|u₂|>0 : length (proj₁ (flat u₂)) Nat.> 0
-        len|u₂|>0 = {!!} 
+        len|u₂|>0 = {!!}  -- from len|u₁u₂|>0 and |u₁|≡[] we should have len|u₂|>0
         u₁≥v₁ : p ⊢ u₁ ≥ v₁
         u₁≥v₁ with  max-u₁
         ... | ≥-max w .u₁ |u₁|≡w v→|v|≡w→u₁≥v = v→|v|≡w→u₁≥v v₁ (sym  |u₁|≡|v₁| )  
@@ -2383,41 +2390,62 @@ _≟C_ = ≡-dec Char._≟_
         prf with u→max-u→v→u≥v→inju≥injv u₁ max-u₁ v₁ u₁≥v₁
         ... | inj₂ inju₁≡injv₁ =  inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₂ inju₁≡injv₁ (lne len|u₂|>0 (Utils.[]→length≡0 |v₂|≡[]) )))
         ... | inj₁ inju₁>injv₁ =  inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₁ inju₁>injv₁) ) 
-    ... | no ¬|u₁|≡[]  = {!!}
+    ... | no ¬|u₁|≡[]  = prf
       where
+        -- case ¬|u₁|≡[], we have u₁>v₁ via lne, similar prove as the bne case above
+        |v₁|≡[] : proj₁ (flat v₁) ≡ []
+        |v₁|≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 )
+        u₁>v₁ : p ⊢ u₁ > v₁
+        u₁>v₁ = lne (Utils.¬≡[]→length>0 ¬|u₁|≡[]) (Utils.[]→length≡0  |v₁|≡[])
+        max-u₁ : ≥-Max {p} (proj₁ (flat u₁)) u₁
+        max-u₁  =  ≥-max-pair-fst-prefix→>3 u₁ u₂  max-pair-u₁u₂        
+        len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
+        len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
+        len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
+        len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
+        prf : (l ● r ` loc) ⊢ PairU (inj u₁) u₂ ≥ PairU (inj v₁) v₂ 
+        prf with u→max-u→v→u≥v→inju≥injv u₁ max-u₁ v₁ (inj₁ u₁>v₁)
+        ... | inj₂ inju₁≡injv₁ =  Nullary.contradiction ( u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁ ) (>→¬≡  u₁>v₁ )   
+        ... | inj₁ inju₁>injv₁ =  inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₁ inju₁>injv₁) )  
+
+          
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (be len|u₁u₂|≡len|v₁v₂| len|v₁v₂|≡0 (seq₁ u₁>v₁))) = prf  
+      -- be case similar to the the bne case above.
+      where
+        |u₁|≡[] : proj₁ (flat u₁) ≡ []
+        |u₁|≡[] = ++-conicalˡ (proj₁ (flat u₁)) (proj₁ (flat u₂)) (length≡0→[] (trans len|u₁u₂|≡len|v₁v₂| len|v₁v₂|≡0 ) ) 
+        |u₂|≡[] : proj₁ (flat u₂) ≡ []
+        |u₂|≡[] = ++-conicalʳ (proj₁ (flat u₁)) (proj₁ (flat u₂)) (length≡0→[] (trans len|u₁u₂|≡len|v₁v₂| len|v₁v₂|≡0 )  ) 
+        
         |v₁|≡[] : proj₁ (flat v₁) ≡ []
         |v₁|≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 ) 
-      
-        -- case ¬|u₁|≡[], we have u₁>v₁ via lne, similar prove as the bne case above
-          
-    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₁ u₁>v₁))) = {!!}  
-      -- be case similar to the the bne case above. 
-      -- with u→max-u→v→u≥v→inju≥injv u₁
-      --     (≥-max-pair-fst-prefix→>3 u₁ u₂ max-pair-u₁u₂) v₁
-      --     {!!} -- (≥-max-pair-fst-prefix→>2 u₁ u₂ max-pair-u₁u₂ v₁ v₂ {!!}) 
-    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₂ u₁≡v₁ u₂>v₂))) = {!!}   -- we should have bne seq₂ since inj is bijective 
+        |v₂|≡[] : proj₁ (flat v₂) ≡ []
+        |v₂|≡[] = ++-conicalʳ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 ) 
+        max-u₁ : ≥-Max {p} (proj₁ (flat u₁)) u₁
+        max-u₁  =  ≥-max-pair-fst-prefix→>3 u₁ u₂  max-pair-u₁u₂
+        |u₁|≡|v₁| : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+        |u₁|≡|v₁| = trans |u₁|≡[] (sym |v₁|≡[])
+        u₁≥v₁ : p ⊢ u₁ ≥ v₁
+        u₁≥v₁ with  max-u₁
+        ... | ≥-max w .u₁ |u₁|≡w v→|v|≡w→u₁≥v = v→|v|≡w→u₁≥v v₁ (sym  |u₁|≡|v₁| )  
+        
+        len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
+        len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
+        len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
+        len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
+        prf : (l ● r ` loc) ⊢ PairU (inj u₁) u₂ ≥ PairU (inj v₁) v₂ 
+        prf with u→max-u→v→u≥v→inju≥injv u₁ max-u₁ v₁ u₁≥v₁
+        ... | inj₂ inju₁≡injv₁ =  Nullary.contradiction ( u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁ ) (>→¬≡  u₁>v₁ )    
+        ... | inj₁ inju₁>injv₁ =  inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₁ inju₁>injv₁) ) 
 
-    -- ... | _  = {!!} 
-    {-
-    ... | inj₂ u₁u₂≡v₁v₂  = inj₂ pair-inj-u₁-u₂≡pair-inj-v₁-v₂
+    ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₂ u₁≡v₁ u₂>v₂))) =  prf  -- we should have bne seq₂ since inj is bijective 
       where
-        pair-inj-u₁-u₂≡pair-inj-v₁-v₂ : PairU {l} {r} {loc} (inj u₁) u₂ ≡ PairU (inj v₁) v₂
-        pair-inj-u₁-u₂≡pair-inj-v₁-v₂ =
-          begin
-             PairU (inj u₁) u₂
-          ≡⟨ cong (λ x → (PairU (inj x) u₂ )) (proj₁ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂)) ⟩
-             PairU (inj v₁) u₂
-          ≡⟨ cong (λ x → (PairU (inj v₁) x )) (proj₂ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂)) ⟩
-             PairU (inj v₁) v₂
-          ∎
-    ... | inj₁ u₁u₂>v₁v₂@(bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} )
-        -- what we can apply ?
-        -- Goal: (l ● r ` loc₁) ⊢ PairU (inj u₁) u₂ >ⁱ PairU (inj v₁) v₂
-        -- the >-inc is not valid when inj change the order differentiator, i.e. the location where lne is applied.
-        -- the >-inc holds when the inj does not change the location where lne is applied 
-    ... | inj₁ u₁u₂>v₁v₂@(be len|u₁u₂|≡0 len|v₁v₂|≡0 (seq₁ u₁>v₁)) = inj₁ (bne {!!} {!!} {!!} ) -- |u₁|≡|v₁|≡[] , we can apply  u→max-u→v→|u|≡|v|→inju≥injv
-      -- either way it must be bne here.
-      -- if |u₁|≡|v₁|, we can apply ? ?
-    ... | inj₁ u₁u₂>v₁v₂@(lne len|u₁u₂|>0 len|v₁v₂|≡0) = {!!} -- what here? 
-    -} 
+        len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
+        len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
+        len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
+        len|inj-v₁v₂|>0  rewrite ( injFstsound-ev (PairU {p} {r} {loc} v₁ v₂) ) = Nat.s≤s Nat.z≤n
+      
+        prf : (l ● r ` loc) ⊢ PairU (inj u₁) u₂ ≥ PairU (inj v₁) v₂ 
+        prf = inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₂ (u→v→u≡v→inju≡injv u₁ v₁ u₁≡v₁) u₂>v₂) )  
+
 ```

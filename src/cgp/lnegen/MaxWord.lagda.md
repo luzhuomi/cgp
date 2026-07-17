@@ -398,7 +398,7 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
   → (∀ (w : List Char) → ¬ ((c ∷ w) ∈⟦ l ⟧))
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
 ≥-max-pres-right-direct {l} {r} {loc} {c} {pdinstance inj s-ev} (≥-max-pres preserve) ¬c∷w∈l =
-  ≥-max-pres (λ u w maxu → ≥-max-pres-right (≥-max-pres preserve) u w maxu (¬c∷w∈l w))
+  ≥-max-pres (λ u w maxu → ≥-max-pres-right (≥-max-pres {sound-ev = s-ev} preserve) u w maxu (¬c∷w∈l w))
 
   
 
@@ -408,14 +408,8 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
 -- Needed by extract-≥-snd.
 len-flat-pair : ∀ {l' r' : RE} {loc' : ℕ} {a : U l'} {b : U r'}
   → length (proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} a b))) ≡ length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
-len-flat-pair {l'} {r'} {loc'} {a = a} {b = b} =
-  begin
-    length (proj₁ (flat {l' ● r' ` loc'} (PairU {l'} {r'} {loc'} a b)))
-  ≡⟨ cong length refl ⟩
-    length (proj₁ (flat {l'} a) ++ proj₁ (flat {r'} b))
-  ≡⟨ length-++ (proj₁ (flat {l'} a)) {proj₁ (flat {r'} b)} ⟩
-    length (proj₁ (flat {l'} a)) + length (proj₁ (flat {r'} b))
-  ∎
+len-flat-pair {l'} {r'} {loc'} {a = a} {b = b} with flat {l'} a | flat {r'} b
+... | xs , xs∈l | ys , ys∈r = length-++ xs {ys}
 
 -- extract-≥-snd: Project pair-wise ≥ to second-component ≥.
 -- If the first components are the same and the second components have the same flat,
@@ -1083,6 +1077,74 @@ _≟C_ = ≡-dec Char._≟_
 
 ```agda
 
+≥-Max-Preserve-Local-map-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  → ( pdis : List (PDInstance r c ) )
+  → All (Bijective {r} {c}) pdis
+  → All (≥-Max-Preserve-Local {r} {c}) pdis
+  → All (≥-Max-Preserve-Local {r * ε∉r ` loc} {c}) (List.map (pdinstance-star {r} {ε∉r} {loc} {c}) pdis)
+≥-Max-Preserve-Local-map-star [] [] [] = []
+≥-Max-Preserve-Local-map-star {r} {ε∉r} {loc} {c} ((pdinstance {p} .{r} .{c} inj sound-ev) ∷ pdis) ((bijective u→v→u≡v→inju≡injv u→v→inju≡injv→u≡v) ∷ bijects) ((≥-max-pres-local u→max-u→v→u≥v→inju≥injv) ∷ max-preses) =
+  ≥-max-pres-local ev ∷ ≥-Max-Preserve-Local-map-star pdis bijects max-preses
+  where
+    len>0-injList : ∀ (x : U p) (xs : List (U r))
+      → length (proj₁ (flat (mkinjList inj (PairU {p} {r * ε∉r ` loc} {loc} x (ListU xs))))) Nat.> 0
+    len>0-injList x xs rewrite PDI.mkinjListSoundEv inj sound-ev (PairU {p} {r * ε∉r ` loc} {loc} x (ListU xs)) = Nat.s≤s Nat.z≤n
+
+    ev : (u' : U (p ● (r * ε∉r ` loc) ` loc))
+       → ≥-Max (proj₁ (flat u')) u'
+       → (v' : U (p ● (r * ε∉r ` loc) ` loc))
+       → (p ● (r * ε∉r ` loc) ` loc) ⊢ u' ≥ v'
+       → (r * ε∉r ` loc) ⊢ mkinjList inj u' ≥ mkinjList inj v'
+    ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₂ u'≡v')
+      rewrite proj₁ (inv-pairU u₁ (ListU us) v₁ (ListU vs) u'≡v')
+            | cong unListU (proj₂ (inv-pairU u₁ (ListU us) v₁ (ListU vs) u'≡v')) = inj₂ refl
+    ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (bne len|u'|>0 len|v'|>0 (seq₁ u₁>v₁)))
+      with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
+    ... | inj₂ inju₁≡injv₁ = Nullary.contradiction (u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁) (>→¬≡ u₁>v₁)
+    ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
+    ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (bne len|u'|>0 len|v'|>0 (seq₂ u₁≡v₁ listus>listvs)))
+      = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-tail (cong inj u₁≡v₁) listus>listvs))
+    ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (be len|u'|≡len|v'| len|v'|≡0 (seq₁ u₁>v₁)))
+      with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
+    ... | inj₂ inju₁≡injv₁ = Nullary.contradiction (u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁) (>→¬≡ u₁>v₁)
+    ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
+    ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (be len|u'|≡len|v'| len|v'|≡0 (seq₂ u₁≡v₁ listus>listvs)))
+      = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-tail (cong inj u₁≡v₁) listus>listvs))
+    ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (lne len|u'|>0 len|v'|≡0)) with proj₁ (flat {p} u₁) ≟C []
+    ... | no ¬|u₁|≡[] = prf
+      where
+        |v₁|≡[] : proj₁ (flat v₁) ≡ []
+        |v₁|≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat (ListU vs))) (length≡0→[] len|v'|≡0)
+        u₁>v₁ : p ⊢ u₁ > v₁
+        u₁>v₁ = lne (Utils.¬≡[]→length>0 ¬|u₁|≡[]) (Utils.[]→length≡0 |v₁|≡[])
+        prf : (r * ε∉r ` loc) ⊢ mkinjList inj (PairU u₁ (ListU us)) ≥ mkinjList inj (PairU v₁ (ListU vs))
+        prf with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
+        ... | inj₂ inju₁≡injv₁ = Nullary.contradiction (u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁) (>→¬≡ u₁>v₁)
+        ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
+    ... | yes |u₁|≡[] = prf
+      where
+        |v₁|≡[] : proj₁ (flat v₁) ≡ []
+        |v₁|≡[] = ++-conicalˡ (proj₁ (flat v₁)) (proj₁ (flat (ListU vs))) (length≡0→[] len|v'|≡0)
+        |list-vs|≡[] : proj₁ (flat (ListU vs)) ≡ []
+        |list-vs|≡[] = ++-conicalʳ (proj₁ (flat v₁)) (proj₁ (flat (ListU vs))) (length≡0→[] len|v'|≡0)
+        len|list-us|>0 : length (proj₁ (flat (ListU us))) Nat.> 0
+        len|list-us|>0 = subst (λ n → n Nat.> 0) eq len|u'|>0
+          where
+            eq : length (proj₁ (flat (PairU {p} {r * ε∉r ` loc} {loc} u₁ (ListU us)))) ≡ length (proj₁ (flat (ListU us)))
+            eq = trans (len-flat-pair {p} {r * ε∉r ` loc} {loc} {u₁} {ListU us}) (cong (λ x → x + length (proj₁ (flat (ListU us)))) (cong length |u₁|≡[]))
+        listus>listvs : (r * ε∉r ` loc) ⊢ ListU us > ListU vs
+        listus>listvs = lne len|list-us|>0 (Utils.[]→length≡0 |list-vs|≡[])
+        |u₁|≡|v₁| : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+        |u₁|≡|v₁| = trans |u₁|≡[] (sym |v₁|≡[])
+        u₁≥v₁ : p ⊢ u₁ ≥ v₁
+        u₁≥v₁ with ≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair
+        ... | ≥-max w .u₁ |u₁|≡w dom = dom v₁ (sym |u₁|≡|v₁|)
+        prf : (r * ε∉r ` loc) ⊢ mkinjList inj (PairU u₁ (ListU us)) ≥ mkinjList inj (PairU v₁ (ListU vs))
+        prf with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ u₁≥v₁
+        ... | inj₂ inju₁≡injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-tail inju₁≡injv₁ listus>listvs))
+        ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
+
+
 pdU-preseve-local : ∀ { r : RE } { c : Char }
   → All ≥-Max-Preserve-Local pdU[ r , c ]
 pdU-preseve-local {ε} {c} = []   
@@ -1114,5 +1176,8 @@ pdU-preseve-local {l ● r  ` loc} {c} with ε∈? l
     ind-hyp-l = pdU-preseve-local {l} {c}
     ind-hyp-r : All ≥-Max-Preserve-Local pdU[ r , c ]
     ind-hyp-r = pdU-preseve-local {r} {c}
-pdU-preseve-local {r * ε∉r ` loc} {c} = {!!} 
+pdU-preseve-local {r * ε∉r ` loc} {c} = ≥-Max-Preserve-Local-map-star pdU[ r , c ] pdU-bijective ind-hyp-r
+  where
+    ind-hyp-r : All ≥-Max-Preserve-Local pdU[ r , c ]
+    ind-hyp-r = pdU-preseve-local {r} {c}
 ```

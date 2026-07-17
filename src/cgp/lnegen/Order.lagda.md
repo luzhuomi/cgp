@@ -223,7 +223,7 @@ data _⊢_>ⁱ_  where
 
 ### Examples of  Left non empty Order
 
-For exapmle we find that
+For example we find that
 
 ```agda
 module Example-Left-NonEmpty where

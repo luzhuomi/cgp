@@ -25,7 +25,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   pdinstance-left; pdinstance-right;
   pdinstance-star; mkinjList ;
   pdinstance-fst ; mkinjFst ;
-  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ; mkinjSndSoundEv ; 
   concatmap-pdinstance-snd  ; zip-es-flat-[]-es  ;
   pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound 
   ) 
@@ -619,6 +619,9 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     -- this is needed because p is an existential type `hidden` inside PDInstance r c 
     injSnd :  U p → U (l ● r ` loc)
     injSnd = mkinjSnd {l} {r} {p} {loc} inj e
+    injSnd-s-ev : ( u : U p ) → proj₁ (flat (injSnd u)) ≡ c ∷ proj₁ (flat u ) 
+    injSnd-s-ev u = mkinjSndSoundEv {p} {l} {r} {loc} {c} inj s-ev e ( flat-[] e' proj₁∘flate≡[] ) u
+    {-
     injSnd-s-ev =
       (λ u → 
            begin
@@ -633,7 +636,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
              c ∷ (proj₁ (flat u))
            ∎
           )    
-
+    -} 
 -- aux lemma to show that concatMap pdinstance-snd  is >-strict increasing
 
 >-inc-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }

@@ -144,6 +144,9 @@ n≡0→¬n>0 refl ()
 nat+0→>0 : ∀ {n} → (n + 0) > 0 → n > 0
 nat+0→>0 {n} p rewrite NatProperties.+-identityʳ n = p
 
+0+nat→>0 : ∀ {n} → (0 + n) > 0 → n > 0
+0+nat→>0 {n} p rewrite NatProperties.+-identityˡ n = p
+
 
 ¬≡0→>0 :  ∀ { n : ℕ }
   → ¬ n ≡ 0

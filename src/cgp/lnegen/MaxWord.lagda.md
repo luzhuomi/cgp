@@ -176,7 +176,7 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
     helper (inj₁ (lne len>0 len'≡0)) rewrite trans (sym (cong length same-word)) len'≡0 = ⊥-elim (Nullary.contradiction len>0 (λ { () }))
 
 
-
+-- is this used?
 ≥-max-pair-fst-prefix→>2 : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
   → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)
   → ( u' : U l )
@@ -197,7 +197,7 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
     helper (inj₁ (lne len>0 len'≡0)) rewrite trans (sym (cong length same-word)) len'≡0 = ⊥-elim (Nullary.contradiction len>0 (λ { () })) 
 
 
--- we need this to get ≥-Max u from ≥-Max (PairU u v) 
+-- we need this to get ≥-Max u from ≥-Max (PairU u v)  -- there seems to be similar lemma below
 ≥-max-pair-fst-prefix→>3 : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
   → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)
   → ≥-Max {l} (proj₁ (flat u)) u 
@@ -218,7 +218,8 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
 
 -- each partial derivative p is unique
 -- inj is ≥-Max-Preserve is given an u which is max, and another v,
--- we must have inj u ≥ inj v 
+-- we must have inj u ≥ inj v
+{-
 data ≥-Max-Preserve : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
   ≥-max-pres : ∀ { p r : RE } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -242,7 +243,7 @@ data ≥-Max-Preserve-Bd : ∀ { r : RE } { c : Char } → PDInstance r c → Se
       → ≥-Max (c ∷ w) (inj u)
       → ≥-Max w u ) -- ← direction 
     → ≥-Max-Preserve-Bd {r} {c} (pdinstance inj sound-ev)
-
+-} 
 
 
 
@@ -291,6 +292,7 @@ data ≥-Max-Preserve-Bd : ∀ { r : RE } { c : Char } → PDInstance r c → Se
         ¬|left-v|≡[] : ¬ ( proj₁ (flat (LeftU {l} {r} {loc} v)) ≡ []) 
         ¬|left-v|≡[] rewrite  |v|≡c∷w =  Utils.¬∷≡[]
 
+{-
 ≥-max-pres-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdi : PDInstance l c )
   → ≥-Max-Preserve {l} {c} pdi
@@ -339,7 +341,7 @@ data ≥-Max-Preserve-Bd : ∀ { r : RE } { c : Char } → PDInstance r c → Se
               
           max-left-inj-u : ≥-Max (c ∷ w) (LeftU {l} {r} {loc} (inj u))
           max-left-inj-u = ≥-max-pres-left-helper p l r loc c inj u w max-inj-u 
-          
+-}          
 
 
 
@@ -362,6 +364,7 @@ proj₁-flat-LeftU {l₁ + l₂ ` loc} {r} {loc'} (RightU v₁) = refl
 proj₁-flat-LeftU {l₁ ● l₂ ` loc} {r} {loc'} (PairU v₁ v₂) = refl
 proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
 
+{-
 ≥-max-pres-right : ∀ { p l r  : RE } { loc : ℕ } { c : Char }
   { inj : U p → U r }
   { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -399,7 +402,7 @@ proj₁-flat-LeftU {l₁ * nε ` loc} {r} {loc'} (ListU vs) = refl
   → ≥-Max-Preserve {l + r ` loc} {c} (pdinstance-right pdi)
 ≥-max-pres-right-direct {l} {r} {loc} {c} {pdinstance inj s-ev} (≥-max-pres preserve) ¬c∷w∈l =
   ≥-max-pres (λ u w maxu → ≥-max-pres-right (≥-max-pres {sound-ev = s-ev} preserve) u w maxu (¬c∷w∈l w))
-
+-} 
   
 
 
@@ -557,6 +560,8 @@ head-concatmap-empty [] = refl
 head-concatmap-empty (x ∷ xs) = head-concatmap-empty xs
 
 -- Ex>-sorted-first>all: First pdi of an Ex>-sorted list is > all subsequent pdis.
+-- compiled but not in used
+{-
 Ex>-sorted-first>all : ∀ {r : RE} {c : Char} {pdi : PDInstance r c} {pdis : List (PDInstance r c)}
   → Ex>-sorted (pdi ∷ pdis)
   → (pdi' : PDInstance r c) → pdi' ∈ pdis
@@ -565,9 +570,11 @@ Ex>-sorted-first>all (ex>-cons _ (ex>-just pdi>pdi₂)) pdi' (here refl) = pdi>p
 Ex>-sorted-first>all {r} {c} (ex>-cons sorted (ex>-just pdi>pdi₂)) pdi' (there pdi'∈pdis')
   with Ex>-sorted-first>all sorted pdi' pdi'∈pdis'
 ... | pdi₂>pdi' = >-pdi-trans pdi>pdi₂ pdi₂>pdi'
-Ex>-sorted-first>all (ex>-cons ex>-nil ex>-nothing) pdi' ()
+-- Ex>-sorted-first>all (ex>-cons ex>-nil ex>-nothing) pdi' ()
+-}
 
--- not in use
+-- compiled but not in used
+{-
 extract-mkAllEmptyU : ∀ {l} {ε∈l : ε∈ l}
   → ∃[ e₁ ] ∃[ es₁ ] ∃[ flat-e₁≡[] ] ∃[ flat-[]-es₁ ] ∃[ sorted ] (⊥ → ⊥)
 extract-mkAllEmptyU {l} {ε∈l}
@@ -575,31 +582,45 @@ extract-mkAllEmptyU {l} {ε∈l}
 ... | [] | [] | w = ⊥-elim (mkAllEmptyU≢[] ε∈l eq-mkAllEmptyU)
 ... | e₁ ∷ es₁ | flat-[] e₁ flat-e₁≡[] ∷ flat-[]-es₁ | sorted =
   e₁ , es₁ , flat-e₁≡[] , flat-[]-es₁ , sorted , λ ()
+-}
 
-concatmap-pdinstance-snd-≡ : ∀ {l r : RE} {ε∈l : ε∈ l} {loc : ℕ} {c : Char} (pdis : List (PDInstance r c))
+-- compiled but not in used
+{-
+concatmap-pdinstance-snd-≡ : ∀ {l r : RE} {ε∈l : ε∈ l} {loc : ℕ} {c : Char}
+  (pdis : List (PDInstance r c))
   → concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis
     ≡ concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x pdis)
       (zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU {l} ε∈l) (mkAllEmptyU-sound {l} ε∈l))
 concatmap-pdinstance-snd-≡ pdis = refl
+-}
 
 -- first-char-lemma: Extract c∷cs form from non-empty list with known first char.
+-- compiled but not in used
+{-
 first-char-lemma : ∀ {c} (xs : List Char) → xs ≢ [] → (∀ {c₁ cs₁} → xs ≡ c₁ ∷ cs₁ → c₁ ≡ c) → ∃[ cs ] xs ≡ c ∷ cs
 first-char-lemma [] ¬[] _ = ⊥-elim (¬[] refl)
 first-char-lemma (c₁ ∷ cs₁) _ first-char = cs₁ , cong (λ x → x ∷ cs₁) (first-char refl)
+-}
 
 -- find-recons: Extract Recons proof from Any. -- not in use?
+-- compiled but not in used
+{-
 find-recons : ∀ {A : Set} {P : A → Set} {x} {xs} → Any P xs → P x → P x
 find-recons {P = P} {x} any px = px
+-}
 
 -- dom-lemma: If inj u₁ is the first reconstruction of the first pdi in pdU[l,c],
 -- and v₁ has a c-word different from c∷flat u₁, then l ⊢ inj u₁ > v₁.
 -- extract-Recons: Extract the pdi and membership proof from Any (Recons v₁) pdis.
+-- compiled but not in used
+{-
 extract-Recons : ∀ {r c v₁} {pdis : List (PDInstance r c)}
-  → Any (Recons {r} {c} v₁) pdis → ∃ λ pdi → pdi ∈ pdis × Recons v₁ pdi
+  → Any (Recons {r} {c} v₁) pdis
+  → ∃ λ pdi → pdi ∈ pdis × Recons v₁ pdi
 extract-Recons (here recons-v₁) = _ , here refl , recons-v₁
 extract-Recons (there v₁∈pdis) with extract-Recons v₁∈pdis
 ... | pdi , pdi∈ , recons-v₁ = pdi , there pdi∈ , recons-v₁
-
+-} 
 
 
 -- ------ >-wellfounded lemma ----------------------
@@ -614,6 +635,7 @@ extract-any (here px) = _ , px , here refl
 extract-any (there p) with extract-any p
 ... | x , px , x∈xs = x , px , there x∈xs
 
+-- this should be moved to Partial Derivative.lagda.md
 -- parseAll-complete: every parse tree u for w occurs in parseAll[ r , w ].
 -- Proof: pdUMany-complete gives a PDInstance* that reconstructs u; buildU-complete
 -- shows u is built by that PDInstance*; map and concat membership lift this to parseAll.
@@ -629,6 +651,7 @@ parseAll-complete {r} {w} u flat-u≡w =
     ... | pdi , recons*-u-pdi , pdi∈pdUMany =
       ∈-concat⁺′ (buildU-complete u pdi recons*-u-pdi) (∈-map⁺ buildU pdi∈pdUMany)
 
+-- this should be moved to Partial Derivative.lagda.md
 -- parseAll-sound: every element of parseAll[ r , w ] flattens to w.
 -- Proof: each buildU pdi only contains trees flattening to w (buildU-sound), and
 -- parseAll is a concatenation of such buildU results.
@@ -759,61 +782,35 @@ head-parseAll-is-max : ∀ { r : RE } { w : List Char }
   → just u ≡ head parseAll[ r , w ]
   → ≥-Max w u
 head-parseAll-is-max = {!!}   
+-}
 
+
+-- ∈?-parseAll: decide word membership via the derivative-based parser.
+-- w ∈⟦ r ⟧ iff parseAll[ r , w ] is non-empty (parseAll-nonempty / parseAll-sound).
+∈?-parseAll : ( w : List Char ) → ( r : RE ) → Dec ( w ∈⟦ r ⟧ )
+∈?-parseAll w r with parseAll[ r , w ] in eq
+... | [] = no (λ w∈r → parseAll-nonempty w∈r eq)
+... | (u ∷ us) = yes (subst (λ x → x ∈⟦ r ⟧) (parseAll-sound u (subst (λ x → u ∈ x) (sym eq) (here refl))) (proj₂ (flat u)))
 
 _∈?⟦_⟧ : ( w : List Char ) → ( r : RE ) → Dec ( w ∈⟦ r ⟧ )
-_∈?⟦_⟧ [] ε = yes ε
-_∈?⟦_⟧ [] (r * ε∉r ` loc) = yes (((r ● r * ε∉r ` loc ` loc) +L ε) *)
-_∈?⟦_⟧ [] ($ _ ` _) = no λ ()
-_∈?⟦_⟧ [] (l ● r ` loc ) with [] ∈?⟦ l ⟧ | [] ∈?⟦ r ⟧ 
-... | yes []∈⟦l⟧ | yes []∈⟦r⟧ = yes ([]∈⟦l⟧ ● []∈⟦r⟧ ⧺ refl)
-... | no ¬[]∈⟦l⟧ | _          = no ¬[]∈⟦l●r⟧ 
-  where
-    ¬[]∈⟦l●r⟧ : ¬ ([] ∈⟦ l ● r ` loc ⟧)
-    ¬[]∈⟦l●r⟧ (_●_⧺_ {xs} {ys} {[]} xs∈⟦l⟧ ys∈⟦r⟧ xs++ys≡[] ) rewrite (++-conicalˡ xs ys xs++ys≡[])  = ¬[]∈⟦l⟧ xs∈⟦l⟧ 
-... | _          |  no ¬[]∈⟦r⟧ = no ¬[]∈⟦l●r⟧
-  where
-    ¬[]∈⟦l●r⟧ : ¬ ([] ∈⟦ l ● r ` loc ⟧)
-    ¬[]∈⟦l●r⟧ (_●_⧺_ {xs} {ys} {[]} xs∈⟦l⟧ ys∈⟦r⟧ xs++ys≡[] ) rewrite (++-conicalʳ xs ys xs++ys≡[])  = ¬[]∈⟦r⟧ ys∈⟦r⟧
-_∈?⟦_⟧ (c ∷ w) ε  = no λ () 
-    
-_∈?⟦_⟧ (c ∷ []) ($ c' ` loc) with c Char.≟ c'
-... | yes c≡c' rewrite c≡c' = yes ($ c')
-... | no ¬c≡c' = no ¬c∷[]∈⟦c'⟧
-  where
-    ¬c∷[]∈⟦c'⟧ : ¬ ( (c ∷ []) ∈⟦ $ c' ` loc ⟧ )
-    ¬c∷[]∈⟦c'⟧ ($ .(c')) = ¬c≡c' refl 
-_∈?⟦_⟧ (c ∷ d ∷ _ ) ($ c' ` loc)  = no λ () 
+_∈?⟦_⟧ =  ∈?-parseAll
 
-_∈?⟦_⟧ w (l + r ` loc ) with w ∈?⟦ l ⟧
-... | yes w∈⟦l⟧ = yes (r +L w∈⟦l⟧)
-... | no ¬w∈⟦l⟧ with w ∈?⟦ r ⟧
-...              | yes w∈⟦r⟧ = yes (l +R w∈⟦r⟧)
-...              | no  ¬w∈⟦r⟧ = no ¬w∈⟦l+r⟧
-  where
-    ¬w∈⟦l+r⟧ : ¬ (w ∈⟦ l + r ` loc ⟧)
-    ¬w∈⟦l+r⟧ (r +L w∈⟦l⟧ ) = ¬w∈⟦l⟧ w∈⟦l⟧
-    ¬w∈⟦l+r⟧ (l +R w∈⟦r⟧ ) = ¬w∈⟦r⟧ w∈⟦r⟧
-
-
-_∈?⟦_⟧ (c ∷ w) (l ● r ` loc ) with ε∈? l
-... | yes ε∈l = {!!}
-... | no ¬ε∈l = {!!} 
-
+{-
 max-is-head-parseAll : ∀ { r : RE } { w : List Char }
   → ( u : U r )
   → ≥-Max w u
   → just u ≡ head parseAll[ r , w ] 
 max-is-head-parseAll = {!!}
+-}
 
-first-inhabit : ∀ { r : RE } { c : Char } { w : List Char } → List (PDInstance r c) → Maybe (PDInstance r c)
-first-inhabit {r} {c} {w} [] = nothing
-first-inhabit {r} {c} {w} ((pdinstance {p} .{r} .{c} inj sev) ∷ pdis )
+first-inhabit : ∀ ( r : RE ) ( c : Char ) ( w : List Char ) → List (PDInstance r c) → Maybe (PDInstance r c)
+first-inhabit r c w [] = nothing
+first-inhabit r c w ((pdinstance {p} .{r} .{c} inj sev) ∷ pdis )
   with w ∈?⟦ p ⟧
-... | no ¬w∈⟦p⟧ = first-inhabit {r} {c} {w} pdis
+... | no ¬w∈⟦p⟧ = first-inhabit r c w pdis
 ... | yes w∈⟦p⟧ = just (pdinstance {p} {r} {c} inj sev)
 
--} 
+
 
 
 data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
@@ -1180,4 +1177,105 @@ pdU-preseve-local {r * ε∉r ` loc} {c} = ≥-Max-Preserve-Local-map-star pdU[ 
   where
     ind-hyp-r : All ≥-Max-Preserve-Local pdU[ r , c ]
     ind-hyp-r = pdU-preseve-local {r} {c}
+```
+
+-- next we note that pdU[ r , c ] is sorted  but pdUMany[ r , w ] is not sorted.
+
+-- we want to show
+
+-- the left most parse tree generated by parseAll[ r , w ] is the max 
+
+
+-- we shold have a similar pdUMany-preserve-local lemma
+
+
+does the following definition make sense and is helpful?
+
+A pdinstance is suffix w maximal iff given the max parse tree of w w.r.t to some p, say u,  inject u gives us the maximal parse tree of r.
+```agda
+
+data ≥-Max-PDInstance : ∀ { r : RE } { c : Char } → ( List Char )  → PDInstance r c → Set where
+  ≥-max-pdi : ∀ { p r : RE } { c : Char }  { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
+    → ( u : U p )
+    → ( w : List Char )    
+    → ≥-Max w u
+    → ≥-Max (c ∷ w) (inj u)
+    → ≥-Max-PDInstance {r} {c} w (pdinstance inj sound-ev) 
+
+
+
+```
+can we prove that the first pdistance that we ever find in pdU[ r , c ] from left to right that reconstruct
+unflat c ∷ w is ≥-Max-PDInstance!
+
+
+is this lemma useful? 
+```agda
+
+first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
+  → ( w : List Char )
+  → ((c ∷ w) ∈⟦ r ⟧)
+  → ( pdi : PDInstance r c) 
+  → (first-inhabit r c w  pdU[ r , c ]) ≡ just pdi 
+  → ≥-Max-PDInstance {r} {c} w pdi
+first-pdU-accept-w-isMax = {!!} 
+```
+
+
+Extended Order 
+
+```agda
+data _,_,_⊢*_≥_ : ∀ ( r : RE ) → ( pref : List Char ) → ( suf : List Char ) → PDInstance* r pref → PDInstance* r pref  → Set where
+  *≥-pdi : ∀ { p₁ p₂ r : RE } { pref : List Char }
+    { inj₁ : U p₁ → U r }
+    { sound-ev₁ : ∀ ( x : U p₁ ) → ( proj₁ (flat {r} (inj₁ x ) ) ≡ pref ++ ( proj₁ (flat {p₁} x) )) }
+    { inj₂ : U p₂ → U r }
+    { sound-ev₂ : ∀ ( x : U p₂ ) → ( proj₁ (flat {r} (inj₂ x ) ) ≡ pref ++ ( proj₁ (flat {p₂} x) )) }
+    → ( suf : List Char )
+    → ( ( u₁ : U p₁ )
+      → ( u₂ : U p₂ )
+      → ( ≥-Max {p₁} suf u₁ )
+      → ( ≥-Max {p₂} suf u₂ )
+      → r ⊢ inj₁ u₁ ≥ inj₂ u₂ )
+    → r , pref , suf  ⊢* pdinstance* inj₁ sound-ev₁ ≥ pdinstance* inj₂ sound-ev₂
+
+```
+
+
+A pdinstance* is suffix w maximal iff given the max parse tree of w w.r.t to some p, say u,  inject u gives us the maximal parse tree of r.
+```agda
+
+data ≥-Max-PDInstance* : ∀ {r : RE } { pref : List Char } → ( List Char ) → PDInstance* r pref → Set where
+  ≥-max-pdi* : ∀ { p r : RE } { pref : List Char } { inj : U p → U r }
+    { sound-ev : ∀ ( x : U p ) → ( proj₁ (flat {r} (inj x ) ) ≡ pref ++ ( proj₁ (flat {p} x) )) }
+    → ( u : U p )
+    → ( suff : List Char )
+    → ≥-Max suff u
+    → ≥-Max (pref ++ suff) (inj u)
+    → ≥-Max-PDInstance* {r} {pref} suff (pdinstance* inj sound-ev) 
+
+```
+
+
+
+```agda
+first-concatMap-buildU-pdUMany-isMax  : ∀ ( r : RE )
+  → ( w : List Char )
+  → ( w ∈⟦ r ⟧  )
+  → ( u : U r )
+  → head (List.concatMap buildU pdUMany[ r , w ]) ≡ just u
+  →  ≥-Max w u  
+first-concatMap-buildU-pdUMany-isMax = {!!}   
+
+
+
+
+first-parseAll-isMax  : ∀ ( r : RE )
+  → ( w : List Char )
+  → w ∈⟦ r ⟧
+  → ( u : U r )
+  → head parseAll[ r , w ] ≡ just u
+  → ≥-Max w u 
+first-parseAll-isMax = first-concatMap-buildU-pdUMany-isMax
 ```

@@ -1413,10 +1413,19 @@ concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'
     → g' ∈ pdU[ l ● r ` loc , c ]
     → ( ∃[ gₕ' ] ( g' ≡ pdinstance-fst {l} {r} {loc} {c} gₕ' ) )
     ⊎ ( ∃[ e ] ∃[ fl ] ∃[ gₕ' ] ( g' ≡ mk-snd-pdi {l} {r} {loc} {c} (e , fl) gₕ' ) )
-●-decomp {l} {r} {loc} {c} g' g'∈ with ε∈? l 
-... | no ¬ε∈l = ●-decomp-no g' g'∈ 
+●-decomp {l} {r} {loc} {c} g' g'∈ with ε∈? l
+... | no ¬ε∈l = ●-decomp-no g' g'∈
 ... | yes ε∈l = ●-decomp-yes g' g'∈
 
+{-
+-- Chain helpers: the approach using ●-decomp directly on g' doesn't work
+-- because ●-decomp requires l, r, loc as implicit args, but pdi-src g
+-- is just d (not known to be l ● r ` loc in the function body).
+-- The correct approach uses the fact that chain sources are ε or l ● r with ε∈l,
+-- and analyzes the > structure to avoid needing ≥-Max of x'.
+-- This requires well-founded recursion or custom decomposition.
+-- Keeping as postulate for now; discharge with custom decomp later.
+-}
 
 {-
 postulate

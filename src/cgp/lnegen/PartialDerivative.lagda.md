@@ -157,41 +157,42 @@ mkinjLetterSound {c} {loc}  EmptyU =
     c ∷ []
   ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
     c ∷ (proj₁ (flat EmptyU))
-  ∎
- 
+ ∎
 
-pdU[_,_] :  ( r : RE ) → ( c :  Char ) →  List (PDInstance r c)
-pdU[ ε , c ] = []
-pdU[ $ c ` loc  , c' ] with c Char.≟ c'
-...                       | yes refl = [  pdinstance {ε} {$ c ` loc} {c}
-                                                 mkinjLetter --  (λ u → LetterU {loc} c)
-                                                 mkinjLetterSound 
-                                                 {-
-                                                 (λ EmptyU →                 -- ^ soundness ev
-                                                   begin
-                                                     [ c ]
-                                                    ≡⟨⟩
-                                                     c ∷ []
-                                                    ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
-                                                     c ∷ (proj₁ (flat EmptyU))
-                                                    ∎) -}
-                                                  
-                                                 ] 
-...                       | no _     = []
-           
-pdU[ l + r ` loc , c ] =
-  ( List.map pdinstance-left pdU[ l , c ] )
-    ++
-  ( List.map pdinstance-right pdU[ r , c ])
-pdU[ r * nε ` loc , c ] =
-  List.map pdinstance-star  pdU[ r , c ]
 
-pdU[ l ● r ` loc , c ] with ε∈? l
-...                       | no ¬ε∈l =  List.map pdinstance-fst  pdU[ l , c ]
-...                       | yes ε∈l =
-  ( List.map pdinstance-fst pdU[ l , c ] )
-  ++
-  concatmap-pdinstance-snd {l}   {r} {ε∈l} {loc} {c} pdU[ r , c ]
+mutual
+  pdU● : ∀ {l r : RE} {loc : ℕ} {c : Char} → Dec (ε∈ l) → List (PDInstance (l ● r ` loc) c)
+  pdU● {l} {r} {loc} {c} (no ¬ε∈l) = List.map pdinstance-fst pdU[ l , c ]
+  pdU● {l} {r} {loc} {c} (yes ε∈l) = List.map pdinstance-fst pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
+
+  pdU[_,_] :  ( r : RE ) → ( c :  Char ) →  List (PDInstance r c)
+  pdU[ ε , c ] = []
+  pdU[ $ c ` loc  , c' ] with c Char.≟ c'
+  ...                       | yes refl = [  pdinstance {ε} {$ c ` loc} {c}
+                                                   mkinjLetter --  (λ u → LetterU {loc} c)
+                                                   mkinjLetterSound 
+                                                   {-
+                                                   (λ EmptyU →                 -- ^ soundness ev
+                                                     begin
+                                                       [ c ]
+                                                      ≡⟨⟩
+                                                       c ∷ []
+                                                      ≡⟨ cong ( λ x → ( c ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                                                       c ∷ (proj₁ (flat EmptyU))
+                                                      ∎) -}
+                                                    
+                                                   ] 
+  ...                       | no _     = []
+             
+  pdU[ l + r ` loc , c ] =
+    ( List.map pdinstance-left pdU[ l , c ] )
+      ++
+    ( List.map pdinstance-right pdU[ r , c ])
+  pdU[ r * nε ` loc , c ] =
+    List.map pdinstance-star  pdU[ r , c ]
+  
+  
+  pdU[ l ● r ` loc , c ] = pdU● (ε∈? l)
 
 ```
 

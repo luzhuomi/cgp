@@ -3,6 +3,9 @@
 -- {-# OPTIONS --rewriting --allow-unsolved-metas #-}
 module cgp.lnegen.MaxWord where
 
+import Agda.Primitive as Prim
+open Prim using (Level)
+
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
 
@@ -39,7 +42,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
 
 
 import cgp.lnegen.PartialDerivative as PartialDerivative
-open PartialDerivative using ( pdU[_,_] ;  pdU-complete ; 
+open PartialDerivative using ( pdU[_,_] ; pdU● ; pdU-complete ; 
   advance-pdi*-with-c ; 
   pdUMany[_,_]; pdUMany-aux ;
   mkinjLetter ; mkinjLetterSound ;
@@ -92,11 +95,11 @@ import Data.List.Membership.Propositional as Membership
 open Membership using (_∈_)
 
 import Data.List.Membership.Propositional.Properties as MembershipProperties
-open MembershipProperties using (∈-concat⁺′ ; ∈-concat⁻′ ; ∈-map⁺ ; ∈-map⁻)
+open MembershipProperties using (∈-concat⁺′ ; ∈-concat⁻′ ; ∈-map⁺ ; ∈-map⁻ ; ∈-++⁻)
 
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; _≢_; refl; trans; sym; cong; cong₂; cong-app; subst)
+open Eq using (_≡_; _≢_; refl; trans; sym; cong; cong₂; cong-app; subst; inspect)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 
 
@@ -1191,21 +1194,167 @@ pdU-preseve-local {r * ε∉r ` loc} {c} = ≥-Max-Preserve-Local-map-star pdU[ 
 
 ```agda
 
+pdi-src : ∀ { r : RE } { c : Char } → PDInstance r c → RE
+pdi-src (pdinstance {p} {r} {c} inj sound-ev) = p
+
+pdi-inj : ∀ { r : RE } { c : Char } → ( g : PDInstance r c ) → U (pdi-src g) → U r
+pdi-inj (pdinstance {p} {r} {c} inj sound-ev) = inj
+
+-- a chain of pdU injections (head link applied last)
+data Chain : ( p₀ p : RE ) → Set where
+  [] : ∀ { p : RE } → Chain p p
+  cons : ∀ { p₀ p d : RE } { c : Char }
+      → ( g : PDInstance d c )
+      → ( prf : g ∈ pdU[ d , c ] )
+      → ( rest : Chain p₀ (pdi-src g) )
+      → Chain p₀ d
+
+chain-inj : ∀ { p₀ p : RE } → Chain p₀ p → U p₀ → U p
+chain-inj [] u = u
+chain-inj (cons g prf rest) u = pdi-inj g (chain-inj rest u)
+
+
+-- ●-decomp : every pd from a ●-target is a fst-pdi or a snd-pdi
+-- Strategy: use subst *before* any with-pattern, then delegate to helpers
+-- that pattern-match on the substituted list membership.
+-- Key insight: compute subst (λ xs → g' ∈ xs) (sym pdU●-no/yes) g'∈
+-- in the main clause, then pass result to helpers.
+
+∈-concatMap⁻ : ∀ { A B : Set } { f : A → List B } { y : B } { xs : List A }
+  → y ∈ concatMap f xs
+  → ∃[ x ] ( x ∈ xs × y ∈ f x )
+∈-concatMap⁻ {xs = []} ()
+∈-concatMap⁻ {f = f} {y} {x ∷ xs} y∈ with ∈-++⁻ (f x) y∈
+... | inj₁ y∈fx = x , here refl , y∈fx
+... | inj₂ y∈rest with ∈-concatMap⁻ y∈rest
+...   | (x' , x'∈xs , y∈fx') = x' , there x'∈xs , y∈fx'
+
+-- Decompose membership in concatmap-pdinstance-snd:
+-- Uses ∈-concatMap⁻ to decompose g' ∈ concatMap f es into ∃ ef . ef ∈ es × g' ∈ f ef
+-- then uses ∈-map⁻ on g' ∈ List.map (mk-snd-pdi ef) pdis
+-- (Kept as useful standalone lemma for future ●-decomp proof)
+concatmap-snd-decomp-aux : ∀ {l r : RE} {loc : ℕ} {c : Char} {pdis : List (PDInstance r c)}
+  → (g' : PDInstance (l ● r ` loc) c)
+  → (es : List (∃[ e ] (Flat-[] l e)))
+  → g' ∈ concatMap (λ ef → List.map (mk-snd-pdi {l} {r} {loc} {c} ef) pdis) es
+  → ∃[ ef ] ∃[ gₕ' ] (ef ∈ es × gₕ' ∈ pdis × g' ≡ mk-snd-pdi {l} {r} {loc} {c} ef gₕ')
+concatmap-snd-decomp-aux {l} {r} {loc} {c} {pdis} g' es g'∈ with ∈-concatMap⁻ g'∈
+... | (ef , ef∈es , g'∈ef-pdis) with ∈-map⁻ (mk-snd-pdi {l} {r} {loc} {c} ef) g'∈ef-pdis
+...   | (gₕ' , gₕ'∈ , g'≡snd) = ef , gₕ' , ef∈es , gₕ'∈ , g'≡snd
+
+concatmap-snd-decomp : ∀ {l r : RE} {ε∈l : ε∈ l} {loc : ℕ} {c : Char}
+  → (g' : PDInstance (l ● r ` loc) c)
+  → g' ∈ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
+  → ∃[ ef ] ∃[ gₕ' ] (ef ∈ zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU {l} ε∈l) (mkAllEmptyU-sound {l} ε∈l) × gₕ' ∈ pdU[ r , c ] × g' ≡ mk-snd-pdi {l} {r} {loc} {c} ef gₕ')
+concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'∈snd = concatmap-snd-decomp-aux g' zip-es (subst (λ ys → g' ∈ ys) (sym concatmap-snd≡cm) g'∈snd)
+  where
+  zip-es : List (∃[ e ] (Flat-[] l e))
+  zip-es = zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU {l} ε∈l) (mkAllEmptyU-sound {l} ε∈l)
+
+  concatmap-snd≡cm : concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
+    ≡ concatMap (λ ef → List.map (mk-snd-pdi {l} {r} {loc} {c} ef) pdU[ r , c ]) zip-es
+  concatmap-snd≡cm = refl
+
+-- ●-decomp : every pd from a ●-target is a fst-pdi or a snd-pdi
+-- Proved by with on ε∈? l, then subst using equality proofs that
+-- connect pdU[l●r,c] to branch-specific form.
+
+-- Equality: pdU[l●r,c] ≡ List.map pdinstance-fst pdU[l,c]  when ε∉l
+-- Equality: pdU[l●r,c] ≡ List.map pdinstance-fst pdU[l,c] ++ concatmap-pdinstance-snd ...  when ε∈l
+-- These equalities chain pdU[●] = pdU●(ε∈?l) = branch-specific form.
+-- The first link (pdU[●] = pdU●) is refl but lives in a mutual block,
+-- so `refl` doesn't reduce. We work around this by using `with` on
+-- ε∈? l and constructing the equality inside each branch where
+-- `it : ε∈? l ≡ branch` lets us use `cong pdU● it`.
+
+●-decomp-no : ∀ {l r : RE} {loc : ℕ} {c : Char}
+  → (g' : PDInstance (l ● r ` loc) c)
+  → g' ∈ List.map pdinstance-fst pdU[ l , c ]
+  → (∃[ gₕ' ] (g' ≡ pdinstance-fst {l} {r} {loc} {c} gₕ'))
+    ⊎ (∃[ e ] ∃[ fl ] ∃[ gₕ' ] (g' ≡ mk-snd-pdi {l} {r} {loc} {c} (e , fl) gₕ'))
+●-decomp-no g' g'∈ = inj₁
+  (proj₁ (∈-map⁻ pdinstance-fst g'∈)
+  , proj₂ (proj₂ (∈-map⁻ pdinstance-fst g'∈)))
+
+●-decomp-yes : ∀ {l r : RE} {loc : ℕ} {c : Char} {ε∈l}
+  → (g' : PDInstance (l ● r ` loc) c)
+  → g' ∈ List.map pdinstance-fst pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
+  → (∃[ gₕ' ] (g' ≡ pdinstance-fst {l} {r} {loc} {c} gₕ'))
+    ⊎ (∃[ e ] ∃[ fl ] ∃[ gₕ' ] (g' ≡ mk-snd-pdi {l} {r} {loc} {c} (e , fl) gₕ'))
+●-decomp-yes {l} {r} {loc} {c} {ε∈l} g' g'∈ with ∈-++⁻ (List.map pdinstance-fst pdU[ l , c ]) g'∈
+... | inj₁ g'∈fst = ●-decomp-no {l} {r} {loc} {c} g' g'∈fst
+... | inj₂ g'∈snd with concatmap-snd-decomp {l} {r} {ε∈l} {loc} {c} g' g'∈snd
+... | (ef , gₕ'' , ef∈xs , gₕ''∈ , g'≡snd) = inj₂ (proj₁ ef , proj₂ ef , gₕ'' , g'≡snd)
+
+-- Approach: with + where helpers (DEMONSTRATING THE FAILURE)
+--
+-- The idea: `with ε∈? l` case-splits, then a `where` helper constructs
+-- the equality pdU[l●r,c] ≡ branch-specific, then `subst` transforms g'∈.
+--
+-- Agda desugars `with ε∈? l | it ε∈? l` into a helper function:
+--   ●-decomp-hlp : ∀ (l : RE) {r} {loc} {c} (it : ε∈? l ≡ ε∈? l)
+--                  (g' : PDInstance (l ● r ` loc) c)
+--                  (g'∈ : g' ∈ pdU[ l ● r ` loc , c ]) → ...
+--
+-- Problem 1: `l` becomes an EXPLICIT parameter, so references in the
+-- `where` block resolve to the helper-parameter.
+-- Problem 2: Even with `l` in scope, the `refl` proofs are stuck because
+-- `pdU` and `pdU●` are mutual — `refl : pdU[l●r,c] ≡ pdU●(ε∈?l)` is
+-- valid but doesn't reduce. ∈-map⁻ / ∈-++⁻ need to pattern-match on the
+-- proof, and the `subst` term blocks that.
+--
+-- Attempted code (commented out so file compiles):
+-- ●-decomp {l} {r} {loc} {c} g' g'∈ with ε∈? l | Function.it ε∈? l
+-- ... | no ¬ε∈l | it = ●-decomp-no g' (subst _ (sym eq-no) g'∈)
+-- ... | yes ε∈l | it = ●-decomp-yes g'(subst _ (sym eq-yes) g'∈)
+--   where
+--     eq-no : pdU[ l ● r ` loc , c ] ≡ List.map pdinstance-fst pdU[ l , c ]
+--     eq-no = trans (cong _ it) pdU●-def
+--       where
+--         pdU●-def : pdU[ l ● r ` loc , c ] ≡ pdU● (no ¬ε∈l)
+--         pdU●-def  = refl      -- STUCK: mutual block
+--     eq-yes : pdU[ l ● r ` loc , c ] ≡ List.map pdinstance-fst pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
+--     eq-yes = trans (cong _ it) pdU●-def
+--       where
+--         pdU●-def : pdU[ l ● r ` loc , c ] ≡ pdU● (yes ε∈l)
+--         pdU●-def = refl      -- STUCK: mutual block
+
+●-decomp : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( g' : PDInstance (l ● r ` loc) c )
+    → g' ∈ pdU[ l ● r ` loc , c ]
+    → ( ∃[ gₕ' ] ( g' ≡ pdinstance-fst {l} {r} {loc} {c} gₕ' ) )
+    ⊎ ( ∃[ e ] ∃[ fl ] ∃[ gₕ' ] ( g' ≡ mk-snd-pdi {l} {r} {loc} {c} (e , fl) gₕ' ) )
+●-decomp {l} {r} {loc} {c} g' g'∈ with ε∈? l 
+... | no ¬ε∈l = ●-decomp-no g' g'∈ 
+... | yes ε∈l = ●-decomp-yes g' g'∈
+
+
+{-
+postulate
+  ●-decomp : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( g' : PDInstance (l ● r ` loc) c )
+    → g' ∈ pdU[ l ● r ` loc , c ]
+    → ( ∃[ gₕ' ] ( g' ≡ pdinstance-fst {l} {r} {loc} {c} gₕ' ) )
+    ⊎ ( ∃[ e ] ∃[ fl ] ∃[ gₕ' ] ( g' ≡ mk-snd-pdi {l} {r} {loc} {c} (e , fl) gₕ' ) )
+-}
+
+
+
 data ≥-Max-Preserve-Local* : ∀ { r : RE } { pref : List Char } → PDInstance* r pref → Set where
   ≥-max-pres-local* : ∀ { p r : RE } { pref : List Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ pref ++ ( proj₁ (flat {p} x) )) }
-    → ( ( u : U p )
-      → ≥-Max {p} (proj₁ (flat u)) u
-      → ( v : U p ) 
-      → p ⊢ u ≥ v
-      → r ⊢ inj u ≥ inj v ) 
+    → ( ∀ { p₀ : RE } ( chain : Chain p₀ p ) ( u₀ : U p₀ )
+      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+      → ( v₀ : U p₀ ) 
+      → p₀ ⊢ u₀ ≥ v₀
+      → r ⊢ inj (chain-inj chain u₀) ≥ inj (chain-inj chain v₀) ) 
     → ≥-Max-Preserve-Local* {r} {pref} (pdinstance* inj sound-ev)
 
 
 
 pdUMany-preseve-local : ∀ { r : RE } { w : List Char }
   → All (≥-Max-Preserve-Local* {r} {w}) pdUMany[ r , w ]
-pdUMany-preseve-local = ?  
+pdUMany-preseve-local = {!!}  
 ```
 
 

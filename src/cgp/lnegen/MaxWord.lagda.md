@@ -1214,6 +1214,95 @@ chain-inj [] u = u
 chain-inj (cons g prf rest) u = pdi-inj g (chain-inj rest u)
 
 
+-- extract the ≥-Max-Preserve-Local evidence of a pdi from its membership in pdU[ r , c ]
+∈→pres-local : ∀ { r : RE } { c : Char } ( g : PDInstance r c ) → g ∈ pdU[ r , c ] → ≥-Max-Preserve-Local g
+∈→pres-local {r} {c} g g∈ = go pdU[ r , c ] (pdU-preseve-local {r} {c}) g∈
+  where
+    go : ( pdis : List (PDInstance r c) ) → All ≥-Max-Preserve-Local pdis → g ∈ pdis → ≥-Max-Preserve-Local g
+    go [] [] ()
+    go (pdi ∷ pdis) (pres ∷ all-pres) (here refl) = pres
+    go (pdi ∷ pdis) (pres ∷ all-pres) (there g∈') = go pdis all-pres g∈'
+
+
+-- chains into r preserve ≥, given a ≥-Max source tree.
+--
+-- Proof plan (chain-structure argument):
+--   []           : trivial (u₀ ≥ v₀).
+--   cons g prf [] : p₀ = pdi-src g, chain-inj [] u₀ = u₀ is maximal, so the
+--                   ≥-Max-Preserve-Local of g (via ∈→pres-local) applies directly.
+--   cons g prf (cons g' prf' rest'') : the inner pdi g' has a successor g, so
+--                   g' is a fst-pdi or snd-pdi (letter/star/left/right pdi targets
+--                   are $c / s* / unions — never chain sources).  Hence the pair
+--                   x' = pdi-inj g' x'', y' = pdi-inj g' y'' has either
+--                   nonempty-flat first components (g' = fst-pdi) or EQUAL first
+--                   components (g' = snd-pdi, same all-empty e).  In both cases the
+--                   lne/be sub-cases of g's preservation proof that would need
+--                   maximality of x' cannot arise, and the seq₁ recursion descends
+--                   on the tree structure.
+postulate
+  chain-inj-pres-≥ : ∀ { r p₀ : RE } ( chain : Chain p₀ r ) ( u₀ : U p₀ )
+    → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+    → ( v₀ : U p₀ )
+    → p₀ ⊢ u₀ ≥ v₀
+    → r ⊢ chain-inj chain u₀ ≥ chain-inj chain v₀
+
+-- Proven cases (kept for when the postulate is discharged):
+--   chain-inj-pres-≥ [] u₀ max-u₀ v₀ u₀≥v₀ = u₀≥v₀
+--   chain-inj-pres-≥ (cons g prf []) u₀ max-u₀ v₀ u₀≥v₀ with ∈→pres-local g prf
+--   ... | ≥-max-pres-local ev = ev u₀ max-u₀ v₀ u₀≥v₀
+
+{-
+PROOF PLAN for chain-inj-pres-≥-cons-cons (the cons-of-cons case):
+
+Goal: r ⊢ pdi-inj g (chain-inj rest u₀) ≥ pdi-inj g (chain-inj rest v₀)
+where rest = cons g' prf' rest'', x' = chain-inj rest u₀, y' = chain-inj rest v₀.
+
+The natural step (apply g's ≥-Max-Preserve-Local via ∈→pres-local) needs
+≥-Max x' at pdi-src g, which is FALSE in general (see the compiling
+counterexample Chain-does-not-preserve-≥-Max above).  The correct argument is a
+well-founded induction mirroring pdU-preseve-local, keyed on the CHAIN STRUCTURE:
+
+Chain intermediates (pdi-src values) are ε or left-nested ●-over-ε — never unions.
+Hence in a cons-of-cons, the inner pdi g' (which has a successor g) is a fst-pdi
+or a snd-pdi (letter/star/left/right pdi targets are $c / s* / unions — never
+chain sources).  Therefore the pair (x', y') = (pdi-inj g' x'', pdi-inj g' y'')
+has, at every first-component spine level, either
+  * nonempty-flat first components (g' = fst-pdi, or deeper fst-pdis), or
+  * EQUAL first components (g' = snd-pdi, same all-empty tree e), or
+  * a maximal first component (rest'' = [], via iterated ≥-max-pair-fst-prefix→>3).
+Consequently the lne/be sub-cases of g's preservation proof whose premise would
+need ≥-Max of x' (empty-flat first components with y₁ > x₁) CANNOT arise:
+  * rest'' = []          → x₁ is maximal, pres-local applies directly;
+  * g' = fst-pdi         → x₁ nonempty-flat, contradiction with the empty premise;
+  * g' = snd-pdi         → x₁ ≡ y₁, close by cong / seq₂.
+The seq₁ / choice-ll / choice-rr / star-head cases recurse into the inner pdi of
+g on the first-component pair — a strict sub-proof / smaller tree, so the
+induction is well-founded on (chain length, tree structure).
+
+The one genuinely fiddly ingredient is the "empty first component" sub-lemma,
+needed for the lne/be cases at arbitrary first-component depth:
+
+  empty-fst-≥ : ∀ { l } ( rest : Chain p₀ (l ● s ` loc) ) ( sp : FstSpine )
+    → ( u₀ : U p₀ ) → ≥-Max u₀ → ( v₀ : U p₀ )
+    → flat (applySpine sp (chain-inj rest u₀)) ≡ []
+    → flat (applySpine sp (chain-inj rest v₀)) ≡ []
+    → l ⊢ applySpine sp (chain-inj rest u₀) ≥ applySpine sp (chain-inj rest v₀)
+
+where FstSpine tracks a sequence of first-component projections.  It is proved by
+induction on rest:
+  * rest = [] : applySpine sp u₀ is maximal (iterate ≥-max-pair-fst over the spine),
+    so it dominates the empty-flat applySpine sp v₀.
+  * rest = cons g' (fst-pdi) : the spine projection lands on a nonempty-flat
+    component, contradicting the emptiness premise.
+  * rest = cons g' (snd-pdi) : both sides reduce to applySpine sp' e (the SAME
+    all-empty e), closed by refl.
+The formulation challenge is that at deeper spine levels the projections
+interleave with the inner injections (applySpine sp' (inj-g₀' (proj₁U x''))), so
+FstSpine must be a combined projection+injection telescope.  This is a
+multi-hour careful formalization.
+-}
+
+
 -- ●-decomp : every pd from a ●-target is a fst-pdi or a snd-pdi
 -- Strategy: use subst *before* any with-pattern, then delegate to helpers
 -- that pattern-match on the substituted list membership.
@@ -1352,9 +1441,143 @@ data ≥-Max-Preserve-Local* : ∀ { r : RE } { pref : List Char } → PDInstanc
 
 
 
+-- pdUMany-preseve-local: all pdinstance*'s in pdUMany[r, w] preserve ≥-Max locally
+--
+-- Key insight for the inductive step: NO preservation lemmas are needed.
+-- chain-inj (cons g g∈ chain) ≡ pdi-inj g ∘ chain-inj chain holds definitionally,
+-- so given ≥-Max-Preserve-Local* for pdi* = pdinstance* d→r s-ev (evidence d-pres),
+-- each composed pdinstance* in advance-pdi*-with-c pdi satisfies it by simply
+-- EXTENDING the chain: d-pres (cons g g∈ chain) has exactly the required type.
+--
+-- The only remaining obligation is the base case (identity injection):
+--   id-pres : chains into r preserve ≥  (hole below)
+-- Its natural induction on the chain applies, at each step, the
+-- ≥-Max-Preserve-Local of the head pdi (from pdU-preseve-local), whose premise
+-- requires ≥-Max of the inner chain image (chain-inj rest u₀) at the intermediate
+-- regex.  That is "chains preserve ≥-Max", which is FALSE in general —
+-- see the compiling counterexample below.  Note the counterexample's bad
+-- intermediate regex ($a + $a) is a union, which can never be a chain source
+-- (sources are ε or left-nested ● over ε), so id-pres may still hold;
+-- but proving it needs a different invariant or cross-pdi comparison machinery
+-- (pdU-completeness + pdU-sorted, cf. first-pdU-accept-w-isMax).
+
+-- COUNTEREXAMPLE: chains do NOT preserve ≥-Max.
+-- r-ce = $a + $a (distinct locations); the right-pdi g-ce ∈ pdU[ r-ce , a ]
+-- maps EmptyU (trivially ≥-Max at ε) to RightU (LetterU a), which is NOT
+-- ≥-Max at [ a ]: LeftU (LetterU a) also flattens to [ a ] and beats it via
+-- choice-lr, while RightU ≱ LeftU (no constructor gives RightU >ⁱ LeftU).
+module Chain-does-not-preserve-≥-Max where
+  a : Char
+  a = 'a'
+
+  r-ce : RE
+  r-ce = ($ a ` 0) + ($ a ` 1) ` 0
+
+  g-ce : PDInstance r-ce a
+  g-ce = pdinstance-right (pdinstance mkinjLetter mkinjLetterSound)
+
+  g-ce∈ : g-ce ∈ pdU[ r-ce , a ]
+  g-ce∈ = there (here refl)
+
+  chain-ce : Chain ε r-ce
+  chain-ce = cons {ε} {ε} {r-ce} {a} g-ce g-ce∈ []
+
+  -- chain-inj chain-ce EmptyU ≡ RightU (LetterU a)  (definitionally)
+
+  max-empty : ≥-Max {ε} [] EmptyU
+  max-empty = ≥-max [] EmptyU refl (λ { EmptyU refl → inj₂ refl })
+
+  counterexample
+    : ( ∀ { r p₀ : RE } ( chain : Chain p₀ r ) ( u₀ : U p₀ )
+      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+      → ≥-Max {r} (proj₁ (flat (chain-inj chain u₀))) (chain-inj chain u₀) )
+    → ⊥
+  counterexample pres = right≱left right≥left
+    where
+      right≱left : ¬ ( r-ce ⊢ RightU (LetterU a) ≥ LeftU (LetterU a) )
+      right≱left (inj₁ (be _ _ ()))
+      right≱left (inj₁ (bne _ _ ()))
+      right≱left (inj₁ (lne _ ()))
+      right≱left (inj₂ ())
+
+      right≥left : r-ce ⊢ RightU (LetterU a) ≥ LeftU (LetterU a)
+      right≥left with pres chain-ce EmptyU max-empty
+      ... | ≥-max w .(RightU (LetterU a)) _ beat = beat (LeftU (LetterU a)) refl
+
+all-map-∈ : ∀ { A B : Set } { P : B → Set } ( f : A → B ) ( xs : List A )
+  → ( ∀ ( x : A ) → x ∈ xs → P ( f x ) )
+  → All P ( List.map f xs )
+all-map-∈ f [] h = []
+all-map-∈ f (x ∷ xs) h = h x (here refl) ∷ all-map-∈ f xs (λ x' x'∈xs → h x' (there x'∈xs))
+
+compose-pdi-with-preseve-local : ∀ { r d : RE } { pref : List Char } { c : Char }
+  → ( d→r : U d → U r )
+  → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
+  → ( d-pres : ∀ { p₀ : RE } ( chain : Chain p₀ d ) ( u₀ : U p₀ )
+      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+      → ( v₀ : U p₀ )
+      → p₀ ⊢ u₀ ≥ v₀
+      → r ⊢ d→r (chain-inj chain u₀) ≥ d→r (chain-inj chain v₀) )
+  → ( g : PDInstance d c )
+  → g ∈ pdU[ d , c ]
+  → ≥-Max-Preserve-Local* {r} {pref ∷ʳ c} (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r g)
+compose-pdi-with-preseve-local {r} {d} {pref} {c} d→r s-ev-d→r d-pres (pdinstance {p} {d} {c} p→d s-ev-p→d) g∈ =
+  ≥-max-pres-local* ev
+  where
+    ev : ∀ { p₀ : RE } ( chain : Chain p₀ p ) ( u₀ : U p₀ )
+      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+      → ( v₀ : U p₀ )
+      → p₀ ⊢ u₀ ≥ v₀
+      → r ⊢ d→r (p→d (chain-inj chain u₀)) ≥ d→r (p→d (chain-inj chain v₀))
+    ev {p₀} chain u₀ max-u₀ v₀ u₀≥v₀ = d-pres chain' u₀ max-u₀ v₀ u₀≥v₀
+      where
+        chain' : Chain p₀ d
+        chain' = cons {p₀} {p} {d} {c} (pdinstance p→d s-ev-p→d) g∈ chain
+
+advance-pdi*-with-c-preseve-local : ∀ { r : RE } { pref : List Char } { c : Char }
+  → ( pdi : PDInstance* r pref )
+  → ≥-Max-Preserve-Local* pdi
+  → All (≥-Max-Preserve-Local* {r} {pref ∷ʳ c}) (advance-pdi*-with-c {r} {pref} {c} pdi)
+advance-pdi*-with-c-preseve-local {r} {pref} {c} (pdinstance* {d} {r} {pref} d→r s-ev-d→r) (≥-max-pres-local* d-pres) =
+  all-map-∈ (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r) pdU[ d , c ]
+    (λ g g∈ → compose-pdi-with-preseve-local d→r s-ev-d→r d-pres g g∈)
+
+concatmap-advance-pdi*-with-c-preseve-local : ∀ { r : RE } { pref : List Char } { c : Char }
+  → ( pdis : List (PDInstance* r pref) )
+  → All (≥-Max-Preserve-Local* {r} {pref}) pdis
+  → All (≥-Max-Preserve-Local* {r} {pref ∷ʳ c}) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+concatmap-advance-pdi*-with-c-preseve-local {r} {pref} {c} [] [] = []
+concatmap-advance-pdi*-with-c-preseve-local {r} {pref} {c} (pdi ∷ pdis) (pres-pdi ∷ all-pres-pdis) =
+  all-concat (advance-pdi*-with-c-preseve-local pdi pres-pdi) (concatmap-advance-pdi*-with-c-preseve-local pdis all-pres-pdis)
+
+pdUMany-aux-preseve-local : ∀ { r : RE } { pref : List Char }
+  → ( suff : List Char )
+  → ( pdis : List (PDInstance* r pref) )
+  → All (≥-Max-Preserve-Local* {r} {pref}) pdis
+  → All (≥-Max-Preserve-Local* {r} {pref ++ suff}) (pdUMany-aux suff pdis)
+pdUMany-aux-preseve-local {r} {pref} [] pdis all-pres rewrite (++-identityʳ pref) = all-pres
+pdUMany-aux-preseve-local {r} {pref} (c ∷ cs) pdis all-pres =
+  pdUMany-aux-preseve-local {r} {pref ∷ʳ c} cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) concatmap-pres
+  where
+    concatmap-pres : All (≥-Max-Preserve-Local* {r} {pref ∷ʳ c}) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    concatmap-pres = concatmap-advance-pdi*-with-c-preseve-local pdis all-pres
+
 pdUMany-preseve-local : ∀ { r : RE } { w : List Char }
   → All (≥-Max-Preserve-Local* {r} {w}) pdUMany[ r , w ]
-pdUMany-preseve-local = {!!}  
+pdUMany-preseve-local {r} {w} = pdUMany-aux-preseve-local {r} {[]} w initial initial-all
+  where
+    initial : List (PDInstance* r [])
+    initial = pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl) ∷ []
+
+    initial-all : All (≥-Max-Preserve-Local* {r} {[]}) initial
+    initial-all = ≥-max-pres-local* id-pres ∷ []
+      where
+        id-pres : ∀ { p₀ : RE } ( chain : Chain p₀ r ) ( u₀ : U p₀ )
+          → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+          → ( v₀ : U p₀ )
+          → p₀ ⊢ u₀ ≥ v₀
+          → r ⊢ chain-inj chain u₀ ≥ chain-inj chain v₀
+        id-pres = chain-inj-pres-≥  
 ```
 
 

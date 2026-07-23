@@ -1900,15 +1900,48 @@ pdU●-no ¬ε∈l = refl
 pdU●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char } → (ε∈l : ε∈ l) → pdU● {l} {r} {loc} {c} (yes ε∈l) ≡ List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
 pdU●-yes ε∈l = refl
 
+first-inhabit-nil-nothing : ∀ { r : RE } { c : Char } { w : List Char }
+  → first-inhabit r c w [] ≡ nothing
+first-inhabit-nil-nothing = refl
+
+first-inhabit-++-just : ∀ { r : RE } { c : Char } { w : List Char }
+  → ( xs ys : List (PDInstance r c) ) ( pdil : PDInstance r c )
+  → first-inhabit r c w xs ≡ just pdil
+  → first-inhabit r c w (xs ++ ys) ≡ just pdil
+first-inhabit-++-just [] ys pdil ()
+first-inhabit-++-just {w = w} (x ∷ xs) ys pdil eq with w ∈?⟦ pdi-src x ⟧
+... | yes w∈src-x rewrite first-inhabit-yes-eq-full x xs w∈src-x rewrite sym eq = refl
+... | no ¬w∈src-x rewrite first-inhabit-no-eq x (xs ++ ys) ¬w∈src-x
+  rewrite first-inhabit-++-just xs ys pdil eq = refl
+
+first-inhabit-++-just-left : ∀ { r1 r2 r3 : RE } { c : Char } { w : List Char }
+  → ( f : PDInstance r1 c → PDInstance r3 c ) ( g : PDInstance r2 c → PDInstance r3 c )
+  → ( xs : List (PDInstance r1 c) ) ( ys : List (PDInstance r2 c) )
+  → ( pdil : PDInstance r1 c )
+  → ( src-pres-f : ∀ (x : PDInstance r1 c) → w ∈⟦ pdi-src (f x) ⟧ ≡ w ∈⟦ pdi-src x ⟧ )
+  → ( src-pres-g : ∀ (y : PDInstance r2 c) → w ∈⟦ pdi-src (g y) ⟧ ≡ w ∈⟦ pdi-src y ⟧ )
+  → first-inhabit r1 c w xs ≡ just pdil
+  → first-inhabit r3 c w (List.map f xs ++ List.map g ys) ≡ just (f pdil)
+first-inhabit-++-just-left {r1} {r2} {r3} {c} {w} f g [] ys pdil src-pres-f src-pres-g eq
+  rewrite first-inhabit-nil-nothing {r1} {c} {w} = ⊥-elim (nothing≢just eq)
+first-inhabit-++-just-left {r1} {r2} {r3} {c} {w} f g (x ∷ xs) ys pdil src-pres-f src-pres-g eq with w ∈?⟦ pdi-src x ⟧
+... | yes w∈src-x rewrite first-inhabit-yes-eq-full (f x) (List.map f (x ∷ xs) ++ List.map g ys) (subst (λ z → w ∈⟦ z ⟧) (src-pres-f x) w∈src-x)
+  rewrite first-inhabit-yes-eq-full x xs w∈src-x
+  rewrite sym eq = refl
+... | no ¬w∈src-x rewrite first-inhabit-no-eq (f x) (List.map f (x ∷ xs) ++ List.map g ys) (subst (λ z → w ∈⟦ z ⟧) (src-pres-f x) ¬w∈src-x)
+  rewrite first-inhabit-no-eq x xs ¬w∈src-x
+  rewrite first-inhabit-++-just-left f g xs ys pdil src-pres-f src-pres-g eq = refl
+
+
 first-inhabit-++-just-left-pdi : ∀ { r1 r2 r3 : RE } { c : Char } { w : List Char }
   → ( f : PDInstance r1 c → PDInstance r3 c ) ( g : PDInstance r2 c → PDInstance r3 c )
   → ( xs : List (PDInstance r1 c) ) ( ys : List (PDInstance r2 c) )
-  → ( pdi : PDInstance r3 c )
-  → first-inhabit r3 c w (List.map f xs ++ List.map g ys) ≡ just pdi
-  → Σ[ pdil ∈ (PDInstance r1 c) ] (( first-inhabit r1 c w xs ≡ just pdil ) × ( pdi ≡ f pdil ))
-first-inhabit-++-just-left-pdi f g xs ys pdi eq = {!!}
-    -- Strategy: by induction on xs. For [], use contradiction. For x∷xs, if x matches, done.
-    -- Otherwise recurse. Key lemma: first-inhabit r c w (x∷xs ++ ys) = first-inhabit r c w (x∷(xs++ys))
+  → ( pdil : PDInstance r1 c )
+  → ( src-pres-f : ∀ (x : PDInstance r1 c) → w ∈⟦ pdi-src (f x) ⟧ ≡ w ∈⟦ pdi-src x ⟧ )
+  → ( src-pres-g : ∀ (y : PDInstance r2 c) → w ∈⟦ pdi-src (g y) ⟧ ≡ w ∈⟦ pdi-src y ⟧ )
+  → first-inhabit r1 c w xs ≡ just pdil
+  → first-inhabit r3 c w (List.map f xs ++ List.map g ys) ≡ just (f pdil)
+first-inhabit-++-just-left-pdi = first-inhabit-++-just-left
 
 ≥-max-pres-left : ∀ {l r : RE} {loc : ℕ} {c : Char}
   → (pdil : PDInstance l c) (w : List Char)

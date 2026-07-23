@@ -535,6 +535,11 @@ pdU[$c]≡[] {c'} {c} ¬c≡c' with c' Char.≟ c
 ... | yes c'≡c = ⊥-elim (¬c≡c' (sym c'≡c))
 ... | no  _    = refl
 
+pdU[$c]≡∷ : ∀ {c' : Char} {loc : ℕ} → pdU[ $ c' ` loc , c' ] ≡ [ pdinstance mkinjLetter mkinjLetterSound ]
+pdU[$c]≡∷ {c'} {loc} with c' Char.≟ c'
+... | yes refl = refl
+... | no ¬c≡c = ⊥-elim (¬c≡c refl)
+
 -- just-inj: injectivity of just constructor
 just-inj : ∀ {a : Set} {x y : a} → just x ≡ just y → x ≡ y
 just-inj refl = refl
@@ -1881,10 +1886,10 @@ unflat c ∷ w is ≥-Max-PDInstance!
 -- maximality of parseAll for the suffix w at that source (e.g., concat sources).
 
 
-pdU●-no : ∀ { l r : RE } { loc : ℕ } { c : Char } → (¬ε∈l : ¬ ε∈ l) → pdU● (no ¬ε∈l) ≡ List.map pdinstance-fst pdU[ l , c ]
+pdU●-no : ∀ { l r : RE } { loc : ℕ } { c : Char } → (¬ε∈l : ¬ ε∈ l) → pdU● {l} {r} {loc} {c} (no ¬ε∈l) ≡ List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ]
 pdU●-no ¬ε∈l = refl
 
-pdU●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char } → (ε∈l : ε∈ l) → pdU● (yes ε∈l) ≡ List.map pdinstance-fst pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
+pdU●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char } → (ε∈l : ε∈ l) → pdU● {l} {r} {loc} {c} (yes ε∈l) ≡ List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
 pdU●-yes ε∈l = refl
 
 
@@ -1899,14 +1904,31 @@ mutual
   first-pdU-accept-w-isMax {$ c' ` loc} {c} [] c∷[]∈$c pdi eq = {!!}
   first-pdU-accept-w-isMax {$ c' ` loc} {c} (w₁ ∷ _) ()
   first-pdU-accept-w-isMax {l + r ` loc} {c} w c∷w∈+ pdi eq = first-pdU-accept-w-isMax-+ w c∷w∈+ pdi eq
-  first-pdU-accept-w-isMax {l ● r ` loc} {c} w c∷w∈● pdi eq = first-pdU-accept-w-isMax-●-aux w c∷w∈● pdi eq (ε∈? l)
+  first-pdU-accept-w-isMax {l ● r ` loc} {c} w c∷w∈● pdi eq with ε∈? l
+  ... | yes ε∈l = first-pdU-accept-w-isMax-●-yes ε∈l w c∷w∈● pdi eq
+  ... | no ¬ε∈l = first-pdU-accept-w-isMax-●-no ¬ε∈l w c∷w∈● pdi eq
   first-pdU-accept-w-isMax {r' * nε ` loc} {c} w c∷w∈* pdi eq = first-pdU-accept-w-isMax-* w c∷w∈* pdi eq
 
   -- Helper for $ c case
   first-pdU-accept-w-isMax-$ : ∀ { c' : Char } → ( loc : ℕ ) ( pdi : PDInstance ($ c' ` loc) c' )
     → (first-inhabit ($ c' ` loc) c' []  pdU[ $ c' ` loc , c' ]) ≡ just pdi
     → ≥-Max-PDInstance { $ c' ` loc } { c' } [] pdi
-  first-pdU-accept-w-isMax-$ {c'} loc pdi eq = {!!}
+  first-pdU-accept-w-isMax-$ {c'} loc pdi eq with c' Char.≟ c' in d-eq
+  ... | yes refl rewrite pdU[$c]≡∷ {c'} {loc} =
+    subst (λ x → ≥-Max-PDInstance { $ c' ` loc } { c' } [] x)
+          (sym (just-injective (trans (sym eq) eq-concrete)))
+          (≥-max-pdi EmptyU [] max-empty max-letter)
+    where
+      max-empty : ≥-Max {ε} [] EmptyU
+      max-empty = ≥-max [] EmptyU (sym (flat-Uε≡[] EmptyU)) (λ { EmptyU _ → inj₂ refl })
+
+      max-letter : ≥-Max { $ c' ` loc } (c' ∷ []) (LetterU c')
+      max-letter = ≥-max (c' ∷ []) (LetterU c') refl (λ { (LetterU _) _ → inj₂ refl })
+
+      eq-concrete : first-inhabit ($ c' ` loc) c' [] [ pdinstance mkinjLetter mkinjLetterSound ] ≡ just (pdinstance mkinjLetter mkinjLetterSound)
+      eq-concrete = first-inhabit-yes-eq-full (pdinstance mkinjLetter mkinjLetterSound) [] ε
+
+  ... | no ¬c'≡c' = ⊥-elim (¬c'≡c' refl)
 
   -- Helper for + case
   first-pdU-accept-w-isMax-+ : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -1917,34 +1939,23 @@ mutual
     → ≥-Max-PDInstance {l + r ` loc} {c} w pdi
   first-pdU-accept-w-isMax-+ {l} {r} {loc} {c} w c∷w∈+ pdi eq = {!!}
 
-  -- Helper for ● case, aux
-  first-pdU-accept-w-isMax-●-aux : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ( w : List Char )
-    → ((c ∷ w) ∈⟦ l ● r ` loc ⟧)
-    → ( pdi : PDInstance (l ● r ` loc) c)
-    → (first-inhabit (l ● r ` loc) c w  pdU[ l ● r ` loc , c ]) ≡ just pdi
-    → Dec (ε∈ l)
-    → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
-  first-pdU-accept-w-isMax-●-aux {l} {r} {loc} {c} w c∷w∈● pdi eq (no ¬ε∈l) rewrite pdU●-no ¬ε∈l = first-pdU-accept-w-isMax-●-no ¬ε∈l w c∷w∈● pdi eq
-  first-pdU-accept-w-isMax-●-aux {l} {r} {loc} {c} w c∷w∈● pdi eq (yes ε∈l) rewrite pdU●-yes ε∈l = first-pdU-accept-w-isMax-●-yes ε∈l w c∷w∈● pdi eq
-
   -- Helper for ● case, ¬ε∈l
   first-pdU-accept-w-isMax-●-no : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ¬ ε∈ l
+    → ( ¬ε∈l : ¬ ε∈ l )
     → ( w : List Char )
     → ((c ∷ w) ∈⟦ l ● r ` loc ⟧)
     → ( pdi : PDInstance (l ● r ` loc) c)
-    → (first-inhabit (l ● r ` loc) c w  pdU[ l ● r ` loc , c ]) ≡ just pdi
+    → (first-inhabit (l ● r ` loc) c w  (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ])) ≡ just pdi
     → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
   first-pdU-accept-w-isMax-●-no ¬ε∈l w c∷w∈● pdi eq = {!!}
 
   -- Helper for ● case, ε∈l
   first-pdU-accept-w-isMax-●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char }
-    → ε∈ l
+    → ( ε∈l : ε∈ l )
     → ( w : List Char )
     → ((c ∷ w) ∈⟦ l ● r ` loc ⟧)
     → ( pdi : PDInstance (l ● r ` loc) c)
-    → (first-inhabit (l ● r ` loc) c w  pdU[ l ● r ` loc , c ]) ≡ just pdi
+    → (first-inhabit (l ● r ` loc) c w  (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])) ≡ just pdi
     → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
   first-pdU-accept-w-isMax-●-yes ε∈l w c∷w∈● pdi eq = {!!}
 

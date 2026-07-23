@@ -1239,17 +1239,30 @@ chain-inj (cons g prf rest) u = pdi-inj g (chain-inj rest u)
 --                   lne/be sub-cases of g's preservation proof that would need
 --                   maximality of x' cannot arise, and the seq₁ recursion descends
 --                   on the tree structure.
+-- The cons-of-cons case needs the chain-structure argument described below.
+-- The easy cases are defined here; only the hard case is postulated.
 postulate
-  chain-inj-pres-≥ : ∀ { r p₀ : RE } ( chain : Chain p₀ r ) ( u₀ : U p₀ )
-    → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
-    → ( v₀ : U p₀ )
-    → p₀ ⊢ u₀ ≥ v₀
-    → r ⊢ chain-inj chain u₀ ≥ chain-inj chain v₀
+  chain-inj-pres-≥-cons-cons :
+    ∀ { p₀ d : RE } { c c' : Char }
+    → ( g : PDInstance d c ) ( prf : g ∈ pdU[ d , c ] )
+    → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+    → ( rest'' : Chain p₀ (pdi-src g') )
+    → ( u₀ : U p₀ ) → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+    → ( v₀ : U p₀ ) → p₀ ⊢ u₀ ≥ v₀
+    → d ⊢ pdi-inj g (pdi-inj g' (chain-inj rest'' u₀))
+            ≥ pdi-inj g (pdi-inj g' (chain-inj rest'' v₀))
 
--- Proven cases (kept for when the postulate is discharged):
---   chain-inj-pres-≥ [] u₀ max-u₀ v₀ u₀≥v₀ = u₀≥v₀
---   chain-inj-pres-≥ (cons g prf []) u₀ max-u₀ v₀ u₀≥v₀ with ∈→pres-local g prf
---   ... | ≥-max-pres-local ev = ev u₀ max-u₀ v₀ u₀≥v₀
+chain-inj-pres-≥ : ∀ { r p₀ : RE } ( chain : Chain p₀ r ) ( u₀ : U p₀ )
+  → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
+  → ( v₀ : U p₀ )
+  → p₀ ⊢ u₀ ≥ v₀
+  → r ⊢ chain-inj chain u₀ ≥ chain-inj chain v₀
+chain-inj-pres-≥ [] _ _ _ u₀≥v₀ = u₀≥v₀
+chain-inj-pres-≥ (cons g prf []) u₀ max-u₀ v₀ u₀≥v₀
+  with ∈→pres-local g prf
+... | ≥-max-pres-local ev = ev u₀ max-u₀ v₀ u₀≥v₀
+chain-inj-pres-≥ (cons g prf (cons g' prf' rest'')) u₀ max-u₀ v₀ u₀≥v₀ =
+  chain-inj-pres-≥-cons-cons g prf g' prf' rest'' u₀ max-u₀ v₀ u₀≥v₀
 
 {-
 PROOF PLAN for chain-inj-pres-≥-cons-cons (the cons-of-cons case):
@@ -1418,13 +1431,153 @@ concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'
 ... | yes ε∈l = ●-decomp-yes g' g'∈
 
 {-
--- Chain helpers: the approach using ●-decomp directly on g' doesn't work
--- because ●-decomp requires l, r, loc as implicit args, but pdi-src g
--- is just d (not known to be l ● r ` loc in the function body).
--- The correct approach uses the fact that chain sources are ε or l ● r with ε∈l,
--- and analyzes the > structure to avoid needing ≥-Max of x'.
--- This requires well-founded recursion or custom decomposition.
--- Keeping as postulate for now; discharge with custom decomp later.
+CHAIN HELPERS (attempted ●-decomp approach — DOES NOT COMPILE):
+
+The core problem: ●-decomp requires explicit l, r, loc :
+  ●-decomp : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( g' : PDInstance (l ● r ` loc) c )
+    → g' ∈ pdU[ l ● r ` loc , c ]
+    → fst ⊎ snd
+
+But in our helpers, the target type is (pdi-src g) : RE — an opaque regex.
+Agda cannot "open up" d to see that it equals l ● r ` loc without an
+equality proof, and we don't have one (the type of g is just PDInstance d c).
+
+Even if we used ε∈? (pdi-src g), the branches give us ε∈ d or ¬ε∈ d,
+but not the decomposition d ≡ l ● r ` loc needed for ●-decomp.
+-}
+
+{-  (OBSOLETE: the broken fst/snd dispatcher approach cannot be used here;
+    see the postulate chain-inj-pres-≥-cons-cons above.)
+-- Helper for fst-pdi case: x' and y' are at type U (pdi-src g).
+-- The fst/snd distinction is about the PROOF STRATEGY, not the type.
+-- NOTE: the conclusion is d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+-- since pdi-inj g : U (pdi-src g) → U d.
+chain-inj-pres-≥-fst : ∀ { p₀ d : RE } { c c' : Char }
+  → ( g : PDInstance d c )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ x' > y'
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-fst g x' y' x'>y' = {!!}
+-- Helper for snd-pdi case: x' = pdi-inj g (mk-snd-pdi e fl gₕ' x'' )
+-- first components of x' and y' are equal (both e), so the proof reduces
+-- to comparing second components via seq₂, which recurses on the inner r.
+chain-inj-pres-≥-snd : ∀ { p₀ d : RE } { c c' : Char } { l r : RE } { loc : ℕ }
+  → ( g : PDInstance d c )
+  → ( e : U l ) ( fl : proj₁ (flat e) ≡ [] )
+  → ( gₕ' : PDInstance r c' )
+  → ( x' y' : U (l ● r ` loc) )
+  → l ● r ` loc ⊢ x' > y'
+  → d ⊢ pdi-inj g (mk-snd-pdi {l} {r} {loc} {c'} (e , fl) gₕ' x')
+           ≥ pdi-inj g (mk-snd-pdi {l} {r} {loc} {c'} (e , fl) gₕ' y')
+chain-inj-pres-≥-snd g e fl gₕ' x' y' x'>y' = {!!}
+
+-- Same as fst but for the "y' > x'" (swap) case.
+chain-inj-pres-≥-fst-swap : ∀ { p₀ d : RE } { c c' : Char } { l r : RE } { loc : ℕ }
+  → ( g : PDInstance d c )
+  → ( gₕ' : PDInstance l c' )
+  → ( x' y' : U (l ● r ` loc) )
+  → l ● r ` loc ⊢ y' > x'
+  → d ⊢ pdi-inj g (pdinstance-fst {l} {r} {loc} {c'} gₕ' x')
+           ≥ pdi-inj g (pdinstance-fst {l} {r} {loc} {c'} gₕ' y')
+chain-inj-pres-≥-fst-swap g gₕ' x' y' y'>x' = {!!}
+
+chain-inj-pres-≥-snd-swap : ∀ { p₀ d : RE } { c c' : Char } { l r : RE } { loc : ℕ }
+  → ( g : PDInstance d c )
+  → ( e : U l ) ( fl : proj₁ (flat e) ≡ [] )
+  → ( gₕ' : PDInstance r c' )
+  → ( x' y' : U (l ● r ` loc) )
+  → l ● r ` loc ⊢ y' > x'
+  → d ⊢ pdi-inj g (mk-snd-pdi {l} {r} {loc} {c'} (e , fl) gₕ' x')
+           ≥ pdi-inj g (mk-snd-pdi {l} {r} {loc} {c'} (e , fl) gₕ' y')
+chain-inj-pres-≥-snd-swap g e fl gₕ' x' y' y'>x' = {!!}
+
+-- Dispatch on ●-decomp when ε∉ (pdi-src g).
+chain-inj-pres-≥-cons-cons-●-no : ∀ { p₀ d : RE } { c c' : Char }
+  → ( g : PDInstance d c ) ( prf : g ∈ pdU[ d , c ] )
+  → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ x' > y'
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-cons-cons-●-no {p₀} {d} {c} {c'} g prf g' prf' x' y' x'>y'
+  with ●-decomp g' prf'
+... | inj₁ (gₕ' , g'≡fst) rewrite g'≡fst = chain-inj-pres-≥-fst g gₕ' x' y' x'>y'
+... | inj₂ (e , fl , gₕ' , g'≡snd) rewrite g'≡snd = chain-inj-pres-≥-snd g e fl gₕ' x' y' x'>y'
+
+-- Dispatch on ●-decomp when ε∈ (pdi-src g).
+chain-inj-pres-≥-cons-cons-●-yes : ∀ { p₀ d : RE } { c c' : Char }
+  → ( g : PDInstance d c ) ( prf : g ∈ pdU[ d , c ] )
+  → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ x' > y'
+  → ε∈ (pdi-src g)
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-cons-cons-●-yes {p₀} {d} {c} {c'} g prf g' prf' x' y' x'>y' ε∈src
+  with ●-decomp g' prf'
+... | inj₁ (gₕ' , g'≡fst) rewrite g'≡fst = chain-inj-pres-≥-fst g gₕ' x' y' x'>y'
+... | inj₂ (e , fl , gₕ' , g'≡snd) rewrite g'≡snd = chain-inj-pres-≥-snd g e fl gₕ' x' y' x'>y'
+
+-- When ε∈ (pdi-src g), dispatch on ε or ●.
+chain-inj-pres-≥-cons-cons-ε : ∀ { p₀ d : RE } { c c' : Char }
+  → ( g : PDInstance d c ) ( prf : g ∈ pdU[ d , c ] )
+  → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ x' > y'
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-cons-cons-ε {p₀} {d} {c} {c'} g prf g' prf' x' y' x'>y'
+  with ε∈? (pdi-src g)
+... | no ¬ε∈src = chain-inj-pres-≥-cons-cons-●-no {p₀} {d} {c} {c'} g prf g' prf' x' y' x'>y'
+... | yes ε∈src = chain-inj-pres-≥-cons-cons-●-yes {p₀} {d} {c} {c'} g prf g' prf' x' y' x'>y' ε∈src
+
+-- Core helper using ev (≥-Max-Preserve-Local evidence).
+chain-inj-pres-≥-cons-cons-●-ev : ∀ { d : RE } { c c' : Char }
+  → ( g : PDInstance d c )
+  → ( ev : ( u : U (pdi-src g) ) → ≥-Max {pdi-src g} (proj₁ (flat u)) u
+       → ( v : U (pdi-src g) ) → pdi-src g ⊢ u ≥ v
+       → d ⊢ pdi-inj g u ≥ pdi-inj g v )
+  → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ x' > y'
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-cons-cons-●-ev g ev g' prf' x' y' x'>y'
+  with ●-decomp g' prf'
+... | inj₁ (gₕ' , g'≡fst) rewrite g'≡fst = chain-inj-pres-≥-fst g gₕ' x' y' x'>y'
+... | inj₂ (e , fl , gₕ' , g'≡snd) rewrite g'≡snd = chain-inj-pres-≥-snd g e fl gₕ' x' y' x'>y'
+
+-- Bridge from ∈→pres-local to ●-ev.
+chain-inj-pres-≥-cons-cons-● : ∀ { d : RE } { c c' : Char }
+  → ( g : PDInstance d c ) ( prf : g ∈ pdU[ d , c ] )
+  → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ x' > y'
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-cons-cons-● g prf g' prf' x' y' x'>y'
+  with ∈→pres-local g prf
+... | ≥-max-pres-local ev = chain-inj-pres-≥-cons-cons-●-ev g ev g' prf' x' y' x'>y'
+
+-- Swap case: y' > x'.
+chain-inj-pres-≥-cons-cons-swap : ∀ { p₀ d : RE } { c c' : Char }
+  → ( g : PDInstance d c ) ( prf : g ∈ pdU[ d , c ] )
+  → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ y' > x'
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-cons-cons-swap {p₀} {d} {c} {c'} g prf g' prf' x' y' y'>x'
+  with ●-decomp g' prf'
+... | inj₁ (gₕ' , g'≡fst) rewrite g'≡fst = chain-inj-pres-≥-fst-swap g gₕ' x' y' y'>x'
+... | inj₂ (e , fl , gₕ' , g'≡snd) rewrite g'≡snd = chain-inj-pres-≥-snd-swap g e fl gₕ' x' y' y'>x'
+
+-- Main dispatcher: ε∉src → ●, ε∈src → ε/●.
+chain-inj-pres-≥-cons-cons : ∀ { p₀ d : RE } { c c' : Char }
+  → ( g : PDInstance d c ) ( prf : g ∈ pdU[ d , c ] )
+  → ( g' : PDInstance (pdi-src g) c' ) ( prf' : g' ∈ pdU[ pdi-src g , c' ] )
+  → ( x' y' : U (pdi-src g) )
+  → pdi-src g ⊢ x' > y'
+  → d ⊢ pdi-inj g x' ≥ pdi-inj g y'
+chain-inj-pres-≥-cons-cons {p₀} {d} {c} {c'} g prf g' prf' x' y' x'>y'
+  with ε∈? (pdi-src g)
+... | no ¬ε∈src = chain-inj-pres-≥-cons-cons-● {d} {c} {c'} g prf g' prf' x' y' x'>y'
+... | yes ε∈src = chain-inj-pres-≥-cons-cons-ε {p₀} {d} {c} {c'} g prf g' prf' x' y' x'>y'
 -}
 
 {-

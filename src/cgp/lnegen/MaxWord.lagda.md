@@ -69,13 +69,16 @@ open ExtendedOrder using (
   _,_⊢_>_ ; >-pdi )
 
 import Data.Char as Char
-open Char using (Char )
+open Char using (Char ; toℕ )
+
+import Data.Char.Properties as CharProperties
+open CharProperties using (≈⇒≡ ; _≈?_ ; ≈-reflexive)
 
 import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _+_ ; _∸_ ; _≤_ )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; _≟_ ; m+n≤o⇒m≤o∸n ; m≤o∸n⇒m+n≤o ; m+n≤o⇒n≤o ; +-identityʳ ; +-identityˡ ; m≤m+n ; m≤n+m ; +-comm ; m+n≡0⇒m≡0 ; m+n≡0⇒n≡0 )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; _≟_ ; m+n≤o⇒m≤o∸n ; m≤o∸n⇒m+n≤o ; m+n≤o⇒n≤o ; +-identityʳ ; +-identityˡ ; m≤m+n ; m≤n+m ; +-comm ; m+n≡0⇒m≡0 ; m+n≡0⇒n≡0 ; ≡ᵇ⇒≡ ; ≡⇒≡ᵇ )
 
 
 
@@ -134,7 +137,7 @@ open Data.Empty
 
 import Relation.Nullary.Decidable as Decidable
 open Decidable using
-  ( Dec; yes; no; ⌊_⌋; True; toWitness; fromWitness; _×-dec_; _⊎-dec_; ¬?)
+  ( Dec; yes; no; ⌊_⌋; True; toWitness; fromWitness; _×-dec_; _⊎-dec_; ¬?; map′)
 
 open import Function using (_∘_ ; flip ; case_of_)
 
@@ -539,6 +542,11 @@ pdU[$c]≡∷ : ∀ {c' : Char} {loc : ℕ} → pdU[ $ c' ` loc , c' ] ≡ [ pdi
 pdU[$c]≡∷ {c'} {loc} with c' Char.≟ c'
 ... | yes refl = refl
 ... | no ¬c≡c = ⊥-elim (¬c≡c refl)
+
+c≡c'-from-∈$ : ∀ {c c' : Char} {loc : ℕ} → (c ∷ []) ∈⟦ $ c' ` loc ⟧ → c ≡ c'
+c≡c'-from-∈$ {c} {c'} ( $_ c₀ ) with (toℕ c ≟ toℕ c₀)
+... | yes tc≡tc₀ = sym (≈⇒≡ tc≡tc₀)
+... | no ¬tc≡tc₀ = ⊥-elim (¬tc≡tc₀ refl)
 
 -- just-inj: injectivity of just constructor
 just-inj : ∀ {a : Set} {x y : a} → just x ≡ just y → x ≡ y
@@ -1901,7 +1909,8 @@ mutual
     → (first-inhabit r c w  pdU[ r , c ]) ≡ just pdi
     → ≥-Max-PDInstance {r} {c} w pdi
   first-pdU-accept-w-isMax {ε} {c} w ()
-  first-pdU-accept-w-isMax {$ c' ` loc} {c} [] c∷[]∈$c pdi eq = {!!}
+  first-pdU-accept-w-isMax {$ c' ` loc} {c} [] c∷[]∈$c pdi eq rewrite c≡c'-from-∈$ c∷[]∈$c =
+    first-pdU-accept-w-isMax-$ {c'} loc pdi eq
   first-pdU-accept-w-isMax {$ c' ` loc} {c} (w₁ ∷ _) ()
   first-pdU-accept-w-isMax {l + r ` loc} {c} w c∷w∈+ pdi eq = first-pdU-accept-w-isMax-+ w c∷w∈+ pdi eq
   first-pdU-accept-w-isMax {l ● r ` loc} {c} w c∷w∈● pdi eq with ε∈? l
@@ -1937,7 +1946,34 @@ mutual
     → ( pdi : PDInstance (l + r ` loc) c)
     → (first-inhabit (l + r ` loc) c w  pdU[ l + r ` loc , c ]) ≡ just pdi
     → ≥-Max-PDInstance {l + r ` loc} {c} w pdi
-  first-pdU-accept-w-isMax-+ {l} {r} {loc} {c} w c∷w∈+ pdi eq = {!!}
+  first-pdU-accept-w-isMax-+ {l} {r} {loc} {c} w c∷w∈+ pdi eq with +-elim c∷w∈+
+  ... | inj₁ cw∈l = first-pdU-accept-w-isMax-+-left w cw∈l pdi eq
+  ... | inj₂ cw∈r = first-pdU-accept-w-isMax-+-right w cw∈r pdi eq
+
+  +-elim : ∀ {l r : RE} {loc : ℕ} {w : List Char} → w ∈⟦ l + r ` loc ⟧ → w ∈⟦ l ⟧ ⊎ w ∈⟦ r ⟧
+  +-elim {l} {r} (_+L_ {l} {xs = w} {loc} .r w∈l) = inj₁ w∈l
+  +-elim {l} {r} (_+R_ {r} {xs = w} {loc} .l w∈r) = inj₂ w∈r
+
+  first-pdU-accept-w-isMax-+-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ l ⟧)
+    → ( pdi : PDInstance (l + r ` loc) c)
+    → (first-inhabit (l + r ` loc) c w  pdU[ l + r ` loc , c ]) ≡ just pdi
+    → ≥-Max-PDInstance {l + r ` loc} {c} w pdi
+  first-pdU-accept-w-isMax-+-left {l} {r} {loc} {c} w c∷w∈l pdi eq = {!!}
+    -- Strategy: since c∷w ∈⟦ l ⟧, first-inhabit on left pdU is just.
+    -- Prove first-inhabit on (xs ++ ys) ≡ first-inhabit on xs when first-inhabit xs ≡ just _.
+    -- Then pdi ≡ pdinstance-left pdil, and use IH.
+
+  first-pdU-accept-w-isMax-+-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ r ⟧)
+    → ( pdi : PDInstance (l + r ` loc) c)
+    → (first-inhabit (l + r ` loc) c w  pdU[ l + r ` loc , c ]) ≡ just pdi
+    → ≥-Max-PDInstance {l + r ` loc} {c} w pdi
+  first-pdU-accept-w-isMax-+-right {l} {r} {loc} {c} w c∷w∈r pdi eq = {!!}
+    -- Strategy: if first-inhabit on left pdU is nothing, then first-inhabit on (xs ++ ys)
+    -- falls through to first-inhabit on ys. So pdi ≡ pdinstance-right pdir, and use IH.
 
   -- Helper for ● case, ¬ε∈l
   first-pdU-accept-w-isMax-●-no : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -1948,6 +1984,9 @@ mutual
     → (first-inhabit (l ● r ` loc) c w  (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ])) ≡ just pdi
     → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
   first-pdU-accept-w-isMax-●-no ¬ε∈l w c∷w∈● pdi eq = {!!}
+    -- TODO: Show pdi ≡ pdinstance-fst pdil for some pdil : PDInstance l c
+    -- Then use first-pdU-accept-w-isMax {l} {c} (w' ∷ _) ... pdil eq-l
+    -- where w' ∷ _ is the split of c∷w across l and r.
 
   -- Helper for ● case, ε∈l
   first-pdU-accept-w-isMax-●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -1958,6 +1997,7 @@ mutual
     → (first-inhabit (l ● r ` loc) c w  (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ])) ≡ just pdi
     → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
   first-pdU-accept-w-isMax-●-yes ε∈l w c∷w∈● pdi eq = {!!}
+    -- TODO: Similar to ●-no but also handle the concatmap-pdinstance-snd part.
 
   -- Helper for * case
   first-pdU-accept-w-isMax-* : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { c : Char }
@@ -1967,6 +2007,8 @@ mutual
     → (first-inhabit (r * nε ` loc) c w  pdU[ r * nε ` loc , c ]) ≡ just pdi
     → ≥-Max-PDInstance {r * nε ` loc} {c} w pdi
   first-pdU-accept-w-isMax-* nε c∷w∈* pdi eq = {!!}
+    -- TODO: Show pdi ≡ pdinstance-star pdir for some pdir : PDInstance r c
+    -- Then use first-pdU-accept-w-isMax {r} {c} ... pdir eq-r
 
   first-concatMap-buildU-pdUMany-isMax : ∀ ( r : RE )
     → ( w : List Char )
@@ -1975,6 +2017,10 @@ mutual
     → head (List.concatMap buildU pdUMany[ r , w ]) ≡ just u
     →  ≥-Max w u
   first-concatMap-buildU-pdUMany-isMax r w w∈r u eq = {!!}
+    -- TODO: Mutually recursive with first-pdU-accept-w-isMax.
+    -- For ε: direct proof using flat-Uε≡[]
+    -- For $ c: use first-pdU-accept-w-isMax for $ c
+    -- For +, ●, *: decompose w and use IH
 ```
 
 

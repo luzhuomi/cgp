@@ -82,6 +82,16 @@ open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-mo
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
 
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; sym; trans; cong; subst)
+
+import Data.Sum as Sum
+open Sum using (_⊎_; inj₁; inj₂)
+
+import Data.Product as Product
+open Product using (Σ; _,_; ∃; ∃-syntax; _×_)
+open Σ using (proj₁ ; proj₂)
+
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length ; foldr )
 
@@ -562,20 +572,6 @@ head-concatmap-empty : ∀ {l r : RE} {loc : ℕ} {c : Char}
 head-concatmap-empty [] = refl
 head-concatmap-empty (x ∷ xs) = head-concatmap-empty xs
 
--- Ex>-sorted-first>all: First pdi of an Ex>-sorted list is > all subsequent pdis.
--- compiled but not in used
-{-
-Ex>-sorted-first>all : ∀ {r : RE} {c : Char} {pdi : PDInstance r c} {pdis : List (PDInstance r c)}
-  → Ex>-sorted (pdi ∷ pdis)
-  → (pdi' : PDInstance r c) → pdi' ∈ pdis
-  → r , c ⊢ pdi > pdi'
-Ex>-sorted-first>all (ex>-cons _ (ex>-just pdi>pdi₂)) pdi' (here refl) = pdi>pdi₂
-Ex>-sorted-first>all {r} {c} (ex>-cons sorted (ex>-just pdi>pdi₂)) pdi' (there pdi'∈pdis')
-  with Ex>-sorted-first>all sorted pdi' pdi'∈pdis'
-... | pdi₂>pdi' = >-pdi-trans pdi>pdi₂ pdi₂>pdi'
--- Ex>-sorted-first>all (ex>-cons ex>-nil ex>-nothing) pdi' ()
--}
-
 -- compiled but not in used
 {-
 extract-mkAllEmptyU : ∀ {l} {ε∈l : ε∈ l}
@@ -805,16 +801,6 @@ max-is-head-parseAll : ∀ { r : RE } { w : List Char }
   → just u ≡ head parseAll[ r , w ] 
 max-is-head-parseAll = {!!}
 -}
-
-first-inhabit : ∀ ( r : RE ) ( c : Char ) ( w : List Char ) → List (PDInstance r c) → Maybe (PDInstance r c)
-first-inhabit r c w [] = nothing
-first-inhabit r c w ((pdinstance {p} .{r} .{c} inj sev) ∷ pdis )
-  with w ∈?⟦ p ⟧
-... | no ¬w∈⟦p⟧ = first-inhabit r c w pdis
-... | yes w∈⟦p⟧ = just (pdinstance {p} {r} {c} inj sev)
-
-
-
 
 data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
   ≥-max-pres-local : ∀ { p r : RE } { c : Char } { inj : U p → U r }
@@ -1200,6 +1186,112 @@ pdi-src (pdinstance {p} {r} {c} inj sound-ev) = p
 pdi-inj : ∀ { r : RE } { c : Char } → ( g : PDInstance r c ) → U (pdi-src g) → U r
 pdi-inj (pdinstance {p} {r} {c} inj sound-ev) = inj
 
+
+mutual
+  first-inhabit-cons : ∀ { r : RE } { c : Char } { w : List Char }
+    → ( pdi' : PDInstance r c ) ( pdis : List (PDInstance r c) )
+    → Dec ( w ∈⟦ pdi-src pdi' ⟧ )
+    → Maybe (PDInstance r c)
+  first-inhabit-cons {r} {c} {w} pdi' pdis (no _) = first-inhabit r c w pdis
+  first-inhabit-cons {r} {c} {w} pdi' pdis (yes _) = just pdi'
+
+  first-inhabit : ∀ ( r : RE ) ( c : Char ) ( w : List Char ) → List (PDInstance r c) → Maybe (PDInstance r c)
+  first-inhabit r c w [] = nothing
+  first-inhabit r c w (pdi' ∷ pdis) = first-inhabit-cons pdi' pdis (w ∈?⟦ pdi-src pdi' ⟧)
+
+
+-- First pdi of an Ex>-sorted list is greater than all subsequent pdis.
+Ex>-sorted-first>all : ∀ {r : RE} {c : Char} {pdi : PDInstance r c} {pdis : List (PDInstance r c)}
+  → Ex>-sorted (pdi ∷ pdis)
+  → (pdi' : PDInstance r c) → pdi' ∈ pdis
+  → r , c ⊢ pdi > pdi'
+Ex>-sorted-first>all (ex>-cons _ (ex>-just pdi>pdi₂)) pdi' (here refl) = pdi>pdi₂
+Ex>-sorted-first>all {r} {c} (ex>-cons sorted (ex>-just pdi>pdi₂)) pdi' (there pdi'∈pdis')
+  with Ex>-sorted-first>all sorted pdi' pdi'∈pdis'
+... | pdi₂>pdi' = >-pdi-trans pdi>pdi₂ pdi₂>pdi'
+
+
+nothing≢just : ∀ { A : Set } { x : A } → nothing ≡ just x → ⊥
+nothing≢just ()
+
+-- NOTE: first-inhabit-def and first-inhabit-yes-eq referencing first-inhabit-cons
+-- are removed. The original first-inhabit definition with direct pattern matching
+-- on pdinstance works correctly with Agda 2.7 `with`.
+
+
+-- Full yes equality: first-inhabit directly equals just pdi'.
+first-inhabit-yes-eq-full : ∀ { r : RE } { c : Char } { w : List Char }
+  → ( pdi' : PDInstance r c ) ( pdis : List (PDInstance r c) )
+  → w ∈⟦ pdi-src pdi' ⟧
+  → first-inhabit r c w (pdi' ∷ pdis) ≡ just pdi'
+first-inhabit-yes-eq-full {r} {c} {w} (pdinstance {p} .{r} .{c} inj sev) pdis w∈src
+  with w ∈?⟦ p ⟧ in d-eq
+... | yes _ rewrite d-eq = refl
+... | no ¬w∈src' = ⊥-elim (¬w∈src' w∈src)
+
+
+-- first-inhabit recurses on the tail exactly when the head source rejects w.
+first-inhabit-no-eq : ∀ { r : RE } { c : Char } { w : List Char }
+  → ( pdi' : PDInstance r c ) ( pdis : List (PDInstance r c) )
+  → ¬ ( w ∈⟦ pdi-src pdi' ⟧ )
+  → first-inhabit r c w (pdi' ∷ pdis) ≡ first-inhabit r c w pdis
+first-inhabit-no-eq {r} {c} {w} (pdinstance {p} .{r} .{c} inj sev) pdis ¬w∈src
+  with w ∈?⟦ p ⟧
+... | yes w∈src = ⊥-elim (¬w∈src w∈src)
+... | no _ = refl
+
+
+mutual
+  -- first-inhabit returns a pdi that is in the list and whose source accepts w.
+  first-inhabit-just-∈ : ∀ { r : RE } { c : Char } { w : List Char }
+    → ( pdis : List (PDInstance r c) ) ( pdi : PDInstance r c )
+    → first-inhabit r c w pdis ≡ just pdi
+    → ( pdi ∈ pdis ) × ( w ∈⟦ pdi-src pdi ⟧ )
+  first-inhabit-just-∈ [] _ ()
+  first-inhabit-just-∈ {w = w} (pdi' ∷ pdis) pdi eq =
+    first-inhabit-just-∈-aux pdi' pdis pdi eq (w ∈?⟦ pdi-src pdi' ⟧)
+
+  first-inhabit-just-∈-aux : ∀ { r : RE } { c : Char } { w : List Char }
+    → ( pdi' : PDInstance r c ) ( pdis : List (PDInstance r c) ) ( pdi : PDInstance r c )
+    → first-inhabit r c w (pdi' ∷ pdis) ≡ just pdi
+    → Dec ( w ∈⟦ pdi-src pdi' ⟧ )
+    → ( pdi ∈ (pdi' ∷ pdis) ) × ( w ∈⟦ pdi-src pdi ⟧ )
+  first-inhabit-just-∈-aux {r} {c} {w} pdi' pdis pdi eq (yes w∈src') rewrite first-inhabit-yes-eq-full pdi' pdis w∈src'
+    with just-injective eq
+  ... | pdi'≡pdi = here (sym pdi'≡pdi) , subst (λ x → w ∈⟦ pdi-src x ⟧) pdi'≡pdi w∈src'
+  first-inhabit-just-∈-aux {w = w} pdi' pdis pdi eq (no ¬w∈src') rewrite first-inhabit-no-eq pdi' pdis ¬w∈src'
+    with first-inhabit-just-∈ pdis pdi eq
+  ... | pdi∈pdis , w∈src = there pdi∈pdis , w∈src
+
+  -- The pdi returned by first-inhabit is either equal to, or greater than,
+  -- any other pdi in the list that also accepts w (using Ex>-sortedness).
+  first-inhabit-just-first : ∀ { r : RE } { c : Char } { w : List Char }
+    → ( pdis : List (PDInstance r c) ) ( pdi : PDInstance r c )
+    → first-inhabit r c w pdis ≡ just pdi
+    → ( pdi' : PDInstance r c ) → pdi' ∈ pdis → w ∈⟦ pdi-src pdi' ⟧
+    → Ex>-sorted pdis
+    → ( pdi ≡ pdi' ) ⊎ ( r , c ⊢ pdi > pdi' )
+  first-inhabit-just-first [] _ () _ _ _ _
+  first-inhabit-just-first {w = w} (pdi₀ ∷ pdis) pdi eq pdi' pdi'∈ w∈src' sorted =
+    first-inhabit-just-first-aux pdi₀ pdis pdi eq pdi' pdi'∈ w∈src' sorted (w ∈?⟦ pdi-src pdi₀ ⟧)
+
+  first-inhabit-just-first-aux : ∀ { r : RE } { c : Char } { w : List Char }
+    → ( pdi₀ : PDInstance r c ) ( pdis : List (PDInstance r c) ) ( pdi : PDInstance r c )
+    → first-inhabit r c w (pdi₀ ∷ pdis) ≡ just pdi
+    → ( pdi' : PDInstance r c ) → pdi' ∈ (pdi₀ ∷ pdis) → w ∈⟦ pdi-src pdi' ⟧
+    → Ex>-sorted (pdi₀ ∷ pdis)
+    → Dec ( w ∈⟦ pdi-src pdi₀ ⟧ )
+    → ( pdi ≡ pdi' ) ⊎ ( r , c ⊢ pdi > pdi' )
+  first-inhabit-just-first-aux {r} {c} pdi₀ pdis pdi eq pdi' pdi'∈ w∈src' sorted (yes w∈src₀) rewrite first-inhabit-yes-eq-full pdi₀ pdis w∈src₀
+    with just-injective eq | pdi'∈
+  ... | pdi₀≡pdi | here refl = inj₁ (sym pdi₀≡pdi)
+  ... | pdi₀≡pdi | there pdi'∈tail rewrite sym pdi₀≡pdi = inj₂ (Ex>-sorted-first>all sorted pdi' pdi'∈tail)
+  first-inhabit-just-first-aux {w = w} pdi₀ pdis pdi eq pdi' pdi'∈ w∈src' sorted (no ¬w∈src₀) rewrite first-inhabit-no-eq pdi₀ pdis ¬w∈src₀
+    with pdi'∈ | sorted
+  ... | here refl | _ = ⊥-elim (¬w∈src₀ w∈src')
+  ... | there pdi'∈tail | ex>-cons sorted-tail _ = first-inhabit-just-first pdis pdi eq pdi' pdi'∈tail w∈src' sorted-tail
+
+
 -- a chain of pdU injections (head link applied last)
 data Chain : ( p₀ p : RE ) → Set where
   [] : ∀ { p : RE } → Chain p p
@@ -1263,6 +1355,20 @@ chain-inj-pres-≥ (cons g prf []) u₀ max-u₀ v₀ u₀≥v₀
 ... | ≥-max-pres-local ev = ev u₀ max-u₀ v₀ u₀≥v₀
 chain-inj-pres-≥ (cons g prf (cons g' prf' rest'')) u₀ max-u₀ v₀ u₀≥v₀ =
   chain-inj-pres-≥-cons-cons g prf g' prf' rest'' u₀ max-u₀ v₀ u₀≥v₀
+
+-- NOTE (chain-structure proof plan below is incomplete):
+--
+-- The plan assumes chain intermediates (pdi-src values) are only ε or left-nested
+-- ●-over-ε, so the inner pdi g' is always fst/snd.  However, pdi-src can also be a
+-- union, obtained via a snd-pdi whose right component is a union.  Example:
+--
+--   d  = ε ● ($a + $b)
+--   g  = mk-snd-pdi (EmptyU, …) (left-pdi for $a)
+--   g' = left-pdi from ε to ($a + $b)
+--
+-- Here pdi-src g = ($a + $b), so g' is left/right, not necessarily fst/snd.
+-- Hence the sketch does not cover all cases.  We switch to the alternative route
+-- via first-pdU-accept-w-isMax and pdU-completeness + pdU-sorted.
 
 {-
 PROOF PLAN for chain-inj-pres-≥-cons-cons (the cons-of-cons case):
@@ -1764,8 +1870,15 @@ can we prove that the first pdistance that we ever find in pdU[ r , c ] from lef
 unflat c ∷ w is ≥-Max-PDInstance!
 
 
-is this lemma useful? 
 ```agda
+-- Strategy for this lemma and the overall parseAll-max route:
+--
+-- We prove by induction on r using pdU-completeness + pdU-sorted.
+-- The first pdi in pdU[r,c] that accepts the suffix w is suffix-maximal.
+--
+-- The proof is mutually recursive with first-concatMap-buildU-pdUMany-isMax / first-parseAll-isMax:
+-- constructing the maximal parse tree u at the pdi's source may require the
+-- maximality of parseAll for the suffix w at that source (e.g., concat sources).
 
 first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
   → ( w : List Char )
@@ -1773,7 +1886,7 @@ first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
   → ( pdi : PDInstance r c) 
   → (first-inhabit r c w  pdU[ r , c ]) ≡ just pdi 
   → ≥-Max-PDInstance {r} {c} w pdi
-first-pdU-accept-w-isMax = {!!} 
+first-pdU-accept-w-isMax = {!!}
 ```
 
 

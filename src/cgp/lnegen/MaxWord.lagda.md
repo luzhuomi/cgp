@@ -20,7 +20,7 @@ open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈�
 
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; unListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; inv-pairU ) 
+open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; ListU ; unListU ; flat ; unflat ; unflat∘proj₂∘flat ; flat∘unflat ; flat-Uε≡[] ; inv-pairU ) 
 
 import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
 open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; mkAllEmptyU-complete ; mkAllEmptyU≢[] ; Flat-[] ; flat-[] ; proj₁flat-v≡[]→ε∈r )
@@ -1880,13 +1880,90 @@ unflat c ∷ w is ≥-Max-PDInstance!
 -- constructing the maximal parse tree u at the pdi's source may require the
 -- maximality of parseAll for the suffix w at that source (e.g., concat sources).
 
-first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
-  → ( w : List Char )
-  → ((c ∷ w) ∈⟦ r ⟧)
-  → ( pdi : PDInstance r c) 
-  → (first-inhabit r c w  pdU[ r , c ]) ≡ just pdi 
-  → ≥-Max-PDInstance {r} {c} w pdi
-first-pdU-accept-w-isMax = {!!}
+
+pdU●-no : ∀ { l r : RE } { loc : ℕ } { c : Char } → (¬ε∈l : ¬ ε∈ l) → pdU● (no ¬ε∈l) ≡ List.map pdinstance-fst pdU[ l , c ]
+pdU●-no ¬ε∈l = refl
+
+pdU●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char } → (ε∈l : ε∈ l) → pdU● (yes ε∈l) ≡ List.map pdinstance-fst pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
+pdU●-yes ε∈l = refl
+
+
+mutual
+  first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ r ⟧)
+    → ( pdi : PDInstance r c)
+    → (first-inhabit r c w  pdU[ r , c ]) ≡ just pdi
+    → ≥-Max-PDInstance {r} {c} w pdi
+  first-pdU-accept-w-isMax {ε} {c} w ()
+  first-pdU-accept-w-isMax {$ c' ` loc} {c} [] c∷[]∈$c pdi eq = {!!}
+  first-pdU-accept-w-isMax {$ c' ` loc} {c} (w₁ ∷ _) ()
+  first-pdU-accept-w-isMax {l + r ` loc} {c} w c∷w∈+ pdi eq = first-pdU-accept-w-isMax-+ w c∷w∈+ pdi eq
+  first-pdU-accept-w-isMax {l ● r ` loc} {c} w c∷w∈● pdi eq = first-pdU-accept-w-isMax-●-aux w c∷w∈● pdi eq (ε∈? l)
+  first-pdU-accept-w-isMax {r' * nε ` loc} {c} w c∷w∈* pdi eq = first-pdU-accept-w-isMax-* w c∷w∈* pdi eq
+
+  -- Helper for $ c case
+  first-pdU-accept-w-isMax-$ : ∀ { c' : Char } → ( loc : ℕ ) ( pdi : PDInstance ($ c' ` loc) c' )
+    → (first-inhabit ($ c' ` loc) c' []  pdU[ $ c' ` loc , c' ]) ≡ just pdi
+    → ≥-Max-PDInstance { $ c' ` loc } { c' } [] pdi
+  first-pdU-accept-w-isMax-$ {c'} loc pdi eq = {!!}
+
+  -- Helper for + case
+  first-pdU-accept-w-isMax-+ : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ l + r ` loc ⟧)
+    → ( pdi : PDInstance (l + r ` loc) c)
+    → (first-inhabit (l + r ` loc) c w  pdU[ l + r ` loc , c ]) ≡ just pdi
+    → ≥-Max-PDInstance {l + r ` loc} {c} w pdi
+  first-pdU-accept-w-isMax-+ {l} {r} {loc} {c} w c∷w∈+ pdi eq = {!!}
+
+  -- Helper for ● case, aux
+  first-pdU-accept-w-isMax-●-aux : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ l ● r ` loc ⟧)
+    → ( pdi : PDInstance (l ● r ` loc) c)
+    → (first-inhabit (l ● r ` loc) c w  pdU[ l ● r ` loc , c ]) ≡ just pdi
+    → Dec (ε∈ l)
+    → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
+  first-pdU-accept-w-isMax-●-aux {l} {r} {loc} {c} w c∷w∈● pdi eq (no ¬ε∈l) rewrite pdU●-no ¬ε∈l = first-pdU-accept-w-isMax-●-no ¬ε∈l w c∷w∈● pdi eq
+  first-pdU-accept-w-isMax-●-aux {l} {r} {loc} {c} w c∷w∈● pdi eq (yes ε∈l) rewrite pdU●-yes ε∈l = first-pdU-accept-w-isMax-●-yes ε∈l w c∷w∈● pdi eq
+
+  -- Helper for ● case, ¬ε∈l
+  first-pdU-accept-w-isMax-●-no : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ¬ ε∈ l
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ l ● r ` loc ⟧)
+    → ( pdi : PDInstance (l ● r ` loc) c)
+    → (first-inhabit (l ● r ` loc) c w  pdU[ l ● r ` loc , c ]) ≡ just pdi
+    → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
+  first-pdU-accept-w-isMax-●-no ¬ε∈l w c∷w∈● pdi eq = {!!}
+
+  -- Helper for ● case, ε∈l
+  first-pdU-accept-w-isMax-●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char }
+    → ε∈ l
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ l ● r ` loc ⟧)
+    → ( pdi : PDInstance (l ● r ` loc) c)
+    → (first-inhabit (l ● r ` loc) c w  pdU[ l ● r ` loc , c ]) ≡ just pdi
+    → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
+  first-pdU-accept-w-isMax-●-yes ε∈l w c∷w∈● pdi eq = {!!}
+
+  -- Helper for * case
+  first-pdU-accept-w-isMax-* : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { c : Char }
+    → ( w : List Char )
+    → ((c ∷ w) ∈⟦ r * nε ` loc ⟧)
+    → ( pdi : PDInstance (r * nε ` loc) c)
+    → (first-inhabit (r * nε ` loc) c w  pdU[ r * nε ` loc , c ]) ≡ just pdi
+    → ≥-Max-PDInstance {r * nε ` loc} {c} w pdi
+  first-pdU-accept-w-isMax-* nε c∷w∈* pdi eq = {!!}
+
+  first-concatMap-buildU-pdUMany-isMax : ∀ ( r : RE )
+    → ( w : List Char )
+    → ( w ∈⟦ r ⟧  )
+    → ( u : U r )
+    → head (List.concatMap buildU pdUMany[ r , w ]) ≡ just u
+    →  ≥-Max w u
+  first-concatMap-buildU-pdUMany-isMax r w w∈r u eq = {!!}
 ```
 
 
@@ -1927,15 +2004,7 @@ data ≥-Max-PDInstance* : ∀ {r : RE } { pref : List Char } → ( List Char ) 
 
 
 ```agda
-first-concatMap-buildU-pdUMany-isMax  : ∀ ( r : RE )
-  → ( w : List Char )
-  → ( w ∈⟦ r ⟧  )
-  → ( u : U r )
-  → head (List.concatMap buildU pdUMany[ r , w ]) ≡ just u
-  -- buildU is taking a pdi*'s p, call mkAllEmpty, and inj, since mkAllEmpty is sorted, the left most parse tree e, is the maximal, i.e. ≥-Max {p} [] e
-  -- by 
-  →  ≥-Max w u  
-first-concatMap-buildU-pdUMany-isMax = {!!}   
+-- first-concatMap-buildU-pdUMany-isMax is defined in the mutual block above   
 
 
 

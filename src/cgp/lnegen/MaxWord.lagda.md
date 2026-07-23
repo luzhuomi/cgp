@@ -1900,6 +1900,24 @@ pdU●-no ¬ε∈l = refl
 pdU●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char } → (ε∈l : ε∈ l) → pdU● {l} {r} {loc} {c} (yes ε∈l) ≡ List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
 pdU●-yes ε∈l = refl
 
+first-inhabit-++-just-left-pdi : ∀ { r1 r2 r3 : RE } { c : Char } { w : List Char }
+  → ( f : PDInstance r1 c → PDInstance r3 c ) ( g : PDInstance r2 c → PDInstance r3 c )
+  → ( xs : List (PDInstance r1 c) ) ( ys : List (PDInstance r2 c) )
+  → ( pdi : PDInstance r3 c )
+  → first-inhabit r3 c w (List.map f xs ++ List.map g ys) ≡ just pdi
+  → Σ[ pdil ∈ (PDInstance r1 c) ] (( first-inhabit r1 c w xs ≡ just pdil ) × ( pdi ≡ f pdil ))
+first-inhabit-++-just-left-pdi f g xs ys pdi eq = {!!}
+    -- Strategy: by induction on xs. For [], use contradiction. For x∷xs, if x matches, done.
+    -- Otherwise recurse. Key lemma: first-inhabit r c w (x∷xs ++ ys) = first-inhabit r c w (x∷(xs++ys))
+
+≥-max-pres-left : ∀ {l r : RE} {loc : ℕ} {c : Char}
+  → (pdil : PDInstance l c) (w : List Char)
+  → (c∷w∈l : (c ∷ w) ∈⟦ l ⟧)
+  → ≥-Max-PDInstance {l} {c} w pdil
+  → ≥-Max-PDInstance {l + r ` loc} {c} w (pdinstance-left pdil)
+≥-max-pres-left {l} {r} {loc} {c} (pdinstance inj s-ev) w c∷w∈l (≥-max-pdi u w μ-w μ-c∷w) =
+  ≥-max-pdi u w μ-w (≥-max-pres-left-helper (pdi-src (pdinstance inj s-ev)) l r loc c inj u w μ-c∷w)
+
 
 mutual
   first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
@@ -1960,10 +1978,20 @@ mutual
     → ( pdi : PDInstance (l + r ` loc) c)
     → (first-inhabit (l + r ` loc) c w  pdU[ l + r ` loc , c ]) ≡ just pdi
     → ≥-Max-PDInstance {l + r ` loc} {c} w pdi
-  first-pdU-accept-w-isMax-+-left {l} {r} {loc} {c} w c∷w∈l pdi eq = {!!}
-    -- Strategy: since c∷w ∈⟦ l ⟧, first-inhabit on left pdU is just.
-    -- Prove first-inhabit on (xs ++ ys) ≡ first-inhabit on xs when first-inhabit xs ≡ just _.
-    -- Then pdi ≡ pdinstance-left pdil, and use IH.
+  first-pdU-accept-w-isMax-+-left {l} {r} {loc} {c} w c∷w∈l pdi eq =
+    subst (λ x → ≥-Max-PDInstance {l + r ` loc} {c} w x) (sym pdi≡left) max-left
+    where
+      pdil : PDInstance l c
+      pdil = proj₁ (first-inhabit-++-just-left-pdi pdinstance-left pdinstance-right (pdU[ l , c ]) (pdU[ r , c ]) pdi eq)
+
+      eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just pdil
+      eq-left = proj₁ (proj₂ (first-inhabit-++-just-left-pdi pdinstance-left pdinstance-right (pdU[ l , c ]) (pdU[ r , c ]) pdi eq))
+
+      max-left : ≥-Max-PDInstance {l + r ` loc} {c} w (pdinstance-left pdil)
+      max-left = ≥-max-pres-left pdil w c∷w∈l (first-pdU-accept-w-isMax {l} {c} w c∷w∈l pdil eq-left)
+
+      pdi≡left : pdi ≡ pdinstance-left pdil
+      pdi≡left = proj₂ (proj₂ (first-inhabit-++-just-left-pdi pdinstance-left pdinstance-right (pdU[ l , c ]) (pdU[ r , c ]) pdi eq))
 
   first-pdU-accept-w-isMax-+-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( w : List Char )

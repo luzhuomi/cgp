@@ -1937,7 +1937,8 @@ pdi-src-pres-left (pdinstance {p} inj s-ev) = refl
 -- Core: first-inhabit on (map left xs ++ map right ys) preserves result from xs.
 mutual
   first-inhabit-++-just-left-pres : ∀ {l r : RE} {loc : ℕ} {c : Char} (w : List Char)
-    → (xs : List (PDInstance l c)) (ys : List (PDInstance r c))
+    → (xs : List (PDInstance l c))
+    → (ys : List (PDInstance r c))
     → (pdil' : PDInstance l c)
     → first-inhabit l c w xs ≡ just pdil'
     → first-inhabit (l + r ` loc) c w ((List.map pdinstance-left xs) ++ (List.map pdinstance-right ys)) ≡ just (pdinstance-left pdil')
@@ -1980,36 +1981,51 @@ first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w
   → first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi
   → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
 first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-inhabit-cw-pdu-lr-c≡just-pdi
-  with pdU[ l , c ] | pdU-complete {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧) (cong proj₁ (flat∘unflat c∷w∈⟦l⟧))
-... | pdi₀ ∷ pdis | here (recons {p} .{l} .{c} {w'} {inj} {sound-ev} .(unflat {l} {c ∷ w} c∷w∈⟦l⟧) (w'∈p , inj∘unflat≡u)) = -- w' should be w
+  with pdU[ l , c ] in pdu-lc-eq | pdU-complete {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧) (cong proj₁ (flat∘unflat c∷w∈⟦l⟧))
+... | pdi₀@(pdinstance {p} .{l} .{c} inj sound-ev) ∷ pdis | here (recons {p} .{l} .{c} {w'} .{inj} .{sound-ev} .(unflat {l} {c ∷ w} c∷w∈⟦l⟧) (w'∈p , inj∘unflatw'∈p≡unflat-c∷w∈⟦l⟧)) =
   ( pdi₀ , eq-left , pdi≡left )
   where
-    {-
-    w''≡cw : w'' ≡ c ∷ w
-    w''≡cw = ∷-injective (trans (sym (cong proj₁ (flat∘unflat {l} c∷w∈⟦l⟧)))
-      (trans (cong proj₁ (cong (flat {l}) inj∘unflat≡u))
-        (trans (sound-ev (unflat {p} {w''} w''∈p))
-          (cong (_∷_ c) (proj₁ (flat∘unflat {p} w''∈p))))))
-    -}
+    c∷w'≡c∷w : c ∷ w' ≡ c ∷ w
+    c∷w'≡c∷w =
+      begin
+        c ∷ w'
+       ≡⟨ cong (λ x → c ∷ (proj₁ x)) (sym (flat∘unflat {p} w'∈p)) ⟩
+        c ∷ (proj₁ (flat (unflat w'∈p)) )
+       ≡⟨ sym (sound-ev (unflat w'∈p)) ⟩
+        proj₁ (flat (inj (unflat w'∈p)))
+       ≡⟨ cong (λ x → (proj₁ (flat x))) inj∘unflatw'∈p≡unflat-c∷w∈⟦l⟧ ⟩
+        (proj₁ (flat (unflat c∷w∈⟦l⟧ )))
+       ≡⟨ cong (λ x → (proj₁ x)) (flat∘unflat {l} c∷w∈⟦l⟧ ) ⟩ 
+        c ∷ w 
+      ∎ 
     w'≡w : w' ≡ w
-    w'≡w = ? 
-    -- w'' is the word for p, and from the sound-ev we derive w'' ≡ c ∷ w
-    -- But we need w ∈⟦ p ⟧ for first-inhibit, which requires showing that p accepts w, not c∷w
-    -- This is not generally true. The recons gives (c ∷ w) ∈⟦ p ⟧, but first-inhibit checks w ∈⟦ p ⟧.
-    -- We need the derivative property: (c ∷ w) ∈⟦ p ⟧ iff w ∈⟦ ∂c p ⟧.
-    -- But pdi₀ is already the partial derivative, so pdi-src of the pdi₀ should be ∂c (pdi-src of pdi₀).
-    -- TODO: this needs more careful reasoning about the partial derivative semantics.
+    w'≡w = proj₂ (∷-injective c∷w'≡c∷w ) 
     w∈p : w ∈⟦ p ⟧
-    w∈p rewrite sym w'≡w = w'∈p
+    w∈p rewrite sym w'≡w = w'∈p  
 
     eq-left : first-inhabit l c w (pdi₀ ∷ pdis) ≡ just pdi₀
     eq-left = first-inhabit-yes-eq-full pdi₀ pdis w∈p
 
     eq-left+right : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just (pdinstance-left pdi₀)
-    eq-left+right = first-inhabit-++-just-left-pres w (pdi₀ ∷ pdis) (pdU[ r , c ]) pdi₀ eq-left
+    eq-left+right rewrite pdu-lc-eq = first-inhabit-++-just-left-pres {l} {r} {loc} {c} w (pdi₀ ∷ pdis) (pdU[ r , c ]) pdi₀ eq-left
 
+    just-left-pdi₀≡just-pdi : just (pdinstance-left pdi₀) ≡ just pdi
+    just-left-pdi₀≡just-pdi =
+      begin
+        just (pdinstance-left pdi₀)
+      ≡⟨ sym eq-left+right ⟩
+        first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ])
+      ≡⟨⟩
+        first-inhabit (l + r ` loc) c w (List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ r , c ])
+      ≡⟨ cong (λ x → (first-inhabit (l + r ` loc) c w (List.map pdinstance-left x ++ List.map pdinstance-right pdU[ r , c ])))   pdu-lc-eq  ⟩
+        first-inhabit-cons (pdinstance (λ u → LeftU (inj u)) sound-ev) (List.map pdinstance-left pdis ++
+             List.map pdinstance-right pdU[ r , c ])
+            (w ∈?⟦ p ⟧)      
+      ≡⟨ first-inhabit-cw-pdu-lr-c≡just-pdi ⟩ 
+        just pdi
+      ∎
     pdi≡left : pdi ≡ pdinstance-left pdi₀
-    pdi≡left = just-injective (trans (sym eq-left+right) first-inhabit-cw-pdu-lr-c≡just-pdi)
+    pdi≡left = just-injective (sym just-left-pdi₀≡just-pdi)  -- (trans (sym eq-left+right) first-inhabit-cw-pdu-lr-c≡just-pdi)
 ... | [] | _ = {!!}
 ... | _ ∷ _ | there _ = {!!}
 

@@ -1921,7 +1921,7 @@ first-inhabit-++-just {w = w} (x ∷ xs) ys pdil eq with w ∈?⟦ pdi-src x ⟧
 -- then pdi ≡ pdinstance-left pdil for some pdil with first-inhabit l c w (pdU[l,c]) ≡ just pdil.
 {-
 postulate
-  first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
+  first-inhabit-++-just-left-pdi-old : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
     → ( pdi : PDInstance (l + r ` loc) c )
     → first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi
     -- → Σ (PDInstance l c) λ pdil → first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
@@ -1929,21 +1929,69 @@ postulate
 -}
 
 
+pdi-src-pres-left : ∀ {l r : RE} {loc : ℕ} {c : Char} (x : PDInstance l c)
+  → pdi-src (pdinstance-left x) ≡ pdi-src x
+pdi-src-pres-left (pdinstance {p} inj s-ev) = refl
+
+
+-- Core: first-inhabit on (map left xs ++ map right ys) preserves result from xs.
+mutual
+  first-inhabit-++-just-left-pres : ∀ {l r : RE} {loc : ℕ} {c : Char} (w : List Char)
+    → (xs : List (PDInstance l c)) (ys : List (PDInstance r c))
+    → (pdil' : PDInstance l c)
+    → first-inhabit l c w xs ≡ just pdil'
+    → first-inhabit (l + r ` loc) c w ((List.map pdinstance-left xs) ++ (List.map pdinstance-right ys)) ≡ just (pdinstance-left pdil')
+
+  first-inhabit-++-just-left-pres′ : ∀ {l r : RE} {loc : ℕ} {c : Char} (w : List Char)
+    → (x : PDInstance l c) (xs : List (PDInstance l c)) (ys : List (PDInstance r c))
+    → (pdil' : PDInstance l c)
+    → first-inhabit l c w (x ∷ xs) ≡ just pdil'
+    → Dec (w ∈⟦ pdi-src x ⟧)
+    → first-inhabit (l + r ` loc) c w ((List.map pdinstance-left (x ∷ xs)) ++ (List.map pdinstance-right ys)) ≡ just (pdinstance-left pdil')
+
+  first-inhabit-++-just-left-pres w [] ys pdil' eq = ⊥-elim (nothing≢just eq)
+  first-inhabit-++-just-left-pres w (x ∷ xs) ys pdil' eq =
+    first-inhabit-++-just-left-pres′ w x xs ys pdil' eq (w ∈?⟦ pdi-src x ⟧)
+
+  first-inhabit-++-just-left-pres′ {l} {r} {loc} {c} w (pdinstance {p} .{l} .{c} inj s-ev) xs ys pdil' eq (yes w∈src-x) =
+    trans base-yes (cong just (cong pdinstance-left x≡pdil'))
+    where
+      x≡pdil' : pdinstance inj s-ev ≡ pdil'
+      x≡pdil' = just-injective (trans (sym (first-inhabit-yes-eq-full (pdinstance inj s-ev) _ w∈src-x)) eq)
+
+      base-yes : first-inhabit (l + r ` loc) c w (List.map pdinstance-left (pdinstance inj s-ev ∷ xs) ++ List.map pdinstance-right ys) ≡ just (pdinstance-left (pdinstance inj s-ev))
+      base-yes = first-inhabit-yes-eq-full (pdinstance-left (pdinstance inj s-ev)) _ w∈src-x
+  first-inhabit-++-just-left-pres′ {l} {r} {loc} {c} w (pdinstance {p} .{l} .{c} inj s-ev) xs ys pdil' eq (no ¬w∈src-x) =
+    trans base-no (first-inhabit-++-just-left-pres w xs ys pdil' eq-xs)
+    where
+      base-no-eq : first-inhabit l c w (pdinstance inj s-ev ∷ xs) ≡ first-inhabit l c w xs
+      base-no-eq = first-inhabit-no-eq (pdinstance inj s-ev) xs ¬w∈src-x
+
+      eq-xs : first-inhabit l c w xs ≡ just pdil'
+      eq-xs rewrite base-no-eq = eq
+
+      base-no : first-inhabit (l + r ` loc) c w (List.map pdinstance-left (pdinstance inj s-ev ∷ xs) ++ List.map pdinstance-right ys) ≡ first-inhabit (l + r ` loc) c w (List.map pdinstance-left xs ++ List.map pdinstance-right ys)
+      base-no = first-inhabit-no-eq (pdinstance-left (pdinstance inj s-ev)) _ ¬w∈src-x
+
+
 first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
   → (c∷w∈⟦l⟧ : ((c ∷ w) ∈⟦ l ⟧) )
   → ( pdi : PDInstance (l + r ` loc) c )
   → first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi
   → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
-first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ first-inhabit-cw-pdu-lr-c≡just-pdi = {!!} 
+-- TODO: The proof requires pattern-matching on pdU[l,c] or using with-abstraction
+-- on any-recons, both of which hit Agda 2.7 limitations.
+-- TODO: needs with-abstraction on any-recons, blocked by Agda 2.7 implicit inference
+first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-inhabit-cw-pdu-lr-c≡just-pdi =
+  {!!}
 
-≥-max-pres-left : ∀ {l r : RE} {loc : ℕ} {c : Char}
-  → (pdil : PDInstance l c) (w : List Char)
+≥-max-pres-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( pdil : PDInstance l c ) (w : List Char)
   → (c∷w∈l : (c ∷ w) ∈⟦ l ⟧)
   → ≥-Max-PDInstance {l} {c} w pdil
   → ≥-Max-PDInstance {l + r ` loc} {c} w (pdinstance-left pdil)
-≥-max-pres-left {l} {r} {loc} {c} (pdinstance inj s-ev) w c∷w∈l (≥-max-pdi u w μ-w μ-c∷w) =
+≥-max-pres-left-pdi {l} {r} {loc} {c} (pdinstance inj s-ev) w c∷w∈l (≥-max-pdi u w μ-w μ-c∷w) =
   ≥-max-pdi u w μ-w (≥-max-pres-left-helper (pdi-src (pdinstance inj s-ev)) l r loc c inj u w μ-c∷w)
-
 
 mutual
   first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
@@ -2014,7 +2062,7 @@ mutual
       eq-left = proj₁ (proj₂ (first-inhabit-++-just-left-pdi c∷w∈l pdi eq))
 
       max-left : ≥-Max-PDInstance {l + r ` loc} {c} w (pdinstance-left pdil)
-      max-left = ≥-max-pres-left pdil w c∷w∈l (first-pdU-accept-w-isMax {l} {c} w c∷w∈l pdil eq-left)
+      max-left = ≥-max-pres-left-pdi pdil w c∷w∈l (first-pdU-accept-w-isMax {l} {c} w c∷w∈l pdil eq-left)
 
       pdi≡left : pdi ≡ pdinstance-left pdil
       pdi≡left = proj₂ (proj₂ (first-inhabit-++-just-left-pdi c∷w∈l pdi eq))

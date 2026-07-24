@@ -96,7 +96,7 @@ open Product using (Σ; _,_; ∃; ∃-syntax; _×_)
 open Σ using (proj₁ ; proj₂)
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length ; foldr )
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; tail; concatMap ; _∷ʳ_ ; length ; foldr )
 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ; length-++ ; ++-assoc ; ∷-injective ; ≡-dec )
@@ -1979,11 +1979,39 @@ first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w
   → ( pdi : PDInstance (l + r ` loc) c )
   → first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi
   → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
--- TODO: The proof requires pattern-matching on pdU[l,c] or using with-abstraction
--- on any-recons, both of which hit Agda 2.7 limitations.
--- TODO: needs with-abstraction on any-recons, blocked by Agda 2.7 implicit inference
-first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-inhabit-cw-pdu-lr-c≡just-pdi =
-  {!!}
+first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-inhabit-cw-pdu-lr-c≡just-pdi
+  with pdU[ l , c ] | pdU-complete {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧) (cong proj₁ (flat∘unflat c∷w∈⟦l⟧))
+... | pdi₀ ∷ pdis | here (recons {p} .{l} .{c} {w'} {inj} {sound-ev} .(unflat {l} {c ∷ w} c∷w∈⟦l⟧) (w'∈p , inj∘unflat≡u)) = -- w' should be w
+  ( pdi₀ , eq-left , pdi≡left )
+  where
+    {-
+    w''≡cw : w'' ≡ c ∷ w
+    w''≡cw = ∷-injective (trans (sym (cong proj₁ (flat∘unflat {l} c∷w∈⟦l⟧)))
+      (trans (cong proj₁ (cong (flat {l}) inj∘unflat≡u))
+        (trans (sound-ev (unflat {p} {w''} w''∈p))
+          (cong (_∷_ c) (proj₁ (flat∘unflat {p} w''∈p))))))
+    -}
+    w'≡w : w' ≡ w
+    w'≡w = ? 
+    -- w'' is the word for p, and from the sound-ev we derive w'' ≡ c ∷ w
+    -- But we need w ∈⟦ p ⟧ for first-inhibit, which requires showing that p accepts w, not c∷w
+    -- This is not generally true. The recons gives (c ∷ w) ∈⟦ p ⟧, but first-inhibit checks w ∈⟦ p ⟧.
+    -- We need the derivative property: (c ∷ w) ∈⟦ p ⟧ iff w ∈⟦ ∂c p ⟧.
+    -- But pdi₀ is already the partial derivative, so pdi-src of the pdi₀ should be ∂c (pdi-src of pdi₀).
+    -- TODO: this needs more careful reasoning about the partial derivative semantics.
+    w∈p : w ∈⟦ p ⟧
+    w∈p rewrite sym w'≡w = w'∈p
+
+    eq-left : first-inhabit l c w (pdi₀ ∷ pdis) ≡ just pdi₀
+    eq-left = first-inhabit-yes-eq-full pdi₀ pdis w∈p
+
+    eq-left+right : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just (pdinstance-left pdi₀)
+    eq-left+right = first-inhabit-++-just-left-pres w (pdi₀ ∷ pdis) (pdU[ r , c ]) pdi₀ eq-left
+
+    pdi≡left : pdi ≡ pdinstance-left pdi₀
+    pdi≡left = just-injective (trans (sym eq-left+right) first-inhabit-cw-pdu-lr-c≡just-pdi)
+... | [] | _ = {!!}
+... | _ ∷ _ | there _ = {!!}
 
 ≥-max-pres-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdil : PDInstance l c ) (w : List Char)

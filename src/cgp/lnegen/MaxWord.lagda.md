@@ -1843,6 +1843,8 @@ pdUMany-aux-preseve-local {r} {pref} (c ∷ cs) pdis all-pres =
     concatmap-pres : All (≥-Max-Preserve-Local* {r} {pref ∷ʳ c}) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
     concatmap-pres = concatmap-advance-pdi*-with-c-preseve-local pdis all-pres
 
+-- this lemma is not yet proven. we just leave it aside for now 
+-- TODO: chain-inj-pres-≥-cons-cons is postulated.
 pdUMany-preseve-local : ∀ { r : RE } { w : List Char }
   → All (≥-Max-Preserve-Local* {r} {w}) pdUMany[ r , w ]
 pdUMany-preseve-local {r} {w} = pdUMany-aux-preseve-local {r} {[]} w initial initial-all
@@ -1858,7 +1860,7 @@ pdUMany-preseve-local {r} {w} = pdUMany-aux-preseve-local {r} {[]} w initial ini
           → ( v₀ : U p₀ )
           → p₀ ⊢ u₀ ≥ v₀
           → r ⊢ chain-inj chain u₀ ≥ chain-inj chain v₀
-        id-pres = chain-inj-pres-≥  
+        id-pres = chain-inj-pres-≥   -- TODO: chain-inj-pres-≥-cons-cons is postulated.
 ```
 
 
@@ -1914,34 +1916,25 @@ first-inhabit-++-just {w = w} (x ∷ xs) ys pdil eq with w ∈?⟦ pdi-src x ⟧
 ... | no ¬w∈src-x rewrite first-inhabit-no-eq x (xs ++ ys) ¬w∈src-x
   rewrite first-inhabit-++-just xs ys pdil eq = refl
 
-first-inhabit-++-just-left : ∀ { r1 r2 r3 : RE } { c : Char } { w : List Char }
-  → ( f : PDInstance r1 c → PDInstance r3 c ) ( g : PDInstance r2 c → PDInstance r3 c )
-  → ( xs : List (PDInstance r1 c) ) ( ys : List (PDInstance r2 c) )
-  → ( pdil : PDInstance r1 c )
-  → ( src-pres-f : ∀ (x : PDInstance r1 c) → w ∈⟦ pdi-src (f x) ⟧ ≡ w ∈⟦ pdi-src x ⟧ )
-  → ( src-pres-g : ∀ (y : PDInstance r2 c) → w ∈⟦ pdi-src (g y) ⟧ ≡ w ∈⟦ pdi-src y ⟧ )
-  → first-inhabit r1 c w xs ≡ just pdil
-  → first-inhabit r3 c w (List.map f xs ++ List.map g ys) ≡ just (f pdil)
-first-inhabit-++-just-left {r1} {r2} {r3} {c} {w} f g [] ys pdil src-pres-f src-pres-g eq
-  rewrite first-inhabit-nil-nothing {r1} {c} {w} = ⊥-elim (nothing≢just eq)
-first-inhabit-++-just-left {r1} {r2} {r3} {c} {w} f g (x ∷ xs) ys pdil src-pres-f src-pres-g eq with w ∈?⟦ pdi-src x ⟧
-... | yes w∈src-x rewrite first-inhabit-yes-eq-full (f x) (List.map f (x ∷ xs) ++ List.map g ys) (subst (λ z → w ∈⟦ z ⟧) (src-pres-f x) w∈src-x)
-  rewrite first-inhabit-yes-eq-full x xs w∈src-x
-  rewrite sym eq = refl
-... | no ¬w∈src-x rewrite first-inhabit-no-eq (f x) (List.map f (x ∷ xs) ++ List.map g ys) (subst (λ z → w ∈⟦ z ⟧) (src-pres-f x) ¬w∈src-x)
-  rewrite first-inhabit-no-eq x xs ¬w∈src-x
-  rewrite first-inhabit-++-just-left f g xs ys pdil src-pres-f src-pres-g eq = refl
+-- TODO: first-inhabit-++-just-left-pdi is postulated due to Agda 2.7 with-abstraction issue.
+-- The lemma states: if first-inhabit on pdU[l+r, c] finds pdi, and (c∷w) ∈⟦ l ⟧,
+-- then pdi ≡ pdinstance-left pdil for some pdil with first-inhabit l c w (pdU[l,c]) ≡ just pdil.
+{-
+postulate
+  first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
+    → ( pdi : PDInstance (l + r ` loc) c )
+    → first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi
+    -- → Σ (PDInstance l c) λ pdil → first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
+    → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
+-}
 
 
-first-inhabit-++-just-left-pdi : ∀ { r1 r2 r3 : RE } { c : Char } { w : List Char }
-  → ( f : PDInstance r1 c → PDInstance r3 c ) ( g : PDInstance r2 c → PDInstance r3 c )
-  → ( xs : List (PDInstance r1 c) ) ( ys : List (PDInstance r2 c) )
-  → ( pdil : PDInstance r1 c )
-  → ( src-pres-f : ∀ (x : PDInstance r1 c) → w ∈⟦ pdi-src (f x) ⟧ ≡ w ∈⟦ pdi-src x ⟧ )
-  → ( src-pres-g : ∀ (y : PDInstance r2 c) → w ∈⟦ pdi-src (g y) ⟧ ≡ w ∈⟦ pdi-src y ⟧ )
-  → first-inhabit r1 c w xs ≡ just pdil
-  → first-inhabit r3 c w (List.map f xs ++ List.map g ys) ≡ just (f pdil)
-first-inhabit-++-just-left-pdi = first-inhabit-++-just-left
+first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
+  → (c∷w∈⟦l⟧ : ((c ∷ w) ∈⟦ l ⟧) )
+  → ( pdi : PDInstance (l + r ` loc) c )
+  → first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi
+  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
+first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ first-inhabit-cw-pdu-lr-c≡just-pdi = {!!} 
 
 ≥-max-pres-left : ∀ {l r : RE} {loc : ℕ} {c : Char}
   → (pdil : PDInstance l c) (w : List Char)
@@ -2015,16 +2008,16 @@ mutual
     subst (λ x → ≥-Max-PDInstance {l + r ` loc} {c} w x) (sym pdi≡left) max-left
     where
       pdil : PDInstance l c
-      pdil = proj₁ (first-inhabit-++-just-left-pdi pdinstance-left pdinstance-right (pdU[ l , c ]) (pdU[ r , c ]) pdi eq)
+      pdil = proj₁ (first-inhabit-++-just-left-pdi c∷w∈l pdi eq)
 
       eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just pdil
-      eq-left = proj₁ (proj₂ (first-inhabit-++-just-left-pdi pdinstance-left pdinstance-right (pdU[ l , c ]) (pdU[ r , c ]) pdi eq))
+      eq-left = proj₁ (proj₂ (first-inhabit-++-just-left-pdi c∷w∈l pdi eq))
 
       max-left : ≥-Max-PDInstance {l + r ` loc} {c} w (pdinstance-left pdil)
       max-left = ≥-max-pres-left pdil w c∷w∈l (first-pdU-accept-w-isMax {l} {c} w c∷w∈l pdil eq-left)
 
       pdi≡left : pdi ≡ pdinstance-left pdil
-      pdi≡left = proj₂ (proj₂ (first-inhabit-++-just-left-pdi pdinstance-left pdinstance-right (pdU[ l , c ]) (pdU[ r , c ]) pdi eq))
+      pdi≡left = proj₂ (proj₂ (first-inhabit-++-just-left-pdi c∷w∈l pdi eq))
 
   first-pdU-accept-w-isMax-+-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( w : List Char )

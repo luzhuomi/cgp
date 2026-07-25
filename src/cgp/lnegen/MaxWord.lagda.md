@@ -2086,7 +2086,9 @@ mutual
   
       -- TODO: need lemma to decompose combined result for tail
       pdi-there-result : ∃[ pdil ] first-inhabit l c w tail-pdis ≡ just pdil × pdi ≡ pdinstance-left pdil
-      pdi-there-result = {!!} --  first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq}  ? ? ? ?
+      pdi-there-result  = {!!} -- the issue is this call. we need some induction hypothesis, we don't know
+      -- what is the head of tail-pdis 
+      --  first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq}  ? ? ? ?
   
       eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just (proj₁ pdi-there-result)
       eq-left rewrite eq-skip-l = proj₁ (proj₂ pdi-there-result)
@@ -2115,13 +2117,13 @@ mutual
     → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
     → {pdi : PDInstance (l + r ` loc) c}
     → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
-    → (pdu-lc-eq : pdU[ l , c ] ≡ _ ∷ _) -- TODO _ ∷ _ is bad 
+    → (pdu-lc-eq : pdU[ l , c ] ≡ _ ∷ _) -- TODO _ ∷ _ is bad , it blocks the type checking 
     → (tail-pdis : List (PDInstance l c))
     → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
     → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
   first-inhabit-++-just-left-pdi-there {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis ar
-    rewrite pdu-lc-eq |  pdu-lc-eq = 
-    first-inhabit-++-just-left-pdi-there-go head-pdi (w ∈?⟦ pdi-src head-pdi ⟧)
+    rewrite pdu-lc-eq = 
+    first-inhabit-++-just-left-pdi-there-go tail-pdis head-pdi (w ∈?⟦ pdi-src head-pdi ⟧) ar 
     where
       head-pdi : PDInstance l c
       head-pdi = head (pdU[ l , c ])
@@ -2179,7 +2181,7 @@ mutual
       pdi≡left = just-injective (sym just-left-pdi₀≡just-pdi)  -- (trans (sym eq-left+right) first-inhabit-cw-pdu-lr-c≡just-pdi)
   ... | [] | ar = Nullary.contradiction ar ¬Any[] 
   ... | _ ∷ tail-pdis | there ar = {!!} -- first-inhabit-++-just-left-pdi-there pdu-lc-eq tail-pdis ar
-
+    -- starting point of the no-there search 
 
 -- end of mutual 
 

@@ -1975,6 +1975,99 @@ mutual
       base-no = first-inhabit-no-eq (pdinstance-left (pdinstance inj s-ev)) _ ¬w∈src-x
 
 
+first-inhabit-++-just-left-pdi-there-yes : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
+  → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
+  → {pdi : PDInstance (l + r ` loc) c}
+  → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
+  → (pdu-lc-eq : pdU[ l , c ] ≡ _ ∷ _)
+  → (tail-pdis : List (PDInstance l c))
+  → (head-pdi : PDInstance l c)
+  → w ∈⟦ pdi-src head-pdi ⟧
+  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
+first-inhabit-++-just-left-pdi-there-yes {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi w∈src =
+  ( head-pdi , eq-left , pdi≡left )
+  where
+    eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just head-pdi
+    eq-left rewrite pdu-lc-eq = first-inhabit-yes-eq-full head-pdi tail-pdis w∈src
+
+    pdu-lr-c≡maps : pdU[ l + r ` loc , c ] ≡ List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ r , c ]
+    pdu-lr-c≡maps = refl
+
+    eq-left+right : first-inhabit (l + r ` loc) c w (List.map pdinstance-left pdU[ l , c ] ++ List.map pdinstance-right pdU[ r , c ]) ≡ just (pdinstance-left head-pdi)
+    eq-left+right = first-inhabit-++-just-left-pres w (pdU[ l , c ]) (pdU[ r , c ]) head-pdi eq-left
+
+    just-left-head≡just-pdi : just (pdinstance-left head-pdi) ≡ just pdi
+    just-left-head≡just-pdi = trans (trans (sym eq-left+right) (sym (cong (λ x → first-inhabit (l + r ` loc) c w x) pdu-lr-c≡maps))) eq
+
+    pdi≡left : pdi ≡ pdinstance-left head-pdi
+    pdi≡left = just-injective (sym just-left-head≡just-pdi)
+
+-- no branch: head does not accept w.
+first-inhabit-++-just-left-pdi-there-no : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
+  → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
+  → {pdi : PDInstance (l + r ` loc) c}
+  → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
+  → (pdu-lc-eq : pdU[ l , c ] ≡ _ ∷ _)
+  → (tail-pdis : List (PDInstance l c))
+  → (head-pdi : PDInstance l c)
+  → ¬ (w ∈⟦ pdi-src head-pdi ⟧)
+  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
+first-inhabit-++-just-left-pdi-there-no {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi ¬w∈src =
+  ( proj₁ (proj₂ pdi-there-result) , eq-left , pdi≡left )
+  where
+    ¬w∈src-left : ¬ (w ∈⟦ pdi-src (pdinstance-left head-pdi) ⟧)
+    ¬w∈src-left = subst (λ p → ¬ (w ∈⟦ p ⟧)) (sym (pdi-src-pres-left head-pdi)) ¬w∈src
+
+    eq-skip-lr : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ])
+      ≡ first-inhabit (l + r ` loc) c w
+          (List.map pdinstance-left tail-pdis ++ List.map pdinstance-right pdU[ r , c ])
+    eq-skip-lr rewrite pdu-lc-eq =
+      first-inhabit-no-eq (pdinstance-left head-pdi) (List.map pdinstance-left tail-pdis ++ List.map pdinstance-right pdU[ r , c ]) ¬w∈src-left
+
+    eq-skip-l : first-inhabit l c w (pdU[ l , c ]) ≡ first-inhabit l c w tail-pdis
+    eq-skip-l rewrite pdu-lc-eq = first-inhabit-no-eq head-pdi tail-pdis ¬w∈src
+
+    -- TODO: need lemma to decompose combined result for tail
+    pdi-there-result : ∃[ pdil ] first-inhabit l c w tail-pdis ≡ just pdil × pdi ≡ pdinstance-left pdil
+    pdi-there-result = {!!}
+
+    eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just (proj₁ (proj₂ pdi-there-result))
+    eq-left rewrite eq-skip-l = proj₁ (proj₂ pdi-there-result)
+
+    pdi≡left : pdi ≡ pdinstance-left (proj₁ (proj₂ pdi-there-result))
+    pdi≡left = proj₂ (proj₂ pdi-there-result)
+
+-- Dispatch to yes/no branches.
+first-inhabit-++-just-left-pdi-there-go : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
+  → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
+  → {pdi : PDInstance (l + r ` loc) c}
+  → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
+  → (pdu-lc-eq : pdU[ l , c ] ≡ _ ∷ _)
+  → (tail-pdis : List (PDInstance l c))
+  → (head-pdi : PDInstance l c)
+  → Dec (w ∈⟦ pdi-src head-pdi ⟧)
+  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
+first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi (yes w∈src) =
+  first-inhabit-++-just-left-pdi-there-yes pdu-lc-eq tail-pdis head-pdi w∈src
+first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi (no ¬w∈src) =
+  first-inhabit-++-just-left-pdi-there-no pdu-lc-eq tail-pdis head-pdi ¬w∈src
+
+-- Helper for the `there` case: recons is in the tail of pdU[l,c].
+first-inhabit-++-just-left-pdi-there : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
+  → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
+  → {pdi : PDInstance (l + r ` loc) c}
+  → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
+  → (pdu-lc-eq : pdU[ l , c ] ≡ _ ∷ _)
+  → (tail-pdis : List (PDInstance l c))
+  → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
+  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
+first-inhabit-++-just-left-pdi-there {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis ar
+  rewrite pdu-lc-eq | pdu-lc-eq =
+  first-inhabit-++-just-left-pdi-there-go head-pdi (w ∈?⟦ pdi-src head-pdi ⟧)
+  where
+    head-pdi : PDInstance l c
+    head-pdi = head (pdU[ l , c ])
+
 first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
   → (c∷w∈⟦l⟧ : ((c ∷ w) ∈⟦ l ⟧) )
   → ( pdi : PDInstance (l + r ` loc) c )
@@ -2026,8 +2119,8 @@ first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-i
       ∎
     pdi≡left : pdi ≡ pdinstance-left pdi₀
     pdi≡left = just-injective (sym just-left-pdi₀≡just-pdi)  -- (trans (sym eq-left+right) first-inhabit-cw-pdu-lr-c≡just-pdi)
-... | [] | _ = {!!}
-... | _ ∷ _ | there _ = {!!}
+... | [] | ar = ⊥-elim (¬Any[] (subst (λ x → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) x) (sym pdu-lc-eq) ar))
+... | _ ∷ tail-pdis | there ar = first-inhabit-++-just-left-pdi-there pdu-lc-eq tail-pdis ar
 
 ≥-max-pres-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdil : PDInstance l c ) (w : List Char)
@@ -2220,3 +2313,4 @@ first-parseAll-isMax  : ∀ ( r : RE )
   → ≥-Max w u 
 first-parseAll-isMax = first-concatMap-buildU-pdUMany-isMax
 ```
+```agda

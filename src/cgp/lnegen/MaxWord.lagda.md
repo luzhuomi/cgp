@@ -2002,6 +2002,38 @@ first-inhabit-++-just-left-pdi-there-yes {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧}
     pdi≡left : pdi ≡ pdinstance-left head-pdi
     pdi≡left = just-injective (sym just-left-head≡just-pdi)
 
+-- Extract w ∈⟦ pdi-src pdi ⟧ from a Recons witness.
+recons-w∈src : ∀ {l : RE} {c : Char} {w : List Char}
+  → {cw∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
+  → (pdi : PDInstance l c)
+  → Recons {l} {c} (unflat {l} {(c ∷ w)} cw∈⟦l⟧) pdi
+  → w ∈⟦ pdi-src pdi ⟧
+recons-w∈src (pdinstance {p} inj sound-ev) (recons u (w∈p , inj≡u)) =
+  subst (λ x → x ∈⟦ p ⟧) (sym w≡wp) (proj₁ Σ)
+  where
+    wp : List Char
+    wp = proj₁ (flat (unflat (proj₁ Σ)))
+
+    cw≡cwp : c ∷ w ≡ c ∷ wp
+    cw≡cwp = trans (trans (sym (cong proj₁ (flat∘unflat cw∈⟦l⟧)))
+                      (cong proj₁ (cong flat (sym (proj₂ Σ)))))
+                  (sound-ev (unflat (proj₁ Σ)))
+
+    w≡wp : w ≡ wp
+    w≡wp = proj₂ (∷-injective cw≡cwp)
+
+-- Any reconstructable pdi implies first-inhabit returns just.
+Any→just : ∀ {l : RE} {c : Char} {w : List Char}
+  → {cw∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
+  → (pdis : List (PDInstance l c))
+  → Any (Recons {l} {c} (unflat {l} {(c ∷ w)} cw∈⟦l⟧)) pdis
+  → first-inhabit l c w pdis ≡ just _
+Any→just {w = w} [] ar = ⊥-elim (¬Any[] ar)
+Any→just {w = w} {cw∈⟦l⟧ = cw∈⟦l⟧} (pdi ∷ pdis) (here r) = first-inhabit-yes-eq-full pdi pdis (recons-w∈src {cw∈⟦l⟧ = cw∈⟦l⟧} pdi r)
+Any→just {w = w} {cw∈⟦l⟧ = cw∈⟦l⟧} (pdi ∷ pdis) (there ar) with w ∈?⟦ pdi-src pdi ⟧
+... | yes w∈src = first-inhabit-yes-eq-full pdi pdis w∈src
+... | no ¬w∈src = Any→just {w = w} {cw∈⟦l⟧ = cw∈⟦l⟧} pdis ar
+
 -- no branch: head does not accept w.
 first-inhabit-++-just-left-pdi-there-no : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
   → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
@@ -2011,8 +2043,9 @@ first-inhabit-++-just-left-pdi-there-no : ∀ {l r : RE} {loc : ℕ} {c : Char} 
   → (tail-pdis : List (PDInstance l c))
   → (head-pdi : PDInstance l c)
   → ¬ (w ∈⟦ pdi-src head-pdi ⟧)
+  → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
   → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
-first-inhabit-++-just-left-pdi-there-no {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi ¬w∈src =
+first-inhabit-++-just-left-pdi-there-no {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi ¬w∈src ar =
   ( proj₁ (proj₂ pdi-there-result) , eq-left , pdi≡left )
   where
     ¬w∈src-left : ¬ (w ∈⟦ pdi-src (pdinstance-left head-pdi) ⟧)
@@ -2046,10 +2079,11 @@ first-inhabit-++-just-left-pdi-there-go : ∀ {l r : RE} {loc : ℕ} {c : Char} 
   → (tail-pdis : List (PDInstance l c))
   → (head-pdi : PDInstance l c)
   → Dec (w ∈⟦ pdi-src head-pdi ⟧)
+  → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
   → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
-first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi (yes w∈src) =
+first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi  (yes w∈src) ar =
   first-inhabit-++-just-left-pdi-there-yes pdu-lc-eq tail-pdis head-pdi w∈src
-first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi (no ¬w∈src) =
+first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi  (no ¬w∈src) ar =
   first-inhabit-++-just-left-pdi-there-no pdu-lc-eq tail-pdis head-pdi ¬w∈src
 
 -- Helper for the `there` case: recons is in the tail of pdU[l,c].

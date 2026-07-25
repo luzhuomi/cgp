@@ -141,6 +141,11 @@ open Decidable using
 
 open import Function using (_∘_ ; flip ; case_of_)
 
+
+import Data.List.Relation.Unary.Any.Properties
+open Data.List.Relation.Unary.Any.Properties using ( ¬Any[] )
+
+
 import cgp.lnegen.Efn as Efn
 open Efn using ( Efn ; efn-ε ; efn-● ) 
 ```
@@ -521,8 +526,11 @@ just-injective refl = refl
 head-x∷xs≡just-x : ∀ { A : Set} {x : A } { xs : List A } → head ( x ∷ xs ) ≡ just x
 head-x∷xs≡just-x {A} {x} {xs} = refl 
 
+{-
+-- can be imported from  Data.List.Relation.Unary.Any.Properties
 ¬Any[] : ∀ {A : Set} {P : A → Set} → ¬ Any P []
 ¬Any[] ()
+-}
 
 pdU≡[]→¬c∷w∈l : ∀ {l c} {w : List Char} → pdU[ l , c ] ≡ [] → ¬ ((c ∷ w) ∈⟦ l ⟧)
 pdU≡[]→¬c∷w∈l {l} {c} {w} pdU≡[] c∷w∈l =
@@ -2008,16 +2016,17 @@ recons-w∈src : ∀ {l : RE} {c : Char} {w : List Char}
   → (pdi : PDInstance l c)
   → Recons {l} {c} (unflat {l} {(c ∷ w)} cw∈⟦l⟧) pdi
   → w ∈⟦ pdi-src pdi ⟧
-recons-w∈src (pdinstance {p} inj sound-ev) (recons u (w∈p , inj≡u)) =
-  subst (λ x → x ∈⟦ p ⟧) (sym w≡wp) (proj₁ Σ)
+recons-w∈src {l} {c} {w} {cw∈⟦l⟧} (pdinstance {p} inj sound-ev) (recons u (w∈p , inj≡u)) = {!!} 
+  -- subst (λ x → x ∈⟦ p ⟧) (sym w≡wp) (proj₁ Σ)
   where
     wp : List Char
-    wp = proj₁ (flat (unflat (proj₁ Σ)))
+    wp = w  -- proj₁ (flat (unflat (proj₁ Σ)))
 
     cw≡cwp : c ∷ w ≡ c ∷ wp
-    cw≡cwp = trans (trans (sym (cong proj₁ (flat∘unflat cw∈⟦l⟧)))
+    cw≡cwp = refl 
+              {- trans (trans (sym (cong proj₁ (flat∘unflat cw∈⟦l⟧)))
                       (cong proj₁ (cong flat (sym (proj₂ Σ)))))
-                  (sound-ev (unflat (proj₁ Σ)))
+                  (sound-ev (unflat (proj₁ Σ))) -}
 
     w≡wp : w ≡ wp
     w≡wp = proj₂ (∷-injective cw≡cwp)
@@ -2027,12 +2036,15 @@ Any→just : ∀ {l : RE} {c : Char} {w : List Char}
   → {cw∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
   → (pdis : List (PDInstance l c))
   → Any (Recons {l} {c} (unflat {l} {(c ∷ w)} cw∈⟦l⟧)) pdis
-  → first-inhabit l c w pdis ≡ just _
+  → ∃[ pdi ] ( pdi ∈ pdis) × first-inhabit l c w pdis ≡ just pdi 
 Any→just {w = w} [] ar = ⊥-elim (¬Any[] ar)
-Any→just {w = w} {cw∈⟦l⟧ = cw∈⟦l⟧} (pdi ∷ pdis) (here r) = first-inhabit-yes-eq-full pdi pdis (recons-w∈src {cw∈⟦l⟧ = cw∈⟦l⟧} pdi r)
+Any→just {w = w} {cw∈⟦l⟧ = cw∈⟦l⟧} (pdi ∷ pdis) (here r) =  pdi , ( here refl , first-inhabit-yes-eq-full pdi pdis (recons-w∈src {cw∈⟦l⟧ = cw∈⟦l⟧} pdi r) ) 
+{-
 Any→just {w = w} {cw∈⟦l⟧ = cw∈⟦l⟧} (pdi ∷ pdis) (there ar) with w ∈?⟦ pdi-src pdi ⟧
 ... | yes w∈src = first-inhabit-yes-eq-full pdi pdis w∈src
 ... | no ¬w∈src = Any→just {w = w} {cw∈⟦l⟧ = cw∈⟦l⟧} pdis ar
+-}
+
 
 -- no branch: head does not accept w.
 first-inhabit-++-just-left-pdi-there-no : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
@@ -2046,9 +2058,9 @@ first-inhabit-++-just-left-pdi-there-no : ∀ {l r : RE} {loc : ℕ} {c : Char} 
   → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
   → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
 first-inhabit-++-just-left-pdi-there-no {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi ¬w∈src ar =
-  ( proj₁ (proj₂ pdi-there-result) , eq-left , pdi≡left )
+  ( proj₁ pdi-there-result , eq-left , pdi≡left )
   where
-    ¬w∈src-left : ¬ (w ∈⟦ pdi-src (pdinstance-left head-pdi) ⟧)
+    ¬w∈src-left : ¬ (w ∈⟦ pdi-src (pdinstance-left {l} {r} {loc} head-pdi) ⟧)
     ¬w∈src-left = subst (λ p → ¬ (w ∈⟦ p ⟧)) (sym (pdi-src-pres-left head-pdi)) ¬w∈src
 
     eq-skip-lr : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ])
@@ -2062,12 +2074,12 @@ first-inhabit-++-just-left-pdi-there-no {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} 
 
     -- TODO: need lemma to decompose combined result for tail
     pdi-there-result : ∃[ pdil ] first-inhabit l c w tail-pdis ≡ just pdil × pdi ≡ pdinstance-left pdil
-    pdi-there-result = {!!}
+    pdi-there-result rewrite pdu-lc-eq  = head-pdi , {!!} , {!!}
 
-    eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just (proj₁ (proj₂ pdi-there-result))
+    eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just (proj₁ pdi-there-result)
     eq-left rewrite eq-skip-l = proj₁ (proj₂ pdi-there-result)
 
-    pdi≡left : pdi ≡ pdinstance-left (proj₁ (proj₂ pdi-there-result))
+    pdi≡left : pdi ≡ pdinstance-left (proj₁ pdi-there-result)
     pdi≡left = proj₂ (proj₂ pdi-there-result)
 
 -- Dispatch to yes/no branches.
@@ -2084,7 +2096,7 @@ first-inhabit-++-just-left-pdi-there-go : ∀ {l r : RE} {loc : ℕ} {c : Char} 
 first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi  (yes w∈src) ar =
   first-inhabit-++-just-left-pdi-there-yes pdu-lc-eq tail-pdis head-pdi w∈src
 first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis head-pdi  (no ¬w∈src) ar =
-  first-inhabit-++-just-left-pdi-there-no pdu-lc-eq tail-pdis head-pdi ¬w∈src
+  first-inhabit-++-just-left-pdi-there-no pdu-lc-eq tail-pdis head-pdi ¬w∈src ar 
 
 -- Helper for the `there` case: recons is in the tail of pdU[l,c].
 first-inhabit-++-just-left-pdi-there : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
@@ -2153,8 +2165,8 @@ first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-i
       ∎
     pdi≡left : pdi ≡ pdinstance-left pdi₀
     pdi≡left = just-injective (sym just-left-pdi₀≡just-pdi)  -- (trans (sym eq-left+right) first-inhabit-cw-pdu-lr-c≡just-pdi)
-... | [] | ar = ⊥-elim (¬Any[] (subst (λ x → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) x) (sym pdu-lc-eq) ar))
-... | _ ∷ tail-pdis | there ar = first-inhabit-++-just-left-pdi-there pdu-lc-eq tail-pdis ar
+... | [] | ar = Nullary.contradiction ar ¬Any[] 
+... | _ ∷ tail-pdis | there ar = {! first-inhabit-++-just-left-pdi-there ? ? ? ? !} -- first-inhabit-++-just-left-pdi-there pdu-lc-eq tail-pdis ar
 
 ≥-max-pres-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdil : PDInstance l c ) (w : List Char)

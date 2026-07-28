@@ -2562,21 +2562,21 @@ mutual
       pdi≡left : pdi ≡ pdinstance-left pdil
       pdi≡left = proj₂ (proj₂ (first-inhabit-++-just-left-pdi c∷w∈l pdi eq))
 
-  -- Lifting the order pdi-src pdi ⊢ u ≥ u' to l ● r when pdi ≡ pdi'.
-  -- Used in the first-pdU-accept-w-isMax-●-no case.
-  ≥-max-pdi≡-helper : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
-    → ( pdi : PDInstance (l ● r ` loc) c )
+  -- Lifting the order pdi-src pdi ⊢ u ≥ u' to the target regex of pdi when pdi ≡ pdi'.
+  -- Used in the first-pdU-accept-w-isMax-●-no, ●-yes, and * cases.
+  ≥-max-pdi≡-helper : ∀ { regex : RE } { c : Char } { w : List Char }
+    → ( pdi : PDInstance regex c )
     → ( u : U (pdi-src pdi) )
     → ( u-max : ≥-Max {pdi-src pdi} w u )
     → ( max-pdi : ≥-Max-Preserve-Local pdi )
-    → ( v : U (l ● r ` loc) )
+    → ( v : U regex )
     → ( u' : U (pdi-src pdi) )
     → ( pdi-u'≡v : pdi-inj pdi u' ≡ v )
     → ( flat-u'≡w : proj₁ (flat {pdi-src pdi} u') ≡ w )
-    → (l ● r ` loc) ⊢ pdi-inj pdi u ≥ v
-  ≥-max-pdi≡-helper {l} {r} {loc} {c} {w} pdi u (≥-max .w .u flat-u≡w ev) (≥-max-pres-local f) v u' pdi-u'≡v flat-u'≡w =
+    → regex ⊢ pdi-inj pdi u ≥ v
+  ≥-max-pdi≡-helper {regex} {c} {w} pdi u (≥-max .w .u flat-u≡w ev) (≥-max-pres-local f) v u' pdi-u'≡v flat-u'≡w =
     let u-max' = subst (λ x → ≥-Max {pdi-src pdi} x u) (sym flat-u≡w) (≥-max w u flat-u≡w ev)
-    in subst (λ x → (l ● r ` loc) ⊢ pdi-inj pdi u ≥ x) pdi-u'≡v (f u u-max' u' (ev u' flat-u'≡w))
+    in subst (λ x → regex ⊢ pdi-inj pdi u ≥ x) pdi-u'≡v (f u u-max' u' (ev u' flat-u'≡w))
 
   -- Helper for ● case, ¬ε∈l
   first-pdU-accept-w-isMax-●-no : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -2686,9 +2686,40 @@ mutual
     → ( pdi : PDInstance (r * nε ` loc) c)
     → (first-inhabit (r * nε ` loc) c w  pdU[ r * nε ` loc , c ]) ≡ just pdi
     → ≥-Max-PDInstance {r * nε ` loc} {c} w pdi
-  first-pdU-accept-w-isMax-* nε c∷w∈* pdi eq = {!!}
-    -- TODO: Show pdi ≡ pdinstance-star pdir for some pdir : PDInstance r c
-    -- Then use first-pdU-accept-w-isMax {r} {c} ... pdir eq-r
+  first-pdU-accept-w-isMax-* {r} {nε} {loc} {c} w c∷w∈* pdi@(pdinstance {p} .{r * nε ` loc} .{c} inj s-ev) eq =
+    let pdis = pdU[ r * nε ` loc , c ]
+        pdi∈ = proj₁ (first-inhabit-just-∈ pdis pdi eq)
+        w∈src = proj₂ (first-inhabit-just-∈ pdis pdi eq)
+        u = maximum (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈src)
+        flat-u≡w = maximum-flat (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈src) (parseAll-all-sound {p} {w})
+        flat-inj-u≡c∷w : proj₁ (flat (pdi-inj pdi u)) ≡ c ∷ w
+        flat-inj-u≡c∷w = trans (s-ev u) (cong (c ∷_) flat-u≡w)
+        u-max : ≥-Max {p} w u
+        u-max = ≥-max w u flat-u≡w (λ v' flat-v'≡w → maximum-≥-all (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈src) v' (parseAll-complete {p} {w} v' flat-v'≡w))
+        μ-w = u-max
+        max-pdi = All.lookup (pdU-preseve-local {r * nε ` loc} {c}) pdi∈
+        sorted = pdU-sorted {r * nε ` loc} {c}
+        μ-c∷w = ≥-max (c ∷ w) (pdi-inj pdi u) flat-inj-u≡c∷w λ v flat-v≡c∷w →
+          let v-recons = pdU-complete v flat-v≡c∷w
+          in case extract-Recons v-recons of λ where
+            (pdi'@(pdinstance {p'} .{r * nε ` loc} .{c} inj' s-ev') , pdi'∈ , recons .v (w'∈ , pdi'-u'≡v)) →
+              let u' = unflat w'∈
+                  flat-u'≡w : proj₁ (flat {p'} u') ≡ w
+                  flat-u'≡w = sym (proj₂ (∷-injective (trans (sym flat-v≡c∷w) (trans (cong proj₁ (cong flat (sym pdi'-u'≡v))) (s-ev' u')))))
+                  w'≡w : _ ≡ w
+                  w'≡w = trans (sym (cong proj₁ (flat∘unflat {p'} w'∈))) flat-u'≡w
+                  w∈src' : w ∈⟦ p' ⟧
+                  w∈src' = subst (λ x → x ∈⟦ p' ⟧) w'≡w w'∈
+                  pdi≡or> = first-inhabit-just-first pdis pdi eq pdi' pdi'∈ w∈src' sorted
+              in case pdi≡or> of λ where
+                (inj₂ pdi>pdi') →
+                  inj₁ (case pdi>pdi' of λ where
+                    (>-pdi _ _ ev) → ev (pdi-inj pdi u) v
+                      (recons (pdi-inj pdi u) (proj₂ (flat {p} u) , cong (pdi-inj pdi) (unflat∘proj₂∘flat {p} {u})))
+                      (recons v (w'∈ , pdi'-u'≡v)))
+                (inj₁ pdi≡pdi') → case pdi≡pdi' of λ where
+                  refl → ≥-max-pdi≡-helper pdi u u-max max-pdi v u' pdi'-u'≡v flat-u'≡w
+    in ≥-max-pdi u w μ-w μ-c∷w
 
   first-concatMap-buildU-pdUMany-isMax : ∀ ( r : RE )
     → ( w : List Char )

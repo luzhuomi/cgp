@@ -2062,47 +2062,6 @@ Any→just {l} {c} {w} {c∷w∈⟦l⟧} (pdi ∷ pdis) (there ar) with w ∈?�
     ev = proj₂ (proj₂ ind-hyp ) 
 
 
--- no branch: head does not accept w.
--- FIXED by Kenny
--- can't be proven
-{- 
-first-inhabit-++-just-left-pdi-there-no : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
-  → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
-  → {pdi : PDInstance (l + r ` loc) c}
-  → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
-  → (tail-pdis : List (PDInstance l c))
-  → (head-pdi : PDInstance l c)
-  → (pdu-lc-eq : pdU[ l , c ] ≡ head-pdi ∷ tail-pdis)
-  → ¬ (w ∈⟦ pdi-src head-pdi ⟧)
-  → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
-  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
-first-inhabit-++-just-left-pdi-there-no {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} tail-pdis head-pdi pdu-lc-eq  ¬w∈src ar =
-  ( proj₁ pdi-there-result , eq-left , pdi≡left )
-  where
-    ¬w∈src-left : ¬ (w ∈⟦ pdi-src (pdinstance-left {l} {r} {loc} head-pdi) ⟧)
-    ¬w∈src-left = subst (λ p → ¬ (w ∈⟦ p ⟧)) (sym (pdi-src-pres-left head-pdi)) ¬w∈src
-
-    eq-skip-lr : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ])
-      ≡ first-inhabit (l + r ` loc) c w
-                      (List.map pdinstance-left tail-pdis ++ List.map pdinstance-right pdU[ r , c ])
-    eq-skip-lr rewrite pdu-lc-eq = 
-      first-inhabit-no-eq (pdinstance-left head-pdi) (List.map pdinstance-left tail-pdis ++ List.map pdinstance-right pdU[ r , c ]) ¬w∈src-left
-
-    eq-skip-l : first-inhabit l c w (pdU[ l , c ]) ≡ first-inhabit l c w tail-pdis
-    eq-skip-l rewrite pdu-lc-eq = first-inhabit-no-eq head-pdi tail-pdis ¬w∈src
-
-    -- TODO: need lemma to decompose combined result for tail
-    pdi-there-result : ∃[ pdil ] first-inhabit l c w tail-pdis ≡ just pdil × pdi ≡ pdinstance-left pdil
-    pdi-there-result  = {!!} -- the issue is for this call, we need some induction hypothesis, we don't know
-    -- what is the head of tail-pdis 
-    --  first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq}  ? ? ? ?
-
-    eq-left : first-inhabit l c w (pdU[ l , c ]) ≡ just (proj₁ pdi-there-result)
-    eq-left rewrite eq-skip-l = proj₁ (proj₂ pdi-there-result)
-
-    pdi≡left : pdi ≡ pdinstance-left (proj₁ pdi-there-result)
-    pdi≡left = proj₂ (proj₂ pdi-there-result)
--}
 
 -- Right-side preservation: first-inhabit on the right-mapped list returns the mapped pdir.
 mutual
@@ -2242,46 +2201,6 @@ first-inhabit-nothing→¬c∷w∈r {r} {c} {w} eq-nothing c∷w∈r
               ≡⟨ cong (c ∷_) (cong proj₁ (flat∘unflat w'∈p)) ⟩
                 c ∷ w'
               ∎))
-
--- FIXED by Kenny
--- it can't be proven, it depends on first-inhabit-++-just-left-pdi-there-no
--- not in used,
--- Dispatch to yes/no branches.
-{-
-first-inhabit-++-just-left-pdi-there-go : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
-  → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
-  → {pdi : PDInstance (l + r ` loc) c}
-  → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
-  → (tail-pdis : List (PDInstance l c))
-  → (head-pdi : PDInstance l c)
-  → (pdu-lc-eq : pdU[ l , c ] ≡ head-pdi ∷ tail-pdis )
-  → Dec (w ∈⟦ pdi-src head-pdi ⟧)
-  → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
-  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
-first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} tail-pdis head-pdi pdu-lc-eq  (yes w∈src) ar =
-  first-inhabit-++-just-left-pdi-there-yes {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} tail-pdis head-pdi pdu-lc-eq w∈src
-first-inhabit-++-just-left-pdi-there-go {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} tail-pdis head-pdi pdu-lc-eq  (no ¬w∈src) ar =
-  first-inhabit-++-just-left-pdi-there-no {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} tail-pdis head-pdi pdu-lc-eq ¬w∈src ar 
--}
-
--- Helper for the `there` case: recons is in the tail of pdU[l,c].
--- FIXED by Kenny, it does not work, the _ ∷ _ pattern in the type is a bad pratice, 
-{- 
-first-inhabit-++-just-left-pdi-there : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
-  → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
-  → {pdi : PDInstance (l + r ` loc) c}
-  → {eq : first-inhabit (l + r ` loc) c w (pdU[ l + r ` loc , c ]) ≡ just pdi}
-  → (pdu-lc-eq : pdU[ l , c ] ≡ _ ∷ _) -- _ ∷ _ is bad , it blocks the rest of lemma being type checked
-  → (tail-pdis : List (PDInstance l c))
-  → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) tail-pdis
-  → ∃[ pdil ] first-inhabit l c w (pdU[ l , c ]) ≡ just pdil × pdi ≡ pdinstance-left pdil
-first-inhabit-++-just-left-pdi-there {l} {r} {loc} {c} {w} {c∷w∈⟦l⟧} {pdi} {eq} pdu-lc-eq tail-pdis ar
-  rewrite pdu-lc-eq = 
-  first-inhabit-++-just-left-pdi-there-go tail-pdis head-pdi pdu-lc-eq (w ∈?⟦ pdi-src head-pdi ⟧) ar 
-  where
-    head-pdi : PDInstance l c
-    head-pdi = head (pdU[ l , c ])
--}
 
 
 -- FIXED by Kenny

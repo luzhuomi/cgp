@@ -91,6 +91,9 @@ open Eq using (_≡_; refl; sym; trans; cong; subst)
 import Data.Sum as Sum
 open Sum using (_⊎_; inj₁; inj₂)
 
+import Function as Function
+open Function using (case_of_)
+
 import Data.Product as Product
 open Product using (Σ; _,_; ∃; ∃-syntax; _×_)
 open Σ using (proj₁ ; proj₂)
@@ -632,15 +635,12 @@ find-recons {P = P} {x} any px = px
 -- dom-lemma: If inj u₁ is the first reconstruction of the first pdi in pdU[l,c],
 -- and v₁ has a c-word different from c∷flat u₁, then l ⊢ inj u₁ > v₁.
 -- extract-Recons: Extract the pdi and membership proof from Any (Recons v₁) pdis.
--- compiled but not in used
-{-
 extract-Recons : ∀ {r c v₁} {pdis : List (PDInstance r c)}
   → Any (Recons {r} {c} v₁) pdis
   → ∃ λ pdi → pdi ∈ pdis × Recons v₁ pdi
 extract-Recons (here recons-v₁) = _ , here refl , recons-v₁
 extract-Recons (there v₁∈pdis) with extract-Recons v₁∈pdis
 ... | pdi , pdi∈ , recons-v₁ = pdi , there pdi∈ , recons-v₁
--} 
 
 
 -- ------ >-wellfounded lemma ----------------------
@@ -2494,6 +2494,22 @@ mutual
       pdi≡left : pdi ≡ pdinstance-left pdil
       pdi≡left = proj₂ (proj₂ (first-inhabit-++-just-left-pdi c∷w∈l pdi eq))
 
+  -- Lifting the order pdi-src pdi ⊢ u ≥ u' to l ● r when pdi ≡ pdi'.
+  -- Used in the first-pdU-accept-w-isMax-●-no case.
+  ≥-max-pdi≡-helper : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
+    → ( pdi : PDInstance (l ● r ` loc) c )
+    → ( u : U (pdi-src pdi) )
+    → ( u-max : ≥-Max {pdi-src pdi} w u )
+    → ( max-pdi : ≥-Max-Preserve-Local pdi )
+    → ( v : U (l ● r ` loc) )
+    → ( u' : U (pdi-src pdi) )
+    → ( pdi-u'≡v : pdi-inj pdi u' ≡ v )
+    → ( flat-u'≡w : proj₁ (flat {pdi-src pdi} u') ≡ w )
+    → (l ● r ` loc) ⊢ pdi-inj pdi u ≥ v
+  ≥-max-pdi≡-helper {l} {r} {loc} {c} {w} pdi u (≥-max .w .u flat-u≡w ev) (≥-max-pres-local f) v u' pdi-u'≡v flat-u'≡w =
+    let u-max' = subst (λ x → ≥-Max {pdi-src pdi} x u) (sym flat-u≡w) (≥-max w u flat-u≡w ev)
+    in subst (λ x → (l ● r ` loc) ⊢ pdi-inj pdi u ≥ x) pdi-u'≡v (f u u-max' u' (ev u' flat-u'≡w))
+
   -- Helper for ● case, ¬ε∈l
   first-pdU-accept-w-isMax-●-no : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( ¬ε∈l : ¬ ε∈ l )
@@ -2502,10 +2518,42 @@ mutual
     → ( pdi : PDInstance (l ● r ` loc) c)
     → (first-inhabit (l ● r ` loc) c w  (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ])) ≡ just pdi
     → ≥-Max-PDInstance {l ● r ` loc} {c} w pdi
-  first-pdU-accept-w-isMax-●-no ¬ε∈l w c∷w∈● pdi eq = {!!}
-    -- TODO: Show pdi ≡ pdinstance-fst pdil for some pdil : PDInstance l c
-    -- Then use first-pdU-accept-w-isMax {l} {c} (w' ∷ _) ... pdil eq-l
-    -- where w' ∷ _ is the split of c∷w across l and r.
+  first-pdU-accept-w-isMax-●-no {l} {r} {loc} {c} ¬ε∈l w c∷w∈● pdi@(pdinstance {p} .{l ● r ` loc} .{c} inj s-ev) eq with ε∈? l in ε∈?l-eq
+  ... | yes ε∈l = ⊥-elim (¬ε∈l ε∈l)
+  ... | no ¬ε∈l' =
+    let pdi∈ = proj₁ (first-inhabit-just-∈ (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ]) pdi eq)
+        w∈src = proj₂ (first-inhabit-just-∈ (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ]) pdi eq)
+        u = maximum (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈src)
+        flat-u≡w = maximum-flat (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈src) (parseAll-all-sound {p} {w})
+        flat-inj-u≡c∷w : proj₁ (flat (pdi-inj pdi u)) ≡ c ∷ w
+        flat-inj-u≡c∷w = trans (s-ev u) (cong (c ∷_) flat-u≡w)
+        u-max : ≥-Max {p} w u
+        u-max = ≥-max w u flat-u≡w (λ v' flat-v'≡w → maximum-≥-all (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈src) v' (parseAll-complete {p} {w} v' flat-v'≡w))
+        μ-w = u-max
+        max-pres-pdis = ≥-Max-Preserve-Local-map-fst pdU[ l , c ] pdU-bijective (pdU-preseve-local {l} {c})
+        max-pdi = All.lookup max-pres-pdis pdi∈
+        sorted = ExtendedOrder.map-fst-ex-sorted pdU[ l , c ] (pdU-sorted {l} {c})
+        μ-c∷w = ≥-max (c ∷ w) (pdi-inj pdi u) flat-inj-u≡c∷w λ v flat-v≡c∷w →
+          let v-recons = subst (λ xs → Any (Recons v) xs) (trans (cong pdU● ε∈?l-eq) (pdU●-no ¬ε∈l')) (pdU-complete v flat-v≡c∷w)
+          in case extract-Recons v-recons of λ where
+            (pdi'@(pdinstance {p'} .{l ● r ` loc} .{c} inj' s-ev') , pdi'∈ , recons .v (w'∈ , pdi'-u'≡v)) →
+              let u' = unflat w'∈
+                  flat-u'≡w : proj₁ (flat {p'} u') ≡ w
+                  flat-u'≡w = sym (proj₂ (∷-injective (trans (sym flat-v≡c∷w) (trans (cong proj₁ (cong flat (sym pdi'-u'≡v))) (s-ev' u')))))
+                  w'≡w : _ ≡ w
+                  w'≡w = trans (sym (cong proj₁ (flat∘unflat {p'} w'∈))) flat-u'≡w
+                  w∈src' : w ∈⟦ p' ⟧
+                  w∈src' = subst (λ x → x ∈⟦ p' ⟧) w'≡w w'∈
+                  pdi≡or> = first-inhabit-just-first (List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ]) pdi eq pdi' pdi'∈ w∈src' sorted
+              in case pdi≡or> of λ where
+                (inj₂ pdi>pdi') →
+                  inj₁ (case pdi>pdi' of λ where
+                    (>-pdi _ _ ev) → ev (pdi-inj pdi u) v
+                      (recons (pdi-inj pdi u) (proj₂ (flat {p} u) , cong (pdi-inj pdi) (unflat∘proj₂∘flat {p} {u})))
+                      (recons v (w'∈ , pdi'-u'≡v)))
+                (inj₁ pdi≡pdi') → case pdi≡pdi' of λ where
+                  refl → ≥-max-pdi≡-helper pdi u u-max max-pdi v u' pdi'-u'≡v flat-u'≡w
+    in ≥-max-pdi u w μ-w μ-c∷w
 
   -- Helper for ● case, ε∈l
   first-pdU-accept-w-isMax-●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char }

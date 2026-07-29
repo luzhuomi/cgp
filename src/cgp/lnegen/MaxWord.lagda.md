@@ -1207,6 +1207,12 @@ pdi-src (pdinstance {p} {r} {c} inj sound-ev) = p
 pdi-inj : ∀ { r : RE } { c : Char } → ( g : PDInstance r c ) → U (pdi-src g) → U r
 pdi-inj (pdinstance {p} {r} {c} inj sound-ev) = inj
 
+pdi*-src : ∀ { r : RE } { pref : List Char } → PDInstance* r pref → RE
+pdi*-src (pdinstance* {p} {r} {pref} inj s-ev) = p
+
+pdi*-inj : ∀ { r : RE } { pref : List Char } → ( pdi* : PDInstance* r pref ) → U (pdi*-src pdi*) → U r
+pdi*-inj (pdinstance* {p} {r} {pref} inj s-ev) = inj
+
 
 mutual
   first-inhabit-cons : ∀ { r : RE } { c : Char } { w : List Char }
@@ -2751,6 +2757,10 @@ mutual
     in subst (λ x → ≥-Max [] x) (sym u≡e) (+[]-mkAllEmptyU-first-max l r loc ε∈l+r e es eq-mk)
 
   -- these functions can be moved to Utils
+  map-id : ∀ {A : Set} (xs : List A) → List.map (λ x → x) xs ≡ xs
+  map-id [] = refl
+  map-id (x ∷ xs) = cong (x ∷_) (map-id xs)
+
   map-cong : ∀ {A B : Set} {f g : A → B} {xs : List A}
     → (∀ x → f x ≡ g x)
     → List.map f xs ≡ List.map g xs
@@ -2803,6 +2813,69 @@ mutual
   concatMap-++-distrib f xs ys =
     trans (cong List.concat (map-++-distrib f xs ys))
           (concat-++ (List.map f xs) (List.map f ys))
+
+  -- pdUMany-aux distributes over list concatenation
+  pdUMany-aux-++-distrib : ∀ {r : RE} {pref : List Char} (w : List Char) (pdis₁ pdis₂ : List (PDInstance* r pref))
+    → pdUMany-aux {r} {pref} w (pdis₁ ++ pdis₂)
+      ≡ pdUMany-aux {r} {pref} w pdis₁ ++ pdUMany-aux {r} {pref} w pdis₂
+  pdUMany-aux-++-distrib {r} {pref} [] pdis₁ pdis₂ rewrite (++-identityʳ pref) = refl
+  pdUMany-aux-++-distrib {r} {pref} (c ∷ cs) pdis₁ pdis₂ =
+    let adv₁ = List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis₁
+        adv₂ = List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis₂
+        adv-eq = concatMap-++-distrib (advance-pdi*-with-c {r} {pref} {c}) pdis₁ pdis₂
+    in trans (cong (pdUMany-aux {r} {pref ∷ʳ c} cs) adv-eq)
+             (pdUMany-aux-++-distrib {r} {pref ∷ʳ c} cs adv₁ adv₂)
+
+  -- parseAll[ p , [] ] = buildU (root pdi*)
+  parseAll-[]≡buildU-root : ∀ {p : RE} → parseAll[ p , [] ] ≡ buildU (pdinstance* {p} {p} {[]} (λ u → u) (λ u → refl))
+  parseAll-[]≡buildU-root {p} = ++-identityʳ _
+
+  -- buildU pdi* = map inj (buildU root-p)  (both check ε∈? p)
+  buildU-≡-map-inj-buildU-root : ∀ {p r : RE} {pref : List Char} (inj : U p → U r) (s-ev : ∀ u → proj₁ (flat {r} (inj u)) ≡ pref ++ proj₁ (flat {p} u))
+    → buildU (pdinstance* {p} {r} {pref} inj s-ev) ≡ List.map inj (buildU (pdinstance* {p} {p} {[]} (λ u → u) (λ u → refl)))
+  buildU-≡-map-inj-buildU-root {p} inj s-ev with ε∈? p
+  ... | yes ε∈p = map-∘-eq (λ u → u) inj (mkAllEmptyU ε∈p)
+  ... | no ¬ε∈p = refl
+
+  -- Base case: buildU on a single pdi* equals map inj (parseAll[src, []])
+  buildU-≡-map-inj-parseAll-[] : ∀ {r : RE} {pref : List Char} (pdi* : PDInstance* r pref)
+    → buildU pdi* ≡ List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , [] ])
+  buildU-≡-map-inj-parseAll-[] (pdinstance* {p} {r} {pref} inj s-ev) =
+    trans (buildU-≡-map-inj-buildU-root inj s-ev)
+          (cong (List.map inj) (sym (parseAll-[]≡buildU-root {p})))
+
+  -- Postulated step: connects the IH result to the goal for c ∷ cs
+  postulate
+    concatMap-buildU-pdUMany-aux-lemma-step :
+      ∀ {r : RE} {pref : List Char} (c : Char) (cs : List Char) (pdis : List (PDInstance* r pref))
+      → List.concatMap (λ pdi*' → List.map (pdi*-inj pdi*') (parseAll[ pdi*-src pdi*' , cs ]))
+          (List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+      ≡ List.concatMap (λ pdi* → List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , c ∷ cs ])) pdis
+
+  -- Key lemma: concatMap buildU (pdUMany-aux w pdis)
+  --   = concatMap (λ pdi* → map (pdi*-inj pdi*) (parseAll[src pdi*, w])) pdis
+  concatMap-buildU-pdUMany-aux-lemma :
+    ∀ {r : RE} {pref : List Char} (w : List Char) (pdis : List (PDInstance* r pref))
+    → List.concatMap buildU (pdUMany-aux {r} {pref} w pdis)
+      ≡ List.concatMap (λ pdi* → List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , w ])) pdis
+  concatMap-buildU-pdUMany-aux-lemma {r} {pref} [] pdis rewrite (++-identityʳ pref) = lemma-[] pdis
+    where
+      lemma-[] : (pdis : List (PDInstance* r pref))
+        → List.concatMap buildU pdis
+          ≡ List.concatMap (λ pdi* → List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , [] ])) pdis
+      lemma-[] [] = refl
+      lemma-[] (pdi* ∷ pdis') = cong₂ _++_ (buildU-≡-map-inj-parseAll-[] pdi*) (lemma-[] pdis')
+  concatMap-buildU-pdUMany-aux-lemma {r} {pref} (c ∷ cs) pdis =
+    let pdis' = List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis
+        ih = concatMap-buildU-pdUMany-aux-lemma {r} {pref ∷ʳ c} cs pdis'
+    in
+      begin
+        List.concatMap buildU (pdUMany-aux {r} {pref ∷ʳ c} cs pdis')
+      ≡⟨ ih ⟩
+        List.concatMap (λ pdi*' → List.map (pdi*-inj pdi*') (parseAll[ pdi*-src pdi*' , cs ])) pdis'
+      ≡⟨ concatMap-buildU-pdUMany-aux-lemma-step c cs pdis ⟩
+        List.concatMap (λ pdi* → List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , c ∷ cs ])) pdis
+      ∎
 
 
   lift-pdi*-left : ∀ {l r loc} {pref : List Char}
@@ -3264,6 +3337,49 @@ mutual
       (inj₂ (uᵣ , left≡[] , _ , u≡RightUuᵣ , head-right≡just-uᵣ)) →
         +c∷w-aux-right l r loc c w u uᵣ left≡[] u≡RightUuᵣ head-right≡just-uᵣ
 
+  ●[]-aux : ∀ (l r : RE) (loc : ℕ) (w∈● : [] ∈⟦ l ● r ` loc ⟧) (u : U (l ● r ` loc))
+    → head (List.concatMap buildU pdUMany[ l ● r ` loc , [] ]) ≡ just u
+    → ≥-Max [] u
+  ●[]-aux l r loc w∈● u eq with ε∈? (l ● r ` loc)
+  ... | no ¬ε∈ = ⊥-elim (¬ε∈ ([]∈⟦r⟧→ε∈r w∈●))
+  ... | yes ε∈l●r =
+    let (e , es , eq-mk) = head-tail (mkAllEmptyU≢[] ε∈l●r)
+        eq' : just e ≡ just u
+        eq' = subst (λ xs → head (List.map (λ u₁ → u₁) xs ++ []) ≡ just u) eq-mk eq
+        u≡e : u ≡ e
+        u≡e = just-injective (sym eq')
+        sound = subst (All (Flat-[] (l ● r ` loc))) eq-mk (mkAllEmptyU-sound ε∈l●r)
+        e-flat = flat-[]-proj (All.head sound)
+        sorted = subst (>-sorted {l ● r ` loc}) eq-mk (mkAllEmptyU-sorted ε∈l●r)
+        max-e = mkAllEmptyU-first-≥-Max ε∈l●r e-flat eq-mk sorted
+    in subst (λ x → ≥-Max [] x) (sym u≡e) max-e
+
+  -- Projection from ≥-Max-PDInstance
+  ≥-Max-PDInstance-u : ∀ {r c w} {pdi : PDInstance r c} → ≥-Max-PDInstance {r} {c} w pdi → U (pdi-src pdi)
+  ≥-Max-PDInstance-u (≥-max-pdi u _ _ _) = u
+
+  -- Extract ≥-Max (c ∷ w) from ≥-Max-PDInstance
+  ≥-Max-PDInstance→≥-Max-c∷w : ∀ {r c w pdi} → (max-pdi : ≥-Max-PDInstance {r} {c} w pdi)
+    → (u : U r) → u ≡ pdi-inj pdi (≥-Max-PDInstance-u max-pdi) → ≥-Max (c ∷ w) u
+  ≥-Max-PDInstance→≥-Max-c∷w {w = w} {pdi = pdi} (≥-max-pdi u .w _ μ-c∷w) .(pdi-inj pdi u) refl = μ-c∷w
+
+  -- Head connection postulate
+  postulate
+    head-pdUMany→first-inhabit-max : ∀ (r : RE) (c : Char) (w : List Char) (u : U r)
+      → (eq : head (List.concatMap buildU pdUMany[ r , c ∷ w ]) ≡ just u)
+      → ∃[ pdi ] (first-inhabit r c w pdU[ r , c ] ≡ just pdi
+        × ∃[ uₘ ] (u ≡ pdi-inj pdi uₘ
+          × (∀ (max-pdi : ≥-Max-PDInstance {r} {c} w pdi) → uₘ ≡ ≥-Max-PDInstance-u max-pdi)))
+
+  ●c∷w-aux : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char) (w∈● : (c ∷ w) ∈⟦ l ● r ` loc ⟧) (u : U (l ● r ` loc))
+    → head (List.concatMap buildU pdUMany[ l ● r ` loc , c ∷ w ]) ≡ just u
+    → ≥-Max (c ∷ w) u
+  ●c∷w-aux l r loc c w w∈● u eq =
+    let (pdi , fi-eq , uₘ , u≡inj-uₘ , uₘ≡max) = head-pdUMany→first-inhabit-max (l ● r ` loc) c w u eq
+        max-pdi = first-pdU-accept-w-isMax {l ● r ` loc} {c} w w∈● pdi fi-eq
+    in ≥-Max-PDInstance→≥-Max-c∷w max-pdi u
+         (trans u≡inj-uₘ (cong (pdi-inj pdi) (uₘ≡max max-pdi)))
+
   first-concatMap-buildU-pdUMany-isMax : ∀ ( r : RE )
     → ( w : List Char )
     → ( w ∈⟦ r ⟧  )
@@ -3278,7 +3394,8 @@ mutual
     +[]-aux l r loc w∈+ u eq
   first-concatMap-buildU-pdUMany-isMax (l + r ` loc) (c ∷ w) w∈+ u eq =
     +c∷w-aux l r loc c w w∈+ u eq
-  first-concatMap-buildU-pdUMany-isMax (l ● r ` loc) w w∈● u eq = {!!}
+  first-concatMap-buildU-pdUMany-isMax (l ● r ` loc) [] w∈● u eq = ●[]-aux l r loc w∈● u eq
+  first-concatMap-buildU-pdUMany-isMax (l ● r ` loc) (c ∷ w) w∈● u eq = ●c∷w-aux l r loc c w w∈● u eq
   first-concatMap-buildU-pdUMany-isMax (r' * nε ` loc) w w∈* u eq = {!!}
 ```
 

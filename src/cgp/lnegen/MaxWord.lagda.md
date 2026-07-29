@@ -2858,27 +2858,19 @@ mutual
     → (pdi* : PDInstance* r pref)
     → List.concatMap buildU (advance-pdi*-with-c {l + r ` loc} {pref} {c} (lift-pdi*-right {l} {r} {loc} {pref} pdi*))
       ≡ List.map RightU (List.concatMap buildU (advance-pdi*-with-c {r} {pref} {c} pdi*))
-  concatMap-buildU-advance-lift-pdi*-right {l} {r} {loc} {pref} {c} (pdinstance* {d} {r} {pref} inj s-ev) = {!!} -- commented by Kenny, once concatMap-buildU-advance-lift-pdi*-left is proven. this proof is similar
-    {-
+  concatMap-buildU-advance-lift-pdi*-right {l} {r} {loc} {pref} {c} (pdinstance* {d} {r} {pref} inj s-ev) =
     begin
       List.concatMap buildU
-        (List.map (compose-pdi-with {l + r ` loc} {d} {pref} {c} (RightU ∘ inj) (λ u → refl)) pdU[ d , c ])
-    ≡⟨ refl ⟩
-      List.concatMap (λ pdi' → buildU (compose-pdi-with {l + r ` loc} {d} {pref} {c} (RightU ∘ inj) (λ u → refl) pdi')) pdU[ d , c ]
-    ≡⟨ map-cong (λ pdi' → buildU-compose-right inj s-ev pdi') ⟩
+        (List.map (compose-pdi-with {l + r ` loc} {d} {pref} {c} (RightU ∘ inj) s-ev) pdU[ d , c ])
+    ≡⟨ sym (concatMap-∘-eq (compose-pdi-with (λ x → RightU {l} {r} {loc} (inj x)) s-ev) buildU pdU[ d , c ]) ⟩
+      List.concatMap (λ pdi' → buildU (compose-pdi-with {l + r ` loc} {d} {pref} {c} (RightU ∘ inj) s-ev pdi')) pdU[ d , c ]
+    ≡⟨ cong List.concat (map-cong {xs = pdU[ d , c ]} (λ pdi' → buildU-compose-right inj s-ev pdi')) ⟩
       List.concatMap (λ pdi' → List.map RightU (buildU (compose-pdi-with {r} {d} {pref} {c} inj s-ev pdi'))) pdU[ d , c ]
     ≡⟨ concatMap-map-commute RightU (λ pdi' → buildU (compose-pdi-with {r} {d} {pref} {c} inj s-ev pdi')) pdU[ d , c ] ⟩
       List.map RightU (List.concatMap (λ pdi' → buildU (compose-pdi-with {r} {d} {pref} {c} inj s-ev pdi')) pdU[ d , c ])
-    ≡⟨ refl ⟩
+    ≡⟨ cong (List.map RightU) (concatMap-∘-eq (compose-pdi-with inj s-ev) buildU pdU[ d , c ]) ⟩
       List.map RightU (List.concatMap buildU (advance-pdi*-with-c {r} {pref} {c} (pdinstance* inj s-ev)))
-    ∎  
-    where
-      concatMap-map-commute : ∀ {A B C : Set} (f : B → C) (g : A → List B) (xs : List A)
-        → List.concatMap (List.map f ∘ g) xs ≡ List.map f (List.concatMap g xs)
-      concatMap-map-commute f g [] = refl
-      concatMap-map-commute f g (x ∷ xs) =
-        cong₂ _++_ refl (concatMap-map-commute f g xs)
-    -} 
+    ∎ 
   concatMap-buildU-pdUMany-+ : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char)
     → List.concatMap buildU pdUMany[ l + r ` loc , c ∷ w ]
     ≡ List.map LeftU (List.concatMap buildU pdUMany[ l , c ∷ w ])

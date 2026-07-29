@@ -2784,6 +2784,26 @@ mutual
         trans (cong (List.map f (g x) ++_) (concatMap-map-commute f g xs))
           (sym (map-++-distrib f (g x) (List.concatMap g xs)))
 
+  concatMap-cong : ∀ {A B : Set} {f g : A → List B} {xs : List A}
+    → (∀ x → f x ≡ g x)
+    → List.concatMap f xs ≡ List.concatMap g xs
+  concatMap-cong {xs = []} _ = refl
+  concatMap-cong {A} {B} {f} {g} {xs = x ∷ xs} h =
+    cong₂ _++_ (h x) (concatMap-cong {A} {B} {f} {g} {xs = xs} h)
+
+  concat-++ : ∀ {A : Set} (xs ys : List (List A))
+    → List.concat (xs ++ ys) ≡ List.concat xs ++ List.concat ys
+  concat-++ [] ys = refl
+  concat-++ (x ∷ xs) ys =
+    trans (cong (x ++_) (concat-++ xs ys))
+          (sym (++-assoc x (List.concat xs) (List.concat ys)))
+
+  concatMap-++-distrib : ∀ {A B : Set} (f : A → List B) (xs ys : List A)
+    → List.concatMap f (xs ++ ys) ≡ List.concatMap f xs ++ List.concatMap f ys
+  concatMap-++-distrib f xs ys =
+    trans (cong List.concat (map-++-distrib f xs ys))
+          (concat-++ (List.map f xs) (List.map f ys))
+
 
   lift-pdi*-left : ∀ {l r loc} {pref : List Char}
     → PDInstance* l pref
@@ -2799,10 +2819,17 @@ mutual
 
 
 
-  -- Comments by Kenny: Do we need this lemma? 
   buildU-lift-pdi*-left : ∀ {l r loc} {pref : List Char} (pdi* : PDInstance* l pref)
     → buildU (lift-pdi*-left {l} {r} {loc} {pref} pdi*) ≡ List.map LeftU (buildU pdi*)
-  buildU-lift-pdi*-left {l} {r} {loc} {pref} pdi* = {!!}
+  buildU-lift-pdi*-left (pdinstance* {p} .{_} .{_} inj s-ev) with ε∈? p
+  ... | yes ε∈p = map-∘-eq inj LeftU (mkAllEmptyU ε∈p)
+  ... | no ¬ε∈p = refl
+
+  buildU-lift-pdi*-right : ∀ {l r loc} {pref : List Char} (pdi* : PDInstance* r pref)
+    → buildU (lift-pdi*-right {l} {r} {loc} {pref} pdi*) ≡ List.map RightU (buildU pdi*)
+  buildU-lift-pdi*-right (pdinstance* {p} .{_} .{_} inj s-ev) with ε∈? p
+  ... | yes ε∈p = map-∘-eq inj RightU (mkAllEmptyU ε∈p)
+  ... | no ¬ε∈p = refl
 
   buildU-compose-left :
     ∀ {l r loc} {pref : List Char} {c : Char} {d : RE}
@@ -2871,11 +2898,224 @@ mutual
     ≡⟨ cong (List.map RightU) (concatMap-∘-eq (compose-pdi-with inj s-ev) buildU pdU[ d , c ]) ⟩
       List.map RightU (List.concatMap buildU (advance-pdi*-with-c {r} {pref} {c} (pdinstance* inj s-ev)))
     ∎ 
+  compose-pdi-with-lift-pdi*-left-eq : ∀ {l r loc} {pref : List Char} {c : Char} {d : RE}
+    (inj : U d → U l) (s-ev : ∀ u → proj₁ (flat {l} (inj u)) ≡ pref ++ proj₁ (flat {d} u))
+    (pdi : PDInstance d c)
+    → compose-pdi-with {l + r ` loc} {d} {pref} {c} (LeftU ∘ inj) s-ev pdi
+      ≡ lift-pdi*-left {l} {r} {loc} {pref ∷ʳ c} (compose-pdi-with {l} {d} {pref} {c} inj s-ev pdi)
+  compose-pdi-with-lift-pdi*-left-eq inj s-ev (pdinstance f s-ev-p) = refl
+
+  compose-pdi-with-lift-pdi*-right-eq : ∀ {l r loc} {pref : List Char} {c : Char} {d : RE}
+    (inj : U d → U r) (s-ev : ∀ u → proj₁ (flat {r} (inj u)) ≡ pref ++ proj₁ (flat {d} u))
+    (pdi : PDInstance d c)
+    → compose-pdi-with {l + r ` loc} {d} {pref} {c} (RightU ∘ inj) s-ev pdi
+      ≡ lift-pdi*-right {l} {r} {loc} {pref ∷ʳ c} (compose-pdi-with {r} {d} {pref} {c} inj s-ev pdi)
+  compose-pdi-with-lift-pdi*-right-eq inj s-ev (pdinstance f s-ev-p) = refl
+
+  advance-lift-pdi*-left-eq : ∀ {l r loc} {pref : List Char} (c : Char)
+    (pdi* : PDInstance* l pref)
+    → advance-pdi*-with-c {l + r ` loc} {pref} {c} (lift-pdi*-left {l} {r} {loc} {pref} pdi*)
+      ≡ List.map (lift-pdi*-left {l} {r} {loc} {pref ∷ʳ c}) (advance-pdi*-with-c {l} {pref} {c} pdi*)
+  advance-lift-pdi*-left-eq {l} {r} {loc} {pref} c (pdinstance* {d} inj s-ev) =
+    begin
+      advance-pdi*-with-c {l + r ` loc} {pref} {c} (lift-pdi*-left {l} {r} {loc} {pref} (pdinstance* inj s-ev))
+    ≡⟨ refl ⟩
+      List.map (compose-pdi-with {l + r ` loc} {d} {pref} {c} (λ x → LeftU {l} {r} {loc} (inj x)) s-ev) pdU[ d , c ]
+    ≡⟨ map-cong {xs = pdU[ d , c ]} (λ pdi → compose-pdi-with-lift-pdi*-left-eq inj s-ev pdi) ⟩
+      List.map (lift-pdi*-left {l} {r} {loc} {pref ∷ʳ c} ∘ compose-pdi-with {l} {d} {pref} {c} inj s-ev) pdU[ d , c ]
+    ≡⟨ map-∘-eq (compose-pdi-with {l} {d} {pref} {c} inj s-ev) (lift-pdi*-left {l} {r} {loc} {pref ∷ʳ c}) pdU[ d , c ] ⟩
+      List.map (lift-pdi*-left {l} {r} {loc} {pref ∷ʳ c}) (advance-pdi*-with-c {l} {pref} {c} (pdinstance* inj s-ev))
+    ∎
+
+  advance-lift-pdi*-right-eq : ∀ {l r loc} {pref : List Char} (c : Char)
+    (pdi* : PDInstance* r pref)
+    → advance-pdi*-with-c {l + r ` loc} {pref} {c} (lift-pdi*-right {l} {r} {loc} {pref} pdi*)
+      ≡ List.map (lift-pdi*-right {l} {r} {loc} {pref ∷ʳ c}) (advance-pdi*-with-c {r} {pref} {c} pdi*)
+  advance-lift-pdi*-right-eq {l} {r} {loc} {pref} c (pdinstance* {d} inj s-ev) =
+    begin
+      advance-pdi*-with-c {l + r ` loc} {pref} {c} (lift-pdi*-right {l} {r} {loc} {pref} (pdinstance* inj s-ev))
+    ≡⟨ refl ⟩
+      List.map (compose-pdi-with {l + r ` loc} {d} {pref} {c} (λ x → RightU {l} {r} {loc} (inj x)) s-ev) pdU[ d , c ]
+    ≡⟨ map-cong {xs = pdU[ d , c ]} (λ pdi → compose-pdi-with-lift-pdi*-right-eq inj s-ev pdi) ⟩
+      List.map (lift-pdi*-right {l} {r} {loc} {pref ∷ʳ c} ∘ compose-pdi-with {r} {d} {pref} {c} inj s-ev) pdU[ d , c ]
+    ≡⟨ map-∘-eq (compose-pdi-with {r} {d} {pref} {c} inj s-ev) (lift-pdi*-right {l} {r} {loc} {pref ∷ʳ c}) pdU[ d , c ] ⟩
+      List.map (lift-pdi*-right {l} {r} {loc} {pref ∷ʳ c}) (advance-pdi*-with-c {r} {pref} {c} (pdinstance* inj s-ev))
+    ∎
+
+  concatMap-advance-lift-pdi*-left-eq : ∀ {l r loc} {pref : List Char} (c : Char)
+    (pdis-l : List (PDInstance* l pref))
+    → List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c}) (List.map lift-pdi*-left pdis-l)
+      ≡ List.map lift-pdi*-left (List.concatMap (advance-pdi*-with-c {l} {pref} {c}) pdis-l)
+  concatMap-advance-lift-pdi*-left-eq c [] = refl
+  concatMap-advance-lift-pdi*-left-eq {l} {r} {loc} {pref} c (pdi* ∷ pdis-l) =
+    trans
+      (cong₂ _++_ (advance-lift-pdi*-left-eq c pdi*) (concatMap-advance-lift-pdi*-left-eq c pdis-l))
+      (sym (map-++-distrib lift-pdi*-left
+             (advance-pdi*-with-c {l} {pref} {c} pdi*)
+             (List.concatMap (advance-pdi*-with-c {l} {pref} {c}) pdis-l)))
+
+  concatMap-advance-lift-pdi*-right-eq : ∀ {l r loc} {pref : List Char} (c : Char)
+    (pdis-r : List (PDInstance* r pref))
+    → List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c}) (List.map lift-pdi*-right pdis-r)
+      ≡ List.map lift-pdi*-right (List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis-r)
+  concatMap-advance-lift-pdi*-right-eq c [] = refl
+  concatMap-advance-lift-pdi*-right-eq {l} {r} {loc} {pref} c (pdi* ∷ pdis-r) =
+    trans
+      (cong₂ _++_ (advance-lift-pdi*-right-eq c pdi*) (concatMap-advance-lift-pdi*-right-eq c pdis-r))
+      (sym (map-++-distrib lift-pdi*-right
+             (advance-pdi*-with-c {r} {pref} {c} pdi*)
+             (List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis-r)))
+
+  compose-id-pdinstance-left-eq : ∀ {l r : RE} {loc : ℕ} {c : Char} (pdi : PDInstance l c)
+    → compose-pdi-with {l + r ` loc} {_} {[]} {c} (λ u → u) (λ u → refl) (pdinstance-left {l} {r} {loc} {c} pdi)
+      ≡ lift-pdi*-left {l} {r} {loc} {_}
+          (compose-pdi-with {l} {_} {[]} {c} (λ u → u) (λ u → refl) pdi)
+  compose-id-pdinstance-left-eq (pdinstance f s-ev) = refl
+
+  compose-id-pdinstance-right-eq : ∀ {l r : RE} {loc : ℕ} {c : Char} (pdi : PDInstance r c)
+    → compose-pdi-with {l + r ` loc} {_} {[]} {c} (λ u → u) (λ u → refl) (pdinstance-right {l} {r} {loc} {c} pdi)
+      ≡ lift-pdi*-right {l} {r} {loc} {_}
+          (compose-pdi-with {r} {_} {[]} {c} (λ u → u) (λ u → refl) pdi)
+  compose-id-pdinstance-right-eq (pdinstance f s-ev) = refl
+
+  map-compose-id-left : ∀ {l r : RE} {loc : ℕ} {c : Char}
+    → List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
+        (List.map (pdinstance-left {l} {r} {loc} {c}) pdU[ l , c ])
+      ≡ List.map (lift-pdi*-left {l} {r} {loc} {_})
+          (List.map (compose-pdi-with {l} {l} {[]} {c} (λ u → u) (λ u → refl)) pdU[ l , c ])
+  map-compose-id-left {l} {r} {loc} {c} =
+    begin
+      List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
+        (List.map (pdinstance-left {l} {r} {loc} {c}) pdU[ l , c ])
+    ≡⟨ sym (map-∘-eq (pdinstance-left {l} {r} {loc} {c}) (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl)) pdU[ l , c ]) ⟩
+      List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl) ∘ pdinstance-left {l} {r} {loc} {c}) pdU[ l , c ]
+    ≡⟨ map-cong {xs = pdU[ l , c ]} (λ pdi → compose-id-pdinstance-left-eq {l} {r} {loc} {c} pdi) ⟩
+      List.map (lift-pdi*-left {l} {r} {loc} {_} ∘ compose-pdi-with {l} {l} {[]} {c} (λ u → u) (λ u → refl)) pdU[ l , c ]
+    ≡⟨ map-∘-eq (compose-pdi-with {l} {l} {[]} {c} (λ u → u) (λ u → refl)) (lift-pdi*-left {l} {r} {loc} {_}) pdU[ l , c ] ⟩
+      List.map (lift-pdi*-left {l} {r} {loc} {_})
+        (List.map (compose-pdi-with {l} {l} {[]} {c} (λ u → u) (λ u → refl)) pdU[ l , c ])
+    ∎
+
+  map-compose-id-right : ∀ {l r : RE} {loc : ℕ} {c : Char}
+    → List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
+        (List.map (pdinstance-right {l} {r} {loc} {c}) pdU[ r , c ])
+      ≡ List.map (lift-pdi*-right {l} {r} {loc} {_})
+          (List.map (compose-pdi-with {r} {r} {[]} {c} (λ u → u) (λ u → refl)) pdU[ r , c ])
+  map-compose-id-right {l} {r} {loc} {c} =
+    begin
+      List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
+        (List.map (pdinstance-right {l} {r} {loc} {c}) pdU[ r , c ])
+    ≡⟨ sym (map-∘-eq (pdinstance-right {l} {r} {loc} {c}) (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl)) pdU[ r , c ]) ⟩
+      List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl) ∘ pdinstance-right {l} {r} {loc} {c}) pdU[ r , c ]
+    ≡⟨ map-cong {xs = pdU[ r , c ]} (λ pdi → compose-id-pdinstance-right-eq {l} {r} {loc} {c} pdi) ⟩
+      List.map (lift-pdi*-right {l} {r} {loc} {_} ∘ compose-pdi-with {r} {r} {[]} {c} (λ u → u) (λ u → refl)) pdU[ r , c ]
+    ≡⟨ map-∘-eq (compose-pdi-with {r} {r} {[]} {c} (λ u → u) (λ u → refl)) (lift-pdi*-right {l} {r} {loc} {_}) pdU[ r , c ] ⟩
+      List.map (lift-pdi*-right {l} {r} {loc} {_})
+        (List.map (compose-pdi-with {r} {r} {[]} {c} (λ u → u) (λ u → refl)) pdU[ r , c ])
+    ∎
+
+  concatMap-buildU-pdUMany-aux-+ : ∀ (l r : RE) (loc : ℕ) (pref : List Char) (cs : List Char)
+    (pdis-l : List (PDInstance* l pref)) (pdis-r : List (PDInstance* r pref))
+    (pdis+ : List (PDInstance* (l + r ` loc) pref))
+    → pdis+ ≡ List.map lift-pdi*-left pdis-l ++ List.map lift-pdi*-right pdis-r
+    → List.concatMap buildU (pdUMany-aux {l + r ` loc} {pref} cs pdis+)
+      ≡ List.map LeftU (List.concatMap buildU (pdUMany-aux {l} {pref} cs pdis-l))
+        ++ List.map RightU (List.concatMap buildU (pdUMany-aux {r} {pref} cs pdis-r))
+  concatMap-buildU-pdUMany-aux-+ l r loc pref [] pdis-l pdis-r pdis+ eq
+    rewrite ++-identityʳ pref =
+    begin
+      List.concatMap buildU pdis+
+    ≡⟨ cong (List.concatMap buildU) eq ⟩
+      List.concatMap buildU (List.map lift-pdi*-left pdis-l ++ List.map lift-pdi*-right pdis-r)
+    ≡⟨ concatMap-++-distrib buildU (List.map lift-pdi*-left pdis-l) (List.map lift-pdi*-right pdis-r) ⟩
+      List.concatMap buildU (List.map lift-pdi*-left pdis-l) ++ List.concatMap buildU (List.map lift-pdi*-right pdis-r)
+    ≡⟨ cong₂ _++_
+         (trans (sym (concatMap-∘-eq lift-pdi*-left buildU pdis-l))
+                (trans (concatMap-cong {xs = pdis-l} (buildU-lift-pdi*-left))
+                       (concatMap-map-commute LeftU buildU pdis-l)))
+         (trans (sym (concatMap-∘-eq lift-pdi*-right buildU pdis-r))
+                (trans (concatMap-cong {xs = pdis-r} (buildU-lift-pdi*-right))
+                       (concatMap-map-commute RightU buildU pdis-r))) ⟩
+      List.map LeftU (List.concatMap buildU pdis-l) ++ List.map RightU (List.concatMap buildU pdis-r)
+    ∎
+  concatMap-buildU-pdUMany-aux-+ l r loc pref (c ∷ cs) pdis-l pdis-r pdis+ eq =
+    let adv+ = List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c}) pdis+
+        adv-l = List.concatMap (advance-pdi*-with-c {l} {pref} {c}) pdis-l
+        adv-r = List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis-r
+        adv-eq : adv+ ≡ List.map lift-pdi*-left adv-l ++ List.map lift-pdi*-right adv-r
+        adv-eq =
+          begin
+            adv+
+          ≡⟨ cong (List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c})) eq ⟩
+            List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c})
+              (List.map lift-pdi*-left pdis-l ++ List.map lift-pdi*-right pdis-r)
+          ≡⟨ concatMap-++-distrib (advance-pdi*-with-c {l + r ` loc} {pref} {c})
+               (List.map lift-pdi*-left pdis-l) (List.map lift-pdi*-right pdis-r) ⟩
+            List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c}) (List.map lift-pdi*-left pdis-l)
+            ++ List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c}) (List.map lift-pdi*-right pdis-r)
+          ≡⟨ cong₂ _++_ (concatMap-advance-lift-pdi*-left-eq c pdis-l)
+                        (concatMap-advance-lift-pdi*-right-eq c pdis-r) ⟩
+            List.map lift-pdi*-left adv-l ++ List.map lift-pdi*-right adv-r
+          ∎
+    in concatMap-buildU-pdUMany-aux-+ l r loc (pref ∷ʳ c) cs adv-l adv-r adv+ adv-eq
+
   concatMap-buildU-pdUMany-+ : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char)
     → List.concatMap buildU pdUMany[ l + r ` loc , c ∷ w ]
     ≡ List.map LeftU (List.concatMap buildU pdUMany[ l , c ∷ w ])
       ++ List.map RightU (List.concatMap buildU pdUMany[ r , c ∷ w ])
-  concatMap-buildU-pdUMany-+ l r loc c w = {!!}
+  ++[]-distr : ∀ {A : Set} (xs ys : List A) → (xs ++ ys) ++ [] ≡ (xs ++ []) ++ (ys ++ [])
+  ++[]-distr xs ys =
+    begin
+      (xs ++ ys) ++ []
+    ≡⟨ ++-identityʳ (xs ++ ys) ⟩
+      xs ++ ys
+    ≡⟨ sym (cong (xs ++_) (++-identityʳ ys)) ⟩
+      xs ++ (ys ++ [])
+    ≡⟨ sym (++-assoc xs [] (ys ++ [])) ⟩
+      (xs ++ []) ++ (ys ++ [])
+    ∎
+
+  map-++[] : ∀ {A B : Set} (f : A → B) (xs : List A) → List.map f (xs ++ []) ≡ List.map f xs ++ []
+  map-++[] f xs = map-++-distrib f xs []
+
+  concatMap-buildU-pdUMany-+ l r loc c w =
+    let root-l = pdinstance* {l} {l} {[]} (λ u → u) (λ u → refl)
+        root-r = pdinstance* {r} {r} {[]} (λ u → u) (λ u → refl)
+        root+  = pdinstance* {l + r ` loc} {l + r ` loc} {[]} (λ u → u) (λ u → refl)
+        adv-l = List.concatMap (advance-pdi*-with-c {l} {[]} {c}) [ root-l ]
+        adv-r = List.concatMap (advance-pdi*-with-c {r} {[]} {c}) [ root-r ]
+        adv+  = List.concatMap (advance-pdi*-with-c {l + r ` loc} {[]} {c}) [ root+ ]
+        adv-l-reduced = List.map (compose-pdi-with {l} {l} {[]} {c} (λ u → u) (λ u → refl)) pdU[ l , c ]
+        adv-r-reduced = List.map (compose-pdi-with {r} {r} {[]} {c} (λ u → u) (λ u → refl)) pdU[ r , c ]
+        adv+-reduced = List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
+                       (List.map (pdinstance-left {l} {r} {loc} {c}) pdU[ l , c ] ++
+                        List.map (pdinstance-right {l} {r} {loc} {c}) pdU[ r , c ])
+        adv-reduced-eq : adv+-reduced ≡ List.map lift-pdi*-left adv-l-reduced ++ List.map lift-pdi*-right adv-r-reduced
+        adv-reduced-eq =
+          begin
+            adv+-reduced
+          ≡⟨ map-++-distrib (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
+               (List.map (pdinstance-left {l} {r} {loc} {c}) pdU[ l , c ])
+               (List.map (pdinstance-right {l} {r} {loc} {c}) pdU[ r , c ]) ⟩
+            List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl)) (List.map (pdinstance-left {l} {r} {loc} {c}) pdU[ l , c ])
+            ++ List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl)) (List.map (pdinstance-right {l} {r} {loc} {c}) pdU[ r , c ])
+          ≡⟨ cong₂ _++_ map-compose-id-left map-compose-id-right ⟩
+            List.map lift-pdi*-left adv-l-reduced ++ List.map lift-pdi*-right adv-r-reduced
+          ∎
+        adv-eq : adv+ ≡ List.map lift-pdi*-left adv-l ++ List.map lift-pdi*-right adv-r
+        adv-eq =
+          begin
+            adv+
+          ≡⟨ refl ⟩
+            adv+-reduced ++ []
+          ≡⟨ cong (_++ []) adv-reduced-eq ⟩
+            (List.map lift-pdi*-left adv-l-reduced ++ List.map lift-pdi*-right adv-r-reduced) ++ []
+          ≡⟨ ++[]-distr (List.map lift-pdi*-left adv-l-reduced) (List.map lift-pdi*-right adv-r-reduced) ⟩
+            (List.map lift-pdi*-left adv-l-reduced ++ []) ++ (List.map lift-pdi*-right adv-r-reduced ++ [])
+          ≡⟨ sym (cong₂ _++_ (map-++[] lift-pdi*-left adv-l-reduced) (map-++[] lift-pdi*-right adv-r-reduced)) ⟩
+            List.map lift-pdi*-left adv-l ++ List.map lift-pdi*-right adv-r
+          ∎
+    in concatMap-buildU-pdUMany-aux-+ l r loc ([] ∷ʳ c) w adv-l adv-r adv+ adv-eq
 
   head-map-LeftU-++-map-RightU : ∀ (l r : RE) (loc : ℕ) (left : List (U l)) (right : List (U r)) (u : U (l + r ` loc))
     → head (List.map LeftU left ++ List.map RightU right) ≡ just u
@@ -2886,6 +3126,128 @@ mutual
     inj₂ (y , refl , (λ ()) , sym (just-injective eq) , refl)
   head-map-LeftU-++-map-RightU l r loc (x ∷ xs) right u eq =
     inj₁ (x , (λ ()) , sym (just-injective eq) , refl)
+
+  head-just-∈ : ∀ {A : Set} {xs : List A} {x : A} → head xs ≡ just x → x ∈ xs
+  head-just-∈ {xs = []} ()
+  head-just-∈ {xs = x ∷ xs} refl = here refl
+
+  ∈[]-impossible : ∀ {A : Set} {x : A} → x ∈ [] → ⊥
+  ∈[]-impossible ()
+
+  decompose-+ : ∀ {l r : RE} {loc : ℕ} → U (l + r ` loc) → U l ⊎ U r
+  decompose-+ (LeftU u) = inj₁ u
+  decompose-+ (RightU v) = inj₂ v
+
+  +-elim-U : ∀ {l r : RE} {loc : ℕ} {P : U (l + r ` loc) → Set}
+    (f : (u : U l) → P (LeftU u))
+    (g : (v : U r) → P (RightU v))
+    (v : U (l + r ` loc))
+    → P v
+  +-elim-U f g (LeftU u) = f u
+  +-elim-U f g (RightU v) = g v
+
+  flat-LeftU-proj : ∀ {l r : RE} {loc : ℕ} (u : U l)
+    → proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ proj₁ (flat u)
+  flat-LeftU-proj u = refl
+
+  flat-RightU-proj : ∀ {l r : RE} {loc : ℕ} (u : U r)
+    → proj₁ (flat (RightU {l} {r} {loc} u)) ≡ proj₁ (flat u)
+  flat-RightU-proj u = refl
+
+  flat-LeftU-word : ∀ {l r : RE} {loc : ℕ} (v : U l) {w : List Char}
+    → proj₁ (flat (LeftU {l} {r} {loc} v)) ≡ w
+    → proj₁ (flat v) ≡ w
+  flat-LeftU-word v refl = refl
+
+  flat-RightU-word : ∀ {l r : RE} {loc : ℕ} (v : U r) {w : List Char}
+    → proj₁ (flat (RightU {l} {r} {loc} v)) ≡ w
+    → proj₁ (flat v) ≡ w
+  flat-RightU-word v refl = refl
+
+  length>0-nonempty : ∀ {r : RE} (u : U r) {w : List Char}
+    → proj₁ (flat u) ≡ w
+    → w ≢ []
+    → length (proj₁ (flat u)) Nat.> 0
+  length>0-nonempty u flat-u≡w w≢[] =
+    ¬≡[]→length>0 (λ eq → w≢[] (trans (sym flat-u≡w) eq))
+
+  leftU>rightU : ∀ {l r : RE} {loc : ℕ} {u : U l} {v : U r}
+    → length (proj₁ (flat u)) Nat.> 0
+    → length (proj₁ (flat v)) Nat.> 0
+    → l + r ` loc ⊢ LeftU u > RightU v
+  leftU>rightU len>u len>v = bne len>u len>v choice-lr
+
+  +c∷w-aux-left : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char)
+    (u : U (l + r ` loc)) (uₗ : U l)
+    (u≡LeftUuₗ : u ≡ LeftU uₗ)
+    (head-left≡just-uₗ : head parseAll[ l , c ∷ w ] ≡ just uₗ)
+    → ≥-Max (c ∷ w) u
+  +c∷w-aux-left l r loc c w u uₗ u≡LeftUuₗ head-left≡just-uₗ =
+    subst (λ x → ≥-Max (c ∷ w) x) (sym u≡LeftUuₗ)
+      (≥-max (c ∷ w) (LeftU uₗ) flat-uₗ≡c∷w u-≥-all)
+    where
+      uₗ∈parseAll : uₗ ∈ parseAll[ l , c ∷ w ]
+      uₗ∈parseAll = head-just-∈ head-left≡just-uₗ
+
+      flat-uₗ≡c∷w : proj₁ (flat uₗ) ≡ c ∷ w
+      flat-uₗ≡c∷w = lookup (parseAll-all-sound {l} {c ∷ w}) uₗ∈parseAll
+
+      c∷w∈l : (c ∷ w) ∈⟦ l ⟧
+      c∷w∈l = subst (λ x → x ∈⟦ l ⟧) flat-uₗ≡c∷w (proj₂ (flat uₗ))
+
+      ih : ≥-Max (c ∷ w) uₗ
+      ih = first-concatMap-buildU-pdUMany-isMax l (c ∷ w) c∷w∈l uₗ head-left≡just-uₗ
+
+      u-≥-all : (v : U (l + r ` loc)) → proj₁ (flat v) ≡ c ∷ w → (l + r ` loc) ⊢ LeftU uₗ ≥ v
+      u-≥-all = +-elim-U
+        (λ vₗ v-flat≡c∷w →
+          let vₗ∈parseAll : vₗ ∈ parseAll[ l , c ∷ w ]
+              vₗ∈parseAll = parseAll-complete vₗ (flat-LeftU-word {l} {r} {loc} vₗ {c ∷ w} v-flat≡c∷w)
+              uₗ≥vₗ : l ⊢ uₗ ≥ vₗ
+              uₗ≥vₗ = case ih of λ where
+                (≥-max _ _ _ μ) → μ vₗ (lookup (parseAll-all-sound {l} {c ∷ w}) vₗ∈parseAll)
+          in left-mono-≥ uₗ≥vₗ)
+        (λ vᵣ v-flat≡c∷w →
+          let len>u = length>0-nonempty uₗ flat-uₗ≡c∷w (λ ())
+              len>v = length>0-nonempty vᵣ (flat-RightU-word {l} {r} {loc} vᵣ {c ∷ w} v-flat≡c∷w) (λ ())
+          in inj₁ (leftU>rightU len>u len>v))
+
+  +c∷w-aux-right : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char)
+    (u : U (l + r ` loc)) (uᵣ : U r)
+    (left≡[] : parseAll[ l , c ∷ w ] ≡ [])
+    (u≡RightUuᵣ : u ≡ RightU uᵣ)
+    (head-right≡just-uᵣ : head parseAll[ r , c ∷ w ] ≡ just uᵣ)
+    → ≥-Max (c ∷ w) u
+  +c∷w-aux-right l r loc c w u uᵣ left≡[] u≡RightUuᵣ head-right≡just-uᵣ =
+    subst (λ x → ≥-Max (c ∷ w) x) (sym u≡RightUuᵣ)
+      (≥-max (c ∷ w) (RightU uᵣ) flat-uᵣ≡c∷w u-≥-all)
+    where
+      uᵣ∈parseAll : uᵣ ∈ parseAll[ r , c ∷ w ]
+      uᵣ∈parseAll = head-just-∈ head-right≡just-uᵣ
+
+      flat-uᵣ≡c∷w : proj₁ (flat uᵣ) ≡ c ∷ w
+      flat-uᵣ≡c∷w = lookup (parseAll-all-sound {r} {c ∷ w}) uᵣ∈parseAll
+
+      c∷w∈r : (c ∷ w) ∈⟦ r ⟧
+      c∷w∈r = subst (λ x → x ∈⟦ r ⟧) flat-uᵣ≡c∷w (proj₂ (flat uᵣ))
+
+      ih : ≥-Max (c ∷ w) uᵣ
+      ih = first-concatMap-buildU-pdUMany-isMax r (c ∷ w) c∷w∈r uᵣ head-right≡just-uᵣ
+
+      u-≥-all : (v : U (l + r ` loc)) → proj₁ (flat v) ≡ c ∷ w → (l + r ` loc) ⊢ RightU uᵣ ≥ v
+      u-≥-all = +-elim-U
+        (λ vₗ v-flat≡c∷w →
+          let vₗ∈parseAll : vₗ ∈ parseAll[ l , c ∷ w ]
+              vₗ∈parseAll = parseAll-complete vₗ (flat-LeftU-word {l} {r} {loc} vₗ {c ∷ w} v-flat≡c∷w)
+              vₗ∈[] = subst (λ xs → vₗ ∈ xs) left≡[] vₗ∈parseAll
+          in ⊥-elim (∈[]-impossible vₗ∈[]))
+        (λ vᵣ v-flat≡c∷w →
+          let vᵣ∈parseAll : vᵣ ∈ parseAll[ r , c ∷ w ]
+              vᵣ∈parseAll = parseAll-complete vᵣ (flat-RightU-word {l} {r} {loc} vᵣ {c ∷ w} v-flat≡c∷w)
+              uᵣ≥vᵣ : r ⊢ uᵣ ≥ vᵣ
+              uᵣ≥vᵣ = case ih of λ where
+                (≥-max _ _ _ μ) → μ vᵣ (lookup (parseAll-all-sound {r} {c ∷ w}) vᵣ∈parseAll)
+          in right-mono-≥ uᵣ≥vᵣ)
 
   +c∷w-aux : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char) (w∈+ : (c ∷ w) ∈⟦ l + r ` loc ⟧) (u : U (l + r ` loc))
     → head (List.concatMap buildU pdUMany[ l + r ` loc , c ∷ w ]) ≡ just u
@@ -2898,12 +3260,9 @@ mutual
          (List.concatMap buildU pdUMany[ r , c ∷ w ])
          u eq' of λ where
       (inj₁ (uₗ , _ , u≡LeftUuₗ , head-left≡just-uₗ)) →
-        let ih = first-concatMap-buildU-pdUMany-isMax l (c ∷ w) {!!} uₗ head-left≡just-uₗ
-            -- need c∷w ∈⟦ l ⟧
-        in {!!}
-      (inj₂ (uᵣ , _ , _ , u≡RightUuᵣ , head-right≡just-uᵣ)) →
-        let ih = first-concatMap-buildU-pdUMany-isMax r (c ∷ w) {!!} uᵣ head-right≡just-uᵣ
-        in {!!}
+        +c∷w-aux-left l r loc c w u uₗ u≡LeftUuₗ head-left≡just-uₗ
+      (inj₂ (uᵣ , left≡[] , _ , u≡RightUuᵣ , head-right≡just-uᵣ)) →
+        +c∷w-aux-right l r loc c w u uᵣ left≡[] u≡RightUuᵣ head-right≡just-uᵣ
 
   first-concatMap-buildU-pdUMany-isMax : ∀ ( r : RE )
     → ( w : List Char )

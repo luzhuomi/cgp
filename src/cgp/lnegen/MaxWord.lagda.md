@@ -2799,7 +2799,7 @@ mutual
 
 
 
-
+  -- Comments by Kenny: Do we need this lemma? 
   buildU-lift-pdi*-left : ∀ {l r loc} {pref : List Char} (pdi* : PDInstance* l pref)
     → buildU (lift-pdi*-left {l} {r} {loc} {pref} pdi*) ≡ List.map LeftU (buildU pdi*)
   buildU-lift-pdi*-left {l} {r} {loc} {pref} pdi* = {!!}
@@ -2845,15 +2845,11 @@ mutual
     -- ≡⟨ refl ⟩  -- FIXED by Kenny  
     ≡⟨ sym (concatMap-∘-eq (compose-pdi-with (λ x → LeftU {l} {r} {loc} (inj x)) s-ev) buildU pdU[ d , c ])  ⟩ 
       List.concatMap (λ pdi' → buildU (compose-pdi-with {l + r ` loc} {d} {pref} {c} (LeftU ∘ inj) s-ev pdi')) pdU[ d , c ]
-    -- ≡⟨ map-cong (λ pdi' → buildU-compose-left inj s-ev pdi') ⟩
-    ≡⟨ {!!} ⟩ -- goal  concatMap (λ pdi' → buildU (compose-pdi-with (λ x → LeftU (inj x)) s-ev pdi'))  pdU[ d , c ]
-              --    ≡  concatMap (λ pdi' → List.map LeftU (buildU (compose-pdi-with inj s-ev pdi')))    pdU[ d , c ]
+    ≡⟨ cong List.concat (map-cong {xs = pdU[ d , c ]} (λ pdi' → buildU-compose-left inj s-ev pdi')) ⟩
       List.concatMap (λ pdi' → List.map LeftU (buildU (compose-pdi-with {l} {d} {pref} {c} inj s-ev pdi'))) pdU[ d , c ]
     ≡⟨ concatMap-map-commute LeftU (λ pdi' → buildU (compose-pdi-with {l} {d} {pref} {c} inj s-ev pdi')) pdU[ d , c ] ⟩
       List.map LeftU (List.concatMap (λ pdi' → buildU (compose-pdi-with {l} {d} {pref} {c} inj s-ev pdi')) pdU[ d , c ])
-    -- ≡⟨ refl ⟩
-    ≡⟨ {!!} ⟩ -- goal List.map LeftU (concatMap (λ pdi' → buildU (compose-pdi-with inj s-ev pdi')) pdU[ d , c ])
-              -- ≡    List.map LeftU (concatMap buildU (List.map (compose-pdi-with inj s-ev) pdU[ d , c ]))
+    ≡⟨ cong (List.map LeftU) (concatMap-∘-eq (compose-pdi-with inj s-ev) buildU pdU[ d , c ]) ⟩
       List.map LeftU (List.concatMap buildU (advance-pdi*-with-c {l} {pref} {c} (pdinstance* inj s-ev)))
     ∎  
 

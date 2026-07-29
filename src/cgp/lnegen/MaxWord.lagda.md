@@ -2844,13 +2844,117 @@ mutual
     trans (buildU-≡-map-inj-buildU-root inj s-ev)
           (cong (List.map inj) (sym (parseAll-[]≡buildU-root {p})))
 
-  -- Postulated step: connects the IH result to the goal for c ∷ cs
-  postulate
-    concatMap-buildU-pdUMany-aux-lemma-step :
-      ∀ {r : RE} {pref : List Char} (c : Char) (cs : List Char) (pdis : List (PDInstance* r pref))
-      → List.concatMap (λ pdi*' → List.map (pdi*-inj pdi*') (parseAll[ pdi*-src pdi*' , cs ]))
-          (List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-      ≡ List.concatMap (λ pdi* → List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , c ∷ cs ])) pdis
+  -- Decomposition: parseAll[d, c∷cs] = concatMap (map (pdi-inj pdi) ∘ parseAll[pdi-src pdi, cs]) (pdU[d, c])
+  parseAll-pdU-decomp : ∀ {d : RE} (c : Char) (cs : List Char)
+    → parseAll[ d , c ∷ cs ]
+      ≡ List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])) (pdU[ d , c ])
+  parseAll-pdU-decomp {d} c cs =
+    let root-d : PDInstance* d []
+        root-d = pdinstance* {d} {d} {[]} (λ u → u) (λ u → refl)
+
+        pdis' : List (PDInstance* d ([] ∷ʳ c))
+        pdis' = List.concatMap (advance-pdi*-with-c {d} {[]} {c}) (root-d ∷ [])
+
+        ih : List.concatMap buildU (pdUMany-aux {d} {[] ∷ʳ c} cs pdis')
+          ≡ List.concatMap g pdis'
+        ih = concatMap-buildU-pdUMany-aux-lemma {d} {[] ∷ʳ c} cs pdis'
+    in
+      trans
+        refl
+        (trans
+          refl
+          (trans
+            ih
+            (trans
+              refl
+              (trans
+                step1
+                (trans
+                  (sym (concatMap-∘-eq comp-f g pdU-list))
+                  (concatMap-cong {xs = pdU-list} g∘comp-f≡h))))))
+      where
+        comp-f : PDInstance d c → PDInstance* d ([] ∷ʳ c)
+        comp-f = compose-pdi-with {d} {d} {[]} {c} (λ u → u) (λ u → refl)
+
+        g : PDInstance* d ([] ∷ʳ c) → List (U d)
+        g = λ pdi*' → List.map (pdi*-inj pdi*') (parseAll[ pdi*-src pdi*' , cs ])
+
+        h : PDInstance d c → List (U d)
+        h = λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])
+
+        g∘comp-f≡h : ∀ (pdi : PDInstance d c) → g (comp-f pdi) ≡ h pdi
+        g∘comp-f≡h (pdinstance {p} .{d} .{c} p→d _) =
+          trans (map-∘-eq p→d (λ u → u) (parseAll[ p , cs ]))
+                (map-id (List.map p→d (parseAll[ p , cs ])))
+
+        pdU-list : List (PDInstance d c)
+        pdU-list = pdU[ d , c ]
+
+        step1 : List.concatMap g (List.map comp-f pdU-list ++ []) ≡ List.concatMap g (List.map comp-f pdU-list)
+        step1 = cong (List.concatMap g) (++-identityʳ (List.map comp-f pdU-list))
+
+  -- Step: connects the IH result to the goal for c ∷ cs
+  concatMap-buildU-pdUMany-aux-lemma-step :
+    ∀ {r : RE} {pref : List Char} (c : Char) (cs : List Char) (pdis : List (PDInstance* r pref))
+    → List.concatMap (λ pdi*' → List.map (pdi*-inj pdi*') (parseAll[ pdi*-src pdi*' , cs ]))
+        (List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
+    ≡ List.concatMap (λ pdi* → List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , c ∷ cs ])) pdis
+  concatMap-buildU-pdUMany-aux-lemma-step {r} {pref} c cs [] = refl
+  concatMap-buildU-pdUMany-aux-lemma-step {r} {pref} c cs (pdi*@(pdinstance* {d} .{r} .{pref} d→r s-ev) ∷ pdis) =
+    let ih = concatMap-buildU-pdUMany-aux-lemma-step c cs pdis
+    in
+      trans
+        (cong (List.concatMap g) (advance-split pdi* pdis))
+        (trans
+          (concatMap-++-distrib g (advance-pdi*-with-c {r} {pref} {c} pdi*) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis))
+          (cong₂ _++_ left-side≡goal ih))
+      where
+        comp-f : PDInstance d c → PDInstance* r (pref ∷ʳ c)
+        comp-f = compose-pdi-with {r} {d} {pref} {c} d→r s-ev
+
+        g : PDInstance* r (pref ∷ʳ c) → List (U r)
+        g = λ pdi*' → List.map (pdi*-inj pdi*') (parseAll[ pdi*-src pdi*' , cs ])
+
+        advance-split : ∀ (p : PDInstance* r pref) (ps : List (PDInstance* r pref))
+          → concatMap (advance-pdi*-with-c {r} {pref} {c}) (p ∷ ps)
+            ≡ advance-pdi*-with-c {r} {pref} {c} p ++ concatMap (advance-pdi*-with-c {r} {pref} {c}) ps
+        advance-split p ps = refl
+
+        left-side : List (U r)
+        left-side = List.concatMap g (advance-pdi*-with-c {r} {pref} {c} pdi*)
+
+        left-goal : List (U r)
+        left-goal = List.map d→r (parseAll[ d , c ∷ cs ])
+
+        adv-equals-map-comp-f : advance-pdi*-with-c {r} {pref} {c} pdi*
+          ≡ List.map comp-f (pdU[ d , c ])
+        adv-equals-map-comp-f = refl
+
+        left-side≡left-side' : left-side ≡ List.concatMap g (List.map comp-f (pdU[ d , c ]))
+        left-side≡left-side' = cong (List.concatMap g) adv-equals-map-comp-f
+
+        g∘comp-f≡map : ∀ (pdi : PDInstance d c) → g (comp-f pdi) ≡ List.map d→r (List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ]))
+        g∘comp-f≡map (pdinstance {p} .{d} .{c} p→d _) = map-∘-eq p→d d→r (parseAll[ p , cs ])
+
+        g∘comp-f≡map-cong : List.concatMap g (List.map comp-f (pdU[ d , c ]))
+          ≡ List.concatMap (λ pdi → List.map d→r (List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ]))) (pdU[ d , c ])
+        g∘comp-f≡map-cong = trans (sym (concatMap-∘-eq comp-f g (pdU[ d , c ])))
+                             (concatMap-cong {xs = pdU[ d , c ]} g∘comp-f≡map)
+
+        factor-out : List.concatMap (λ pdi → List.map d→r (List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ]))) (pdU[ d , c ])
+          ≡ List.map d→r (List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])) (pdU[ d , c ]))
+        factor-out = concatMap-map-commute d→r (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])) (pdU[ d , c ])
+
+        decomp-lemma : List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])) (pdU[ d , c ])
+          ≡ parseAll[ d , c ∷ cs ]
+        decomp-lemma = sym (parseAll-pdU-decomp {d} c cs)
+
+        decomp : List.map d→r (List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])) (pdU[ d , c ]))
+          ≡ List.map d→r (parseAll[ d , c ∷ cs ])
+        decomp = cong (List.map d→r) decomp-lemma
+
+        left-side≡goal : left-side ≡ left-goal
+        left-side≡goal = trans left-side≡left-side' (trans g∘comp-f≡map-cong (trans factor-out decomp))
 
   -- Key lemma: concatMap buildU (pdUMany-aux w pdis)
   --   = concatMap (λ pdi* → map (pdi*-inj pdi*) (parseAll[src pdi*, w])) pdis

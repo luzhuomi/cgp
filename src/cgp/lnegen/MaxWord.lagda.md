@@ -149,15 +149,15 @@ import Data.List.Relation.Unary.Any.Properties
 open Data.List.Relation.Unary.Any.Properties using ( ¬Any[] )
 
 
-import cgp.lnegen.Efn as Efn
-open Efn using ( Efn ; efn-ε ; efn-● ) 
+-- import cgp.lnegen.Efn as Efn
+-- open Efn using ( Efn ; efn-ε ; efn-● ) 
 ```
 
 
 
 ```agda
 -- Purpose: Define what it means for a parse tree u to be maximal for word w
--- Used by: ≥-max-word, ≥-max-pair-fst-prefix→>3, ≥-max-pres-left-helper, >-wellfounded, ≥-Max-PDInstance, parseAll-head-isMax
+-- Used by: ≥-max-word, ≥-max-pair→-≥-max-fst, ≥-max-pres-left-helper, >-wellfounded, ≥-Max-PDInstance, parseAll-head-isMax
 -- Proof idea: N/A (data type definition with single constructor ≥-max)
 data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where 
   ≥-max : ∀ { r : RE }
@@ -171,16 +171,13 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
 
 -- we need to use this lemma in dom-lemma-weak
 -- no, this is bogus, not in use, we use the variant >2 and >3 below (with better names)
--- reriting FRONTIER
+{-
 ≥-max-pair-fst-prefix→> : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
   → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)
   → ( u' : U l )
   → ( v' : U r )
---   → ¬ ( ∃[ c ] ∃[ w ]   ( proj₁ (flat u') ≡ proj₁ (flat u) ++ ( c ∷ w ) )
---                       × ( proj₁ (flat v)) ≡ (c ∷ w ++ (proj₁ (flat v') )) ) 
   → ( ∃[ c ] ∃[ w ]   ( proj₁ (flat u') ≡ proj₁ (flat u) ++ ( c ∷ w ) )
                     × ( proj₁ (flat v)) ≡ (c ∷ w ++ (proj₁ (flat v')) ) ) 
-  -- → ( Σ[ c ∈ Char ] Σ[ w ∈ List Char ] ( ( proj₁ (flat u') ≡ proj₁ (flat u) ++ ( c ∷ w ) ) × ( ( proj₁ (flat v) ) ≡ (c ∷ w ++ (proj₁ (flat v'))) ) ) )
   → l ⊢ u > u' 
 ≥-max-pair-fst-prefix→> {l = l} {r = r} {loc} u v (≥-max _ _ _ μ) u' v' ((c , w , wu'≡ , wv≡)) =
   helper (μ (PairU u' v') same-word)
@@ -201,16 +198,16 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
     helper (inj₁ (bne _ _ (seq₁ u>u'))) = u>u'
     helper (inj₁ (bne _ _ (seq₂ u≡u' _))) = ⊥-elim (u≢u' u≡u')
     helper (inj₁ (lne len>0 len'≡0)) rewrite trans (sym (cong length same-word)) len'≡0 = ⊥-elim (Nullary.contradiction len>0 (λ { () }))
+-}
 
-
--- is this used?
-≥-max-pair-fst-prefix→>2 : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
+-- used by ≥-max-pair→-≥-max-fst 
+≥-max-pair-fst-prefix→≥ : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
   → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)
   → ( u' : U l )
   → ( v' : U r )
   → (proj₁ (flat (PairU {l} {r} {loc} u' v'))) ≡ (proj₁ (flat (PairU {l} {r} {loc} u v)))
   → l ⊢ u ≥ u' 
-≥-max-pair-fst-prefix→>2 {l = l} {r = r} {loc} u v (≥-max _ _ _ μ) u' v' |u'v'|≡|uv| =
+≥-max-pair-fst-prefix→≥ {l = l} {r = r} {loc} u v (≥-max _ _ _ μ) u' v' |u'v'|≡|uv| =
   helper (μ (PairU u' v') same-word)
   where
     same-word : proj₁ (flat {l ● r ` loc} (PairU u' v')) ≡ proj₁ (flat {l ● r ` loc} (PairU u v))
@@ -225,27 +222,19 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
 
 
 -- we need this to get ≥-Max u from ≥-Max (PairU u v)  -- there seems to be similar lemma below
-≥-max-pair-fst-prefix→>3 : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
+≥-max-pair→-≥-max-fst : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
   → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)
   → ≥-Max {l} (proj₁ (flat u)) u 
-≥-max-pair-fst-prefix→>3 {l} {r} {loc} u v m@(≥-max _ _ _ μ) = ≥-max (proj₁ (flat u)) u refl prf
+≥-max-pair→-≥-max-fst {l} {r} {loc} u v m@(≥-max _ _ _ μ) = ≥-max (proj₁ (flat u)) u refl prf
   where
     prf : (v₁ : U l)
       → proj₁ (flat v₁) ≡ proj₁ (flat u)
       → l ⊢ u ≥ v₁
-    prf v₁ |v₁|≡|u| = ≥-max-pair-fst-prefix→>2 u v m v₁ v |v₁v|≡|uv|
+    prf v₁ |v₁|≡|u| = ≥-max-pair-fst-prefix→≥ u v m v₁ v |v₁v|≡|uv|
       where
         |v₁v|≡|uv| : proj₁ (flat (PairU {l} {r} {loc} v₁ v)) ≡ proj₁ (flat (PairU {l} {r} {loc} u v))
         |v₁v|≡|uv| rewrite |v₁|≡|u| = refl              
 
-
--- ≥-max-pair-fst-prefix→>4 : ∀ { p l r : RE } { loc : ℕ } → (u : U p) → (v : U r)
---   → ≥-Max {p ● r ` loc} (proj₁ (flat (PairU {p} {r} {loc} u v))) (PairU u v)
-
-
--- each partial derivative p is unique
--- inj is ≥-Max-Preserve is given an u which is max, and another v,
--- we must have inj u ≥ inj v
 
 
 
@@ -502,15 +491,6 @@ head-concatmap-empty : ∀ {l r : RE} {loc : ℕ} {c : Char}
 head-concatmap-empty [] = refl
 head-concatmap-empty (x ∷ xs) = head-concatmap-empty xs
 
--- compiled but not in used
-
--- compiled but not in used
-
--- first-char-lemma: Extract c∷cs form from non-empty list with known first char.
--- compiled but not in used
-
--- find-recons: Extract Recons proof from Any. -- not in use?
--- compiled but not in used
 
 -- dom-lemma: If inj u₁ is the first reconstruction of the first pdi in pdU[l,c],
 -- and v₁ has a c-word different from c∷flat u₁, then l ⊢ inj u₁ > v₁.
@@ -821,7 +801,7 @@ _≟C_ = ≡-dec Char._≟_
       → (l ● r ` loc) ⊢ injFst u₁u₂ ≥ injFst v₁v₂
     ev (PairU u₁ u₂) (≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₂ u₁u₂≡v₁v₂) rewrite proj₁ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂) | proj₂ (inv-pairU u₁ u₂ v₁ v₂ u₁u₂≡v₁v₂) = inj₂ refl
     ev (PairU u₁ u₂) max-pair-u₁u₂@(≥-max {.p ● .r ` loc} w (PairU .u₁ .u₂) |u₁u₂|≡w v₁v₂→|v₁v₂|≡w→u₁u₂≥v₁v₂) (PairU v₁ v₂) (inj₁ (bne len|u₁u₂|>0 len|v₁v₂|>0 (seq₁ u₁>v₁)))
-      with u→max-u→v→u≥v→inju≥injv u₁  (≥-max-pair-fst-prefix→>3 u₁ u₂ max-pair-u₁u₂) v₁ (inj₁ u₁>v₁)
+      with u→max-u→v→u≥v→inju≥injv u₁  (≥-max-pair→-≥-max-fst u₁ u₂ max-pair-u₁u₂) v₁ (inj₁ u₁>v₁)
     ... | inj₂ inju₁≡injv₁ = Nullary.contradiction ( u→v→inju≡injv→u≡v u₁ v₁  inju₁≡injv₁ ) (>→¬≡  u₁>v₁ ) 
     ... | inj₁ inju₁>injv₁ = inj₁ (bne len|inj-u₁u₂|>0 len|inj-v₁v₂|>0 (seq₁  inju₁>injv₁) ) -- these two holes are easy
       where
@@ -846,7 +826,7 @@ _≟C_ = ≡-dec Char._≟_
         |v₂|≡[] : proj₁ (flat v₂) ≡ []
         |v₂|≡[] = ++-conicalʳ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 ) 
         max-u₁ : ≥-Max {p} (proj₁ (flat u₁)) u₁
-        max-u₁  =  ≥-max-pair-fst-prefix→>3 u₁ u₂  max-pair-u₁u₂
+        max-u₁  =  ≥-max-pair→-≥-max-fst u₁ u₂  max-pair-u₁u₂
         |u₁|≡|v₁| : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
         |u₁|≡|v₁| = trans |u₁|≡[] (sym |v₁|≡[]) 
         len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
@@ -870,7 +850,7 @@ _≟C_ = ≡-dec Char._≟_
         u₁>v₁ : p ⊢ u₁ > v₁
         u₁>v₁ = lne (Utils.¬≡[]→length>0 ¬|u₁|≡[]) (Utils.[]→length≡0  |v₁|≡[])
         max-u₁ : ≥-Max {p} (proj₁ (flat u₁)) u₁
-        max-u₁  =  ≥-max-pair-fst-prefix→>3 u₁ u₂  max-pair-u₁u₂        
+        max-u₁  =  ≥-max-pair→-≥-max-fst u₁ u₂  max-pair-u₁u₂        
         len|inj-u₁u₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj u₁) u₂) ))  Nat.> 0
         len|inj-u₁u₂|>0 rewrite ( injFstsound-ev (PairU {p} {r} {loc} u₁ u₂) ) = Nat.s≤s Nat.z≤n 
         len|inj-v₁v₂|>0 : length (proj₁ (flat (PairU {l} {r} {loc} (inj v₁) v₂) ))  Nat.> 0
@@ -894,7 +874,7 @@ _≟C_ = ≡-dec Char._≟_
         |v₂|≡[] : proj₁ (flat v₂) ≡ []
         |v₂|≡[] = ++-conicalʳ (proj₁ (flat v₁)) (proj₁ (flat v₂)) (length≡0→[]  len|v₁v₂|≡0 ) 
         max-u₁ : ≥-Max {p} (proj₁ (flat u₁)) u₁
-        max-u₁  =  ≥-max-pair-fst-prefix→>3 u₁ u₂  max-pair-u₁u₂
+        max-u₁  =  ≥-max-pair→-≥-max-fst u₁ u₂  max-pair-u₁u₂
         |u₁|≡|v₁| : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
         |u₁|≡|v₁| = trans |u₁|≡[] (sym |v₁|≡[])
         u₁≥v₁ : p ⊢ u₁ ≥ v₁
@@ -1035,13 +1015,13 @@ _≟C_ = ≡-dec Char._≟_
       rewrite proj₁ (inv-pairU u₁ (ListU us) v₁ (ListU vs) u'≡v')
             | cong unListU (proj₂ (inv-pairU u₁ (ListU us) v₁ (ListU vs) u'≡v')) = inj₂ refl
     ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (bne len|u'|>0 len|v'|>0 (seq₁ u₁>v₁)))
-      with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
+      with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair→-≥-max-fst u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
     ... | inj₂ inju₁≡injv₁ = Nullary.contradiction (u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁) (>→¬≡ u₁>v₁)
     ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
     ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (bne len|u'|>0 len|v'|>0 (seq₂ u₁≡v₁ listus>listvs)))
       = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-tail (cong inj u₁≡v₁) listus>listvs))
     ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (be len|u'|≡len|v'| len|v'|≡0 (seq₁ u₁>v₁)))
-      with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
+      with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair→-≥-max-fst u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
     ... | inj₂ inju₁≡injv₁ = Nullary.contradiction (u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁) (>→¬≡ u₁>v₁)
     ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
     ev (PairU u₁ (ListU us)) max-pair (PairU v₁ (ListU vs)) (inj₁ (be len|u'|≡len|v'| len|v'|≡0 (seq₂ u₁≡v₁ listus>listvs)))
@@ -1054,7 +1034,7 @@ _≟C_ = ≡-dec Char._≟_
         u₁>v₁ : p ⊢ u₁ > v₁
         u₁>v₁ = lne (Utils.¬≡[]→length>0 ¬|u₁|≡[]) (Utils.[]→length≡0 |v₁|≡[])
         prf : (r * ε∉r ` loc) ⊢ mkinjList inj (PairU u₁ (ListU us)) ≥ mkinjList inj (PairU v₁ (ListU vs))
-        prf with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
+        prf with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair→-≥-max-fst u₁ (ListU us) max-pair) v₁ (inj₁ u₁>v₁)
         ... | inj₂ inju₁≡injv₁ = Nullary.contradiction (u→v→inju≡injv→u≡v u₁ v₁ inju₁≡injv₁) (>→¬≡ u₁>v₁)
         ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
     ... | yes |u₁|≡[] = prf
@@ -1073,10 +1053,10 @@ _≟C_ = ≡-dec Char._≟_
         |u₁|≡|v₁| : proj₁ (flat u₁) ≡ proj₁ (flat v₁)
         |u₁|≡|v₁| = trans |u₁|≡[] (sym |v₁|≡[])
         u₁≥v₁ : p ⊢ u₁ ≥ v₁
-        u₁≥v₁ with ≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair
+        u₁≥v₁ with ≥-max-pair→-≥-max-fst u₁ (ListU us) max-pair
         ... | ≥-max w .u₁ |u₁|≡w dom = dom v₁ (sym |u₁|≡|v₁|)
         prf : (r * ε∉r ` loc) ⊢ mkinjList inj (PairU u₁ (ListU us)) ≥ mkinjList inj (PairU v₁ (ListU vs))
-        prf with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair-fst-prefix→>3 u₁ (ListU us) max-pair) v₁ u₁≥v₁
+        prf with u→max-u→v→u≥v→inju≥injv u₁ (≥-max-pair→-≥-max-fst u₁ (ListU us) max-pair) v₁ u₁≥v₁
         ... | inj₂ inju₁≡injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-tail inju₁≡injv₁ listus>listvs))
         ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
 

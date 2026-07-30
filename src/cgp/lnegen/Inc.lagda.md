@@ -1,7 +1,11 @@
-This module contains  the attempt of proving monotonicity of the PD injection function for lnegen ordering without any restriction 
+This module contains  the attempt of proving monotonicity of the PD injection function for lnegen ordering without any restriction
+
+It shows that the monotonicity property >-Inc is not true in general for LNE partial derivatives injection function, and therefore, parse trees constructed by lne parseAll is not sorted.
+
+No other proof reference definitions and lemmas in this module. This module contains merely counter examples. 
 
 ```agda
-{-# OPTIONS --rewriting --allow-unsolved-metas #-}
+{-# OPTIONS --rewriting #-}
 
 module cgp.lnegen.Inc where
 import cgp.RE as RE
@@ -327,6 +331,7 @@ through `mkinjFst` that ordering can disappear.
 
 ```agda
 
+{-
 -- The unprovable lemma (kept as a hole for reference)
 
 >-inc-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -340,7 +345,7 @@ through `mkinjFst` that ordering can disappear.
       → (p ● r ` loc) ⊢ u₁ > u₂
       → (l ● r ` loc) ⊢ mkinjFst inj u₁ >  mkinjFst inj u₂
     >-inc-ev = {!!}
-
+-}
 ```
 
 #### ParseAll is not sorted

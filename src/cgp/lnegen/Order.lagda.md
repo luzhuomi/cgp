@@ -2,7 +2,7 @@ This module contains the defintions of the left non-empty  order among parse tre
 
 ```agda
 {-# OPTIONS --rewriting  #-}
--- {-# OPTIONS --rewriting --allow-unsolved-metas #-}
+
 module cgp.lnegen.Order where
 
 import cgp.RE as RE

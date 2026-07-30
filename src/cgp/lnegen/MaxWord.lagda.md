@@ -3467,22 +3467,189 @@ mutual
     → (u : U r) → u ≡ pdi-inj pdi (≥-Max-PDInstance-u max-pdi) → ≥-Max (c ∷ w) u
   ≥-Max-PDInstance→≥-Max-c∷w {w = w} {pdi = pdi} (≥-max-pdi u .w _ μ-c∷w) .(pdi-inj pdi u) refl = μ-c∷w
 
-  -- Head connection postulate
-  postulate
-    head-pdUMany→first-inhabit-max : ∀ (r : RE) (c : Char) (w : List Char) (u : U r)
-      → (eq : head (List.concatMap buildU pdUMany[ r , c ∷ w ]) ≡ just u)
-      → ∃[ pdi ] (first-inhabit r c w pdU[ r , c ] ≡ just pdi
-        × ∃[ uₘ ] (u ≡ pdi-inj pdi uₘ
-          × (∀ (max-pdi : ≥-Max-PDInstance {r} {c} w pdi) → uₘ ≡ ≥-Max-PDInstance-u max-pdi)))
+  -- ≥-Max uniqueness
+  ≥-Max-unique : ∀ {p : RE} {w : List Char} (u₁ u₂ : U p)
+    → ≥-Max w u₁ → ≥-Max w u₂ → u₁ ≡ u₂
+  ≥-Max-unique {p} {w} u₁ u₂ (≥-max _ .u₁ flat-u₁≡w μ₁) (≥-max _ .u₂ flat-u₂≡w μ₂)
+    with μ₁ u₂ flat-u₂≡w
+  ... | inj₂ u₁≡u₂ = u₁≡u₂
+  ... | inj₁ u₁>u₂ with μ₂ u₁ flat-u₁≡w
+  ... | inj₂ u₂≡u₁ = ⊥-elim (>→¬≡ u₁>u₂ (sym u₂≡u₁))
+  ... | inj₁ u₂>u₁ = ⊥-elim (>-asym u₁>u₂ u₂>u₁)
 
+  -- map f xs is nonempty when xs is nonempty
+  map-nonempty : ∀ {A B : Set} (f : A → B) {xs : List A} → xs ≢ [] → List.map f xs ≢ []
+  map-nonempty f {x ∷ xs} _ = λ ()
+  map-nonempty f {[]} neq = ⊥-elim (neq refl)
+
+  -- head of (xs ++ ys) ≡ head xs when xs nonempty
+  head-nonempty-++ : ∀ {A : Set} {xs ys : List A} → xs ≢ [] → head (xs ++ ys) ≡ head xs
+  head-nonempty-++ {A} {x ∷ xs} {ys} _ = refl
+  head-nonempty-++ {A} {[]} {ys} neq = ⊥-elim (neq refl)
+
+  -- parseAll empty when w ∉⟦ p ⟧
+  parseAll-no→[] : ∀ {p : RE} {w : List Char}
+    → ¬ (w ∈⟦ p ⟧)
+    → parseAll[ p , w ] ≡ []
+  parseAll-no→[] {p = p} {w = w} ¬w∈p
+    with ∈?-parseAll w p
+  parseAll-no→[] {p = p} {w = w} ¬w∈p | yes w∈p = ⊥-elim (¬w∈p w∈p)
+  parseAll-no→[] {p = p} {w = w} ¬w∈p | no _
+    with parseAll[ p , w ] in eq-pa
+  ... | [] = refl
+  ... | u ∷ us = ⊥-elim (¬w∈p (subst (λ x → x ∈⟦ p ⟧) (parseAll-sound u (subst (λ x → u ∈ x) (sym eq-pa) (here refl))) (proj₂ (flat u))))
+
+  -- Extract the source head behind an injected head
+  head-map-just : ∀ {A B : Set} (f : A → B) {xs : List A} {y : B}
+    → head (List.map f xs) ≡ just y
+    → ∃[ x ] (head xs ≡ just x × y ≡ f x)
+  head-map-just f {[]} eq = ⊥-elim (nothing≢just eq)
+  head-map-just f {x ∷ xs} {y} eq =
+    x , (refl , sym (just-injective eq))
+
+  head-map-inj→head-src : ∀ {r c w} {pdi : PDInstance r c} {u : U r}
+    → head (List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) ≡ just u
+    → ∃[ u₀ ] (u ≡ pdi-inj pdi u₀ × head parseAll[ pdi-src pdi , w ] ≡ just u₀)
+  head-map-inj→head-src {r} {c} {w} {pdi} {u} eq
+    with head-map-just (pdi-inj pdi) {parseAll[ pdi-src pdi , w ]} {u} eq
+  ... | (u₀ , head-pa≡just-u₀ , u≡inj-u₀) = u₀ , u≡inj-u₀ , head-pa≡just-u₀
+  -- NOTE: previous proof via head-concatMap-h-aux relied on parseAll being >-sorted,
+  -- which is NOT true in general (*>-Inc doesn't hold for arbitrary parse trees,
+  -- only for maximal ones). This version only requires the head to be maximal,
+  -- which follows from the induction hypothesis on the source RE.
+  head-pdUparseAll→first-inhabit : ∀ {r : RE} {c : Char} {w : List Char}
+    → (pdis : List (PDInstance r c)) (u : U r)
+    → head (List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) pdis) ≡ just u
+    → ∃[ pdi ] (first-inhabit r c w pdis ≡ just pdi
+      × ∃[ u₀ ] (u ≡ pdi-inj pdi u₀ × head parseAll[ pdi-src pdi , w ] ≡ just u₀))
+  head-pdUparseAll→first-inhabit [] _ ()
+  head-pdUparseAll→first-inhabit {r} {c} {w} (pdi₀@(pdinstance {p} .{r} .{c} inj s-ev) ∷ pdis) u eq =
+    let d = w ∈?⟦ p ⟧ in
+    case d of λ where
+      (yes w∈p) →
+        let pa≢[] : parseAll[ p , w ] ≢ []
+            pa≢[] = parseAll-nonempty {p} {w} w∈p
+            map-pa≢[] : List.map (pdi-inj pdi₀) (parseAll[ p , w ]) ≢ []
+            map-pa≢[] = map-nonempty (pdi-inj pdi₀) pa≢[]
+            head-concat≡head-map :
+              head (List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) (pdi₀ ∷ pdis))
+              ≡ head (List.map (pdi-inj pdi₀) (parseAll[ p , w ]))
+            head-concat≡head-map = head-nonempty-++ map-pa≢[]
+            head-map≡just-u : head (List.map (pdi-inj pdi₀) (parseAll[ p , w ])) ≡ just u
+            head-map≡just-u = trans (sym head-concat≡head-map) eq
+            (u₀ , u≡inj-u₀ , head-pa≡just-u₀) = head-map-inj→head-src {r} {c} {w} {pdi = pdi₀} head-map≡just-u
+            fi≡just = first-inhabit-yes-eq-full pdi₀ pdis w∈p
+        in pdi₀ , fi≡just , u₀ , u≡inj-u₀ , head-pa≡just-u₀
+      (no ¬w∈p) →
+        let pa≡[] : parseAll[ p , w ] ≡ []
+            pa≡[] = parseAll-no→[] ¬w∈p
+            map-pa≡[] : List.map (pdi-inj pdi₀) (parseAll[ p , w ]) ≡ []
+            map-pa≡[] = cong (List.map (pdi-inj pdi₀)) pa≡[]
+            concat≡tail :
+              List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) (pdi₀ ∷ pdis)
+              ≡ List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) pdis
+            concat≡tail =
+              trans (cong (_++ List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) pdis) map-pa≡[])
+                    (++-identityˡ (List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) pdis))
+            eq' : head (List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , w ])) pdis) ≡ just u
+            eq' = subst (λ zs → head zs ≡ just u) concat≡tail eq
+            (pdi , fi≡just , u₀ , u≡inj-u₀ , head-pa≡just-u₀) = head-pdUparseAll→first-inhabit pdis u eq'
+            fi≡just-ext : first-inhabit r c w (pdi₀ ∷ pdis) ≡ just pdi
+            fi≡just-ext = trans (first-inhabit-no-eq pdi₀ pdis ¬w∈p) fi≡just
+        in pdi , fi≡just-ext , u₀ , u≡inj-u₀ , head-pa≡just-u₀
+
+  -- maximum of parseAll is ≥-Max (does NOT require parseAll to be sorted)
+  max-parseAll-≥-Max : ∀ {p : RE} {w : List Char} (w∈p : w ∈⟦ p ⟧)
+    → ≥-Max w (maximum (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈p))
+  max-parseAll-≥-Max {p} {w} w∈p =
+    ≥-max w max-u flat-max≡w μ
+    where
+      max-u : U p
+      max-u = maximum (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈p)
+
+      flat-max≡w : proj₁ (flat max-u) ≡ w
+      flat-max≡w = maximum-flat (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈p) (parseAll-all-sound {p} {w})
+
+      μ : ∀ (v : U p) → proj₁ (flat v) ≡ w → p ⊢ max-u ≥ v
+      μ v flat-v≡w = maximum-≥-all (parseAll[ p , w ]) (parseAll-nonempty {p} {w} w∈p) v (parseAll-complete {p} {w} v flat-v≡w)
+
+  ≥-Max-PDInstance→≥-Max-w : ∀ {r c w pdi} → (max-pdi : ≥-Max-PDInstance {r} {c} w pdi) → ≥-Max w (≥-Max-PDInstance-u max-pdi)
+  ≥-Max-PDInstance→≥-Max-w {w = w} (≥-max-pdi u .w u-max _) = u-max
+
+  parseAll-[]-yes : ∀ {p : RE} (ε∈p : ε∈ p) → parseAll[ p , [] ] ≡ mkAllEmptyU ε∈p
+  parseAll-[]-yes {p} ε∈p =
+    trans (parseAll-[]≡buildU-root {p}) (buildU-root-≡ (yes ε∈p))
+    where
+      root : PDInstance* p []
+      root = pdinstance* {p} {p} {[]} (λ u → u) (λ u → refl)
+
+      buildU-root-out : Dec (ε∈ p) → List (U p)
+      buildU-root-out (yes prf) = mkAllEmptyU prf
+      buildU-root-out (no _) = []
+
+      buildU-root-≡ : (d : Dec (ε∈ p)) → buildU root ≡ buildU-root-out d
+      buildU-root-≡ d
+        with ε∈? p
+      ... | yes prf' with d
+      ... |   yes prf =
+        trans
+          (cong (List.map (λ u → u)) (mkAllEmptyU-irrelevant prf' prf))
+          (map-id (mkAllEmptyU prf))
+      ... |   no ¬prf = ⊥-elim (¬prf prf')
+      buildU-root-≡ d | no ¬prf' with d
+      ... |   yes prf = ⊥-elim (¬prf' prf)
+      ... |   no ¬prf = refl
+
+  -- The head of parseAll is ≥-Max.  Proof by induction on the length of the word:
+  -- for [] we use sortedness of mkAllEmptyU; for c ∷ cs we use parseAll-pdU-decomp,
+  -- the IH on the suffix cs, and first-pdU-accept-w-isMax.
+  parseAll-head-isMax : ∀ (p : RE) (w : List Char) (w∈p : w ∈⟦ p ⟧) (u : U p)
+    → head parseAll[ p , w ] ≡ just u
+    → ≥-Max w u
+  parseAll-head-isMax p [] w∈p u eq =
+    let ε∈p : ε∈ p
+        ε∈p = []∈⟦r⟧→ε∈r w∈p
+        pa≡mk : parseAll[ p , [] ] ≡ mkAllEmptyU ε∈p
+        pa≡mk = parseAll-[]-yes ε∈p
+        (e , es , mk≡e∷es) = head-tail (mkAllEmptyU≢[] ε∈p)
+        eq' : just e ≡ just u
+        eq' = subst (λ xs → head xs ≡ just u) (trans pa≡mk mk≡e∷es) eq
+        e≡u : e ≡ u
+        e≡u = just-injective eq'
+        sound : All (Flat-[] p) (e ∷ es)
+        sound = subst (All (Flat-[] p)) mk≡e∷es (mkAllEmptyU-sound ε∈p)
+        e-flat : proj₁ (flat e) ≡ []
+        e-flat = flat-[]-proj (All.head sound)
+        sorted : >-sorted {p} (e ∷ es)
+        sorted = subst (>-sorted {p}) mk≡e∷es (mkAllEmptyU-sorted ε∈p)
+        max-e : ≥-Max [] e
+        max-e = mkAllEmptyU-first-≥-Max ε∈p e-flat mk≡e∷es sorted
+    in subst (λ x → ≥-Max [] x) e≡u max-e
+  parseAll-head-isMax p (c ∷ cs) w∈p u eq =
+    let decomp = parseAll-pdU-decomp {p} c cs
+        eq' : head (List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])) (pdU[ p , c ])) ≡ just u
+        eq' = subst (λ xs → head xs ≡ just u) decomp eq
+        (pdi , fi-eq , u₀ , u≡inj-u₀ , head-src≡) = head-pdUparseAll→first-inhabit (pdU[ p , c ]) u eq'
+        u₀∈pa : u₀ ∈ parseAll[ pdi-src pdi , cs ]
+        u₀∈pa = head-just-∈ head-src≡
+        flat-u₀≡cs : proj₁ (flat u₀) ≡ cs
+        flat-u₀≡cs = lookup (parseAll-all-sound {pdi-src pdi} {cs}) u₀∈pa
+        cs∈src : cs ∈⟦ pdi-src pdi ⟧
+        cs∈src = subst (λ x → x ∈⟦ pdi-src pdi ⟧) flat-u₀≡cs (proj₂ (flat u₀))
+        ih : ≥-Max cs u₀
+        ih = parseAll-head-isMax (pdi-src pdi) cs cs∈src u₀ head-src≡
+        max-pdi = first-pdU-accept-w-isMax {p} {c} cs w∈p pdi fi-eq
+        max-u = ≥-Max-PDInstance-u max-pdi
+        max-u-max = ≥-Max-PDInstance→≥-Max-w max-pdi
+        u₀≡max-u : u₀ ≡ max-u
+        u₀≡max-u = ≥-Max-unique u₀ max-u ih max-u-max
+    in ≥-Max-PDInstance→≥-Max-c∷w max-pdi u (trans u≡inj-u₀ (cong (pdi-inj pdi) u₀≡max-u))
+
+  -- Extract the source parse tree from ≥-Max-PDInstance and prove it is ≥-Max w
   ●c∷w-aux : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char) (w∈● : (c ∷ w) ∈⟦ l ● r ` loc ⟧) (u : U (l ● r ` loc))
     → head (List.concatMap buildU pdUMany[ l ● r ` loc , c ∷ w ]) ≡ just u
     → ≥-Max (c ∷ w) u
-  ●c∷w-aux l r loc c w w∈● u eq =
-    let (pdi , fi-eq , uₘ , u≡inj-uₘ , uₘ≡max) = head-pdUMany→first-inhabit-max (l ● r ` loc) c w u eq
-        max-pdi = first-pdU-accept-w-isMax {l ● r ` loc} {c} w w∈● pdi fi-eq
-    in ≥-Max-PDInstance→≥-Max-c∷w max-pdi u
-         (trans u≡inj-uₘ (cong (pdi-inj pdi) (uₘ≡max max-pdi)))
+  ●c∷w-aux l r loc c w w∈● u eq = parseAll-head-isMax (l ● r ` loc) (c ∷ w) w∈● u eq
 
   first-concatMap-buildU-pdUMany-isMax : ∀ ( r : RE )
     → ( w : List Char )
@@ -3490,21 +3657,11 @@ mutual
     → ( u : U r )
     → head (List.concatMap buildU pdUMany[ r , w ]) ≡ just u
     →  ≥-Max w u
-  first-concatMap-buildU-pdUMany-isMax ε .[] ε EmptyU eq =
-    ≥-max [] EmptyU (sym (flat-Uε≡[] EmptyU)) (λ { EmptyU _ → inj₂ refl })
-  first-concatMap-buildU-pdUMany-isMax ($ c ` loc) .([ c ]) ($_ .{loc} .c) (LetterU .c) eq =
-    ≥-max [ c ] (LetterU c) refl (λ { (LetterU .c) _ → inj₂ refl })
-  first-concatMap-buildU-pdUMany-isMax (l + r ` loc) [] w∈+ u eq =
-    +[]-aux l r loc w∈+ u eq
-  first-concatMap-buildU-pdUMany-isMax (l + r ` loc) (c ∷ w) w∈+ u eq =
-    +c∷w-aux l r loc c w w∈+ u eq
-  first-concatMap-buildU-pdUMany-isMax (l ● r ` loc) [] w∈● u eq = ●[]-aux l r loc w∈● u eq
-  first-concatMap-buildU-pdUMany-isMax (l ● r ` loc) (c ∷ w) w∈● u eq = ●c∷w-aux l r loc c w w∈● u eq
-  first-concatMap-buildU-pdUMany-isMax (r' * nε ` loc) w w∈* u eq = {!!}
+  first-concatMap-buildU-pdUMany-isMax r w w∈r u eq = parseAll-head-isMax r w w∈r u eq
 ```
 
 
-Extended Order 
+ Extended Order 
 
 ```agda
 data _,_,_⊢*_≥_ : ∀ ( r : RE ) → ( pref : List Char ) → ( suf : List Char ) → PDInstance* r pref → PDInstance* r pref  → Set where
@@ -3524,7 +3681,7 @@ data _,_,_⊢*_≥_ : ∀ ( r : RE ) → ( pref : List Char ) → ( suf : List C
 ```
 
 
-A pdinstance* is suffix w maximal iff given the max parse tree of w w.r.t to some p, say u,  inject u gives us the maximal parse tree of r.
+ A pdinstance* is suffix w maximal iff given the max parse tree of w w.r.t to some p, say u,  inject u gives us the maximal parse tree of r.
 ```agda
 
 data ≥-Max-PDInstance* : ∀ {r : RE } { pref : List Char } → ( List Char ) → PDInstance* r pref → Set where
@@ -3545,7 +3702,6 @@ data ≥-Max-PDInstance* : ∀ {r : RE } { pref : List Char } → ( List Char ) 
 
 
 
-
 first-parseAll-isMax  : ∀ ( r : RE )
   → ( w : List Char )
   → w ∈⟦ r ⟧
@@ -3554,4 +3710,3 @@ first-parseAll-isMax  : ∀ ( r : RE )
   → ≥-Max w u 
 first-parseAll-isMax = first-concatMap-buildU-pdUMany-isMax
 ```
-```agda

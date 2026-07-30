@@ -156,6 +156,9 @@ open Efn using ( Efn ; efn-ε ; efn-● )
 
 
 ```agda
+-- Purpose: Define what it means for a parse tree u to be maximal for word w
+-- Used by: ≥-max-word, ≥-max-pair-fst-prefix→>3, ≥-max-pres-left-helper, >-wellfounded, ≥-Max-PDInstance, parseAll-head-isMax
+-- Proof idea: N/A (data type definition with single constructor ≥-max)
 data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where 
   ≥-max : ∀ { r : RE }
         → ( w : List Char )
@@ -246,9 +249,15 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
 
 
 
+-- Purpose: Extract the word-equality proof from a ≥-Max proof
+-- Used by: max-pair→max-snd
+-- Proof idea: Direct pattern matching on ≥-max constructor
 ≥-max-word : ∀ {r : RE} {w : List Char} {u : U r} → ≥-Max w u → proj₁ (flat u) ≡ w
 ≥-max-word (≥-max _ _ eq _) = eq
 
+-- Purpose: Lift ≥-Max from inj u to LeftU (inj u) in a + regex
+-- Used by: ≥-max-pres-left-pdi
+-- Proof idea: If v is LeftU, use left-mono; if v is RightU, LeftU > RightU by choice
 ≥-max-pres-left-helper : (p l r : RE) (loc : ℕ) (c : Char) (inj : U p → U l)
   → (u : U p) (w : List Char)
   → ≥-Max (c ∷ w) (inj u)
@@ -265,6 +274,9 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
        })
 
 
+-- Purpose: Inverse of ≥-max-pres-left-helper: extract ≥-Max of inj u from LeftU (inj u)
+-- Used by: (internal helper, not called externally in this file)
+-- Proof idea: Wrap any competitor v into LeftU v and use the original ≥-Max
 ≥-max-pres-left-helper-inv : (p l r : RE) (loc : ℕ) (c : Char) (inj : U p → U l)
   → (u : U p) (w : List Char)
   → ≥-Max (c ∷ w) (LeftU {l} {r} {loc} (inj u))
@@ -296,6 +308,9 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
 
 
 
+-- Purpose: proj₁ of flat for LeftU equals proj₁ of flat of the inner tree
+-- Used by: ≥-max-pres-right-helper, ≥-max-pres-left-helper-inv
+-- Proof idea: Structural induction on U constructor (refl in each case)
 proj₁-flat-LeftU : ∀ {l r : RE} {loc : ℕ} (v₁ : U l) → proj₁ (flat {l + r ` loc} (LeftU v₁)) ≡ proj₁ (flat v₁)
 proj₁-flat-LeftU {ε} {r} {loc} EmptyU = refl
 proj₁-flat-LeftU {$ c ` loc} {r} {loc'} (LetterU c) = refl
@@ -397,16 +412,28 @@ mkAllEmptyU-first-≥-Max {l} ε∈l {e₁} {es₁} flat-e₁≡[] mkAllEmptyU�
 
 
       
+-- Purpose: nothing cannot equal just x (absurd pattern)
+-- Used by: first-inhabit-++-just-left-pres, first-inhabit-++-just-right-pres, first-inhabit-++-nothing-left, head-map-LeftU-++-map-RightU
+-- Proof idea: Pattern matching on impossible constructor
 ¬nothing≡just : ∀ {A : Set} {x : A} → ¬ nothing ≡ just x
 ¬nothing≡just ()
 
+-- Purpose: Injectivity of just constructor
+-- Used by: first-inhabit-yes-eq-full, first-inhabit-++-just-left-pdi, first-inhabit-++-just-right-decompose, first-inhabit-++-just-left-pres′
+-- Proof idea: Pattern matching on refl
 just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
 just-injective refl = refl
 
+-- Purpose: head of a non-empty list is just the first element
+-- Used by: (standalone helper for head reasoning)
+-- Proof idea: Reflexivity
 head-x∷xs≡just-x : ∀ { A : Set} {x : A } { xs : List A } → head ( x ∷ xs ) ≡ just x
 head-x∷xs≡just-x {A} {x} {xs} = refl 
 
 
+-- Purpose: If partial derivative is empty, then c∷w is not in the language
+-- Used by: (helper for contradiction in pdU reasoning)
+-- Proof idea: Use pdU-complete to get Any Recons, contradicting empty list
 pdU≡[]→¬c∷w∈l : ∀ {l c} {w : List Char} → pdU[ l , c ] ≡ [] → ¬ ((c ∷ w) ∈⟦ l ⟧)
 pdU≡[]→¬c∷w∈l {l} {c} {w} pdU≡[] c∷w∈l =
   let u = unflat c∷w∈l
@@ -416,16 +443,25 @@ pdU≡[]→¬c∷w∈l {l} {c} {w} pdU≡[] c∷w∈l =
       any-recons = pdU-complete {l} {c} {w} u eq
   in ⊥-elim (¬Any[] (subst (λ x → Any (Recons {l} {c} u) x) pdU≡[] any-recons))
 
+-- Purpose: pdU of a letter regex is empty for mismatching character
+-- Used by: first-pdU-accept-w-isMax-$
+-- Proof idea: Decision on c' ≟ c, no case gives refl
 pdU[$c]≡[] : ∀ {c' c : Char} {loc : ℕ} → c ≢ c' → pdU[ $ c' ` loc , c ] ≡ []
 pdU[$c]≡[] {c'} {c} ¬c≡c' with c' Char.≟ c
 ... | yes c'≡c = ⊥-elim (¬c≡c' (sym c'≡c))
 ... | no  _    = refl
 
+-- Purpose: pdU of a letter regex is singleton list for matching character
+-- Used by: first-pdU-accept-w-isMax-$
+-- Proof idea: Decision on c' ≟ c' yields yes refl, then refl
 pdU[$c]≡∷ : ∀ {c' : Char} {loc : ℕ} → pdU[ $ c' ` loc , c' ] ≡ [ pdinstance mkinjLetter mkinjLetterSound ]
 pdU[$c]≡∷ {c'} {loc} with c' Char.≟ c'
 ... | yes refl = refl
 ... | no ¬c≡c = ⊥-elim (¬c≡c refl)
 
+-- Purpose: If c∷[] is in a letter regex, then c must equal the regex character
+-- Used by: first-pdU-accept-w-isMax
+-- Proof idea: Decision on toℕ c ≟ toℕ c₀, then ≈⇒≡
 c≡c'-from-∈$ : ∀ {c c' : Char} {loc : ℕ} → (c ∷ []) ∈⟦ $ c' ` loc ⟧ → c ≡ c'
 c≡c'-from-∈$ {c} {c'} ( $_ c₀ ) with (toℕ c ≟ toℕ c₀)
 ... | yes tc≡tc₀ = sym (≈⇒≡ tc≡tc₀)
@@ -457,6 +493,9 @@ head-pdU-+-right eq = just-inj (sym eq)
 
 -- head-concatmap-empty: The head of concatMap of pdinstance-snd over empty pdis is nothing.
 -- Needed for the l ● r case when pdU[r,c] is empty. really? not in used now. 
+-- Purpose: concatMap over empty pdis yields nothing at head
+-- Used by: (internal helper for ● case when pdU[r,c] is empty)
+-- Proof idea: concatMap over any xs with [] produces [], head of [] is nothing
 head-concatmap-empty : ∀ {l r : RE} {loc : ℕ} {c : Char}
   → (xs : List (∃[ e ] (Flat-[] l e)))
   → head (concatMap (λ x → pdinstance-snd {l} {r} {loc} {c} x []) xs) ≡ nothing
@@ -476,6 +515,9 @@ head-concatmap-empty (x ∷ xs) = head-concatmap-empty xs
 -- dom-lemma: If inj u₁ is the first reconstruction of the first pdi in pdU[l,c],
 -- and v₁ has a c-word different from c∷flat u₁, then l ⊢ inj u₁ > v₁.
 -- extract-Recons: Extract the pdi and membership proof from Any (Recons v₁) pdis.
+-- Purpose: Extract a specific pdi and Recons proof from Any Recons evidence
+-- Used by: first-pdU-accept-w-isMax-●-no, first-pdU-accept-w-isMax-●-yes, first-pdU-accept-w-isMax-*
+-- Proof idea: Induction on Any, threading membership evidence
 extract-Recons : ∀ {r c v₁} {pdis : List (PDInstance r c)}
   → Any (Recons {r} {c} v₁) pdis
   → ∃ λ pdi → pdi ∈ pdis × Recons v₁ pdi
@@ -489,6 +531,9 @@ extract-Recons (there v₁∈pdis) with extract-Recons v₁∈pdis
 -- extract-any turns an Any proof into the witnessing element, the proof it satisfies P,
 -- and the membership evidence. Used to extract a reconstructing PDInstance* from
 -- pdUMany-complete.
+-- Purpose: Convert Any P xs into concrete witness x with P x and membership
+-- Used by: parseAll-complete
+-- Proof idea: Induction on Any, extracting head or recursing on tail
 extract-any : ∀ {A : Set} {P : A → Set} {xs : List A}
   → Any P xs
   → ∃[ x ] (P x × x ∈ xs)
@@ -500,6 +545,9 @@ extract-any (there p) with extract-any p
 -- parseAll-complete: every parse tree u for w occurs in parseAll[ r , w ].
 -- Proof: pdUMany-complete gives a PDInstance* that reconstructs u; buildU-complete
 -- shows u is built by that PDInstance*; map and concat membership lift this to parseAll.
+-- Purpose: Every parse tree for w is in parseAll
+-- Used by: >-wellfounded, head-pdUparseAll→first-inhabit
+-- Proof idea: pdUMany-complete → buildU-complete → ∈-concat/∈-map
 parseAll-complete : ∀ {r : RE} {w : List Char} (u : U r)
   → proj₁ (flat u) ≡ w
   → u ∈ parseAll[ r , w ]
@@ -516,6 +564,9 @@ parseAll-complete {r} {w} u flat-u≡w =
 -- parseAll-sound: every element of parseAll[ r , w ] flattens to w.
 -- Proof: each buildU pdi only contains trees flattening to w (buildU-sound), and
 -- parseAll is a concatenation of such buildU results.
+-- Purpose: Elements of parseAll flatten to the queried word
+-- Used by: ∈?-parseAll, parseAll-nonempty, first-parseAll-isMax
+-- Proof idea: ∈-concat⁻ → ∈-map⁻ → buildU-sound
 parseAll-sound : ∀ {r : RE} {w : List Char} (u : U r)
   → u ∈ parseAll[ r , w ]
   → proj₁ (flat u) ≡ w
@@ -528,6 +579,9 @@ parseAll-sound {r} {w} u u∈parseAll
 
 -- parseAll-nonempty: if w ∈⟦ r ⟧ then parseAll[ r , w ] is non-empty.
 -- Proof: unflat w∈r is a parse tree for w, and parseAll-complete puts it in the list.
+-- Purpose: parseAll is non-empty for accepted words
+-- Used by: >-wellfounded
+-- Proof idea: unflat gives a parse tree, parseAll-complete puts it in the list
 parseAll-nonempty : ∀ {r : RE} {w : List Char}
   → w ∈⟦ r ⟧
   → parseAll[ r , w ] ≢ []
@@ -541,6 +595,9 @@ parseAll-nonempty {r} {w} w∈r = extract-nonempty (parseAll-complete (unflat w�
     extract-nonempty (there p) = λ ()
 
 -- pick returns the greater of two parse trees according to the total LNE order.
+-- Purpose: Return the greater of two parse trees under LNE order
+-- Used by: maximum
+-- Proof idea: Trichotomy on >-order, returning the greater or either if equal
 pick : ∀ {r : RE} → U r → U r → U r
 pick v best
   with >-trichotomy best v
@@ -549,6 +606,9 @@ pick v best
 ... | inj₂ (inj₂ best≡v) = best
 
 -- pick preserves the flattened word: if both candidates flatten to w, so does the pick.
+-- Purpose: pick returns a tree that flattens to the same word
+-- Used by: maximum-flat
+-- Proof idea: Trichotomy gives one of {best, v}, both flatten to w
 pick-preserves-flat : ∀ {r : RE} {w : List Char} (v best : U r)
   → proj₁ (flat v) ≡ w
   → proj₁ (flat best) ≡ w
@@ -561,11 +621,17 @@ pick-preserves-flat v best flat-v≡w flat-best≡w
 
 -- maximum selects the largest element of a non-empty list of parse trees using foldr
 -- and the total LNE order. Used to obtain the maximal parse tree from parseAll.
+-- Purpose: Compute the maximal element of a non-empty list under LNE order
+-- Used by: >-wellfounded, parseAll-head-isMax, first-pdU-accept-w-isMax-●-no, first-pdU-accept-w-isMax-●-yes, first-pdU-accept-w-isMax-*
+-- Proof idea: foldr with pick, base element is head
 maximum : ∀ {r : RE} (us : List (U r)) → us ≢ [] → U r
 maximum [] neq = ⊥-elim (neq refl)
 maximum (u ∷ us) neq = foldr pick u us
 
 -- parseAll-all-sound: every element of parseAll[ r , w ] flattens to w.
+-- Purpose: All elements of parseAll satisfy flat ≡ w
+-- Used by: >-wellfounded
+-- Proof idea: buildU-sound for each pdi in pdUMany, then ++⁺
 parseAll-all-sound : ∀ {r : RE} {w : List Char}
   → All (λ u → proj₁ (flat u) ≡ w) (parseAll[ r , w ])
 parseAll-all-sound {r} {w} =
@@ -577,6 +643,9 @@ parseAll-all-sound {r} {w} =
     all-buildU-sound (pdi ∷ pdis) = ++⁺ (buildU-sound pdi) (all-buildU-sound pdis)
 
 -- maximum-flat: if all elements of a non-empty list flatten to w, so does their maximum.
+-- Purpose: maximum preserves the flattened word
+-- Used by: >-wellfounded
+-- Proof idea: Induction on foldr with pick-preserves-flat
 maximum-flat : ∀ {r : RE} {w : List Char} (us : List (U r)) (neq : us ≢ [])
   → All (λ u → proj₁ (flat u) ≡ w) us
   → proj₁ (flat (maximum us neq)) ≡ w
@@ -641,15 +710,24 @@ maximum-≥-all {r} (u ∷ us) neq v v∈ = foldr-≥ u us v v∈
 
 -- ∈?-parseAll: decide word membership via the derivative-based parser.
 -- w ∈⟦ r ⟧ iff parseAll[ r , w ] is non-empty (parseAll-nonempty / parseAll-sound).
+-- Purpose: Decidable word membership via parseAll
+-- Used by: _∈?⟦_⟧, parseAll-no→[]
+-- Proof idea: If parseAll is non-empty, extract word; else contradict nonempty lemma
 ∈?-parseAll : ( w : List Char ) → ( r : RE ) → Dec ( w ∈⟦ r ⟧ )
 ∈?-parseAll w r with parseAll[ r , w ] in eq
 ... | [] = no (λ w∈r → parseAll-nonempty w∈r eq)
 ... | (u ∷ us) = yes (subst (λ x → x ∈⟦ r ⟧) (parseAll-sound u (subst (λ x → u ∈ x) (sym eq) (here refl))) (proj₂ (flat u)))
 
+-- Purpose: Infix alias for ∈?-parseAll
+-- Used by: first-inhabit, first-inhabit-just-∈, first-inhabit-just-first
+-- Proof idea: Direct alias
 _∈?⟦_⟧ : ( w : List Char ) → ( r : RE ) → Dec ( w ∈⟦ r ⟧ )
 _∈?⟦_⟧ =  ∈?-parseAll
 
 
+-- Purpose: Local preservation property for pdinstance: if inj preserves ≥-Max then ≥-Max-Preserve-Local holds
+-- Used by: pdU-preseve-local, ≥-Max-Preserve-Local-map-left, ≥-Max-Preserve-Local-map-fst
+-- Proof idea: N/A (data type definition)
 data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c → Set where
   ≥-max-pres-local : ∀ { p r : RE } { c : Char } { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -663,6 +741,9 @@ data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c →
 
 
 
+-- Purpose: Lift ≥-Max-Preserve-Local through pdinstance-left mapping
+-- Used by: pdU-preseve-local (+ case)
+-- Proof idea: Induction on pdis, LeftU > LeftU by choice-ll and inner >
 ≥-Max-Preserve-Local-map-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance l c ))
   → All (≥-Max-Preserve-Local {l} {c}) pdis
@@ -686,6 +767,9 @@ data ≥-Max-Preserve-Local : ∀ { r : RE } { c : Char } → PDInstance r c →
 
 
 
+-- Purpose: Lift ≥-Max-Preserve-Local through pdinstance-right mapping
+-- Used by: pdU-preseve-local (+ case)
+-- Proof idea: Induction on pdis, RightU > RightU by choice-rr and inner >
 ≥-Max-Preserve-Local-map-right : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance r c ))
   → All (≥-Max-Preserve-Local {r} {c}) pdis
@@ -713,6 +797,9 @@ _≟C_ = ≡-dec Char._≟_
 
 
 
+-- Purpose: Lift ≥-Max-Preserve-Local through pdinstance-fst for ● regex
+-- Used by: pdU-preseve-local (● case), first-pdU-accept-w-isMax-●-no, first-pdU-accept-w-isMax-●-yes
+-- Proof idea: Case analysis on ≥ relation using bijectivity and pair decomposition
 ≥-Max-Preserve-Local-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance l c ) )
   → All (Bijective {l} {c}) pdis 
@@ -835,6 +922,9 @@ _≟C_ = ≡-dec Char._≟_
 
 
 
+-- Purpose: Lift ≥-Max-Preserve-Local through mk-snd-pdi (singleton case)
+-- Used by: ≥-Max-Preserve-Local-concatmap-pdinstance-inc-pdinstance-snd
+-- Proof idea: seq₂ with inner ≥ via bijectivity, length > 0 from sound-ev
 ≥-Max-Preserve-Local-mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
    → ( e-flat-[]-e : (∃[ e ] Flat-[] l e)  )
    → ( pdi : PDInstance r c )
@@ -868,6 +958,9 @@ _≟C_ = ≡-dec Char._≟_
         ... | inj₂ inju≡injv =  Nullary.contradiction ( u→v→inju≡injv→u≡v u v inju≡injv ) (>→¬≡  u>v )  
         ... | inj₁ inju>injv = inju>injv         
 
+-- Purpose: Lift ≥-Max-Preserve-Local through mk-snd-pdi for a list of pdis
+-- Used by: ≥-Max-Preserve-Local-concatmap-pdinstance-snd-sub
+-- Proof idea: Induction on pdis, applying ≥-Max-Preserve-Local-mk-snd-pdi per element
 ≥-Max-Preserve-Local-concatmap-pdinstance-inc-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( e-flat-[]-e : ∃[ e ] Flat-[] l e )
   → ( pdis : List (PDInstance r c ) )
@@ -879,6 +972,9 @@ _≟C_ = ≡-dec Char._≟_
 ≥-Max-Preserve-Local-concatmap-pdinstance-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e-flat-[]-e (pdi ∷ pdis) (bijective-pdi ∷ all-bijective-pdis) (max-pres-pdi ∷ all-max-pres-pdis) =
   ≥-Max-Preserve-Local-mk-snd-pdi e-flat-[]-e pdi bijective-pdi max-pres-pdi  ∷ ≥-Max-Preserve-Local-concatmap-pdinstance-inc-pdinstance-snd {l} {r} {ε∈l} {loc} {c}  e-flat-[]-e pdis all-bijective-pdis all-max-pres-pdis   
 
+-- Purpose: Sub-lemma for concatmap-pdinstance-snd preservation over empty-tree list
+-- Used by: ≥-Max-Preserve-Local-concatmap-pdinstance-snd
+-- Proof idea: Induction on e-flat-[]-es, splitting into head+tail via all-concat
 ≥-Max-Preserve-Local-concatmap-pdinstance-snd-sub :  ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( e-flat-[]-es  : List ( ∃[ e ] Flat-[] l e ) )
   → ( pdis : List (PDInstance r c ) )
@@ -891,6 +987,9 @@ _≟C_ = ≡-dec Char._≟_
   
 
 
+-- Purpose: ≥-Max-Preserve-Local is preserved through concatmap-pdinstance-snd
+-- Used by: pdU-preseve-local (●, ε∈l case), first-pdU-accept-w-isMax-●-yes
+-- Proof idea: Reduce to concatmap-snd-sub via zip-es-flat-[]-es from mkAllEmptyU
 ≥-Max-Preserve-Local-concatmap-pdinstance-snd : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance r c ) )
   → All (Bijective {r} {c}) pdis
@@ -911,6 +1010,9 @@ _≟C_ = ≡-dec Char._≟_
 
 ```agda
 
+-- Purpose: ≥-Max-Preserve-Local is preserved through pdinstance-star
+-- Used by: pdU-preseve-local (* case)
+-- Proof idea: Induction on pdis, star-head/star-tail ordering from inner >
 ≥-Max-Preserve-Local-map-star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
   → ( pdis : List (PDInstance r c ) )
   → All (Bijective {r} {c}) pdis
@@ -979,6 +1081,9 @@ _≟C_ = ≡-dec Char._≟_
         ... | inj₁ inju₁>injv₁ = inj₁ (bne (len>0-injList u₁ us) (len>0-injList v₁ vs) (star-head inju₁>injv₁))
 
 
+-- Purpose: All pdis in pdU[r,c] satisfy ≥-Max-Preserve-Local (structural induction on r)
+-- Used by: ∈→pres-local, first-pdU-accept-w-isMax-●-no, first-pdU-accept-w-isMax-●-yes, first-pdU-accept-w-isMax-*
+-- Proof idea: Induction on RE structure, using map-left, map-fst, concatmap-snd, map-star
 pdU-preseve-local : ∀ { r : RE } { c : Char }
   → All ≥-Max-Preserve-Local pdU[ r , c ]
 pdU-preseve-local {ε} {c} = []   
@@ -1028,19 +1133,34 @@ pdU-preseve-local {r * ε∉r ` loc} {c} = ≥-Max-Preserve-Local-map-star pdU[ 
 
 ```agda
 
+-- Purpose: Extract the source regex of a PDInstance
+-- Used by: first-inhabit-cons, first-inhabit-just→c∷w∈r, parseAll-pdU-decomp
+-- Proof idea: Pattern matching on pdinstance to extract p
 pdi-src : ∀ { r : RE } { c : Char } → PDInstance r c → RE
 pdi-src (pdinstance {p} {r} {c} inj sound-ev) = p
 
+-- Purpose: Extract the injection function from a PDInstance
+-- Used by: ≥-max-pdi≡-helper, first-inhabit-++-just-left-pdi, head-map-inj→head-src
+-- Proof idea: Pattern matching on pdinstance to extract inj
 pdi-inj : ∀ { r : RE } { c : Char } → ( g : PDInstance r c ) → U (pdi-src g) → U r
 pdi-inj (pdinstance {p} {r} {c} inj sound-ev) = inj
 
+-- Purpose: Extract the source regex of a PDInstance*
+-- Used by: buildU-≡-map-inj-parseAll-[], concatMap-buildU-pdUMany-aux-lemma
+-- Proof idea: Pattern matching on pdinstance* to extract p
 pdi*-src : ∀ { r : RE } { pref : List Char } → PDInstance* r pref → RE
 pdi*-src (pdinstance* {p} {r} {pref} inj s-ev) = p
 
+-- Purpose: Extract the injection function from a PDInstance*
+-- Used by: concatMap-buildU-pdUMany-aux-lemma, concatMap-buildU-pdUMany-aux-lemma-step
+-- Proof idea: Pattern matching on pdinstance* to extract inj
 pdi*-inj : ∀ { r : RE } { pref : List Char } → ( pdi* : PDInstance* r pref ) → U (pdi*-src pdi*) → U r
 pdi*-inj (pdinstance* {p} {r} {pref} inj s-ev) = inj
 
 
+-- Purpose: (Mutual block) Find first pdi in list whose source accepts w
+-- Used by: first-inhabit-yes-eq-full, first-inhabit-no-eq, first-inhabit-just-∈, first-inhabit-just-first
+-- Proof idea: (Mutual recursion) Check head membership, return just or recurse
 mutual
   first-inhabit-cons : ∀ { r : RE } { c : Char } { w : List Char }
     → ( pdi' : PDInstance r c ) ( pdis : List (PDInstance r c) )
@@ -1065,6 +1185,9 @@ Ex>-sorted-first>all {r} {c} (ex>-cons sorted (ex>-just pdi>pdi₂)) pdi' (there
 ... | pdi₂>pdi' = >-pdi-trans pdi>pdi₂ pdi₂>pdi'
 
 
+-- Purpose: Contradiction when nothing equals just x
+-- Used by: first-inhabit-++-just-left-pres, first-inhabit-++-just-right-decompose, first-inhabit-nothing→¬Any-accept-aux
+-- Proof idea: Absurd pattern
 nothing≢just : ∀ { A : Set } { x : A } → nothing ≡ just x → ⊥
 nothing≢just ()
 
@@ -1085,6 +1208,9 @@ first-inhabit-yes-eq-full {r} {c} {w} (pdinstance {p} .{r} .{c} inj sev) pdis w�
 
 
 -- first-inhabit recurses on the tail exactly when the head source rejects w.
+-- Purpose: first-inhabit skips head when head source rejects w
+-- Used by: first-inhabit-just-∈-aux, first-inhabit-just-first-aux, first-inhabit-nothing→¬Any-accept-aux
+-- Proof idea: With on membership decision, yes→absurd, no→refl
 first-inhabit-no-eq : ∀ { r : RE } { c : Char } { w : List Char }
   → ( pdi' : PDInstance r c ) ( pdis : List (PDInstance r c) )
   → ¬ ( w ∈⟦ pdi-src pdi' ⟧ )
@@ -1095,6 +1221,9 @@ first-inhabit-no-eq {r} {c} {w} (pdinstance {p} .{r} .{c} inj sev) pdis ¬w∈sr
 ... | no _ = refl
 
 
+-- Purpose: first-inhabit returns just pdi implies pdi ∈ pdis and w ∈ src(pdi), and conversely
+-- Used by: head-pdUparseAll→first-inhabit
+-- Proof idea: Mutual induction on Any and first-inhabit structure
 mutual
   -- first-inhabit returns a pdi that is in the list and whose source accepts w.
   first-inhabit-just-∈ : ∀ { r : RE } { c : Char } { w : List Char }
@@ -1166,6 +1295,9 @@ mutual
 -- Key insight: compute subst (λ xs → g' ∈ xs) (sym pdU●-no/yes) g'∈
 -- in the main clause, then pass result to helpers.
 
+-- Purpose: Decompose membership in concatMap into element + membership in image
+-- Used by: concatmap-snd-decomp-aux
+-- Proof idea: Use ∈-++⁻ to split head vs tail, recurse on tail
 ∈-concatMap⁻ : ∀ { A B : Set } { f : A → List B } { y : B } { xs : List A }
   → y ∈ concatMap f xs
   → ∃[ x ] ( x ∈ xs × y ∈ f x )
@@ -1188,6 +1320,9 @@ concatmap-snd-decomp-aux {l} {r} {loc} {c} {pdis} g' es g'∈ with ∈-concatMap
 ... | (ef , ef∈es , g'∈ef-pdis) with ∈-map⁻ (mk-snd-pdi {l} {r} {loc} {c} ef) g'∈ef-pdis
 ...   | (gₕ' , gₕ'∈ , g'≡snd) = ef , gₕ' , ef∈es , gₕ'∈ , g'≡snd
 
+-- Purpose: Decompose membership in concatmap-pdinstance-snd into components
+-- Used by: first-inhabit-++-just-left-pdi-there-yes
+-- Proof idea: Rewrite concatmap to concatMap, then ∈-concatMap⁻ and ∈-map⁻
 concatmap-snd-decomp : ∀ {l r : RE} {ε∈l : ε∈ l} {loc : ℕ} {c : Char}
   → (g' : PDInstance (l ● r ` loc) c)
   → g' ∈ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
@@ -1213,6 +1348,9 @@ concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'
 -- ε∈? l and constructing the equality inside each branch where
 -- `it : ε∈? l ≡ branch` lets us use `cong pdU● it`.
 
+-- Purpose: Decompose pdi in fst-mapped list (ε∉l case)
+-- Used by: ●-decomp-yes, ●-decomp
+-- Proof idea: ∈-map⁻ on pdinstance-fst, must be fst branch
 ●-decomp-no : ∀ {l r : RE} {loc : ℕ} {c : Char}
   → (g' : PDInstance (l ● r ` loc) c)
   → g' ∈ List.map pdinstance-fst pdU[ l , c ]
@@ -1222,6 +1360,9 @@ concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'
   (proj₁ (∈-map⁻ pdinstance-fst g'∈)
   , proj₂ (proj₂ (∈-map⁻ pdinstance-fst g'∈)))
 
+-- Purpose: Decompose pdi in concatenated fst+snd lists (ε∈l case)
+-- Used by: ●-decomp
+-- Proof idea: ∈-++⁻ to fst or snd, delegate to ●-decomp-no or concatmap-snd-decomp
 ●-decomp-yes : ∀ {l r : RE} {loc : ℕ} {c : Char} {ε∈l}
   → (g' : PDInstance (l ● r ` loc) c)
   → g' ∈ List.map pdinstance-fst pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
@@ -1265,6 +1406,9 @@ concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'
 --         pdU●-def : pdU[ l ● r ` loc , c ] ≡ pdU● (yes ε∈l)
 --         pdU●-def = refl      -- STUCK: mutual block
 
+-- Purpose: Every pdi in pdU[l●r,c] is either a fst-pdi or snd-pdi
+-- Used by: (standalone decomposition lemma for ● analysis)
+-- Proof idea: Case split on ε∈? l, delegate to ●-decomp-no or ●-decomp-yes
 ●-decomp : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( g' : PDInstance (l ● r ` loc) c )
     → g' ∈ pdU[ l ● r ` loc , c ]
@@ -1275,6 +1419,9 @@ concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'
 ... | yes ε∈l = ●-decomp-yes g' g'∈
 
 
+-- Purpose: Build All P (map f xs) from pointwise membership proofs
+-- Used by: (utility lemma for All proofs over mapped lists)
+-- Proof idea: Induction on xs, threading there constructor
 all-map-∈ : ∀ { A B : Set } { P : B → Set } ( f : A → B ) ( xs : List A )
   → ( ∀ ( x : A ) → x ∈ xs → P ( f x ) )
   → All P ( List.map f xs )
@@ -1290,6 +1437,9 @@ does the following definition make sense and is helpful?
 A pdinstance is suffix w maximal iff given the max parse tree of w w.r.t to some p, say u,  inject u gives us the maximal parse tree of r.
 ```agda
 
+-- Purpose: PDInstance is suffix-w-maximal: injecting max parse tree of w yields max of c∷w
+-- Used by: ≥-max-pres-left-pdi, ≥-max-pres-right-pdi, first-pdU-accept-w-isMax, ≥-Max-PDInstance-u
+-- Proof idea: N/A (data type definition)
 data ≥-Max-PDInstance : ∀ { r : RE } { c : Char } → ( List Char )  → PDInstance r c → Set where
   ≥-max-pdi : ∀ { p r : RE } { c : Char }  { inj : U p → U r }
     { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ c ∷ ( proj₁ (flat {p} x) )) }
@@ -1317,16 +1467,28 @@ unflat c ∷ w is ≥-Max-PDInstance!
 -- maximality of parseAll for the suffix w at that source (e.g., concat sources).
 
 
+-- Purpose: pdU● for ε∉l is just map of pdinstance-fst
+-- Used by: first-pdU-accept-w-isMax-●-no
+-- Proof idea: Reflexivity
 pdU●-no : ∀ { l r : RE } { loc : ℕ } { c : Char } → (¬ε∈l : ¬ ε∈ l) → pdU● {l} {r} {loc} {c} (no ¬ε∈l) ≡ List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ]
 pdU●-no ¬ε∈l = refl
 
+-- Purpose: pdU● for ε∈l is fst-map ++ concatmap-snd
+-- Used by: first-pdU-accept-w-isMax-●-yes
+-- Proof idea: Reflexivity
 pdU●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char } → (ε∈l : ε∈ l) → pdU● {l} {r} {loc} {c} (yes ε∈l) ≡ List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ] ++ concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdU[ r , c ]
 pdU●-yes ε∈l = refl
 
+-- Purpose: first-inhabit on empty list returns nothing
+-- Used by: (internal helper for first-inhabit reasoning)
+-- Proof idea: Reflexivity
 first-inhabit-nil-nothing : ∀ { r : RE } { c : Char } { w : List Char }
   → first-inhabit r c w [] ≡ nothing
 first-inhabit-nil-nothing = refl
 
+-- Purpose: first-inhabit on xs ++ ys equals just pdil if first-inhabit on xs is just pdil
+-- Used by: (internal helper for ++ reasoning)
+-- Proof idea: Induction on xs, case on membership decision
 first-inhabit-++-just : ∀ { r : RE } { c : Char } { w : List Char }
   → ( xs ys : List (PDInstance r c) ) ( pdil : PDInstance r c )
   → first-inhabit r c w xs ≡ just pdil
@@ -1339,12 +1501,18 @@ first-inhabit-++-just {w = w} (x ∷ xs) ys pdil eq with w ∈?⟦ pdi-src x ⟧
 
 
 
+-- Purpose: pdi-src is preserved through pdinstance-left wrapping
+-- Used by: (internal helper for source extraction)
+-- Proof idea: Reflexivity after pattern matching on pdinstance
 pdi-src-pres-left : ∀ {l r : RE} {loc : ℕ} {c : Char} (x : PDInstance l c)
   → pdi-src (pdinstance-left {l} {r} {loc}  x) ≡ pdi-src x
 pdi-src-pres-left (pdinstance {p} inj s-ev) = refl
 
 
 -- Core: first-inhabit on (map left xs ++ map right ys) preserves result from xs.
+-- Purpose: first-inhabit on + regex preserves left result when left is non-empty
+-- Used by: ≥-Max-Preserve-Local-map-star, first-pdU-accept-w-isMax-+
+-- Proof idea: Mutual induction, decide w ∈ src(head), yes→base, no→recurse
 mutual
   first-inhabit-++-just-left-pres : ∀ {l r : RE} {loc : ℕ} {c : Char} (w : List Char)
     → (xs : List (PDInstance l c))
@@ -1385,6 +1553,9 @@ mutual
       base-no = first-inhabit-no-eq (pdinstance-left (pdinstance inj s-ev)) _ ¬w∈src-x
 
 
+-- Purpose: If head pdi of l accepts w, first-inhabit on + returns left-wrapped head
+-- Used by: (internal helper for + case analysis)
+-- Proof idea: first-inhabit-yes-eq-full on head, then first-inhabit-++-just-left-pres
 first-inhabit-++-just-left-pdi-there-yes : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
   → {c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧}
   → {pdi : PDInstance (l + r ` loc) c}
@@ -1496,6 +1667,9 @@ mutual
 
 -- Decompose right-side combined result: if first-inhabit on right map is just pdi,
 -- then pdi ≡ pdinstance-right pdir and first-inhabit on r is just pdir.
+-- Purpose: first-inhabit on right-wrapped list decomposes to inner first-inhabit
+-- Used by: first-inhabit-++-just-right-pres
+-- Proof idea: Mutual induction on right list, using right-injectivity
 mutual
   first-inhabit-++-just-right-decompose : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
     → (ys : List (PDInstance r c))
@@ -1543,6 +1717,9 @@ mutual
       pdi≡right = proj₂ (proj₂ decomp)
 
 -- If first-inhabit on a list is nothing, then no pdi in the list accepts w.
+-- Purpose: first-inhabit returns nothing iff no pdi in list accepts w
+-- Used by: first-inhabit-nothing→¬c∷w∈r
+-- Proof idea: Mutual induction on Any, contradiction with membership decision
 mutual
   first-inhabit-nothing→¬Any-accept : ∀ { r : RE } { c : Char } { w : List Char }
     → ( pdis : List (PDInstance r c) )
@@ -1601,14 +1778,17 @@ first-inhabit-nothing→¬c∷w∈r {r} {c} {w} eq-nothing c∷w∈r
 
 
 -- we prove first-inhabit-++-just-left-pdi using the following sub lemma
+-- Purpose: Any Recons in left pdis implies first-inhabit on + returns left-wrapped pdi
+-- Used by: first-inhabit-++-just-left-pdi
+-- Proof idea: Induction on Any Recons, use first-inhabit-yes-eq-full for here
 first-inhabit-++-just-left-any : ∀ {l r : RE} {loc : ℕ} {c : Char} {w : List Char}
   → (c∷w∈⟦l⟧ : (c ∷ w) ∈⟦ l ⟧)
   → ( pdisˡ : List (PDInstance l c ) )
   → ( pdisʳ : List (PDInstance r c ) )
   → Any (Recons {l} {c} (unflat {l} {c ∷ w} c∷w∈⟦l⟧)) pdisˡ 
   → ∃[ pdi ] ( first-inhabit ( l + r ` loc ) c w ( (List.map (λ x → pdinstance-left {l} {r} {loc} x ) pdisˡ ) ++ (List.map (λ x → pdinstance-right {l} {r} {loc} x ) pdisʳ ) )  ≡ just (pdinstance-left {l} {r} {loc} pdi) )
-             ×
-              ( first-inhabit l c w pdisˡ ≡ just pdi ) 
+              ×
+               ( first-inhabit l c w pdisˡ ≡ just pdi )
 first-inhabit-++-just-left-any {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ [] pdisʳ  ar =  Nullary.contradiction ar ¬Any[]
 first-inhabit-++-just-left-any {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ (pdi₀@(pdinstance {p} .{l} .{c} inj sound-ev) ∷ pdisˡ) pdisʳ (here (recons {p} .{l} .{c} {w'} .{inj} .{sound-ev} .(unflat {l} {c ∷ w} c∷w∈⟦l⟧) (w'∈p , inj∘unflatw'∈p≡unflat-c∷w∈⟦l⟧)) )  =  pdi₀ , eq-left+right , eq-left 
     where
@@ -1641,6 +1821,9 @@ first-inhabit-++-just-left-any {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ (pdi₀@(pd
 first-inhabit-++-just-left-any {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ (pdi₀@(pdinstance {p} .{l} .{c} inj sound-ev) ∷ pdisˡ) pdisʳ (there ar) | yes w∈p =
     pdi₀ , refl , refl  -- w ∈ (pdi-src pdi₀), we have can apply the here case using the newly discovered c ∷ w ∈ l that found in pdi₀
 
+-- Purpose: first-inhabit on + returns left-wrapped pdi if c∷w ∈ l
+-- Used by: first-pdU-accept-w-isMax-+-left
+-- Proof idea: Use first-inhabit-++-just-left-any with pdU-complete, then injectivity
 first-inhabit-++-just-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char } { w : List Char }
   → (c∷w∈⟦l⟧ : ((c ∷ w) ∈⟦ l ⟧) ) -- we don't know whether unflat c∷w∈⟦l⟧ is the first / left most
   → ( pdi : PDInstance (l + r ` loc) c )
@@ -1664,6 +1847,9 @@ first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-i
     ev = just-injective    just-pdi≡just-left-py
     
 
+-- Purpose: ≥-Max-PDInstance is preserved through pdinstance-left
+-- Used by: first-pdU-accept-w-isMax-+-right, first-pdU-accept-w-isMax-+-left
+-- Proof idea: Apply ≥-max-pres-left-helper to inner ≥-Max
 ≥-max-pres-left-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( pdil : PDInstance l c ) (w : List Char)
   → (c∷w∈l : (c ∷ w) ∈⟦ l ⟧)
@@ -1679,12 +1865,21 @@ first-inhabit-++-just-left-pdi {l} {r} {loc} {c} {w} c∷w∈⟦l⟧ pdi first-i
 -- determined by the regex; these align the parameter ε∈l with the proof
 -- generated by the ε∈? l decision.
 
+-- Purpose: Uniqueness of identity proofs (funext-level for propositional equality)
+-- Used by: Flat-[]-irrelevant
+-- Proof idea: Pattern matching on both refl
 UIP : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
 UIP refl refl = refl
 
+-- Purpose: Flat-[] proof is unique for given regex and parse tree
+-- Used by: zip-es-Flat-[]-irrelevant
+-- Proof idea: UIP on the underlying equality proof
 Flat-[]-irrelevant : ∀ {l : RE} {e : U l} (fl fl' : Flat-[] l e) → fl ≡ fl'
 Flat-[]-irrelevant (flat-[] e p) (flat-[] .e q) = cong (flat-[] e) (UIP p q)
 
+-- Purpose: mkAllEmptyU output is independent of which ε∈ proof is given
+-- Used by: zip-es-irrelevant, parseAll-[]-yes
+-- Proof idea: Structural induction on RE, case analysis on ε∈ constructors
 mkAllEmptyU-irrelevant : ∀ {l : RE} (p q : ε∈ l) → mkAllEmptyU p ≡ mkAllEmptyU q
 mkAllEmptyU-irrelevant {ε} ε∈ε ε∈ε = refl
 mkAllEmptyU-irrelevant {$ c ` loc} () ()
@@ -1708,10 +1903,16 @@ mkAllEmptyU-irrelevant {l ● r ` loc} (ε∈ p ● p_r) (ε∈ q ● q_r) =
     (mkAllEmptyU-irrelevant p_r q_r)
 mkAllEmptyU-irrelevant {r * nε ` loc} ε∈* ε∈* = refl
 
+-- Purpose: zip-es-flat-[]-es is independent of ε∈l proof
+-- Used by: zip-es-irrelevant
+-- Proof idea: Reflexivity (ε∈l is unused in the output structure)
 zip-es-ε∈l-irrelevant : ∀ {l : RE} {es : List (U l)} (p q : ε∈ l) (fl : All (Flat-[] l) es)
   → zip-es-flat-[]-es {ε∈l = p} es fl ≡ zip-es-flat-[]-es {ε∈l = q} es fl
 zip-es-ε∈l-irrelevant p q fl = refl
 
+-- Purpose: zip-es-flat-[]-es is independent of Flat-[] proof, only depends on list
+-- Used by: zip-es-irrelevant
+-- Proof idea: Induction on es, Flat-[]-irrelevant for each element
 zip-es-Flat-[]-irrelevant : ∀ {l : RE} (ε∈l : ε∈ l) {es es' : List (U l)}
   → (eq : es ≡ es')
   → (fl : All (Flat-[] l) es) (fl' : All (Flat-[] l) es')
@@ -1722,6 +1923,9 @@ zip-es-Flat-[]-irrelevant ε∈l refl (fl ∷ fls) (fl' ∷ fls') =
     (Flat-[]-irrelevant fl fl')
     (zip-es-Flat-[]-irrelevant ε∈l refl fls fls')
 
+-- Purpose: zip-es-flat-[]-es is independent of which ε∈ proof is given
+-- Used by: concatmap-pdinstance-snd-ε∈-irrelevant
+-- Proof idea: Combine mkAllEmptyU-irrelevant and zip-es-Flat-[]-irrelevant
 zip-es-irrelevant : ∀ {l : RE} (p q : ε∈ l)
   → zip-es-flat-[]-es {ε∈l = p} (mkAllEmptyU p) (mkAllEmptyU-sound p)
   ≡ zip-es-flat-[]-es {ε∈l = q} (mkAllEmptyU q) (mkAllEmptyU-sound q)
@@ -1730,6 +1934,9 @@ zip-es-irrelevant p q =
     (zip-es-Flat-[]-irrelevant p (mkAllEmptyU-irrelevant p q) (mkAllEmptyU-sound p) (mkAllEmptyU-sound q))
     (zip-es-ε∈l-irrelevant p q (mkAllEmptyU-sound q))
 
+-- Purpose: concatmap-pdinstance-snd is independent of ε∈ proof
+-- Used by: ●-yes-list-≡
+-- Proof idea: Congruence over zip-es-irrelevant
 concatmap-pdinstance-snd-ε∈-irrelevant : ∀ {l r : RE} {loc : ℕ} {c : Char} {pdis : List (PDInstance r c)}
   → (p q : ε∈ l)
   → concatmap-pdinstance-snd {l} {r} {p} {loc} {c} pdis ≡ concatmap-pdinstance-snd {l} {r} {q} {loc} {c} pdis
@@ -1742,6 +1949,9 @@ concatmap-pdinstance-snd-ε∈-irrelevant {l} {r} {loc} {c} {pdis} p q =
 ●-yes-list-≡ {l} {r} {loc} {c} p q = cong (λ xs → List.map (pdinstance-fst {l} {r} {loc} {c}) pdU[ l , c ] ++ xs) (concatmap-pdinstance-snd-ε∈-irrelevant p q)
 
 mutual
+  -- Purpose: (Mutual block) If left is nothing, first-inhabit on + falls through to right
+-- Used by: first-pdU-accept-w-isMax-+-right
+-- Proof idea: Induction on xs, case on membership decision
   first-inhabit-++-nothing-left : ∀ {l r : RE} {loc : ℕ} {c : Char} (w : List Char)
     → (xs : List (PDInstance l c)) (ys : List (PDInstance r c))
     → first-inhabit l c w xs ≡ nothing
@@ -1776,6 +1986,9 @@ mutual
       base-no = first-inhabit-no-eq (pdinstance-left (pdinstance inj s-ev)) _ ¬w∈src
 
 -- Lift maximality through pdinstance-right.
+  -- Purpose: ≥-Max-PDInstance is preserved through pdinstance-right when left rejects
+-- Used by: first-pdU-accept-w-isMax-+-right
+-- Proof idea: Apply ≥-max-pres-right-helper to inner ≥-Max
   ≥-max-pres-right-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( pdir : PDInstance r c ) (w : List Char)
     → (c∷w∈r : (c ∷ w) ∈⟦ r ⟧)
@@ -1785,6 +1998,9 @@ mutual
   ≥-max-pres-right-pdi {l} {r} {loc} {c} (pdinstance inj s-ev) w c∷w∈r ¬c∷w∈l (≥-max-pdi u w μ-w μ-c∷w) =
     ≥-max-pdi u w μ-w (≥-max-pres-right-helper _ l r loc c inj u w ¬c∷w∈l μ-c∷w)
   
+  -- Purpose: Lift ≥-Max from inj u to RightU (inj u) when left rejects c∷w
+-- Used by: ≥-max-pres-right-pdi
+-- Proof idea: LeftU case impossible by ¬c∷w∈l; RightU case by right-mono-≥
   ≥-max-pres-right-helper : (p l r : RE) (loc : ℕ) (c : Char) (inj : U p → U r)
     → (u : U p) (w : List Char)
     → ¬ ((c ∷ w) ∈⟦ l ⟧)
@@ -1802,6 +2018,9 @@ mutual
          })
   
 
+  -- Purpose: first-inhabit on + returns max pdi when c∷w ∈ r (case analysis on left)
+-- Used by: first-pdU-accept-w-isMax-+
+-- Proof idea: If left just, use ≥-max-pres-left-pdi; if left nothing, use ≥-max-pres-right-pdi
   first-pdU-accept-w-isMax-+-right : ∀ { l r : RE } { loc : ℕ} { c : Char }
     → ( w : List Char )
     → ((c ∷ w) ∈⟦ r ⟧)
@@ -1884,6 +2103,9 @@ mutual
       max-right : ≥-Max-PDInstance {l + r ` loc} {c} w (pdinstance-right pdir)
       max-right = ≥-max-pres-right-pdi pdir w c∷w∈r ¬c∷w∈l (first-pdU-accept-w-isMax {r} {c} w c∷w∈r pdir eq-r)
 
+  -- Purpose: first-inhabit on pdU[r,c] returns a ≥-Max-PDInstance (main induction on r)
+-- Used by: ≥-max-pres-left-pdi, first-pdU-accept-w-isMax-+-right, first-pdU-accept-w-isMax-+-left, parseAll-head-isMax
+-- Proof idea: Structural induction on RE: ε (absurd), $ (direct), + (decompose), ● (fst/snd), * (star)
   first-pdU-accept-w-isMax : ∀ { r : RE } { c : Char }
     → ( w : List Char )
     → ((c ∷ w) ∈⟦ r ⟧)
@@ -1901,6 +2123,9 @@ mutual
   first-pdU-accept-w-isMax {r' * nε ` loc} {c} w c∷w∈* pdi eq = first-pdU-accept-w-isMax-* w c∷w∈* pdi eq
 
   -- Helper for $ c case
+  -- Purpose: Base case for letter regex: first-inhabit on [$c,c'] is max
+-- Used by: first-pdU-accept-w-isMax
+-- Proof idea: Direct construction with ≥-max-pdi for EmptyU and LetterU
   first-pdU-accept-w-isMax-$ : ∀ { c' : Char } → ( loc : ℕ ) ( pdi : PDInstance ($ c' ` loc) c' )
     → (first-inhabit ($ c' ` loc) c' []  pdU[ $ c' ` loc , c' ]) ≡ just pdi
     → ≥-Max-PDInstance { $ c' ` loc } { c' } [] pdi
@@ -1922,6 +2147,9 @@ mutual
   ... | no ¬c'≡c' = ⊥-elim (¬c'≡c' refl)
 
   -- Helper for + case
+  -- Purpose: + case: first-inhabit on + regex returns max pdi
+-- Used by: first-pdU-accept-w-isMax
+-- Proof idea: +-elim to left or right, delegate to +-left or +-right
   first-pdU-accept-w-isMax-+ : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( w : List Char )
     → ((c ∷ w) ∈⟦ l + r ` loc ⟧)
@@ -1932,10 +2160,16 @@ mutual
   ... | inj₁ cw∈l = first-pdU-accept-w-isMax-+-left w cw∈l pdi eq
   ... | inj₂ cw∈r = first-pdU-accept-w-isMax-+-right w cw∈r pdi eq
 
+  -- Purpose: Decompose word membership in + regex to left or right
+-- Used by: first-pdU-accept-w-isMax-+
+-- Proof idea: Pattern matching on +L or +R constructor
   +-elim : ∀ {l r : RE} {loc : ℕ} {w : List Char} → w ∈⟦ l + r ` loc ⟧ → w ∈⟦ l ⟧ ⊎ w ∈⟦ r ⟧
   +-elim {l} {r} (_+L_ {l} {xs = w} {loc} .r w∈l) = inj₁ w∈l
   +-elim {l} {r} (_+R_ {r} {xs = w} {loc} .l w∈r) = inj₂ w∈r
 
+  -- Purpose: + left case: if c∷w ∈ l, first-inhabit returns left-wrapped max pdi
+-- Used by: first-pdU-accept-w-isMax-+
+-- Proof idea: first-inhabit-++-just-left-pdi to extract left pdil, then ≥-max-pres-left-pdi
   first-pdU-accept-w-isMax-+-left : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( w : List Char )
     → ((c ∷ w) ∈⟦ l ⟧)
@@ -1974,6 +2208,9 @@ mutual
     in subst (λ x → regex ⊢ pdi-inj pdi u ≥ x) pdi-u'≡v (f u u-max' u' (ev u' flat-u'≡w))
 
   -- Helper for ● case, ¬ε∈l
+  -- Purpose: ● case, ε∉l: first-inhabit on fst-map returns max pdi
+-- Used by: first-pdU-accept-w-isMax
+-- Proof idea: Build max u via parseAll at source, show dominance via pdi≡or>
   first-pdU-accept-w-isMax-●-no : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( ¬ε∈l : ¬ ε∈ l )
     → ( w : List Char )
@@ -2019,6 +2256,9 @@ mutual
     in ≥-max-pdi u w μ-w μ-c∷w
 
   -- Helper for ● case, ε∈l
+  -- Purpose: ● case, ε∈l: first-inhabit on fst++snd returns max pdi
+-- Used by: first-pdU-accept-w-isMax
+-- Proof idea: Same pattern as ●-no but with combined pdU-eq for subst
   first-pdU-accept-w-isMax-●-yes : ∀ { l r : RE } { loc : ℕ } { c : Char }
     → ( ε∈l : ε∈ l )
     → ( w : List Char )
@@ -2075,6 +2315,9 @@ mutual
     in ≥-max-pdi u w μ-w μ-c∷w
 
   -- Helper for * case
+  -- Purpose: * case: first-inhabit on star regex returns max pdi
+-- Used by: first-pdU-accept-w-isMax
+-- Proof idea: Build max u at source, show dominance via pdi≡or> and ≥-max-pdi≡-helper
   first-pdU-accept-w-isMax-* : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { c : Char }
     → ( w : List Char )
     → ((c ∷ w) ∈⟦ r * nε ` loc ⟧)
@@ -2116,9 +2359,15 @@ mutual
                   refl → ≥-max-pdi≡-helper pdi u u-max max-pdi v u' pdi'-u'≡v flat-u'≡w
     in ≥-max-pdi u w μ-w μ-c∷w
 
+  -- Purpose: Extract the [] equality from Flat-[] proof
+-- Used by: +[]-mkAllEmptyU-first-max
+-- Proof idea: Pattern matching on flat-[] constructor
   flat-[]-proj : ∀ {r' : RE} {e' : U r'} → Flat-[] r' e' → proj₁ (flat e') ≡ []
   flat-[]-proj (flat-[] _ prf') = prf'
 
+  -- Purpose: First element of mkAllEmptyU for + regex is ≥-Max for []
+-- Used by: parseAll-head-isMax (base case for empty word)
+-- Proof idea: Use mkAllEmptyU-first-≥-Max with sortedness and flat-[] proof
   +[]-mkAllEmptyU-first-max : ∀ (l r : RE) (loc : ℕ) (prf : ε∈ (l + r ` loc)) (e : U (l + r ` loc)) (es : List (U (l + r ` loc)))
     → mkAllEmptyU prf ≡ e ∷ es
     → ≥-Max [] e
@@ -2128,26 +2377,41 @@ mutual
         sorted = subst (>-sorted {l + r ` loc}) eq-mk (mkAllEmptyU-sorted prf)
     in mkAllEmptyU-first-≥-Max prf e-flat eq-mk sorted
 
+  -- Purpose: Decompose non-empty list into head ∷ tail
+-- Used by: parseAll-head-isMax
+-- Proof idea: Induction on list structure
   head-tail : ∀ {A : Set} {xs : List A} → xs ≢ [] → Σ[ x ∈ A ] Σ[ xs' ∈ List A ] xs ≡ x ∷ xs'
   head-tail {A} {[]} ¬[] = ⊥-elim (¬[] refl)
   head-tail {A} {x ∷ xs} _ = x , xs , refl
 
   -- these functions can be moved to Utils
+ -- Purpose: map identity function is identity
+-- Used by: buildU-≡-map-inj-buildU-root, parseAll-[]-yes
+-- Proof idea: Induction on xs
   map-id : ∀ {A : Set} (xs : List A) → List.map (λ x → x) xs ≡ xs
   map-id [] = refl
   map-id (x ∷ xs) = cong (x ∷_) (map-id xs)
 
+ -- Purpose: Pointwise equality of functions implies map equality
+-- Used by: concatMap-buildU-advance-lift-pdi*-left, advance-lift-pdi*-left-eq
+-- Proof idea: Induction on xs
   map-cong : ∀ {A B : Set} {f g : A → B} {xs : List A}
     → (∀ x → f x ≡ g x)
     → List.map f xs ≡ List.map g xs
   map-cong {xs = []} _ = refl
   map-cong {xs = x ∷ xs} h = cong₂ _∷_ (h x) (map-cong h)
 
+ -- Purpose: map distributes over function composition
+-- Used by: buildU-≡-map-inj-buildU-root, buildU-lift-pdi*-left, concatMap-buildU-pdUMany-aux-lemma-step
+-- Proof idea: Induction on xs
   map-∘-eq : ∀ {A B C : Set} (f : A → B) (g : B → C) (xs : List A)
     → List.map (g ∘ f) xs ≡ List.map g (List.map f xs)
   map-∘-eq f g [] = refl
   map-∘-eq f g (x ∷ xs) = cong₂ _∷_ refl (map-∘-eq f g xs)
 
+ -- Purpose: concatMap distributes over function composition
+-- Used by: parseAll-pdU-decomp, concatMap-buildU-advance-lift-pdi*-left
+-- Proof idea: Induction on xs
   concatMap-∘-eq : ∀ {A B C : Set} (f : A → B) (g : B → List C) (xs : List A)
     → List.concatMap (g ∘ f) xs ≡ List.concatMap g (List.map f xs)
   concatMap-∘-eq f g []       = refl
@@ -2155,11 +2419,17 @@ mutual
 
   
   -- map distributes over ++
+ -- Purpose: map distributes over list concatenation
+-- Used by: concatMap-++-distrib, concatMap-advance-lift-pdi*-left-eq
+-- Proof idea: Induction on xs
   map-++-distrib : ∀ {A B : Set} (f : A → B) (xs ys : List A)
     → List.map f (xs ++ ys) ≡ List.map f xs ++ List.map f ys
   map-++-distrib f []       ys = refl
   map-++-distrib f (x ∷ xs) ys = cong (f x ∷_) (map-++-distrib f xs ys)
   
+ -- Purpose: map and concatMap commute: concatMap (map f ∘ g) = map f ∘ concatMap g
+-- Used by: concatMap-buildU-pdUMany-aux-lemma-step, concatMap-buildU-advance-lift-pdi*-left
+-- Proof idea: Induction on xs using map-++-distrib
   concatMap-map-commute : ∀ {A B C : Set} (f : B → C) (g : A → List B) (xs : List A)
     → List.concatMap (List.map f ∘ g) xs ≡ List.map f (List.concatMap g xs)
   concatMap-map-commute f g [] = refl
@@ -2168,6 +2438,9 @@ mutual
         trans (cong (List.map f (g x) ++_) (concatMap-map-commute f g xs))
           (sym (map-++-distrib f (g x) (List.concatMap g xs)))
 
+ -- Purpose: Pointwise equality of list-valued functions implies concatMap equality
+-- Used by: parseAll-pdU-decomp, concatMap-buildU-pdUMany-aux-+
+-- Proof idea: Induction on xs
   concatMap-cong : ∀ {A B : Set} {f g : A → List B} {xs : List A}
     → (∀ x → f x ≡ g x)
     → List.concatMap f xs ≡ List.concatMap g xs
@@ -2175,6 +2448,9 @@ mutual
   concatMap-cong {A} {B} {f} {g} {xs = x ∷ xs} h =
     cong₂ _++_ (h x) (concatMap-cong {A} {B} {f} {g} {xs = xs} h)
 
+ -- Purpose: concat distributes over list concatenation
+-- Used by: concatMap-++-distrib
+-- Proof idea: Induction on xs using ++-assoc
   concat-++ : ∀ {A : Set} (xs ys : List (List A))
     → List.concat (xs ++ ys) ≡ List.concat xs ++ List.concat ys
   concat-++ [] ys = refl
@@ -2182,6 +2458,9 @@ mutual
     trans (cong (x ++_) (concat-++ xs ys))
           (sym (++-assoc x (List.concat xs) (List.concat ys)))
 
+ -- Purpose: concatMap distributes over list concatenation
+-- Used by: concatMap-buildU-pdUMany-aux-lemma-step, concatMap-buildU-pdUMany-aux-+
+-- Proof idea: concat (map f (xs++ys)) = concat (map f xs ++ map f ys) = concat xs ++ concat ys
   concatMap-++-distrib : ∀ {A B : Set} (f : A → List B) (xs ys : List A)
     → List.concatMap f (xs ++ ys) ≡ List.concatMap f xs ++ List.concatMap f ys
   concatMap-++-distrib f xs ys =
@@ -2189,6 +2468,9 @@ mutual
           (concat-++ (List.map f xs) (List.map f ys))
 
   -- pdUMany-aux distributes over list concatenation
+ -- Purpose: pdUMany-aux distributes over list concatenation
+-- Used by: (internal helper for pdUMany reasoning)
+-- Proof idea: Induction on w, using concatMap-++-distrib
   pdUMany-aux-++-distrib : ∀ {r : RE} {pref : List Char} (w : List Char) (pdis₁ pdis₂ : List (PDInstance* r pref))
     → pdUMany-aux {r} {pref} w (pdis₁ ++ pdis₂)
       ≡ pdUMany-aux {r} {pref} w pdis₁ ++ pdUMany-aux {r} {pref} w pdis₂
@@ -2201,10 +2483,16 @@ mutual
              (pdUMany-aux-++-distrib {r} {pref ∷ʳ c} cs adv₁ adv₂)
 
   -- parseAll[ p , [] ] = buildU (root pdi*)
+  -- Purpose: parseAll for empty word equals buildU of root PDInstance*
+-- Used by: parseAll-[]-yes
+-- Proof idea: ++-identityʳ from parseAll definition
   parseAll-[]≡buildU-root : ∀ {p : RE} → parseAll[ p , [] ] ≡ buildU (pdinstance* {p} {p} {[]} (λ u → u) (λ u → refl))
   parseAll-[]≡buildU-root {p} = ++-identityʳ _
 
   -- buildU pdi* = map inj (buildU root-p)  (both check ε∈? p)
+  -- Purpose: buildU of pdi* equals map inj of buildU at source
+-- Used by: buildU-≡-map-inj-parseAll-[]
+-- Proof idea: Case on ε∈? p, map-∘-eq or refl
   buildU-≡-map-inj-buildU-root : ∀ {p r : RE} {pref : List Char} (inj : U p → U r) (s-ev : ∀ u → proj₁ (flat {r} (inj u)) ≡ pref ++ proj₁ (flat {p} u))
     → buildU (pdinstance* {p} {r} {pref} inj s-ev) ≡ List.map inj (buildU (pdinstance* {p} {p} {[]} (λ u → u) (λ u → refl)))
   buildU-≡-map-inj-buildU-root {p} inj s-ev with ε∈? p
@@ -2212,6 +2500,9 @@ mutual
   ... | no ¬ε∈p = refl
 
   -- Base case: buildU on a single pdi* equals map inj (parseAll[src, []])
+  -- Purpose: buildU of pdi* equals map inj of parseAll at source for empty word
+-- Used by: concatMap-buildU-pdUMany-aux-lemma (base case)
+-- Proof idea: Combine buildU-≡-map-inj-buildU-root with parseAll-[]≡buildU-root
   buildU-≡-map-inj-parseAll-[] : ∀ {r : RE} {pref : List Char} (pdi* : PDInstance* r pref)
     → buildU pdi* ≡ List.map (pdi*-inj pdi*) (parseAll[ pdi*-src pdi* , [] ])
   buildU-≡-map-inj-parseAll-[] (pdinstance* {p} {r} {pref} inj s-ev) =
@@ -2219,6 +2510,9 @@ mutual
           (cong (List.map inj) (sym (parseAll-[]≡buildU-root {p})))
 
   -- Decomposition: parseAll[d, c∷cs] = concatMap (map (pdi-inj pdi) ∘ parseAll[pdi-src pdi, cs]) (pdU[d, c])
+  -- Purpose: parseAll for c∷cs decomposes into concatMap over pdU[d,c]
+-- Used by: parseAll-head-isMax (inductive step)
+-- Proof idea: Chain equalities through concatMap-buildU-pdUMany-aux-lemma
   parseAll-pdU-decomp : ∀ {d : RE} (c : Char) (cs : List Char)
     → parseAll[ d , c ∷ cs ]
       ≡ List.concatMap (λ pdi → List.map (pdi-inj pdi) (parseAll[ pdi-src pdi , cs ])) (pdU[ d , c ])
@@ -2268,6 +2562,9 @@ mutual
         step1 = cong (List.concatMap g) (++-identityʳ (List.map comp-f pdU-list))
 
   -- Step: connects the IH result to the goal for c ∷ cs
+  -- Purpose: Step lemma connecting IH to goal in concatMap-buildU-pdUMany-aux-lemma
+-- Used by: concatMap-buildU-pdUMany-aux-lemma
+-- Proof idea: Induction on pdis, decompose via parseAll-pdU-decomp
   concatMap-buildU-pdUMany-aux-lemma-step :
     ∀ {r : RE} {pref : List Char} (c : Char) (cs : List Char) (pdis : List (PDInstance* r pref))
     → List.concatMap (λ pdi*' → List.map (pdi*-inj pdi*') (parseAll[ pdi*-src pdi*' , cs ]))
@@ -2332,6 +2629,9 @@ mutual
 
   -- Key lemma: concatMap buildU (pdUMany-aux w pdis)
   --   = concatMap (λ pdi* → map (pdi*-inj pdi*) (parseAll[src pdi*, w])) pdis
+  -- Purpose: Key lemma: concatMap buildU over pdUMany-aux equals concatMap of parseAll at sources
+-- Used by: parseAll-pdU-decomp
+-- Proof idea: Induction on w, base case uses buildU-≡-map-inj-parseAll-[]
   concatMap-buildU-pdUMany-aux-lemma :
     ∀ {r : RE} {pref : List Char} (w : List Char) (pdis : List (PDInstance* r pref))
     → List.concatMap buildU (pdUMany-aux {r} {pref} w pdis)
@@ -2356,12 +2656,18 @@ mutual
       ∎
 
 
+  -- Purpose: Lift PDInstance* from l to l+r by wrapping with LeftU
+-- Used by: concatMap-buildU-pdUMany-aux-+, map-compose-id-left, advance-lift-pdi*-left-eq
+-- Proof idea: Construct new pdinstance* with LeftU ∘ inj
   lift-pdi*-left : ∀ {l r loc} {pref : List Char}
     → PDInstance* l pref
     → PDInstance* (l + r ` loc) pref
   lift-pdi*-left {l} {r} {loc} {pref} (pdinstance* {p} .{l} .{pref} inj s-ev) =
     pdinstance* {p} {l + r ` loc} {pref} (LeftU ∘ inj) s-ev
 
+  -- Purpose: Lift PDInstance* from r to l+r by wrapping with RightU
+-- Used by: concatMap-buildU-pdUMany-aux-+, map-compose-id-right, advance-lift-pdi*-right-eq
+-- Proof idea: Construct new pdinstance* with RightU ∘ inj
   lift-pdi*-right : ∀ {l r loc} {pref : List Char}
     → PDInstance* r pref
     → PDInstance* (l + r ` loc) pref
@@ -2370,18 +2676,27 @@ mutual
 
 
 
+  -- Purpose: buildU commutes with lift-pdi*-left: buildU of lifted = map LeftU of buildU
+-- Used by: concatMap-buildU-pdUMany-aux-+
+-- Proof idea: Case on ε∈? p, map-∘-eq or refl
   buildU-lift-pdi*-left : ∀ {l r loc} {pref : List Char} (pdi* : PDInstance* l pref)
     → buildU (lift-pdi*-left {l} {r} {loc} {pref} pdi*) ≡ List.map LeftU (buildU pdi*)
   buildU-lift-pdi*-left (pdinstance* {p} .{_} .{_} inj s-ev) with ε∈? p
   ... | yes ε∈p = map-∘-eq inj LeftU (mkAllEmptyU ε∈p)
   ... | no ¬ε∈p = refl
 
+  -- Purpose: buildU commutes with lift-pdi*-right: buildU of lifted = map RightU of buildU
+-- Used by: concatMap-buildU-pdUMany-aux-+
+-- Proof idea: Case on ε∈? p, map-∘-eq or refl
   buildU-lift-pdi*-right : ∀ {l r loc} {pref : List Char} (pdi* : PDInstance* r pref)
     → buildU (lift-pdi*-right {l} {r} {loc} {pref} pdi*) ≡ List.map RightU (buildU pdi*)
   buildU-lift-pdi*-right (pdinstance* {p} .{_} .{_} inj s-ev) with ε∈? p
   ... | yes ε∈p = map-∘-eq inj RightU (mkAllEmptyU ε∈p)
   ... | no ¬ε∈p = refl
 
+  -- Purpose: buildU commutes with compose-pdi-with and LeftU wrapping
+-- Used by: concatMap-buildU-advance-lift-pdi*-left
+-- Proof idea: Case on ε∈? p, map-∘-eq or refl
   buildU-compose-left :
     ∀ {l r loc} {pref : List Char} {c : Char} {d : RE}
       (inj : U d → U l) (s-ev : ∀ u → proj₁ (flat {l} (inj u)) ≡ pref ++ proj₁ (flat {d} u))
@@ -2396,6 +2711,9 @@ mutual
         ev =  map-∘-eq  (λ x → inj (p→d x)) LeftU (mkAllEmptyU ε∈p) 
   ... | no ¬ε∈p = refl
 
+  -- Purpose: buildU commutes with compose-pdi-with and RightU wrapping
+-- Used by: concatMap-buildU-advance-lift-pdi*-right
+-- Proof idea: Case on ε∈? p, map-∘-eq or refl
   buildU-compose-right :
     ∀ {l r loc} {pref : List Char} {c : Char} {d : RE}
       (inj : U d → U r) (s-ev : ∀ u → proj₁ (flat {r} (inj u)) ≡ pref ++ proj₁ (flat {d} u))
@@ -2410,6 +2728,9 @@ mutual
         ev =  map-∘-eq  (λ x → inj (p→d x)) RightU (mkAllEmptyU ε∈p)   
   ... | no ¬ε∈p = refl
 
+  -- Purpose: concatMap buildU over advance of lifted pdi* equals LeftU-wrapped result
+-- Used by: concatMap-advance-lift-pdi*-left-eq
+-- Proof idea: Rewrite advance as map compose, use buildU-compose-left, commute
   concatMap-buildU-advance-lift-pdi*-left :
     ∀ {l r loc} {pref : List Char} {c : Char}
     → (pdi* : PDInstance* l pref)
@@ -2429,6 +2750,9 @@ mutual
       List.map LeftU (List.concatMap buildU (advance-pdi*-with-c {l} {pref} {c} (pdinstance* inj s-ev)))
     ∎  
 
+  -- Purpose: concatMap buildU over advance of lifted pdi* equals RightU-wrapped result
+-- Used by: concatMap-advance-lift-pdi*-right-eq
+-- Proof idea: Rewrite advance as map compose, use buildU-compose-right, commute
   concatMap-buildU-advance-lift-pdi*-right :
     ∀ {l r loc} {pref : List Char} {c : Char}
     → (pdi* : PDInstance* r pref)
@@ -2447,6 +2771,9 @@ mutual
     ≡⟨ cong (List.map RightU) (concatMap-∘-eq (compose-pdi-with inj s-ev) buildU pdU[ d , c ]) ⟩
       List.map RightU (List.concatMap buildU (advance-pdi*-with-c {r} {pref} {c} (pdinstance* inj s-ev)))
     ∎ 
+  -- Purpose: compose-pdi-with with LeftU equals lift of compose-pdi-with
+-- Used by: advance-lift-pdi*-left-eq, map-compose-id-left
+-- Proof idea: Reflexivity after pattern matching on pdinstance
   compose-pdi-with-lift-pdi*-left-eq : ∀ {l r loc} {pref : List Char} {c : Char} {d : RE}
     (inj : U d → U l) (s-ev : ∀ u → proj₁ (flat {l} (inj u)) ≡ pref ++ proj₁ (flat {d} u))
     (pdi : PDInstance d c)
@@ -2454,6 +2781,9 @@ mutual
       ≡ lift-pdi*-left {l} {r} {loc} {pref ∷ʳ c} (compose-pdi-with {l} {d} {pref} {c} inj s-ev pdi)
   compose-pdi-with-lift-pdi*-left-eq inj s-ev (pdinstance f s-ev-p) = refl
 
+  -- Purpose: compose-pdi-with with RightU equals lift of compose-pdi-with
+-- Used by: advance-lift-pdi*-right-eq, map-compose-id-right
+-- Proof idea: Reflexivity after pattern matching on pdinstance
   compose-pdi-with-lift-pdi*-right-eq : ∀ {l r loc} {pref : List Char} {c : Char} {d : RE}
     (inj : U d → U r) (s-ev : ∀ u → proj₁ (flat {r} (inj u)) ≡ pref ++ proj₁ (flat {d} u))
     (pdi : PDInstance d c)
@@ -2461,6 +2791,9 @@ mutual
       ≡ lift-pdi*-right {l} {r} {loc} {pref ∷ʳ c} (compose-pdi-with {r} {d} {pref} {c} inj s-ev pdi)
   compose-pdi-with-lift-pdi*-right-eq inj s-ev (pdinstance f s-ev-p) = refl
 
+  -- Purpose: advance commutes with lift-pdi*-left: advance then lift = lift then advance
+-- Used by: concatMap-advance-lift-pdi*-left-eq
+-- Proof idea: Rewrite advance as map compose, use compose-pdi-with-lift-pdi*-left-eq
   advance-lift-pdi*-left-eq : ∀ {l r loc} {pref : List Char} (c : Char)
     (pdi* : PDInstance* l pref)
     → advance-pdi*-with-c {l + r ` loc} {pref} {c} (lift-pdi*-left {l} {r} {loc} {pref} pdi*)
@@ -2476,6 +2809,9 @@ mutual
       List.map (lift-pdi*-left {l} {r} {loc} {pref ∷ʳ c}) (advance-pdi*-with-c {l} {pref} {c} (pdinstance* inj s-ev))
     ∎
 
+  -- Purpose: advance commutes with lift-pdi*-right
+-- Used by: concatMap-advance-lift-pdi*-right-eq
+-- Proof idea: Rewrite advance as map compose, use compose-pdi-with-lift-pdi*-right-eq
   advance-lift-pdi*-right-eq : ∀ {l r loc} {pref : List Char} (c : Char)
     (pdi* : PDInstance* r pref)
     → advance-pdi*-with-c {l + r ` loc} {pref} {c} (lift-pdi*-right {l} {r} {loc} {pref} pdi*)
@@ -2491,6 +2827,9 @@ mutual
       List.map (lift-pdi*-right {l} {r} {loc} {pref ∷ʳ c}) (advance-pdi*-with-c {r} {pref} {c} (pdinstance* inj s-ev))
     ∎
 
+  -- Purpose: concatMap of advance over lifted list equals lift of concatMap of advance
+-- Used by: concatMap-buildU-pdUMany-aux-+
+-- Proof idea: Induction on pdis-l, using advance-lift-pdi*-left-eq and map-++-distrib
   concatMap-advance-lift-pdi*-left-eq : ∀ {l r loc} {pref : List Char} (c : Char)
     (pdis-l : List (PDInstance* l pref))
     → List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c}) (List.map lift-pdi*-left pdis-l)
@@ -2503,6 +2842,9 @@ mutual
              (advance-pdi*-with-c {l} {pref} {c} pdi*)
              (List.concatMap (advance-pdi*-with-c {l} {pref} {c}) pdis-l)))
 
+  -- Purpose: concatMap of advance over lifted list equals lift of concatMap of advance (right)
+-- Used by: concatMap-buildU-pdUMany-aux-+
+-- Proof idea: Induction on pdis-r, using advance-lift-pdi*-right-eq and map-++-distrib
   concatMap-advance-lift-pdi*-right-eq : ∀ {l r loc} {pref : List Char} (c : Char)
     (pdis-r : List (PDInstance* r pref))
     → List.concatMap (advance-pdi*-with-c {l + r ` loc} {pref} {c}) (List.map lift-pdi*-right pdis-r)
@@ -2515,18 +2857,27 @@ mutual
              (advance-pdi*-with-c {r} {pref} {c} pdi*)
              (List.concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis-r)))
 
+  -- Purpose: compose with identity on pdinstance-left equals lift of compose
+-- Used by: map-compose-id-left
+-- Proof idea: Reflexivity after pattern matching
   compose-id-pdinstance-left-eq : ∀ {l r : RE} {loc : ℕ} {c : Char} (pdi : PDInstance l c)
     → compose-pdi-with {l + r ` loc} {_} {[]} {c} (λ u → u) (λ u → refl) (pdinstance-left {l} {r} {loc} {c} pdi)
       ≡ lift-pdi*-left {l} {r} {loc} {_}
           (compose-pdi-with {l} {_} {[]} {c} (λ u → u) (λ u → refl) pdi)
   compose-id-pdinstance-left-eq (pdinstance f s-ev) = refl
 
+  -- Purpose: compose with identity on pdinstance-right equals lift of compose
+-- Used by: map-compose-id-right
+-- Proof idea: Reflexivity after pattern matching
   compose-id-pdinstance-right-eq : ∀ {l r : RE} {loc : ℕ} {c : Char} (pdi : PDInstance r c)
     → compose-pdi-with {l + r ` loc} {_} {[]} {c} (λ u → u) (λ u → refl) (pdinstance-right {l} {r} {loc} {c} pdi)
       ≡ lift-pdi*-right {l} {r} {loc} {_}
           (compose-pdi-with {r} {_} {[]} {c} (λ u → u) (λ u → refl) pdi)
   compose-id-pdinstance-right-eq (pdinstance f s-ev) = refl
 
+  -- Purpose: map of compose on left-mapped pdU equals lift of map of compose
+-- Used by: concatMap-buildU-pdUMany-+
+-- Proof idea: map-∘-eq, map-cong with compose-id-pdinstance-left-eq
   map-compose-id-left : ∀ {l r : RE} {loc : ℕ} {c : Char}
     → List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
         (List.map (pdinstance-left {l} {r} {loc} {c}) pdU[ l , c ])
@@ -2545,6 +2896,9 @@ mutual
         (List.map (compose-pdi-with {l} {l} {[]} {c} (λ u → u) (λ u → refl)) pdU[ l , c ])
     ∎
 
+  -- Purpose: map of compose on right-mapped pdU equals lift of map of compose
+-- Used by: concatMap-buildU-pdUMany-+
+-- Proof idea: map-∘-eq, map-cong with compose-id-pdinstance-right-eq
   map-compose-id-right : ∀ {l r : RE} {loc : ℕ} {c : Char}
     → List.map (compose-pdi-with {l + r ` loc} {l + r ` loc} {[]} {c} (λ u → u) (λ u → refl))
         (List.map (pdinstance-right {l} {r} {loc} {c}) pdU[ r , c ])
@@ -2563,6 +2917,9 @@ mutual
         (List.map (compose-pdi-with {r} {r} {[]} {c} (λ u → u) (λ u → refl)) pdU[ r , c ])
     ∎
 
+  -- Purpose: concatMap buildU over + pdis decomposes into LeftU and RightU parts
+-- Used by: concatMap-buildU-pdUMany-+
+-- Proof idea: Induction on cs, using buildU-lift-pdi*-left/right and concatMap-map-commute
   concatMap-buildU-pdUMany-aux-+ : ∀ (l r : RE) (loc : ℕ) (pref : List Char) (cs : List Char)
     (pdis-l : List (PDInstance* l pref)) (pdis-r : List (PDInstance* r pref))
     (pdis+ : List (PDInstance* (l + r ` loc) pref))
@@ -2608,6 +2965,9 @@ mutual
           ∎
     in concatMap-buildU-pdUMany-aux-+ l r loc (pref ∷ʳ c) cs adv-l adv-r adv+ adv-eq
 
+  -- Purpose: pdUMany for + regex decomposes into LeftU and RightU parts
+-- Used by: (internal lemma for parseAll + case)
+-- Proof idea: Build root pdis, advance, reduce, apply concatMap-buildU-pdUMany-aux-+
   concatMap-buildU-pdUMany-+ : ∀ (l r : RE) (loc : ℕ) (c : Char) (w : List Char)
     → List.concatMap buildU pdUMany[ l + r ` loc , c ∷ w ]
     ≡ List.map LeftU (List.concatMap buildU pdUMany[ l , c ∷ w ])
@@ -2931,6 +3291,9 @@ mutual
 
 
 
+-- Purpose: The head of parseAll is the ≥-Max parse tree
+-- Used by: (top-level theorem, entry point for max-word proof)
+-- Proof idea: Alias of first-concatMap-buildU-pdUMany-isMax
 first-parseAll-isMax  : ∀ ( r : RE )
   → ( w : List Char )
   → w ∈⟦ r ⟧

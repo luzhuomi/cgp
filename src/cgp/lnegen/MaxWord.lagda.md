@@ -1319,19 +1319,6 @@ mutual
   ... | there pdi'∈tail | ex>-cons sorted-tail _ = first-inhabit-just-first pdis pdi eq pdi' pdi'∈tail w∈src' sorted-tail
 
 
--- a chain of pdU injections (head link applied last)
-data Chain : ( p₀ p : RE ) → Set where
-  [] : ∀ { p : RE } → Chain p p
-  cons : ∀ { p₀ p d : RE } { c : Char }
-      → ( g : PDInstance d c )
-      → ( prf : g ∈ pdU[ d , c ] )
-      → ( rest : Chain p₀ (pdi-src g) )
-      → Chain p₀ d
-
-chain-inj : ∀ { p₀ p : RE } → Chain p₀ p → U p₀ → U p
-chain-inj [] u = u
-chain-inj (cons g prf rest) u = pdi-inj g (chain-inj rest u)
-
 
 -- extract the ≥-Max-Preserve-Local evidence of a pdi from its membership in pdU[ r , c ]
 ∈→pres-local : ∀ { r : RE } { c : Char } ( g : PDInstance r c ) → g ∈ pdU[ r , c ] → ≥-Max-Preserve-Local g
@@ -1461,139 +1448,12 @@ concatmap-snd-decomp {l = l} {r = r} {ε∈l = ε∈l} {loc = loc} {c = c} g' g'
 ... | yes ε∈l = ●-decomp-yes g' g'∈
 
 
-
-data ≥-Max-Preserve-Local* : ∀ { r : RE } { pref : List Char } → PDInstance* r pref → Set where
-  ≥-max-pres-local* : ∀ { p r : RE } { pref : List Char } { inj : U p → U r }
-    { sound-ev : ∀ ( x : U p ) → ( proj₁ ( flat {r} (inj x) ) ≡ pref ++ ( proj₁ (flat {p} x) )) }
-    → ( ∀ { p₀ : RE } ( chain : Chain p₀ p ) ( u₀ : U p₀ )
-      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
-      → ( v₀ : U p₀ ) 
-      → p₀ ⊢ u₀ ≥ v₀
-      → r ⊢ inj (chain-inj chain u₀) ≥ inj (chain-inj chain v₀) ) 
-    → ≥-Max-Preserve-Local* {r} {pref} (pdinstance* inj sound-ev)
-
-
-
--- pdUMany-preseve-local: all pdinstance*'s in pdUMany[r, w] preserve ≥-Max locally
---
--- Key insight for the inductive step: NO preservation lemmas are needed.
--- chain-inj (cons g g∈ chain) ≡ pdi-inj g ∘ chain-inj chain holds definitionally,
--- so given ≥-Max-Preserve-Local* for pdi* = pdinstance* d→r s-ev (evidence d-pres),
--- each composed pdinstance* in advance-pdi*-with-c pdi satisfies it by simply
--- EXTENDING the chain: d-pres (cons g g∈ chain) has exactly the required type.
---
--- The only remaining obligation is the base case (identity injection):
---   id-pres : chains into r preserve ≥  (hole below)
--- Its natural induction on the chain applies, at each step, the
--- ≥-Max-Preserve-Local of the head pdi (from pdU-preseve-local), whose premise
--- requires ≥-Max of the inner chain image (chain-inj rest u₀) at the intermediate
--- regex.  That is "chains preserve ≥-Max", which is FALSE in general —
--- see the compiling counterexample below.  Note the counterexample's bad
--- intermediate regex ($a + $a) is a union, which can never be a chain source
--- (sources are ε or left-nested ● over ε), so id-pres may still hold;
--- but proving it needs a different invariant or cross-pdi comparison machinery
--- (pdU-completeness + pdU-sorted, cf. first-pdU-accept-w-isMax).
-
--- COUNTEREXAMPLE: chains do NOT preserve ≥-Max.
--- r-ce = $a + $a (distinct locations); the right-pdi g-ce ∈ pdU[ r-ce , a ]
--- maps EmptyU (trivially ≥-Max at ε) to RightU (LetterU a), which is NOT
--- ≥-Max at [ a ]: LeftU (LetterU a) also flattens to [ a ] and beats it via
--- choice-lr, while RightU ≱ LeftU (no constructor gives RightU >ⁱ LeftU).
-module Chain-does-not-preserve-≥-Max where
-  a : Char
-  a = 'a'
-
-  r-ce : RE
-  r-ce = ($ a ` 0) + ($ a ` 1) ` 0
-
-  g-ce : PDInstance r-ce a
-  g-ce = pdinstance-right (pdinstance mkinjLetter mkinjLetterSound)
-
-  g-ce∈ : g-ce ∈ pdU[ r-ce , a ]
-  g-ce∈ = there (here refl)
-
-  chain-ce : Chain ε r-ce
-  chain-ce = cons {ε} {ε} {r-ce} {a} g-ce g-ce∈ []
-
-  -- chain-inj chain-ce EmptyU ≡ RightU (LetterU a)  (definitionally)
-
-  max-empty : ≥-Max {ε} [] EmptyU
-  max-empty = ≥-max [] EmptyU refl (λ { EmptyU refl → inj₂ refl })
-
-  counterexample
-    : ( ∀ { r p₀ : RE } ( chain : Chain p₀ r ) ( u₀ : U p₀ )
-      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
-      → ≥-Max {r} (proj₁ (flat (chain-inj chain u₀))) (chain-inj chain u₀) )
-    → ⊥
-  counterexample pres = right≱left right≥left
-    where
-      right≱left : ¬ ( r-ce ⊢ RightU (LetterU a) ≥ LeftU (LetterU a) )
-      right≱left (inj₁ (be _ _ ()))
-      right≱left (inj₁ (bne _ _ ()))
-      right≱left (inj₁ (lne _ ()))
-      right≱left (inj₂ ())
-
-      right≥left : r-ce ⊢ RightU (LetterU a) ≥ LeftU (LetterU a)
-      right≥left with pres chain-ce EmptyU max-empty
-      ... | ≥-max w .(RightU (LetterU a)) _ beat = beat (LeftU (LetterU a)) refl
-
 all-map-∈ : ∀ { A B : Set } { P : B → Set } ( f : A → B ) ( xs : List A )
   → ( ∀ ( x : A ) → x ∈ xs → P ( f x ) )
   → All P ( List.map f xs )
 all-map-∈ f [] h = []
 all-map-∈ f (x ∷ xs) h = h x (here refl) ∷ all-map-∈ f xs (λ x' x'∈xs → h x' (there x'∈xs))
 
-compose-pdi-with-preseve-local : ∀ { r d : RE } { pref : List Char } { c : Char }
-  → ( d→r : U d → U r )
-  → ( s-ev-d→r : ∀ ( v : U d ) → ( proj₁ ( flat {r} (d→r v) ) ≡ pref ++ ( proj₁ (flat {d} v) )) )
-  → ( d-pres : ∀ { p₀ : RE } ( chain : Chain p₀ d ) ( u₀ : U p₀ )
-      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
-      → ( v₀ : U p₀ )
-      → p₀ ⊢ u₀ ≥ v₀
-      → r ⊢ d→r (chain-inj chain u₀) ≥ d→r (chain-inj chain v₀) )
-  → ( g : PDInstance d c )
-  → g ∈ pdU[ d , c ]
-  → ≥-Max-Preserve-Local* {r} {pref ∷ʳ c} (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r g)
-compose-pdi-with-preseve-local {r} {d} {pref} {c} d→r s-ev-d→r d-pres (pdinstance {p} {d} {c} p→d s-ev-p→d) g∈ =
-  ≥-max-pres-local* ev
-  where
-    ev : ∀ { p₀ : RE } ( chain : Chain p₀ p ) ( u₀ : U p₀ )
-      → ≥-Max {p₀} (proj₁ (flat u₀)) u₀
-      → ( v₀ : U p₀ )
-      → p₀ ⊢ u₀ ≥ v₀
-      → r ⊢ d→r (p→d (chain-inj chain u₀)) ≥ d→r (p→d (chain-inj chain v₀))
-    ev {p₀} chain u₀ max-u₀ v₀ u₀≥v₀ = d-pres chain' u₀ max-u₀ v₀ u₀≥v₀
-      where
-        chain' : Chain p₀ d
-        chain' = cons {p₀} {p} {d} {c} (pdinstance p→d s-ev-p→d) g∈ chain
-
-advance-pdi*-with-c-preseve-local : ∀ { r : RE } { pref : List Char } { c : Char }
-  → ( pdi : PDInstance* r pref )
-  → ≥-Max-Preserve-Local* pdi
-  → All (≥-Max-Preserve-Local* {r} {pref ∷ʳ c}) (advance-pdi*-with-c {r} {pref} {c} pdi)
-advance-pdi*-with-c-preseve-local {r} {pref} {c} (pdinstance* {d} {r} {pref} d→r s-ev-d→r) (≥-max-pres-local* d-pres) =
-  all-map-∈ (compose-pdi-with {r} {d} {pref} {c} d→r s-ev-d→r) pdU[ d , c ]
-    (λ g g∈ → compose-pdi-with-preseve-local d→r s-ev-d→r d-pres g g∈)
-
-concatmap-advance-pdi*-with-c-preseve-local : ∀ { r : RE } { pref : List Char } { c : Char }
-  → ( pdis : List (PDInstance* r pref) )
-  → All (≥-Max-Preserve-Local* {r} {pref}) pdis
-  → All (≥-Max-Preserve-Local* {r} {pref ∷ʳ c}) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-concatmap-advance-pdi*-with-c-preseve-local {r} {pref} {c} [] [] = []
-concatmap-advance-pdi*-with-c-preseve-local {r} {pref} {c} (pdi ∷ pdis) (pres-pdi ∷ all-pres-pdis) =
-  all-concat (advance-pdi*-with-c-preseve-local pdi pres-pdi) (concatmap-advance-pdi*-with-c-preseve-local pdis all-pres-pdis)
-
-pdUMany-aux-preseve-local : ∀ { r : RE } { pref : List Char }
-  → ( suff : List Char )
-  → ( pdis : List (PDInstance* r pref) )
-  → All (≥-Max-Preserve-Local* {r} {pref}) pdis
-  → All (≥-Max-Preserve-Local* {r} {pref ++ suff}) (pdUMany-aux suff pdis)
-pdUMany-aux-preseve-local {r} {pref} [] pdis all-pres rewrite (++-identityʳ pref) = all-pres
-pdUMany-aux-preseve-local {r} {pref} (c ∷ cs) pdis all-pres =
-  pdUMany-aux-preseve-local {r} {pref ∷ʳ c} cs (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis) concatmap-pres
-  where
-    concatmap-pres : All (≥-Max-Preserve-Local* {r} {pref ∷ʳ c}) (concatMap (advance-pdi*-with-c {r} {pref} {c}) pdis)
-    concatmap-pres = concatmap-advance-pdi*-with-c-preseve-local pdis all-pres
 
 ```
 

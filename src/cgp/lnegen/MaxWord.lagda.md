@@ -11,7 +11,9 @@ open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_
 
 
 import cgp.Utils as Utils
-open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ¬≡[]→length>0 ; ¬≡0→>0 ; length≡0→[] ; n≡0→¬n>0 
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ¬≡[]→length>0 ; ¬≡0→>0 ; length≡0→[] ; n≡0→¬n>0 ;
+  ¬nothing≡just ; just-injective ; head-x∷xs≡just-x ; map-id  ; map-cong ; map-∘-eq ; concatMap-∘-eq ; map-++-distrib ;
+  concatMap-map-commute  ; concatMap-cong ; concat-++ ; concatMap-++-distrib 
  )
 
 
@@ -380,6 +382,8 @@ max-pair→max-snd {p} {r} {loc} {u₁} {u₂} {w} max-pair =
 >-sorted-first≥all _ v (here refl) = inj₂ refl
 >-sorted-first≥all sorted v (there v∈us) = inj₁ (>-sorted-first>all sorted v v∈us)
 
+-- Purpoase : the first of the mkAllEmptyU must be ≥-Max 
+-- used by +[]-mkAllEmptyU-first-max 
 mkAllEmptyU-first-≥-Max : ∀ {l} (ε∈l : ε∈ l) {e₁ : U l} {es₁ : List (U l)}
   → proj₁ (flat {l} e₁) ≡ []
   → mkAllEmptyU ε∈l ≡ e₁ ∷ es₁
@@ -398,26 +402,6 @@ mkAllEmptyU-first-≥-Max {l} ε∈l {e₁} {es₁} flat-e₁≡[] mkAllEmptyU�
     helper v (here refl) = inj₂ refl
     helper v (there v∈es₁) = inj₁ (>-sorted-first>all sorted _ v∈es₁)
 
-
-
-      
--- Purpose: nothing cannot equal just x (absurd pattern)
--- Used by: first-inhabit-++-just-left-pres, first-inhabit-++-just-right-pres, first-inhabit-++-nothing-left, head-map-LeftU-++-map-RightU
--- Proof idea: Pattern matching on impossible constructor
-¬nothing≡just : ∀ {A : Set} {x : A} → ¬ nothing ≡ just x
-¬nothing≡just ()
-
--- Purpose: Injectivity of just constructor
--- Used by: first-inhabit-yes-eq-full, first-inhabit-++-just-left-pdi, first-inhabit-++-just-right-decompose, first-inhabit-++-just-left-pres′
--- Proof idea: Pattern matching on refl
-just-injective : ∀ {A : Set} {x y : A} → just x ≡ just y → x ≡ y
-just-injective refl = refl
-
--- Purpose: head of a non-empty list is just the first element
--- Used by: (standalone helper for head reasoning)
--- Proof idea: Reflexivity
-head-x∷xs≡just-x : ∀ { A : Set} {x : A } { xs : List A } → head ( x ∷ xs ) ≡ just x
-head-x∷xs≡just-x {A} {x} {xs} = refl 
 
 
 -- Purpose: If partial derivative is empty, then c∷w is not in the language
@@ -456,14 +440,7 @@ c≡c'-from-∈$ {c} {c'} ( $_ c₀ ) with (toℕ c ≟ toℕ c₀)
 ... | yes tc≡tc₀ = sym (≈⇒≡ tc≡tc₀)
 ... | no ¬tc≡tc₀ = ⊥-elim (¬tc≡tc₀ refl)
 
--- just-inj: injectivity of just constructor
-just-inj : ∀ {a : Set} {x y : a} → just x ≡ just y → x ≡ y
-just-inj refl = refl
 
--- not in used
-head-++-[]-right-∷ : ∀ {a b c : Set} {f : a → c} {g : b → c} {x : b} {xs : List b}
-  → head (List.map f [] ++ List.map g (x ∷ xs)) ≡ just (g x)
-head-++-[]-right-∷ = refl
 
 -- not in used 
 -- head-pdU-+-left: If the left list is non-empty, the head of the concatenated list is the left-wrapped head.
@@ -478,7 +455,7 @@ head-pdU-+-left eq = sym (just-injective eq)
 head-pdU-+-right : ∀ {l r : RE} {loc : ℕ} {c : Char} {pdi_r : PDInstance r c} {pdis_r : List (PDInstance r c)} {pdi : PDInstance (l + r ` loc) c}
   → head (List.map pdinstance-left [] ++ List.map pdinstance-right (pdi_r ∷ pdis_r)) ≡ just pdi
   → pdi ≡ pdinstance-right pdi_r
-head-pdU-+-right eq = just-inj (sym eq)
+head-pdU-+-right eq = just-injective (sym eq)
 
 -- head-concatmap-empty: The head of concatMap of pdinstance-snd over empty pdis is nothing.
 -- Needed for the l ● r case when pdU[r,c] is empty. really? not in used now. 
@@ -2364,88 +2341,6 @@ mutual
   head-tail {A} {[]} ¬[] = ⊥-elim (¬[] refl)
   head-tail {A} {x ∷ xs} _ = x , xs , refl
 
-  -- these functions can be moved to Utils
- -- Purpose: map identity function is identity
--- Used by: buildU-≡-map-inj-buildU-root, parseAll-[]-yes
--- Proof idea: Induction on xs
-  map-id : ∀ {A : Set} (xs : List A) → List.map (λ x → x) xs ≡ xs
-  map-id [] = refl
-  map-id (x ∷ xs) = cong (x ∷_) (map-id xs)
-
- -- Purpose: Pointwise equality of functions implies map equality
--- Used by: concatMap-buildU-advance-lift-pdi*-left, advance-lift-pdi*-left-eq
--- Proof idea: Induction on xs
-  map-cong : ∀ {A B : Set} {f g : A → B} {xs : List A}
-    → (∀ x → f x ≡ g x)
-    → List.map f xs ≡ List.map g xs
-  map-cong {xs = []} _ = refl
-  map-cong {xs = x ∷ xs} h = cong₂ _∷_ (h x) (map-cong h)
-
- -- Purpose: map distributes over function composition
--- Used by: buildU-≡-map-inj-buildU-root, buildU-lift-pdi*-left, concatMap-buildU-pdUMany-aux-lemma-step
--- Proof idea: Induction on xs
-  map-∘-eq : ∀ {A B C : Set} (f : A → B) (g : B → C) (xs : List A)
-    → List.map (g ∘ f) xs ≡ List.map g (List.map f xs)
-  map-∘-eq f g [] = refl
-  map-∘-eq f g (x ∷ xs) = cong₂ _∷_ refl (map-∘-eq f g xs)
-
- -- Purpose: concatMap distributes over function composition
--- Used by: parseAll-pdU-decomp, concatMap-buildU-advance-lift-pdi*-left
--- Proof idea: Induction on xs
-  concatMap-∘-eq : ∀ {A B C : Set} (f : A → B) (g : B → List C) (xs : List A)
-    → List.concatMap (g ∘ f) xs ≡ List.concatMap g (List.map f xs)
-  concatMap-∘-eq f g []       = refl
-  concatMap-∘-eq f g (x ∷ xs) = cong (g (f x) ++_) (concatMap-∘-eq f g xs)
-
-  
-  -- map distributes over ++
- -- Purpose: map distributes over list concatenation
--- Used by: concatMap-++-distrib, concatMap-advance-lift-pdi*-left-eq
--- Proof idea: Induction on xs
-  map-++-distrib : ∀ {A B : Set} (f : A → B) (xs ys : List A)
-    → List.map f (xs ++ ys) ≡ List.map f xs ++ List.map f ys
-  map-++-distrib f []       ys = refl
-  map-++-distrib f (x ∷ xs) ys = cong (f x ∷_) (map-++-distrib f xs ys)
-  
- -- Purpose: map and concatMap commute: concatMap (map f ∘ g) = map f ∘ concatMap g
--- Used by: concatMap-buildU-pdUMany-aux-lemma-step, concatMap-buildU-advance-lift-pdi*-left
--- Proof idea: Induction on xs using map-++-distrib
-  concatMap-map-commute : ∀ {A B C : Set} (f : B → C) (g : A → List B) (xs : List A)
-    → List.concatMap (List.map f ∘ g) xs ≡ List.map f (List.concatMap g xs)
-  concatMap-map-commute f g [] = refl
-  concatMap-map-commute f g (x ∷ xs) =
-        -- cong₂ _++_ refl (concatMap-map-commute f g xs)
-        trans (cong (List.map f (g x) ++_) (concatMap-map-commute f g xs))
-          (sym (map-++-distrib f (g x) (List.concatMap g xs)))
-
- -- Purpose: Pointwise equality of list-valued functions implies concatMap equality
--- Used by: parseAll-pdU-decomp, concatMap-buildU-pdUMany-aux-+
--- Proof idea: Induction on xs
-  concatMap-cong : ∀ {A B : Set} {f g : A → List B} {xs : List A}
-    → (∀ x → f x ≡ g x)
-    → List.concatMap f xs ≡ List.concatMap g xs
-  concatMap-cong {xs = []} _ = refl
-  concatMap-cong {A} {B} {f} {g} {xs = x ∷ xs} h =
-    cong₂ _++_ (h x) (concatMap-cong {A} {B} {f} {g} {xs = xs} h)
-
- -- Purpose: concat distributes over list concatenation
--- Used by: concatMap-++-distrib
--- Proof idea: Induction on xs using ++-assoc
-  concat-++ : ∀ {A : Set} (xs ys : List (List A))
-    → List.concat (xs ++ ys) ≡ List.concat xs ++ List.concat ys
-  concat-++ [] ys = refl
-  concat-++ (x ∷ xs) ys =
-    trans (cong (x ++_) (concat-++ xs ys))
-          (sym (++-assoc x (List.concat xs) (List.concat ys)))
-
- -- Purpose: concatMap distributes over list concatenation
--- Used by: concatMap-buildU-pdUMany-aux-lemma-step, concatMap-buildU-pdUMany-aux-+
--- Proof idea: concat (map f (xs++ys)) = concat (map f xs ++ map f ys) = concat xs ++ concat ys
-  concatMap-++-distrib : ∀ {A B : Set} (f : A → List B) (xs ys : List A)
-    → List.concatMap f (xs ++ ys) ≡ List.concatMap f xs ++ List.concatMap f ys
-  concatMap-++-distrib f xs ys =
-    trans (cong List.concat (map-++-distrib f xs ys))
-          (concat-++ (List.map f xs) (List.map f ys))
 
   -- pdUMany-aux distributes over list concatenation
  -- Purpose: pdUMany-aux distributes over list concatenation

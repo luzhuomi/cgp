@@ -39,6 +39,9 @@ open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 import Data.List.Relation.Unary.All as All
 open All using (All ; _∷_ ; [] ; map ; tabulate )
 
+
+open import Data.List.Relation.Unary.All.Properties using (map⁺)
+
 open import Data.List.Relation.Unary.Any using (Any; here; there ; map)
 import Data.List.Membership.Propositional
 open Data.List.Membership.Propositional using (_∈_)
@@ -538,5 +541,15 @@ concatMap-++-distrib f xs ys =
     trans (cong List.concat (map-++-distrib f xs ys))
           (concat-++ (List.map f xs) (List.map f ys))
 
+
+-- Purpose: Build All P (map f xs) from pointwise membership proofs
+-- Used by: (utility lemma for All proofs over mapped lists)
+-- Proof idea: Induction on xs, threading there constructor
+all-map-∈ : ∀ { A B : Set } { P : B → Set } ( f : A → B ) ( xs : List A )
+  → ( ∀ ( x : A ) → x ∈ xs → P ( f x ) )
+  → All P ( List.map f xs )  
+-- all-map-∈ f [] h = []
+-- all-map-∈ f (x ∷ xs) h = h x (here refl) ∷ all-map-∈ f xs (λ x' x'∈xs → h x' (there x'∈xs))
+all-map-∈ f xs h = map⁺ (tabulate (λ {x} x∈xs → h x x∈xs))
 
 ```

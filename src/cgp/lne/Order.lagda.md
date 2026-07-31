@@ -3,7 +3,7 @@ This module contains the defintions of the left non-empty  order among parse tre
 ```agda
 {-# OPTIONS --rewriting  #-}
 
-module cgp.lnegen.Order where
+module cgp.lne.Order where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
@@ -37,7 +37,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   ) 
 
 
-import cgp.lnegen.PartialDerivative as PartialDerivative
+import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; 
   advance-pdi*-with-c ; 
   pdUMany[_,_]; pdUMany-aux ;

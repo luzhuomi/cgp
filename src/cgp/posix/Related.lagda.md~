@@ -1,0 +1,106 @@
+```agda
+{-# OPTIONS --rewriting #-}
+module cgp.posix.Related where
+
+import cgp.RE as RE
+open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
+
+
+import cgp.Utils as Utils
+open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  ;
+  w₁++w₂≡w₃++w₄len-w₁≡len-w₂→w₁≡w₂×w₂≡w₄ ;
+  w₁++w₂≡w₃++w₄len-w₁<len-w₂→∃w₅≢[]w₁w₅≡w₃×w₂≡w₅w₄ ;
+  ¬m>n→n≡m⊎n>m ;
+  len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ ; concatmap-λx→[]-xs≡[] 
+  {- ; ¬≡[]→¬length≡0 ; ¬≡0→>0 ; []→length≡0  ; ¬0>0 -}  )
+
+
+import cgp.Word as Word
+open Word using ( _∈⟦_⟧ ; ε ;  $_ ; _+L_ ; _+R_ ; _●_⧺_ ; _* ; []∈⟦r⟧→¬ε∉r )
+
+
+import cgp.ParseTree as ParseTree
+open ParseTree using ( U; EmptyU ; LetterU ;
+  LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU ; listU∘unListU ; 
+  unflat∘proj₂∘flat ; flat∘unflat ;
+  inv-listU ; inv-listU1 ; inv-pairU ; inv-leftU ; inv-rightU ;
+  _⊢_≟_  ; ¬|list-u∷us|≡[] ) 
+
+import cgp.empty.AllEmptyParseTree as AllEmptyParseTree
+open AllEmptyParseTree using ( mkAllEmptyU ; mkAllEmptyU-sound ; Flat-[] ; flat-[] ;
+  proj₁flat-v≡[]→ε∈r ; flat-[]→flat-[]-left ; flat-[]→flat-[]-right ; mkAllEmptyU≢[]  )
+
+
+import cgp.PDInstance as PDI
+open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
+  pdinstance-left ; pdinstance-right ;
+  pdinstance-star ; mkinjList ;
+  pdinstance-fst ; mkinjFst ;
+  pdinstance-snd ; mkinjSnd ; mk-snd-pdi ;
+  concatmap-pdinstance-snd ; zip-es-flat-[]-es ;
+  pdinstance-assoc ; mkinjAssoc ; inv-assoc-sound ;
+  compose-pdi-with ;
+  concatmap-pdinstance-snd-[]≡[] 
+  ) 
+
+
+
+import cgp.posix.PartialDerivative as PartialDerivative
+open PartialDerivative using ( pdU[_,_] ; -- pdUConcat ;
+  pdUMany[_,_]; pdUMany-aux ;
+  pdinstance-oplus ; fuse ; mkfuseInj ;  mkfuseInjSoundEv ; 
+  advance-pdi*-with-c
+  )
+
+
+
+import Data.Char as Char
+open Char using (Char )
+
+import Data.Nat as Nat
+open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
+
+import Data.Nat.Properties as NatProperties
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ )
+
+import Data.Maybe as Maybe
+open Maybe using (Maybe ; just ; nothing )
+
+import Data.List as List
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; concatMap ; _∷ʳ_ ; length )
+
+import Data.List.Properties
+open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-conicalʳ ; ++-conicalˡ ;
+  length-++ ; ++-assoc 
+  -- ; length-++-sucʳ -- this is only available after v2.3
+  )
+
+
+import Relation.Binary.PropositionalEquality as Eq
+open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
+open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
+
+
+import Data.Product as Product
+open Product using (Σ; _,_; ∃; Σ-syntax; ∃-syntax; _×_ )
+open Σ using (proj₁ ; proj₂)
+
+
+import Data.Sum as Sum
+open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
+
+
+import Data.List.Relation.Unary.All as All
+open All using (All ; _∷_ ; [] ; map)
+
+import Relation.Nullary as Nullary 
+import Relation.Nullary.Negation using (contradiction; contraposition)
+open Nullary using (¬_)
+
+import Relation.Nullary.Decidable as Decidable
+open Decidable using
+  ( Dec; yes; no; ⌊_⌋; True; toWitness; fromWitness; _×-dec_; _⊎-dec_; ¬?)
+
+open import Function using (_∘_ ; flip)
+
+```

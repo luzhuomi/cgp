@@ -1,7 +1,7 @@
 ```agda
 {-# OPTIONS --rewriting  #-}
 -- {-# OPTIONS --rewriting --allow-unsolved-metas #-}
-module cgp.lnegen.MaxWord where
+module cgp.lne.MaxWord where
 
 import Agda.Primitive as Prim
 open Prim using (Level)
@@ -43,7 +43,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   ) 
 
 
-import cgp.lnegen.PartialDerivative as PartialDerivative
+import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; pdU● ; pdU-complete ; 
   advance-pdi*-with-c ; 
   pdUMany[_,_]; pdUMany-aux ;
@@ -59,10 +59,10 @@ open import Data.List.Relation.Unary.Any using (Any; here; there)
 import Data.List.Membership.Propositional.Properties as MembershipProperties
 open MembershipProperties using (∈-concat⁺′ ; ∈-concat⁻′ ; ∈-map⁺ ; ∈-map⁻)
 
-import cgp.lnegen.Order as Order
+import cgp.lne.Order as Order
 open Order -- TODO: we should only whitelist those are used here 
 
-import cgp.lnegen.ExtendedOrder as ExtendedOrder
+import cgp.lne.ExtendedOrder as ExtendedOrder
 open ExtendedOrder using (
   pdU-sorted ;
   Ex>-sorted ; ex>-nil ; ex>-cons ;
@@ -151,8 +151,6 @@ import Data.List.Relation.Unary.Any.Properties
 open Data.List.Relation.Unary.Any.Properties using ( ¬Any[] )
 
 
--- import cgp.lnegen.Efn as Efn
--- open Efn using ( Efn ; efn-ε ; efn-● ) 
 ```
 
 
@@ -172,7 +170,7 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
         → ≥-Max {r} w u
 
 -- we need to use this lemma in dom-lemma-weak
--- no, this is bogus, not in use, we use the variant >2 and >3 below (with better names)
+-- no, this is bogus, not in use, 
 {-
 ≥-max-pair-fst-prefix→> : ∀ { l r : RE } { loc : ℕ } → (u : U l) → (v : U r)
   → ≥-Max {l ● r ` loc} (proj₁ (flat (PairU {l} {r} {loc} u v))) (PairU u v)

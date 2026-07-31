@@ -1,6 +1,6 @@
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.lnegen.ExtendedOrder where
+module cgp.lne.ExtendedOrder where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ;
@@ -47,7 +47,7 @@ open Recons using ( Recons ; recons ;
   )
 
 
-import cgp.lnegen.PartialDerivative as PartialDerivative
+import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using (
   pdU[_,_] ; 
   pdUMany[_,_]; pdUMany-aux;
@@ -57,7 +57,7 @@ open PartialDerivative using (
   recons-v→¬proj₁flat-v≡[] ) 
 
 
-import cgp.lnegen.Order as LNEOrder
+import cgp.lne.Order as LNEOrder
 open LNEOrder using ( _⊢_>_ ; seq₁ ; seq₂ ;
   be ; bne ; lne ; choice-ll ; choice-lr ; choice-rr  ; star-head ; star-cons-nil ;
   >-sorted ; >-nil ; >-cons ; concat-sorted ; 

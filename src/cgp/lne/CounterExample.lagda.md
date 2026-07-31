@@ -3,7 +3,7 @@ is unprovable as stated.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
-module cgp.lnegen.CounterExample where
+module cgp.lne.CounterExample where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; ε∈  ; ε∈_+_ ; ε∈_●_ ; ε∈ε )
@@ -14,7 +14,7 @@ open ParseTree using ( U; EmptyU ; LetterU ;  LeftU ; RightU ; PairU ; flat ; in
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; mkinjFst )
 
-import cgp.lnegen.Order as Order
+import cgp.lne.Order as Order
 open Order using ( _⊢_>_ ; _⊢_>ⁱ_ ; be ; bne ; lne ; seq₁ ; seq₂ ; choice-lr ; ≥-maximal ; ≥-join ; _⊢_≥_ ; ≥-Max-Preserve ; ≥-pres ; >-asym )
 
 import Data.Char as Char

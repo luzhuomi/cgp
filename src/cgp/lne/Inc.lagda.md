@@ -1,4 +1,4 @@
-This module contains  the attempt of proving monotonicity of the PD injection function for lnegen ordering without any restriction
+This module contains  the attempt of proving monotonicity of the PD injection function for lne ordering without any restriction
 
 It shows that the monotonicity property >-Inc is not true in general for LNE partial derivatives injection function, and therefore, parse trees constructed by lne parseAll is not sorted.
 
@@ -7,7 +7,7 @@ No other proof reference definitions and lemmas in this module. This module cont
 ```agda
 {-# OPTIONS --rewriting #-}
 
-module cgp.lnegen.Inc where
+module cgp.lne.Inc where
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
 
@@ -40,14 +40,14 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* ;
   ) 
 
 
-import cgp.lnegen.PartialDerivative as PartialDerivative
+import cgp.lne.PartialDerivative as PartialDerivative
 open PartialDerivative using ( pdU[_,_] ; 
   advance-pdi*-with-c ; 
   pdUMany[_,_]; pdUMany-aux ;
   mkinjLetter ; mkinjLetterSound 
   )
 
-import cgp.lnegen.Order as Order
+import cgp.lne.Order as Order
 open Order -- we should only white list those are used here 
 
 
@@ -351,7 +351,7 @@ through `mkinjFst` that ordering can disappear.
 #### ParseAll is not sorted
 
 
-The following is defined in lnegen/PartialDerivative
+The following is defined in lne/PartialDerivative
   -- ((a●(ε+ε))●(ε+b))●(ε+b)
   a●ε+ε●ε+b●ε+b = ( ( (($ 'a' ` 1) ● ( ε + ε ` 2) ` 3) ● ( ε + ($ 'b' ` 4) ` 5) ` 6) ● (ε + ($ 'b' ` 7) ` 8) ` 9 )
   ex_sss : List (U a●ε+ε●ε+b●ε+b)

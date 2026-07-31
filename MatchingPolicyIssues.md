@@ -1110,4 +1110,16 @@ parseAllU r [a] = app buildU pdU[ r . a ]
    
    
    
+## Update on 24 July 2026
+
+1. Completed proving Okui and Suzuki's formation is correspondent to our POSIX ordering.
+   1. refer to `src/cgp/posix/RelatedWorkOkuiSuzuki.lagda.md` lemma `¬v≺u→r⇒u` .
    
+   
+
+
+## Update on 31 July 2026
+
+1. Completed proving 2-level modular LNE (Left Non Empty)  order is well-founded (i.e. total and maximal exists). 
+1. Completed proving the first parse tree produced by our parseAll algorithm using Antimirov's partial derivative operation w/o associative and distributivity law is maximal w.r.t to LNE order.
+   1. refer to `src/cgp/lne/MaxWord.lagda.md` theorem `first-parseAll-isMax`

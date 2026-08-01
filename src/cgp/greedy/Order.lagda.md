@@ -812,6 +812,7 @@ pdU->-inc {ε} {c} = []
 pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
 ...  | no ¬c≡c' = []
 ...  | yes refl =  >-inc (λ { EmptyU EmptyU EmptyU>EmptyU →  Nullary.contradiction refl (>→¬≡  EmptyU>EmptyU)  } )  ∷ []
+
 pdU->-inc {l + r ` loc} {c} = all-concat map-ind-hyp-l map-ind-hyp-r 
   where
     ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]

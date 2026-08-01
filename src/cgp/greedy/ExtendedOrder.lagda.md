@@ -63,7 +63,7 @@ open PartialDerivative using (
 
 
 import cgp.greedy.Order as GreedyOrder
-open GreedyOrder using ( _⊢_>_ ; seq₁ ; seq₂ ; choice-ll ; choice-rr ; choice-lr ; star-head ; star-cons-nil ;
+open GreedyOrder using ( _⊢_>_ ; sub ;   _⊢_>ⁱ_ ; seq₁ ; seq₂ ; choice-ll ; choice-rr ; choice-lr ; star-head ; star-cons-nil ;
   >-sorted ; >-nil ; >-cons ; concat-sorted ; 
   mkAllEmptyU-sorted ;
   >-maybe ; >-nothing ; >-just ;
@@ -251,7 +251,7 @@ left-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = 
              -} 
        let recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v₁-pdi-left 
            recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v₂-pdi-left
-       in choice-ll (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂) 
+       in sub (choice-ll (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂) )
     ev (RightU v₁)  _          recons-right-v₁-pdi-left _  =  Nullary.contradiction recons-right-v₁-pdi-left (¬recons-right-from-pdinstance-left v₁ pdi₁ ) -- impossible cases
     ev (LeftU _)   (RightU v₂) _  recons-right-v₂-pdi-left =   Nullary.contradiction recons-right-v₂-pdi-left (¬recons-right-from-pdinstance-left v₂ pdi₂  )
 
@@ -280,7 +280,7 @@ right-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) =
     ev (RightU v₁) (RightU v₂)  recons-right-v₁-pdi-right recons-right-v₂-pdi-right =
        let recons-v₁-pdi₁ = inv-recons-right {l} {r} {loc} v₁  pdi₁  recons-right-v₁-pdi-right 
            recons-v₂-pdi₂ = inv-recons-right {l} {r} {loc} v₂  pdi₂  recons-right-v₂-pdi-right
-       in choice-rr (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂) 
+       in sub (choice-rr (pdi₁>-pdi₂-ev v₁ v₂  recons-v₁-pdi₁ recons-v₂-pdi₂) )
     ev (LeftU v₁)  _             recons-left-v₁-pdi-right _  =  Nullary.contradiction recons-left-v₁-pdi-right (¬recons-left-from-pdinstance-right v₁ pdi₁ ) -- impossible cases
     ev (RightU _)  (LeftU v₂) _  recons-left-v₂-pdi-right =   Nullary.contradiction recons-left-v₂-pdi-right (¬recons-left-from-pdinstance-right v₂ pdi₂  )
 
@@ -325,7 +325,7 @@ map-left-right-ex-sorted {l} {r} {loc} pdis            []     ex>-sorted-l-pdis 
   = map-left-ex-sorted  pdis ex>-sorted-l-pdis 
 map-left-right-ex-sorted {l} {r} {loc} (pdi ∷ [])      (pdi' ∷ pdis')    ex>-sorted-l-pdis  ex>-sorted-r-pdis'
   = ex>-cons (map-right-ex-sorted (pdi' ∷ pdis') ex>-sorted-r-pdis') (ex>-just (>-pdi (pdinstance-left pdi) (pdinstance-right pdi')
-    (λ { (LeftU v₁) (RightU v₂) recons-left-u-from-pdinstance-left   recons-right-u-from-pdinstance-right → choice-lr
+    (λ { (LeftU v₁) (RightU v₂) recons-left-u-from-pdinstance-left   recons-right-u-from-pdinstance-right → sub choice-lr
         -- impossible cases
        ; (RightU v₁) _          recons-right-u-from-pdinstance-left  _              → Nullary.contradiction recons-right-u-from-pdinstance-left  (¬recons-right-from-pdinstance-left v₁ pdi )
        ; (LeftU v₁) (LeftU v₂)  _  recons-left-u-from-pdinstance-right              → Nullary.contradiction recons-left-u-from-pdinstance-right  (¬recons-left-from-pdinstance-right v₂ pdi' ) 
@@ -337,7 +337,7 @@ map-left-right-ex-sorted {l} {r} {loc} (pdi₁ ∷ pdi₂ ∷ pdis)   (pdi' ∷ 
     (λ { (LeftU v₁) (LeftU v₂)  recons-left-v1-from-pdinstance-left-pdi₁ recons-left-v2-from-pdinstance-left-pdi₂ →
          let recons-v₁-pdi₁ = inv-recons-left {l} {r} {loc} v₁  pdi₁  recons-left-v1-from-pdinstance-left-pdi₁
              recons-v₂-pdi₂ = inv-recons-left {l} {r} {loc} v₂  pdi₂  recons-left-v2-from-pdinstance-left-pdi₂
-         in choice-ll ( pdi₁>pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂ )
+         in sub (choice-ll ( pdi₁>pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂ ))
         -- impossible cases         
        ; (RightU v₁)  _         recons-right-u-from-pdinstance-left-pdi₁ _ → Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₁ ( ¬recons-right-from-pdinstance-left v₁ pdi₁ )
        ; (LeftU v₁) (RightU v₂) _ recons-right-u-from-pdinstance-left-pdi₂ → Nullary.contradiction recons-right-u-from-pdinstance-left-pdi₂ ( ¬recons-right-from-pdinstance-left v₂ pdi₂ )       
@@ -370,7 +370,7 @@ star-ex-sorted {r} {ε∉r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev
     ev (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂)) recons-list-vvs₁-star-pdi₁ recons-list-vvs₂-star-pdi₂ =
       let recons-v₁-pdi₁ = inv-recons-star v₁ vs₁ pdi₁ recons-list-vvs₁-star-pdi₁ 
           recons-v₂-pdi₂ = inv-recons-star v₂ vs₂ pdi₂ recons-list-vvs₂-star-pdi₂
-      in star-head (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂)
+      in sub (star-head (pdi₁>-pdi₂-ev v₁ v₂ recons-v₁-pdi₁ recons-v₂-pdi₂))
 
   
 
@@ -411,7 +411,7 @@ fst-ex-sorted {l} {r} {loc} {c} pdi₁ pdi₂ (>-pdi _ _ pdi₁>-pdi₂-ev ) = >
     ev (PairU u₁ v₁) (PairU u₂ v₂)  recons-pair-u₁v₁-pdi-fst recons-pair-u₁v₂-pdi-fst =
        let recons-u₁-pdi₁ = inv-recons-fst {l} {r} {loc} u₁ v₁ pdi₁  recons-pair-u₁v₁-pdi-fst 
            recons-u₂-pdi₂ = inv-recons-fst {l} {r} {loc} u₂ v₂ pdi₂  recons-pair-u₁v₂-pdi-fst
-       in seq₁ (pdi₁>-pdi₂-ev u₁ u₂  recons-u₁-pdi₁ recons-u₂-pdi₂) 
+       in sub (seq₁ (pdi₁>-pdi₂-ev u₁ u₂  recons-u₁-pdi₁ recons-u₂-pdi₂) )
 
 
 
@@ -494,7 +494,7 @@ pdinstance-snd-ex>-sorted {l} {r} {loc} {c}  (e , flat-[]-e) (pdi₁ ∷ pdi₂ 
           --------------------------------------------------
           → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂' 
      ev-> v₁ v₁' v₂ v₂' recons1 recons2
-          =  seq₂ v₁≡v₂ v₁'>v₂' 
+          =  sub (seq₂ v₁≡v₂ v₁'>v₂' )
           where
             v₁≡e : v₁ ≡ e
             v₁≡e = mk-snd-pdi-fst-pair-≡ pdi₁ e flat-[]-e v₁ v₁' recons1
@@ -584,7 +584,7 @@ pdinstance-snd-fst-all->concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} e₁
                → Recons {l ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {l} {r} {loc} {c}  (e₂ , flat-[]-e₂ ) pdi )
                --------------------------------------------------
                → (l ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂' 
-          ev-> v₁ v₁' v₂ v₂' recons1 recons2 = seq₁ v₁>v₂
+          ev-> v₁ v₁' v₂ v₂' recons1 recons2 = sub (seq₁ v₁>v₂)
             where
               v₁≡e₁ : v₁ ≡ e₁
               v₁≡e₁ = mk-snd-pdi-fst-pair-≡ pdi' e₁ flat-[]-e₁ v₁ v₁' recons1
@@ -647,9 +647,9 @@ inv-assoc-> : ∀ { l s r : RE } {loc₁ loc₂ : ℕ }
           → ((l ● s ` loc₁) ● r ` loc₂) ⊢ inv-assoc u₁ > inv-assoc u₂
 inv-assoc-> {l} {s} {r} {loc₁} {loc₂} {PairU v₁ (PairU v₁' v₁'')} {PairU v₂ (PairU v₂' v₂'')} pair-v1-pair-v1'-v1''>pair-v2-pair-v2'-v2''
   with pair-v1-pair-v1'-v1''>pair-v2-pair-v2'-v2''
-... | seq₁ v₁>v₂                          = seq₁ (seq₁ v₁>v₂)
-... | seq₂ v₁≡v₂ (seq₁ v₁'>v₂')           = seq₁ (seq₂ v₁≡v₂ v₁'>v₂')
-... | seq₂ v₁≡v₂ (seq₂ v₁'≡v₂' v₁''>v₂'') = seq₂ (pair-≡ v₁≡v₂ v₁'≡v₂') v₁''>v₂'' 
+... | sub (seq₁ v₁>v₂)                          = sub (seq₁ (sub (seq₁ v₁>v₂)))
+... | sub (seq₂ v₁≡v₂ (sub (seq₁ v₁'>v₂')))     = sub (seq₁ (sub (seq₂ v₁≡v₂ v₁'>v₂')))
+... | sub (seq₂ v₁≡v₂ (sub (seq₂ v₁'≡v₂' v₁''>v₂''))) = sub (seq₂ (pair-≡ v₁≡v₂ v₁'≡v₂') v₁''>v₂'')
 
 
 pdinstance-assoc-ex> : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char}
@@ -695,11 +695,11 @@ inv-dist-> : ∀ { l s r : RE } {loc₁ loc₂ : ℕ }
              → (( l ● r ` loc₂) + ( s ● r ` loc₂ ) ` loc₁ ) ⊢ u₁ > u₂
              -------------------------------------------------------------          
              → (( l + s ` loc₁) ● r ` loc₂)  ⊢ inv-dist u₁ > inv-dist u₂ 
-inv-dist-> {l} {s} {r} {loc₁} {loc₂} {LeftU (PairU v₁ v₁')} {LeftU (PairU v₂ v₂')} (choice-ll (seq₁ v₁>v₂)) = seq₁ (choice-ll v₁>v₂)
-inv-dist-> {l} {s} {r} {loc₁} {loc₂} {LeftU (PairU v₁ v₁')} {LeftU (PairU v₂ v₂')} (choice-ll (seq₂ v₁≡v₂ v₁'>v₂')) = seq₂ (left-≡ v₁≡v₂) v₁'>v₂'
-inv-dist-> {l} {s} {r} {loc₁} {loc₂} {RightU (PairU v₁ v₁')} {RightU (PairU v₂ v₂')} (choice-rr (seq₁ v₁>v₂)) = seq₁ (choice-rr v₁>v₂)
-inv-dist-> {l} {s} {r} {loc₁} {loc₂} {RightU (PairU v₁ v₁')} {RightU (PairU v₂ v₂')} (choice-rr (seq₂ v₁≡v₂ v₁'>v₂')) = seq₂ (right-≡ v₁≡v₂) v₁'>v₂'
-inv-dist-> {l} {s} {r} {loc₁} {loc₂} {LeftU (PairU v₁ v₁')} {RightU (PairU v₂ v₂')} choice-lr = seq₁ choice-lr
+inv-dist-> {l} {s} {r} {loc₁} {loc₂} {LeftU (PairU v₁ v₁')} {LeftU (PairU v₂ v₂')} (sub (choice-ll (sub (seq₁ v₁>v₂)))) = sub (seq₁ (sub (choice-ll v₁>v₂)))
+inv-dist-> {l} {s} {r} {loc₁} {loc₂} {LeftU (PairU v₁ v₁')} {LeftU (PairU v₂ v₂')} (sub (choice-ll (sub (seq₂ v₁≡v₂ v₁'>v₂')))) = sub (seq₂ (left-≡ v₁≡v₂) v₁'>v₂')
+inv-dist-> {l} {s} {r} {loc₁} {loc₂} {RightU (PairU v₁ v₁')} {RightU (PairU v₂ v₂')} (sub (choice-rr (sub (seq₁ v₁>v₂)))) = sub (seq₁ (sub (choice-rr v₁>v₂)))
+inv-dist-> {l} {s} {r} {loc₁} {loc₂} {RightU (PairU v₁ v₁')} {RightU (PairU v₂ v₂')} (sub (choice-rr (sub (seq₂ v₁≡v₂ v₁'>v₂')))) = sub (seq₂ (right-≡ v₁≡v₂) v₁'>v₂')
+inv-dist-> {l} {s} {r} {loc₁} {loc₂} {LeftU (PairU v₁ v₁')} {RightU (PairU v₂ v₂')} (sub choice-lr) = sub (seq₁ (sub choice-lr))
 -- the RightU vs LeftU case is not required, it leads to λ() automatically
 
 
@@ -707,8 +707,8 @@ inv-dist-right-> : ∀ { l s r : RE } {loc₁ loc₂ : ℕ }  { v₁ v₁' : U s
    → (s ● r ` loc₂) ⊢ PairU v₁ v₂ > PairU v₁' v₂'
    -----------------------------------------------------------------------------
    → ((l + s ` loc₁) ● r ` loc₂) ⊢ PairU (RightU v₁) v₂ > PairU (RightU v₁') v₂'
-inv-dist-right->  {l} {s} {r} {loc₁} {loc₂} {v₁} {v₁'} {v₂} {v₂'} (seq₁ v₁>v₁') = seq₁ (choice-rr v₁>v₁')
-inv-dist-right->  {l} {s} {r} {loc₁} {loc₂} {v₁} {v₁'} {v₂} {v₂'} (seq₂ v₁≡v₁' v₂>v₂') = seq₂ (right-≡ v₁≡v₁')  v₂>v₂'
+inv-dist-right->  {l} {s} {r} {loc₁} {loc₂} {v₁} {v₁'} {v₂} {v₂'} (sub (seq₁ v₁>v₁')) = sub (seq₁ (sub (choice-rr v₁>v₁')))
+inv-dist-right->  {l} {s} {r} {loc₁} {loc₂} {v₁} {v₁'} {v₂} {v₂'} (sub (seq₂ v₁≡v₁' v₂>v₂')) = sub (seq₂ (right-≡ v₁≡v₁')  v₂>v₂')
 
 
 dist-left-right-ex>-maybe : ∀ { l s r : RE } {loc₁ loc₂ : ℕ } { c : Char}
@@ -723,7 +723,7 @@ dist-left-right-ex>-maybe {l} {s} {r} {loc₁} {loc₂} {c} pdiˡ (pdiʳ ∷ pdi
          → Recons u₁ (pdinstance-dist (pdinstance-left pdiˡ))
          → Recons u₂ (pdinstance-dist (pdinstance-right pdiʳ))
          → ((l + s ` loc₁) ● r ` loc₂) ⊢ u₁ > u₂
-    ev-> (PairU (LeftU v₁) v₂) (PairU (RightU v₁') v₂') recons₁ recons₂ = seq₁ choice-lr
+    ev-> (PairU (LeftU v₁) v₂) (PairU (RightU v₁') v₂') recons₁ recons₂ = sub (seq₁ (sub choice-lr))
     ev-> (PairU (RightU v₁) v₂) _ recons₁ _ =  Nullary.contradiction recons₁ (¬recons-pair-right-from-pdinstance-dist-left  v₁ v₂ pdiˡ)
     ev-> _ (PairU (LeftU v₁') v₂') _ recons₂  =  Nullary.contradiction recons₂ (¬recons-pair-left-from-pdinstance-dist-right  v₁' v₂' pdiʳ)      
     
@@ -749,7 +749,7 @@ dist-right-ex>-maybe {l} {s} {r} {loc₁} {loc₂} {c} pdi₁ (pdi₂ ∷ pdis) 
                                 u₁→u₂→r₁→r₂→u₁>u₂ (RightU (PairU v₁ v₂)) (RightU (PairU v₁' v₂')) (inv-recons-dist-right v₁ v₂ pdi₁ recons₁) (inv-recons-dist-right v₁' v₂' pdi₂ recons₂)
         pair-v₁-v₂>pair-v₁'-v₂' :  s ● r ` loc₂ ⊢ PairU v₁ v₂ > PairU v₁' v₂'
         pair-v₁-v₂>pair-v₁'-v₂' with right-pair-v₁-v₂>right-pair-v₁'-v₂'
-        ...                       | choice-rr ev = ev 
+        ...                       | sub (choice-rr ev) = ev 
     ev-> (PairU (LeftU v₁) v₂) _ recons₁ _    =  Nullary.contradiction recons₁ (¬recons-pair-left-from-pdinstance-dist-right  v₁ v₂ pdi₁)      
     ev-> _ (PairU (LeftU v₁') v₂') _ recons₂  =  Nullary.contradiction recons₂ (¬recons-pair-left-from-pdinstance-dist-right  v₁' v₂' pdi₂)      
   
@@ -961,7 +961,7 @@ pdUConcat-sorted {l * ε∉l ` loc₂} {r} {ε∈*} {loc} {c} =
              → Recons {(l * ε∉l ` loc₂) ● r ` loc} {c} (PairU v₂ v₂')  ( mk-snd-pdi {l * ε∉l ` loc₂} {r} {loc} {c}  (ListU [] ,  flat-[] (ListU []) refl) pdi' )
              --------------------------------------------------
              → ((l * ε∉l ` loc₂) ● r ` loc) ⊢ PairU v₁ v₁'  >  PairU v₂ v₂'
-        ev-> v₁ v₁' v₂ v₂' recons1 recons2  = seq₁ v₁>v₂
+        ev-> v₁ v₁' v₂ v₂' recons1 recons2  = sub (seq₁ v₁>v₂)
           where 
             v₂≡list-[] : v₂ ≡ (ListU [])
             v₂≡list-[] = mk-snd-pdi-fst-pair-≡ pdi' (ListU []) (flat-[] (ListU []) refl)  v₂ v₂' recons2
@@ -971,7 +971,7 @@ pdUConcat-sorted {l * ε∉l ` loc₂} {r} {ε∈*} {loc} {c} =
             xs = proj₁ (proj₂ v₁-is-cons)
             v₁≡list-x-xs = proj₂ (proj₂ v₁-is-cons)
             list-x-xs>e : (l * ε∉l ` loc₂) ⊢ ListU (x ∷ xs) > (ListU []) 
-            list-x-xs>e = star-cons-nil
+            list-x-xs>e = sub star-cons-nil
             v₁>v₂ : (l * ε∉l ` loc₂) ⊢ v₁ > v₂
             v₁>v₂ rewrite  v₁≡list-x-xs | v₂≡list-[] = list-x-xs>e
 

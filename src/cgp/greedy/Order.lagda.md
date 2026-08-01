@@ -117,11 +117,13 @@ We define the odering among v1 and v2 as follows
 Note: r ⊢ v₁ > v₂ means v₁ is greedier than v₂ .
 
 ```agda
+{-
+-- single level _⊢_>_ order specification
 infix 4 _⊢_>_
 
 data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
   seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
-    →   l ⊢ v₁ >  v₁'   -- for PD greedy, we need to replace the premise with len |v₁| > len |v₂|
+    →   l ⊢ v₁ >  v₁'   
     ------------------------------------------------------------------
     →  ( l ● r ` loc) ⊢ (PairU v₁ v₂) > (PairU v₁' v₂')
 
@@ -163,6 +165,72 @@ data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set where
     → ( r * nε ` loc ) ⊢ (ListU vs₁) > (ListU vs₂)
     ----------------------------------------------------------------------
     → ( r * nε ` loc ) ⊢ (ListU (v₁ ∷ vs₁)) > (ListU (v₂ ∷ vs₂))
+-}
+
+-- two level _⊢_>_ order specification
+
+
+infix 4 _⊢_>_
+infix 4 _⊢_>ⁱ_
+
+-- the top level > 
+data _⊢_>_ : ∀ ( r : RE ) → U r → U r → Set
+
+-- the internal >
+data _⊢_>ⁱ_ : ∀ ( r : RE ) → U r → U r → Set 
+
+
+
+data _⊢_>_ where
+  sub : ∀ { r : RE } { v₁ v₂ : U r }
+    → r ⊢ v₁ >ⁱ v₂
+    -----------------------------------------------------
+    → r ⊢ v₁ > v₂
+
+
+data _⊢_>ⁱ_  where
+
+  seq₁ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U  l } { v₂ v₂' : U r }
+    → l ⊢ v₁ >  v₁'
+    ------------------------------------------------------------------
+    → l ● r ` loc ⊢ PairU v₁ v₂ >ⁱ PairU v₁' v₂'
+
+  seq₂ : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l } { v₂ v₂' : U r }
+    → v₁ ≡ v₁'
+    → r ⊢ v₂ > v₂'
+    -------------------------------------------------------------------
+    → ( l ● r ` loc) ⊢ (PairU v₁ v₂) >ⁱ (PairU v₁' v₂')
+
+  choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
+    -------------------------------------------------------------------    
+    → ( l + r ` loc ) ⊢ (LeftU v₁) >ⁱ (RightU v₂)
+
+  choice-ll : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
+    → l ⊢ v₁ > v₁'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (LeftU v₁) >ⁱ (LeftU v₁')
+
+  choice-rr : ∀ { l r : RE } { loc : ℕ } { v₂ v₂'  : U r }
+    →  r ⊢ v₂ >  v₂'
+    -------------------------------------------------------------------
+    → ( l + r ` loc ) ⊢ (RightU v₂) >ⁱ (RightU v₂')
+
+
+  star-cons-nil : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v : U r } { vs : List (U r) }
+    → ( r * nε ` loc ) ⊢ (ListU (v ∷ vs)) >ⁱ ( ListU [] )
+
+
+  star-head : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
+    → r ⊢ v₁ > v₂
+    ----------------------------------------------------------------------
+    → ( r * nε ` loc ) ⊢ (ListU (v₁ ∷ vs₁)) >ⁱ (ListU (v₂ ∷ vs₂))
+
+
+  star-tail : ∀ { r : RE } { loc : ℕ } { nε : ε∉ r } { v₁ v₂ : U r } { vs₁ vs₂ : List (U r) }
+    → v₁ ≡ v₂
+    → ( r * nε ` loc ) ⊢ (ListU vs₁) > (ListU vs₂)
+    ----------------------------------------------------------------------
+    → ( r * nε ` loc ) ⊢ (ListU (v₁ ∷ vs₁)) >ⁱ (ListU (v₂ ∷ vs₂))
 
 
 ```
@@ -175,23 +243,32 @@ Note : The > order is transitive.
   → r ⊢ u₂ > u₃
   -----------------
   → r ⊢ u₁ > u₃
->-trans {ε} = λ()
->-trans {$ c ` loc} = λ()
->-trans {r * ε∉r ` loc} star-cons-nil = λ()
->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃)  = star-head (>-trans v₁>v₂ v₂>v₃)
->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
->-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil  = star-cons-nil
->-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
->-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ 
->-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
->-trans {l + r ` loc }  choice-lr                 (choice-rr v₂>v₃) = choice-lr 
->-trans {l + r ` loc }  (choice-rr v₁>v₂)         (choice-rr v₂>v₃) = choice-rr (>-trans v₁>v₂ v₂>v₃)
->-trans {l + r ` loc }  (choice-ll v₁>v₂)         (choice-ll v₂>v₃) = choice-ll (>-trans v₁>v₂ v₂>v₃)
->-trans {l + r ` loc }  (choice-ll v₁>v₂)         choice-lr         = choice-lr
->-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₁ v₂>v₃)      = seq₁ (>-trans v₁>v₂ v₂>v₃) 
->-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
->-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
->-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃ 
+
+>ⁱ-trans : { r : RE } { u₁ u₂ u₃ : U r }
+  → r ⊢ u₁ >ⁱ u₂
+  → r ⊢ u₂ >ⁱ u₃
+  -----------------
+  → r ⊢ u₁ >ⁱ u₃
+
+>-trans (sub u₁>ⁱu₂) (sub u₂>ⁱu₃) = sub (>ⁱ-trans u₁>ⁱu₂ u₂>ⁱu₃ )
+
+>ⁱ-trans {ε} = λ()
+>ⁱ-trans {$ c ` loc} = λ()
+>ⁱ-trans {r * ε∉r ` loc} star-cons-nil = λ()
+>ⁱ-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-head v₂>v₃)  = star-head (>-trans v₁>v₂ v₂>v₃)
+>ⁱ-trans {r * ε∉r ` loc} (star-head v₁>v₂)         (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-head v₁>v₂
+>ⁱ-trans {r * ε∉r ` loc} (star-head v₁>v₂)         star-cons-nil  = star-cons-nil
+>ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-tail v₂≡v₃ vs₂>vs₃) rewrite (sym v₂≡v₃) = star-tail v₁≡v₂ (>-trans vs₁>vs₂ vs₂>vs₃)
+>ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃ 
+>ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
+>ⁱ-trans {l + r ` loc }  choice-lr                 (choice-rr v₂>v₃) = choice-lr 
+>ⁱ-trans {l + r ` loc }  (choice-rr v₁>v₂)         (choice-rr v₂>v₃) = choice-rr (>-trans v₁>v₂ v₂>v₃)
+>ⁱ-trans {l + r ` loc }  (choice-ll v₁>v₂)         (choice-ll v₂>v₃) = choice-ll (>-trans v₁>v₂ v₂>v₃)
+>ⁱ-trans {l + r ` loc }  (choice-ll v₁>v₂)         choice-lr         = choice-lr
+>ⁱ-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₁ v₂>v₃)      = seq₁ (>-trans v₁>v₂ v₂>v₃) 
+>ⁱ-trans {l ● r ` loc }  (seq₁ v₁>v₂)              (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₁ v₁>v₂
+>ⁱ-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₂ v₂≡v₃ v₂'>v₃') rewrite (sym v₂≡v₃) = seq₂ v₁≡v₂ (>-trans v₁'>v₂' v₂'>v₃')
+>ⁱ-trans {l ● r ` loc }  (seq₂ v₁≡v₂ v₁'>v₂')      (seq₁ v₂>v₃)         rewrite v₁≡v₂ =  seq₁ v₂>v₃ 
 ```
 
 Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
@@ -202,15 +279,22 @@ Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
   → r ⊢ u₁ > u₂ 
   -----------------
   → ¬ u₁ ≡ u₂ 
->→¬≡ {ε} {EmptyU}    {EmptyU} = λ() 
->→¬≡ {$ c ` loc}     {LetterU _} {LetterU _} = λ()
--- >→¬≡ {r * ε∉r ` loc} {ListU []} {_} = λ()
->→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
->→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs)) 
+
+>ⁱ→¬≡ : { r : RE } { u₁ u₂ : U r }
+  → r ⊢ u₁ >ⁱ u₂ 
+  -----------------
+  → ¬ u₁ ≡ u₂ 
+
+>→¬≡ (sub u₁>ⁱu₂) refl = (>ⁱ→¬≡ u₁>ⁱu₂) refl   
+
+>ⁱ→¬≡ {ε} {EmptyU}    {EmptyU} = λ() 
+>ⁱ→¬≡ {$ c ` loc}     {LetterU _} {LetterU _} = λ()
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) = λ list-u∷us≡list-v∷vs → ¬u≡v (proj₁ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs)) 
   where
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
->→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs))
+>ⁱ→¬≡ {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) = λ list-u∷us≡list-v∷vs → ¬us≡vs (proj₂ (ParseTree.inv-listU u us v vs list-u∷us≡list-v∷vs))
   where
     ¬list-us≡list-vs : ¬ (ListU us) ≡ (ListU vs)
     ¬list-us≡list-vs = >→¬≡ {r * ε∉r ` loc} {ListU us} {ListU vs} list-us>list-vs
@@ -220,20 +304,20 @@ Lemma u₁ > u₂ implies ¬ u₁ ≡ u₂
       where
         list-us≡list-vs : (ListU {r} {ε∉r} {loc} us) ≡ (ListU {r} {ε∉r} {loc} vs)
         list-us≡list-vs rewrite (cong (λ x → ListU {r} {ε∉r} {loc} x) us≡vs ) = refl 
->→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+>ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₁≡v₁ (proj₁ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
   where
     ¬u₁≡v₁ : ¬ u₁ ≡ v₁
     ¬u₁≡v₁ = >→¬≡ {l} {u₁} {v₁} u₁>v₁
->→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
+>ⁱ→¬≡ {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂) = λ pair-u₁u₂≡pair-v₁v₂ → ¬u₂≡v₂ (proj₂ (ParseTree.inv-pairU u₁ u₂ v₁ v₂ pair-u₁u₂≡pair-v₁v₂))
   where
     ¬u₂≡v₂ : ¬ u₂ ≡ v₂
     ¬u₂≡v₂ = >→¬≡ {r} {u₂} {v₂} u₂>v₂
->→¬≡ {l + r ` loc} {LeftU u} {RightU v} choice-lr = λ () 
->→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v) = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
+>ⁱ→¬≡ {l + r ` loc} {LeftU u} {RightU v} choice-lr = λ () 
+>ⁱ→¬≡ {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v) = λ left-u≡left-v →  ¬u≡v (ParseTree.inv-leftU u v left-u≡left-v)
   where 
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {l} {u} {v} u>v
->→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v) = λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
+>ⁱ→¬≡ {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v) = λ right-u≡right-v →  ¬u≡v (ParseTree.inv-rightU u v right-u≡right-v)
   where 
     ¬u≡v : ¬ u ≡ v
     ¬u≡v = >→¬≡ {r} {u} {v} u>v
@@ -246,24 +330,35 @@ u>v→¬v>u : { r : RE } { u v : U r }
   → r ⊢ u > v 
   -----------------
   → ¬ r ⊢ v > u
-u>v→¬v>u {ε}             {EmptyU} {EmptyU} = λ()
-u>v→¬v>u {$ c ` loc}     {LetterU _} {LetterU _} = λ()
-u>v→¬v>u {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
-u>v→¬v>u {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) list-v∷vs>list-u∷us with list-v∷vs>list-u∷us
+
+
+u>ⁱv→¬v>ⁱu : { r : RE } { u v : U r }
+  → r ⊢ u >ⁱ v 
+  -----------------
+  → ¬ r ⊢ v >ⁱ u
+
+u>v→¬v>u (sub u>ⁱv) (sub v>ⁱu) = (u>ⁱv→¬v>ⁱu  u>ⁱv) v>ⁱu
+
+
+
+u>ⁱv→¬v>ⁱu {ε}             {EmptyU} {EmptyU} = λ()
+u>ⁱv→¬v>ⁱu {$ c ` loc}     {LetterU _} {LetterU _} = λ()
+u>ⁱv→¬v>ⁱu {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU []} star-cons-nil = λ ()
+u>ⁱv→¬v>ⁱu {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-head u>v) list-v∷vs>list-u∷us with list-v∷vs>list-u∷us
 ... | star-head v>u = (u>v→¬v>u u>v) v>u
 ... | star-tail v≡u _ = (>→¬≡ u>v) (sym v≡u)
-u>v→¬v>u {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) list-v∷vs>list-u∷us with list-v∷vs>list-u∷us
+u>ⁱv→¬v>ⁱu {r * ε∉r ` loc} {ListU (u ∷ us)} {ListU (v ∷ vs)} (star-tail u≡v list-us>list-vs) list-v∷vs>list-u∷us with list-v∷vs>list-u∷us
 ... | star-head v>u = (>→¬≡ v>u) (sym u≡v)
 ... | star-tail v≡u list-vs>list-us = (u>v→¬v>u list-us>list-vs) list-vs>list-us
-u>v→¬v>u {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁)  pair-v₁v₂>pair-u₁u₂ with pair-v₁v₂>pair-u₁u₂ 
+u>ⁱv→¬v>ⁱu {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₁ u₁>v₁)  pair-v₁v₂>pair-u₁u₂ with pair-v₁v₂>pair-u₁u₂ 
 ... | seq₁ v₁>u₁   = (u>v→¬v>u u₁>v₁) v₁>u₁
 ... | seq₂ v₁≡u₁ _ = (>→¬≡ u₁>v₁) (sym v₁≡u₁)
-u>v→¬v>u {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂)  pair-v₁v₂>pair-u₁u₂ with pair-v₁v₂>pair-u₁u₂
+u>ⁱv→¬v>ⁱu {l ● r ` loc} {PairU u₁ u₂} {PairU v₁ v₂} (seq₂ u₁≡v₁ u₂>v₂)  pair-v₁v₂>pair-u₁u₂ with pair-v₁v₂>pair-u₁u₂
 ... | seq₁ v₁>u₁   = (>→¬≡ v₁>u₁) (sym u₁≡v₁) 
 ... | seq₂ v₁≡u₁ v₂>u₂ = (u>v→¬v>u u₂>v₂) v₂>u₂
-u>v→¬v>u {l + r ` loc} {LeftU u} {RightU v} choice-lr = λ ()
-u>v→¬v>u {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v) (choice-ll v>u) = (u>v→¬v>u u>v) v>u
-u>v→¬v>u {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v) (choice-rr v>u) = (u>v→¬v>u u>v) v>u 
+u>ⁱv→¬v>ⁱu {l + r ` loc} {LeftU u} {RightU v} choice-lr = λ ()
+u>ⁱv→¬v>ⁱu {l + r ` loc} {LeftU u} {LeftU v} (choice-ll u>v) (choice-ll v>u) = (u>v→¬v>u u>v) v>u
+u>ⁱv→¬v>ⁱu {l + r ` loc} {RightU u} {RightU v} (choice-rr u>v) (choice-rr v>u) = (u>v→¬v>u u>v) v>u 
 ```
 
 
@@ -284,7 +379,7 @@ module ExampleGreedy where
   t2 = PairU (ListU []) (ListU (LetterU 'a' ∷ []))
 
   t1>t2 : a*●a* ⊢  t1 > t2 
-  t1>t2 = seq₁ star-cons-nil  
+  t1>t2 = sub (seq₁ (sub star-cons-nil  ))
 ```
 
 
@@ -360,7 +455,7 @@ map-leftU-sorted ( u ∷ [] ) (>-cons >-nil >-nothing )
   = >-cons >-nil >-nothing
 map-leftU-sorted ( u ∷ (v ∷ us) ) (>-cons >-sorted-us (>-just u>v))
   = >-cons (map-leftU-sorted (v ∷ us) >-sorted-us)
-           (>-just (choice-ll u>v))
+           (>-just (sub (choice-ll u>v)))
 
 
 map-rightU-sorted : ∀ { l r : RE } { loc : ℕ }
@@ -372,7 +467,7 @@ map-rightU-sorted ( u ∷ [] ) (>-cons >-nil >-nothing )
   = >-cons >-nil >-nothing
 map-rightU-sorted ( u ∷ (v ∷ us) ) (>-cons >-sorted-us (>-just u>v))
   = >-cons (map-rightU-sorted (v ∷ us) >-sorted-us)
-           (>-just (choice-rr u>v))
+           (>-just (sub (choice-rr u>v)))
   
 
 map-leftU-rightU-sorted : ∀ { l r : RE } { loc : ℕ }
@@ -385,10 +480,10 @@ map-leftU-rightU-sorted               []  vs    >-sorted-l-[] >-sorted-r-vs = ma
 map-leftU-rightU-sorted {l} {r} {loc} us               []        >-sorted-l-us >-sorted-r-[] rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (LeftU {l} {r} {loc}) us)))
   = map-leftU-sorted us >-sorted-l-us 
 map-leftU-rightU-sorted {l} {r} {loc} (u ∷ [])        (v ∷ vs) >-sorted-l-uus >-sorted-r-vs
-  = >-cons (map-rightU-sorted (v ∷ vs) >-sorted-r-vs) (>-just choice-lr)
+  = >-cons (map-rightU-sorted (v ∷ vs) >-sorted-r-vs) (>-just (sub choice-lr))
 map-leftU-rightU-sorted {l} {r} {loc} (u ∷ u' ∷ us)   (v ∷ vs) >-sorted-l-uuus >-sorted-r-vvs with >-sorted-l-uuus
 ... | >-cons >-sorted-uus (>-just  u>u' ) 
-  = >-cons (map-leftU-rightU-sorted (u' ∷ us) (v ∷ vs)  >-sorted-uus  >-sorted-r-vvs ) ((>-just (choice-ll u>u' ))) 
+  = >-cons (map-leftU-rightU-sorted (u' ∷ us) (v ∷ vs)  >-sorted-uus  >-sorted-r-vvs ) ((>-just (sub (choice-ll u>u' ))) )
 
 
           
@@ -409,7 +504,7 @@ map-pairU-sorted  {l} {r} {loc} (u ∷ [])  vs (>-cons >-nil >-nothing)   >-sort
     map-pair-u-vs-sorted u ( v ∷ vs ) (>-cons >-sorted-vs v>head-vs) with >-sorted-vs
     ... | >-nil          = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) >-nothing
     ... | >-cons >-sorted-vs' v'>head-vs' with v>head-vs
-    ...            | >-just v>v' = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (seq₂ refl v>v') )
+    ...            | >-just v>v' = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (sub (seq₂ refl v>v') ))
 
 map-pairU-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (>-cons >-sorted-uus (>-just u>u'))  >-sorted-vs
   = combine {u} {u'} {vs} {us} {vs} u>u' (map-pair-u-vs-sorted u vs >-sorted-vs) ind-hyp
@@ -419,7 +514,7 @@ map-pairU-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (>-cons >-sorted-uus (>-ju
     map-pair-u-vs-sorted u ( v ∷ vs ) (>-cons >-sorted-vs v>head-vs) with >-sorted-vs
     ... | >-nil          = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) >-nothing 
     ... | >-cons >-sorted-vs' v'>head-vs' with v>head-vs
-    ...            | >-just v>v' = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (seq₂ refl v>v') )
+    ...            | >-just v>v' = >-cons (map-pair-u-vs-sorted u vs >-sorted-vs) (>-just (sub (seq₂ refl v>v') ))
 
     ind-hyp : >-sorted {l ● r ` loc } (concatMap (λ u₁ → List.map (PairU u₁) vs) (u' ∷ us))
     ind-hyp = map-pairU-sorted {l} {r} {loc} (u' ∷ us) vs >-sorted-uus >-sorted-vs
@@ -436,7 +531,7 @@ map-pairU-sorted  {l} {r} {loc} (u ∷ u' ∷ us)  vs (>-cons >-sorted-uus (>-ju
     combine {u} {u'} {[]}      {us} {[]}     u>u' >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {[]}      {us} {vs}     u>u' >-nil                                                      >-sorted-ys = >-sorted-ys
     combine {u} {u'} {t ∷ []} {us} {v ∷ vs} u>u' (>-cons >-sorted-map-pair-u-ts u-t>head-map-pair-u-ts)  >-sorted-ys =
-      >-cons >-sorted-ys (>-just (seq₁ u>u')) 
+      >-cons >-sorted-ys (>-just (sub (seq₁ u>u')) )
     combine {u} {u'} {t ∷ t' ∷ ts} {us} {vs} u>u' (>-cons >-sorted-map-pair-u-tts u-t>head-map-pair-u-tts) >-sorted-ys =
       >-cons ind-hyp' u-t>head-map-pair-u-tts
       where
@@ -548,7 +643,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (l + r ` loc) ⊢ LeftU (inj u₁) > LeftU (inj u₂)
     >-inc-ev u₁ u₂ u₁>u₂ =
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  u₁>u₂
-      in choice-ll inj-u₁>inj-u₂
+      in sub (choice-ll inj-u₁>inj-u₂)
 
 
 
@@ -567,7 +662,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (l + r ` loc) ⊢ RightU (inj u₁) > RightU (inj u₂)
     >-inc-ev u₁ u₂ u₁>u₂ =
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂  u₁>u₂
-      in choice-rr inj-u₁>inj-u₂
+      in sub (choice-rr inj-u₁>inj-u₂)
 
 
 >-inc-map-fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -585,10 +680,10 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● r ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (l ● r ` loc) ⊢ (injFst uv₁) > (injFst uv₂)
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₁  u₁>u₂) = 
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (sub (seq₁  u₁>u₂)) = 
       let inj-u₁>inj-u₂ = u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂
-      in seq₁ inj-u₁>inj-u₂
-    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (seq₂  u₁≡u₂ v₁>v₂ ) = (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
+      in sub (seq₁ inj-u₁>inj-u₂)
+    >-inc-ev (PairU u₁ v₁)  (PairU u₂ v₂) (sub (seq₂  u₁≡u₂ v₁>v₂ )) = sub (seq₂ inj-u₁≡inj-u₂ v₁>v₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
@@ -603,7 +698,7 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
          → r ⊢ inj u₁ > inj u₂
          --------------------------------------------------------------------------
          → ( l ● r ` loc ) ⊢  (mkinjSnd inj v u₁) > (mkinjSnd inj v u₂) 
->-inc-injSnd {l} {r} {p} {loc} v inj u₁ u₂ inj-u₁>inj-u₂ = seq₂ refl inj-u₁>inj-u₂
+>-inc-injSnd {l} {r} {p} {loc} v inj u₁ u₂ inj-u₁>inj-u₂ = sub (seq₂ refl inj-u₁>inj-u₂)
 
 -- aux lemma to show that mk-snd-pdi is >-strict increasing
 >-inc-mk-snd-pdi : ∀ { l r : RE } { loc : ℕ } { c : Char }
@@ -687,11 +782,11 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
               → (p ● (r * ε∉r ` loc ) ` loc )  ⊢ uv₁ > uv₂
               ------------------------------------
               → (r * ε∉r ` loc) ⊢ (injList uv₁) > (injList uv₂)
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₁  u₁>u₂) = 
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (sub (seq₁  u₁>u₂)) = 
       let inj-u₁>inj-u₂ = >-ev u₁ u₂ u₁>u₂
-      in star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂
-    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (seq₂  u₁≡u₂ list-vs₁>list-vs₂ ) =
-      (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
+      in sub (star-head {r} {loc} {ε∉r} {inj u₁} {inj u₂} {vs₁} {vs₂} inj-u₁>inj-u₂)
+    >-inc-ev (PairU u₁ (ListU vs₁))  (PairU u₂ (ListU vs₂)) (sub (seq₂  u₁≡u₂ list-vs₁>list-vs₂ )) =
+      sub (star-tail inj-u₁≡inj-u₂ list-vs₁>list-vs₂)  
         where
           inj-u₁≡inj-u₂ : inj u₁ ≡ inj u₂ 
           inj-u₁≡inj-u₂ = cong inj u₁≡u₂
@@ -716,7 +811,7 @@ pdUConcat->-inc : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char
 pdU->-inc {ε} {c} = []
 pdU->-inc {$ c ` loc} {c'} with c Char.≟ c'
 ...  | no ¬c≡c' = []
-...  | yes refl =  ( >-inc (λ { EmptyU EmptyU →  λ() } ) ) ∷ []
+...  | yes refl =  >-inc (λ { EmptyU EmptyU EmptyU>EmptyU →  Nullary.contradiction refl (>→¬≡  EmptyU>EmptyU)  } )  ∷ []
 pdU->-inc {l + r ` loc} {c} = all-concat map-ind-hyp-l map-ind-hyp-r 
   where
     ind-hyp-l : All (>-Inc {l} {c}) pdU[ l , c ]
@@ -789,9 +884,9 @@ pdUConcat->-inc { l ● s ` loc₂ } {r} {ε∈l●s} {loc} {c} = assoc->-inc pd
         ev-> : (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂
              → ((l ● s ` loc₂) ● r ` loc) ⊢ (mkinjAssoc inj) u₁ > (mkinjAssoc inj) u₂
         ev-> u₁ u₂ u₁>u₂ with inj u₁                  | inj u₂                   | u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂ 
-        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₁ v₁>v₄                  = seq₁ (seq₁ v₁>v₄)
-        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₂ refl (seq₁ v₂>v₅)      = seq₁ (seq₂ refl v₂>v₅)
-        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | seq₂ refl (seq₂ refl v₃>v₆) = seq₂ refl v₃>v₆
+        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | sub (seq₁ v₁>v₄)                   = sub (seq₁ (sub (seq₁ v₁>v₄)))
+        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | sub (seq₂ refl (sub (seq₁ v₂>v₅))) = sub (seq₁ (sub (seq₂ refl v₂>v₅)))
+        ...                | PairU v₁ (PairU v₂ v₃)   | PairU v₄ (PairU v₅ v₆)   | sub (seq₂ refl (sub (seq₂ refl v₃>v₆))) = sub (seq₂ refl v₃>v₆)
 
 pdUConcat->-inc { l + s ` loc₂ } {r} {ε∈l+s} {loc} {c} = 
   dist->-inc ((List.map pdinstance-left pdU[ l ● r ` loc  , c ]) ++ (List.map pdinstance-right pdU[ s ● r ` loc , c ]))  (concat pdU[ l ● r ` loc  , c ]  pdU[ s ● r ` loc , c ] map-ind-hyp-l map-ind-hyp-r)
@@ -826,11 +921,11 @@ pdUConcat->-inc { l + s ` loc₂ } {r} {ε∈l+s} {loc} {c} =
         ev-> : (u₁ : U p) → (u₂ : U p) → p ⊢ u₁ > u₂
           → ((l + s ` loc₂) ● r ` loc) ⊢ (mkinjDist inj) u₁ > (mkinjDist inj) u₂
         ev->  u₁ u₂ u₁>u₂ with inj u₁            | inj u₂                | u₁→u₂→u₁>u₂→inj-u₁>inj-u₂ u₁ u₂ u₁>u₂ 
-        ...              | LeftU (PairU v₁ v₁')  | LeftU (PairU v₂ v₂')  | choice-ll (seq₁ v₁>v₂) = seq₁ (choice-ll v₁>v₂)
-        ...              | LeftU (PairU v₁ v₁')  | LeftU (PairU v₂ v₂')  | choice-ll (seq₂ v₁≡v₂ v₁'>v₂') = seq₂ (cong LeftU v₁≡v₂) v₁'>v₂'
-        ...              | RightU (PairU v₁ v₁') | RightU (PairU v₂ v₂') | choice-rr (seq₁ v₁>v₂) = seq₁ (choice-rr v₁>v₂)
-        ...              | RightU (PairU v₁ v₁') | RightU (PairU v₂ v₂') | choice-rr (seq₂ v₁≡v₂ v₁'>v₂') = seq₂ (cong RightU v₁≡v₂) v₁'>v₂'
-        ...              | LeftU (PairU v₁ v₁') | RightU (PairU v₂ v₂') | choice-lr  = seq₁ choice-lr 
+        ...              | LeftU (PairU v₁ v₁')  | LeftU (PairU v₂ v₂')  | sub (choice-ll (sub (seq₁ v₁>v₂))) = sub (seq₁ (sub (choice-ll v₁>v₂)))
+        ...              | LeftU (PairU v₁ v₁')  | LeftU (PairU v₂ v₂')  | sub (choice-ll (sub (seq₂ v₁≡v₂ v₁'>v₂'))) = sub (seq₂ (cong LeftU v₁≡v₂) v₁'>v₂')
+        ...              | RightU (PairU v₁ v₁') | RightU (PairU v₂ v₂') | sub (choice-rr (sub (seq₁ v₁>v₂))) = sub (seq₁ (sub (choice-rr v₁>v₂)))
+        ...              | RightU (PairU v₁ v₁') | RightU (PairU v₂ v₂') | sub (choice-rr (sub (seq₂ v₁≡v₂ v₁'>v₂'))) = sub (seq₂ (cong RightU v₁≡v₂) v₁'>v₂')
+        ...              | LeftU (PairU v₁ v₁')  | RightU (PairU v₂ v₂') | sub choice-lr  = sub (seq₁ (sub choice-lr))
 
         
        

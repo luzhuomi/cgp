@@ -149,7 +149,11 @@ open import Function using (_∘_ ; flip ; case_of_)
 import Data.List.Relation.Unary.Any.Properties
 open Data.List.Relation.Unary.Any.Properties using ( ¬Any[] )
 
--- Transport Any across word-equality inside parseAll
+-- Purpose: transport an Any proof across a word equality inside parseAll.
+-- Used by: parseAll≢nil (inside >-wellfounded/core) to transport
+--   parseAll-complete's Any from parseAll[ r , flat w∈r ] to parseAll[ r , w ].
+-- Proof idea: rewrite the goal type directly — avoids the constraint solver
+--   decomposition that subst triggers on opaque parseAll terms.
 parseAll-subst : ∀ {r : RE} {w₁ w₂ : List Char} {v : U r}
   → w₁ ≡ w₂
   → Any (_≡_ v) parseAll[ r , w₁ ]
@@ -164,8 +168,13 @@ parseAll-subst {r} {w₁} {w₂} {v} w₁≡w₂ any
 
 infix 4 _⊢_≥_
 
--- Custom trichotomy datatype to avoid Agda 2.7's ⊎ vs _⊢_>_ confusion
--- RE is explicit to avoid constraint solver issues with ListU's RE index
+-- Purpose: custom trichotomy wrapping _⊢_>_ into a single datatype.
+--   Agda 2.7's constraint solver confuses ⊎ proofs with _⊢_>_ proofs when
+--   pattern matching on both simultaneously. This datatype avoids that.
+--   The explicit (r : RE) parameter prevents constraint solver issues with
+--   ListU's RE index during pattern matching.
+-- Used by: >-trichotomy, listU-trichotomy, listU-cons-vs-cons, ≽-to-⊎
+-- Proof idea: N/A (datatype definition). Three constructors mirror >, <, ≡.
 infixr 10 _>_≽_ _<≽_ _≡≽_
 
 data _≽_ : (r : RE) → U r → U r → Set where
@@ -173,21 +182,30 @@ data _≽_ : (r : RE) → U r → U r → Set where
   _<≽_ : ∀ {r : RE} {u v : U r} → r ⊢ v > u → _≽_ r u v
   _≡≽_ : ∀ {r : RE} {u v : U r} → u ≡ v → _≽_ r u v
 
--- Trichotomy elimination to raw sum type (avoids constraint solver issues)
+-- Purpose: eliminate _≽_ proofs into a raw nested ⊎ sum.
+-- Used by: listU-cons-vs-cons, >-trichotomy (star case) to branch on
+--   the result of recursive trichotomy calls.
+-- Proof idea: direct pattern matching on _≽_ constructors, returning
+--   the embedded proof inside the appropriate ⊎ branch.
 ≽-to-⊎ : ∀ {r} {u v} → _≽_ r u v → (r ⊢ u > v) ⊎ (r ⊢ v > u) ⊎ (u ≡ v)
 ≽-to-⊎ (_>_≽_ u>v) = inj₁ u>v
 ≽-to-⊎ (_<≽_ v>u) = inj₂ (inj₁ v>u)
 ≽-to-⊎ (_≡≽_ u≡v) = inj₂ (inj₂ u≡v)
 
--- type alias
+-- Purpose: type alias for "≥" as a raw ⊎ sum (not _≽_).
+-- Used by: ≥-trans, sorted-head-≥-all, core-head-is-max, ≥-Max.
+-- Proof idea: N/A (type alias). Separated from _≽_ because ≥ is asymmetric
+--   (u ≥ v = u > v ⊎ u ≡ v) and many lemmas only need this direction.
 _⊢_≥_ : (r : RE) → U r → U r → Set
 _⊢_≥_ r u v = (r ⊢ u > v) ⊎  ( u ≡ v  )
 
 
 
--- Purpose: Define what it means for a parse tree u to be maximal for word w
--- Used by: ≥-max-word, ≥-max-pair→-≥-max-fst, ≥-max-pres-left-helper, >-wellfounded, ≥-Max-PDInstance, parseAll-head-isMax
--- Proof idea: N/A (data type definition with single constructor ≥-max)
+-- Purpose: define what it means for a parse tree u to be maximal for word w.
+--   u is maximal iff flat u = w and for every v with flat v = w, u ≥ v.
+-- Used by: >-wellfounded (goal type), core (constructs ≥-max).
+-- Proof idea: N/A (datatype definition). Single constructor ≥-max bundles
+--   the word, parse tree, flat equality, and the maximality proof.
 data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
   ≥-max : ∀ { r : RE }
         → ( w : List Char )
@@ -202,7 +220,12 @@ data ≥-Max : ∀ { r : RE } → List Char → U r  → Set where
 
 
 ```agda
--- Helper module: local membership to avoid Any.here/there name clashes
+-- Purpose: local membership datatype to avoid name clashes with Any.here/there.
+--   Agda's scope resolution gets confused when both Data.List.Relation.Unary.Any
+--   and a local module export `here`/`there` constructors.
+-- Used by: sorted-head-≥-all (uses ∈′ for induction on membership).
+-- Proof idea: N/A (module + datatype + conversion lemma). any→∈′ translates
+--   Any proofs to ∈′ by structural induction on the Any proof.
 module Local∈ where
   data _∈′_ {A} :  A → List A → Set where
     here : ∀ {x : A} { xs : List A } → x ∈′ (x ∷ xs)
@@ -215,7 +238,11 @@ module Local∈ where
 
 open Local∈ using (_∈′_; any→∈′; here; there)
 
--- ≥-trans: transitivity of ≥
+-- Purpose: transitivity of ≥ (i.e., u₁ ≥ u₂ ∧ u₂ ≥ u₃ → u₁ ≥ u₃).
+-- Used by: sorted-head-≥-all, sorted-head-≥-all-Any, sorted-head-≥-all-Any-′,
+--   core-head-is-max to chain ≥ proofs through intermediate elements.
+-- Proof idea: case analysis on the two ⊎ inputs. If both are >, use >-trans.
+--   If either is ≡, rewrite and project.
 ≥-trans : ∀ {r : RE} {u₁ u₂ u₃ : U r}
   → (r ⊢ u₁ > u₂) ⊎ (u₁ ≡ u₂)
   → (r ⊢ u₂ > u₃) ⊎ (u₂ ≡ u₃)
@@ -225,14 +252,20 @@ open Local∈ using (_∈′_; any→∈′; here; there)
 ≥-trans (inj₂ u₁≡u₂) (inj₁ u₂>u₃) rewrite u₁≡u₂ = inj₁ u₂>u₃
 ≥-trans (inj₂ u₁≡u₂) (inj₂ u₂≡u₃) rewrite u₁≡u₂ = inj₂ u₂≡u₃
 
--- If heads are equal, tail ordering lifts to full list ordering
+-- Purpose: if tails satisfy > and heads are equal, consing the same head
+--   preserves the > ordering (star-tail rule with refl for head equality).
+-- Used by: listU-lex>-help-tail-impl, listU-lex>-help-tail-right.
+-- Proof idea: apply sub (star-tail refl vs₁>vs₂) — the refl comes from
+--   the implicit v being the same in both lists.
 listU-lex>-help-tail : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ}
   {v : U r} {vs₁ vs₂ : List (U r)}
   → (r * nε ` loc) ⊢ ListU vs₁ > ListU vs₂
   → (r * nε ` loc) ⊢ ListU (v ∷ vs₁) > ListU (v ∷ vs₂)
 listU-lex>-help-tail vs₁>vs₂ = sub (star-tail refl vs₁>vs₂)
 
--- Lift tail >≽ to cons lists when heads are equal
+-- Purpose: explicit-parameter version of listU-lex>-help-tail for rewriting.
+-- Used by: listU-cons-vs-cons when heads are equal and tails satisfy vs₁ > vs₂.
+-- Proof idea: rewrite the LHS head v₁ to v₂ via refl, then call listU-lex>-help-tail.
 listU-lex>-help-tail-impl :
   (r : RE) → (nε : ε∉ r) → (loc : ℕ)
   → (v₁ v₂ : U r) (vs₁ vs₂ : List (U r))
@@ -242,6 +275,9 @@ listU-lex>-help-tail-impl :
 listU-lex>-help-tail-impl r nε loc v₁ v₂ vs₁ vs₂ v₁≡v₂ vs₁>vs₂
   rewrite sym v₁≡v₂ = listU-lex>-help-tail {v = v₁} vs₁>vs₂
 
+-- Purpose: symmetric version — lifts vs₂ > vs₁ to cons lists when heads equal.
+-- Used by: listU-cons-vs-cons when heads are equal and tails satisfy vs₂ > vs₁.
+-- Proof idea: rewrite v₂ to v₁ via refl, then call listU-lex>-help-tail.
 listU-lex>-help-tail-right :
   (r : RE) → (nε : ε∉ r) → (loc : ℕ)
   → (v₁ v₂ : U r) (vs₁ vs₂ : List (U r))
@@ -251,7 +287,13 @@ listU-lex>-help-tail-right :
 listU-lex>-help-tail-right r nε loc v₁ v₂ vs₁ vs₂ v₁≡v₂ vs₂>vs₁
   rewrite v₁≡v₂ = listU-lex>-help-tail {v = v₂} vs₂>vs₁
 
--- Cons-vs-cons case of list trichotomy (extracted to avoid Agda 2.7 scoping)
+-- Purpose: handles the cons-vs-cons case of listU trichotomy.
+--   Extracted as a top-level function to avoid Agda 2.7's with-abstraction
+--   and scoping issues inside mutual recursion.
+-- Used by: listU-trichotomy (v₁∷vs₁ vs v₂∷vs₂ case).
+-- Proof idea: compare heads with >-trichotomy. If v₁ > v₂, use star-head.
+--   If v₂ > v₁, use star-head symmetrically. If v₁ ≡ v₂, recurse on tails
+--   via listU-trichotomy and lift with listU-lex>-help-tail-impl/right.
 listU-cons-vs-cons :
   (∀ (r : RE) (u v : U r) → _≽_ r u v) →
   (∀ (r : RE) (nε : ε∉ r) (loc : ℕ) (vs₁ vs₂ : List (U r)) → _≽_ (r * nε ` loc) (ListU vs₁) (ListU vs₂)) →
@@ -272,12 +314,22 @@ listU-cons-vs-cons trich-l trich-s r nε loc v₁ v₂ vs₁ vs₂
       vs₁≡vs₂ : vs₁ ≡ vs₂
       vs₁≡vs₂ = cong unListU list-vs₁≡list-vs₂
 
--- Main trichotomy: every pair of parse trees is comparable
+-- Purpose: prove trichotomy for all parse trees — every pair is either >, <, or ≡.
+-- Used by: >-wellfounded indirectly (proves GREEDY order is total on U r).
+-- Proof idea: structural induction on RE. Base cases (ε, $) are trivially equal.
+--   Choice: compare components (same side: recurse, different side: choice-lr).
+--   Sequence: compare first components; if equal, compare second components.
+--   Star: delegate to listU-trichotomy. Requires {-# TERMINATING #-} because
+--   Agda 2.7 cannot verify structural recursion on the RE index.
 -- Agda 2.7 can't verify structural recursion on RE, so we skip termination checking.
 {-# TERMINATING #-}
 mutual
   >-trichotomy : ∀ (r : RE) (u v : U r) → _≽_ r u v
 
+  -- Purpose: trichotomy for ListU (star) nodes, by induction on list structure.
+  -- Used by: >-trichotomy (star case), listU-cons-vs-cons (recursive tail call).
+  -- Proof idea: [] vs [] is equal. Non-empty vs [] uses star-cons-nil.
+  --   Cons vs cons delegates to listU-cons-vs-cons.
   listU-trichotomy : ∀ (r : RE) (nε : ε∉ r) (loc : ℕ)
     (vs₁ vs₂ : List (U r))
     → _≽_ (r * nε ` loc) (ListU vs₁) (ListU vs₂)
@@ -321,8 +373,11 @@ mutual
   ... | inj₂ (inj₁ l₂>l₁) = _<≽_ l₂>l₁
   ... | inj₂ (inj₂ l₁≡l₂) = _≡≽_ l₁≡l₂
 
--- sorted-head-≥-all: head of >-sorted list is ≥ all elements
--- Proof: induction on the membership proof
+-- Purpose: head of a >-sorted list is ≥ every element in the list.
+-- Used by: not directly in >-wellfounded (superseded by sorted-head-≥-all-Any-′),
+--   but provides the ∈′ variant for reference.
+-- Proof idea: induction on ∈′ membership. At head: refl. In tail: chain via
+--   ≥-trans using the >-sorted invariant (head > next) and IH on tail.
 sorted-head-≥-all : ∀ {r : RE} (u : U r) (us : List (U r))
   → >-sorted {r} (u ∷ us)
   → (v : U r) → v ∈′ (u ∷ us) → r ⊢ u ≥ v
@@ -337,7 +392,11 @@ sorted-head-≥-all {r} u (v ∷ vs) (>-cons us-sorted uv) v′ (there here′)
     u≥v : r ⊢ u ≥ v
     u≥v = >-just-to-≥ uv
 
--- sorted-head-≥-all-Any: head of >-sorted list is ≥ all elements (using Any instead of ∈′)
+-- Purpose: same as sorted-head-≥-all but using Any instead of ∈′.
+-- Used by: not directly (superseded by sorted-head-≥-all-Any-′ which threads
+--   parameters explicitly to avoid Agda 2.7 constraint solver issues).
+-- Proof idea: induction on Any. At head: rewrite and return refl. In tail:
+--   chain via ≥-trans using >-sorted invariant and IH on tail.
 sorted-head-≥-all-Any : ∀ {r : RE} (u : U r) (us : List (U r))
   → >-sorted {r} (u ∷ us)
   → (v : U r) → Any (_≡_ v) (u ∷ us) → r ⊢ u ≥ v
@@ -352,7 +411,13 @@ sorted-head-≥-all-Any {r} u (v ∷ vs) (>-cons us-sorted uv) v′ (there here�
     u≥v : r ⊢ u ≥ v
     u≥v = >-just-to-≥ uv
 
--- sorted-head-≥-all-Any-′: threads list explicitly to avoid stuck head
+-- Purpose: explicit-parameter version that works with Agda 2.7's constraint solver.
+--   Threads r, u, us as explicit arguments so implicit inference doesn't fail.
+-- Used by: core-head-is-max (inside >-wellfounded) to prove the head of a
+--   >-sorted parse list is ≥ any arbitrary parse tree for the same word.
+-- Proof idea: pattern on us. Empty tail: only here is possible. Non-empty tail:
+--   here returns refl. there chains ≥-trans through u > x (from >-sorted) and
+--   the IH on the tail (x ∷ xs) which is also >-sorted.
 sorted-head-≥-all-Any-′ : (r : RE) → (u : U r) → (us : List (U r)) → >-sorted (u ∷ us)
   → (v : U r) → Any (_≡_ v) (u ∷ us) → r ⊢ u ≥ v
 sorted-head-≥-all-Any-′ r u [] sorted v (here v≡u) rewrite sym v≡u = inj₂ refl
@@ -361,18 +426,36 @@ sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (he
 sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (there v∈x∷xs)
   = ≥-trans (inj₁ u>x) (sorted-head-≥-all-Any-′ r x xs us-sorted v v∈x∷xs)
 
--- >-wellfounded: every word w ∈⟦ r ⟧ has a ≥-Max parse tree under the GREEDY order.
+-- Purpose: main theorem — every word in ⟦r⟧ has a ≥-Max parse tree.
+--   I.e., the GREEDY parse always produces a parse tree maximal under the > order.
+-- Used by: this is the top-level result of the file.
+-- Proof idea: parseAll yields a >-sorted, sound list of all parse trees for w.
+--   The head of a >-sorted list is ≥ every element in it (sorted-head-≥-all-′).
+--   By parseAll-complete, every parse tree for w is in the list. Hence the head
+--   is ≥ every parse tree for w — i.e., it is ≥-Max.
+--   The explicit-parameter core avoids constraint solver issues with parseAll.
 >-wellfounded : ∀ { r : RE} { w : List Char }
   → w ∈⟦ r ⟧
   → ∃[ v ] ( ≥-Max {r}  w v )
 >-wellfounded {r} {w} w∈r
   = core (parseAll[ r , w ]) refl (parseAll-is-greedy {r} {w}) parseAll-sound
   where
+ -- Purpose: work with an explicit list + equality instead of parseAll directly.
+--   This avoids Agda 2.7's constraint solver decomposing opaque parseAll terms.
+-- Used by: >-wellfounded calls core (parseAll[ r , w ]) refl ....
+-- Proof idea: non-empty case: head of >-sorted list is ≥-Max via core-head-is-max.
+--   Empty case: derive ⊥ via parseAll-complete (at least one parse tree exists).
     core : (us : List (U r))
       → parseAll[ r , w ] ≡ us
       → (sorted : >-sorted us)
       → (sound : All (λ u → proj₁ (flat u) ≡ w) us)
       → ∃[ v ] ( ≥-Max {r}  w v )
+
+    -- Purpose: bridge between parseAll-completeness and an arbitrary list form.
+--   Given parseAll ≡ u∷us', shows any v with flat v = w is in (u∷us').
+-- Used by: core-head-is-max to locate v within the parse list.
+-- Proof idea: chain two subst calls: first transport w from proj₁(flat v) to w
+--   via v-flat, then transport the list from parseAll to u∷us' via eq.
     us'-complete : (u : U r)
       → (us' : List (U r))
       → (eq : parseAll[ r , w ] ≡ u ∷ us')
@@ -383,9 +466,18 @@ sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (th
         (subst (λ w' → Any (_≡_ v) parseAll[ r , w' ]) v-flat
         (proj₂ (parseAll-complete v)))
 
+    -- Purpose: trivial contradiction — Any cannot hold on an empty list.
+-- Used by: parseAll≢nil (inside core []) to derive ⊥ from empty parseAll.
+-- Proof idea: direct application of ¬Any[] from standard library.
     any≢empty : (x : U r) → Any (_≡_ x) [] → ⊥
     any≢empty x pxs = ¬Any[] pxs
 
+    -- Purpose: prove the head u of a >-sorted list is ≥ any parse tree v for word w.
+--   Completeness (us'-complete) ensures v is somewhere in the list; >-sorted
+--   ordering then ensures u ≥ v via transitivity through the chain.
+-- Used by: core to construct the ≥-max maximality proof.
+-- Proof idea: if v ≡ u, return refl. Otherwise v is in the tail, so chain
+--   u > x (from >-sorted) with sorted-head-≥-all-Any-′ on the tail.
     core-head-is-max : (u : U r)
       → (us' : List (U r))
       → (eq : parseAll[ r , w ] ≡ u ∷ us')

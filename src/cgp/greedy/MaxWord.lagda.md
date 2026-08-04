@@ -149,6 +149,13 @@ open import Function using (_∘_ ; flip ; case_of_)
 import Data.List.Relation.Unary.Any.Properties
 open Data.List.Relation.Unary.Any.Properties using ( ¬Any[] )
 
+-- Transport Any across word-equality inside parseAll
+parseAll-subst : ∀ {r : RE} {w₁ w₂ : List Char} {v : U r}
+  → w₁ ≡ w₂
+  → Any (_≡_ v) parseAll[ r , w₁ ]
+  → Any (_≡_ v) parseAll[ r , w₂ ]
+parseAll-subst {r} {w₁} {w₂} {v} w₁≡w₂ any
+  rewrite w₁≡w₂ = any
 
 ```
 
@@ -359,17 +366,18 @@ sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (th
   → w ∈⟦ r ⟧
   → ∃[ v ] ( ≥-Max {r}  w v )
 >-wellfounded {r} {w} w∈r
-  = core (parseAll[ r , w ]) refl parseAll-is-greedy parseAll-sound
+  = core (parseAll[ r , w ]) refl (parseAll-is-greedy {r} {w}) parseAll-sound
   where
     core : (us : List (U r))
-      → (eq : parseAll[ r , w ] ≡ us)
+      → parseAll[ r , w ] ≡ us
       → (sorted : >-sorted us)
       → (sound : All (λ u → proj₁ (flat u) ≡ w) us)
       → ∃[ v ] ( ≥-Max {r}  w v )
     us'-complete : (u : U r)
       → (us' : List (U r))
-      → parseAll[ r , w ] ≡ u ∷ us'
-      → (v : U r) → proj₁ (flat v) ≡ w → Any (_≡_ v) (u ∷ us')
+      → (eq : parseAll[ r , w ] ≡ u ∷ us')
+      → (v : U r) → proj₁ (flat v) ≡ w
+      → Any (_≡_ v) (u ∷ us')
     us'-complete u us' eq v v-flat
       = subst (λ xs → Any (_≡_ v) xs) eq
         (subst (λ w' → Any (_≡_ v) parseAll[ r , w' ]) v-flat
@@ -380,7 +388,7 @@ sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (th
 
     core-head-is-max : (u : U r)
       → (us' : List (U r))
-      → parseAll[ r , w ] ≡ u ∷ us'
+      → (eq : parseAll[ r , w ] ≡ u ∷ us')
       → >-sorted (u ∷ us')
       → (v : U r) → proj₁ (flat v) ≡ w → r ⊢ u ≥ v
     core-head-is-max u [] eq (>-cons >-nil >-nothing) v v-flat
@@ -390,10 +398,11 @@ sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (th
     core-head-is-max u (x ∷ xs) eq (>-cons us-sorted (>-just u>x)) v v-flat
       with us'-complete u (x ∷ xs) eq v v-flat
     ... | here v≡u = inj₂ (sym v≡u)
-    ... | there v∈xs = ≥-trans (inj₁ u>x) (sorted-head-≥-all-Any-′ r x xs us-sorted v v∈xs)
+    ... | there v∈tail = ≥-trans (inj₁ u>x) (sorted-head-≥-all-Any-′ r x xs us-sorted v v∈tail)
 
     core (u ∷ us) eq sorted sound
-      = u , ≥-max w u (sound-head sound) (core-head-is-max u us eq sorted)
+      = u , ≥-max w u (sound-head sound)
+        (core-head-is-max u us eq sorted)
       where
         sound-head : All (λ u → proj₁ (flat u) ≡ w) (u ∷ us)
           → proj₁ (flat u) ≡ w
@@ -401,17 +410,12 @@ sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (th
 
     core [] eq sorted sound = ⊥-elim parseAll≢nil
       where
-        in-parseAll : Any (_≡_ (unflat w∈r)) parseAll[ r , w ]
+        in-parseAll : Any (_≡_ (unflat w∈r)) []
         in-parseAll
-          = subst (λ w' → Any (_≡_ (unflat w∈r)) parseAll[ r , w' ])
-            (cong proj₁ (flat∘unflat w∈r))
+          rewrite sym eq = parseAll-subst (cong proj₁ (flat∘unflat w∈r))
             (proj₂ (parseAll-complete (unflat w∈r)))
-
-        any≢empty-parseAll : Any (_≡_ (unflat w∈r)) [] → ⊥
-        any≢empty-parseAll ()
 
         parseAll≢nil : ⊥
         parseAll≢nil
-          = any≢empty-parseAll
-            (subst (λ xs → Any (_≡_ (unflat w∈r)) xs) eq in-parseAll)
+          = any≢empty (unflat w∈r) in-parseAll
       ```

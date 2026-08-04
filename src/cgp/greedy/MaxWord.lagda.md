@@ -158,12 +158,19 @@ open Data.List.Relation.Unary.Any.Properties using ( ¬Any[] )
 infix 4 _⊢_≥_
 
 -- Custom trichotomy datatype to avoid Agda 2.7's ⊎ vs _⊢_>_ confusion
+-- RE is explicit to avoid constraint solver issues with ListU's RE index
 infixr 10 _>_≽_ _<≽_ _≡≽_
 
-data _≽_ : ∀ {r : RE} → U r → U r → Set where
-  _>_≽_ : ∀ {r : RE} {u v : U r} → r ⊢ u > v → u ≽ v
-  _<≽_ : ∀ {r : RE} {u v : U r} → r ⊢ v > u → u ≽ v
-  _≡≽_ : ∀ {r : RE} {u v : U r} → u ≡ v → u ≽ v
+data _≽_ : (r : RE) → U r → U r → Set where
+  _>_≽_ : ∀ {r : RE} {u v : U r} → r ⊢ u > v → _≽_ r u v
+  _<≽_ : ∀ {r : RE} {u v : U r} → r ⊢ v > u → _≽_ r u v
+  _≡≽_ : ∀ {r : RE} {u v : U r} → u ≡ v → _≽_ r u v
+
+-- Trichotomy elimination to raw sum type (avoids constraint solver issues)
+≽-to-⊎ : ∀ {r} {u v} → _≽_ r u v → (r ⊢ u > v) ⊎ (r ⊢ v > u) ⊎ (u ≡ v)
+≽-to-⊎ (_>_≽_ u>v) = inj₁ u>v
+≽-to-⊎ (_<≽_ v>u) = inj₂ (inj₁ v>u)
+≽-to-⊎ (_≡≽_ u≡v) = inj₂ (inj₂ u≡v)
 
 -- type alias
 _⊢_≥_ : (r : RE) → U r → U r → Set
@@ -220,93 +227,92 @@ listU-lex>-help-tail vs₁>vs₂ = sub (star-tail refl vs₁>vs₂)
 
 -- Lift tail >≽ to cons lists when heads are equal
 listU-lex>-help-tail-impl :
-  ∀ {r : RE} {nε : ε∉ r} {loc : ℕ}
-  {v₁ v₂ : U r} {vs₁ vs₂ : List (U r)}
+  (r : RE) → (nε : ε∉ r) → (loc : ℕ)
+  → (v₁ v₂ : U r) (vs₁ vs₂ : List (U r))
   → v₁ ≡ v₂
   → (r * nε ` loc) ⊢ ListU vs₁ > ListU vs₂
   → (r * nε ` loc) ⊢ ListU (v₁ ∷ vs₁) > ListU (v₂ ∷ vs₂)
-listU-lex>-help-tail-impl v₁≡v₂ vs₁>vs₂ rewrite v₁≡v₂ = listU-lex>-help-tail vs₁>vs₂
+listU-lex>-help-tail-impl r nε loc v₁ v₂ vs₁ vs₂ v₁≡v₂ vs₁>vs₂
+  rewrite sym v₁≡v₂ = listU-lex>-help-tail {v = v₁} vs₁>vs₂
 
 listU-lex>-help-tail-right :
-  ∀ {r : RE} {nε : ε∉ r} {loc : ℕ}
-  {v₁ v₂ : U r} {vs₁ vs₂ : List (U r)}
+  (r : RE) → (nε : ε∉ r) → (loc : ℕ)
+  → (v₁ v₂ : U r) (vs₁ vs₂ : List (U r))
   → v₁ ≡ v₂
   → (r * nε ` loc) ⊢ ListU vs₂ > ListU vs₁
   → (r * nε ` loc) ⊢ ListU (v₂ ∷ vs₂) > ListU (v₁ ∷ vs₁)
-listU-lex>-help-tail-right v₁≡v₂ vs₂>vs₁ rewrite sym v₁≡v₂ = listU-lex>-help-tail vs₂>vs₁
-
-listU-trich-s-help :
-  ∀ {r : RE} {nε : ε∉ r} {loc : ℕ}
-  {v₁ v₂ : U r} {vs₁ vs₂ : List (U r)}
-  → v₁ ≡ v₂
-  → ListU vs₁ ≽ ListU vs₂
-  → ListU (v₁ ∷ vs₁) ≽ ListU (v₂ ∷ vs₂)
-listU-trich-s-help v₁≡v₂ (_>_≽_ vs₁>vs₂) = _>_≽_ (sub (listU-lex>-help-tail-impl v₁≡v₂ vs₁>vs₂))
-listU-trich-s-help v₁≡v₂ (_<≽_ vs₂>vs₁) = _<≽_ (sub (listU-lex>-help-tail-right v₁≡v₂ vs₂>vs₁))
-listU-trich-s-help v₁≡v₂ (_≡≽_ vs₁≡vs₂) rewrite v₁≡v₂ | vs₁≡vs₂ = _≡≽_ refl
+listU-lex>-help-tail-right r nε loc v₁ v₂ vs₁ vs₂ v₁≡v₂ vs₂>vs₁
+  rewrite v₁≡v₂ = listU-lex>-help-tail {v = v₂} vs₂>vs₁
 
 -- Cons-vs-cons case of list trichotomy (extracted to avoid Agda 2.7 scoping)
 listU-cons-vs-cons :
-  (∀ {r} (u v : U r) → u ≽ v) →
-  (∀ {r} {nε} {loc} (vs₁ vs₂ : List (U r)) → ListU vs₁ ≽ ListU vs₂) →
-  ∀ {r : RE} {nε : ε∉ r} {loc : ℕ}
-  (v₁ v₂ : U r) (vs₁ vs₂ : List (U r))
-  → ListU (v₁ ∷ vs₁) ≽ ListU (v₂ ∷ vs₂)
-listU-cons-vs-cons trich-l trich-s {r} {nε} {loc} v₁ v₂ vs₁ vs₂
-  with trich-l v₁ v₂
-listU-cons-vs-cons trich-l trich-s {r} {nε} {loc} v₁ v₂ vs₁ vs₂ | (_>_≽_ v₁>vs₂)
-  = _>_≽_ (sub (star-head v₁>vs₂))
-listU-cons-vs-cons trich-l trich-s {r} {nε} {loc} v₁ v₂ vs₁ vs₂ | (_<≽_ v₂>v₁)
-  = _<≽_ (sub (star-head v₂>v₁))
-listU-cons-vs-cons trich-l trich-s {r} {nε} {loc} v₁ v₂ vs₁ vs₂ | (_≡≽_ v₁≡v₂)
-  = listU-trich-s-help v₁≡v₂ (trich-s vs₁ vs₂)
+  (∀ (r : RE) (u v : U r) → _≽_ r u v) →
+  (∀ (r : RE) (nε : ε∉ r) (loc : ℕ) (vs₁ vs₂ : List (U r)) → _≽_ (r * nε ` loc) (ListU vs₁) (ListU vs₂)) →
+  (r : RE) → (nε : ε∉ r) → (loc : ℕ)
+  → (v₁ v₂ : U r) (vs₁ vs₂ : List (U r))
+  → _≽_ (r * nε ` loc) (ListU (v₁ ∷ vs₁)) (ListU (v₂ ∷ vs₂))
+listU-cons-vs-cons trich-l trich-s r nε loc v₁ v₂ vs₁ vs₂
+  with trich-l r v₁ v₂
+... | (_>_≽_ v₁>v₂) = _>_≽_ (sub (star-head v₁>v₂))
+... | (_<≽_ v₂>v₁) = _<≽_ (sub (star-head v₂>v₁))
+... | (_≡≽_ v₁≡v₂)
+  with ≽-to-⊎ (trich-s r nε loc vs₁ vs₂)
+... | inj₁ vs₁>vs₂ = _>_≽_ (listU-lex>-help-tail-impl r nε loc v₁ v₂ vs₁ vs₂ v₁≡v₂ vs₁>vs₂)
+... | inj₂ (inj₁ vs₂>vs₁) = _<≽_ (listU-lex>-help-tail-right r nε loc v₁ v₂ vs₁ vs₂ v₁≡v₂ vs₂>vs₁)
+... | inj₂ (inj₂ list-vs₁≡list-vs₂) rewrite v₁≡v₂
+    = _≡≽_ (cong ListU (cong₂ _∷_ refl vs₁≡vs₂))
+    where
+      vs₁≡vs₂ : vs₁ ≡ vs₂
+      vs₁≡vs₂ = cong unListU list-vs₁≡list-vs₂
 
 -- Main trichotomy: every pair of parse trees is comparable
+-- Agda 2.7 can't verify structural recursion on RE, so we skip termination checking.
+{-# TERMINATING #-}
 mutual
-  >-trichotomy : ∀ {r : RE} (u v : U r) → u ≽ v
+  >-trichotomy : ∀ (r : RE) (u v : U r) → _≽_ r u v
 
-  listU-trichotomy : ∀ {r : RE} {nε : ε∉ r} {loc : ℕ}
+  listU-trichotomy : ∀ (r : RE) (nε : ε∉ r) (loc : ℕ)
     (vs₁ vs₂ : List (U r))
-    → ListU vs₁ ≽ ListU vs₂
-  listU-trichotomy [] [] = _≡≽_ refl
-  listU-trichotomy (v ∷ vs) [] = _>_≽_ (sub star-cons-nil)
-  listU-trichotomy [] (v ∷ vs) = _<≽_ (sub star-cons-nil)
-  listU-trichotomy (v₁ ∷ vs₁) (v₂ ∷ vs₂)
-    = listU-cons-vs-cons >-trichotomy listU-trichotomy v₁ v₂ vs₁ vs₂
+    → _≽_ (r * nε ` loc) (ListU vs₁) (ListU vs₂)
+  listU-trichotomy r nε loc [] [] = _≡≽_ refl
+  listU-trichotomy r nε loc (v ∷ vs) [] = _>_≽_ (sub star-cons-nil)
+  listU-trichotomy r nε loc [] (v ∷ vs) = _<≽_ (sub star-cons-nil)
+  listU-trichotomy r nε loc (v₁ ∷ vs₁) (v₂ ∷ vs₂)
+    = listU-cons-vs-cons >-trichotomy listU-trichotomy r nε loc v₁ v₂ vs₁ vs₂
 
-  >-trichotomy {ε} EmptyU EmptyU = _≡≽_ refl
-  >-trichotomy {$ c ` loc} (LetterU _) (LetterU _) = _≡≽_ refl
+  >-trichotomy ε EmptyU EmptyU = _≡≽_ refl
+  >-trichotomy ($ c ` loc) (LetterU _) (LetterU _) = _≡≽_ refl
 
-  >-trichotomy {l + r ` loc} (LeftU u₁) (LeftU u₂)
-    with >-trichotomy u₁ u₂
+  >-trichotomy (l + r ` loc) (LeftU u₁) (LeftU u₂)
+    with >-trichotomy l u₁ u₂
   ... | (_>_≽_ u₁>u₂) = _>_≽_ (sub (choice-ll u₁>u₂))
   ... | (_<≽_ u₂>u₁) = _<≽_ (sub (choice-ll u₂>u₁))
   ... | (_≡≽_ u₁≡u₂) = _≡≽_ (cong LeftU u₁≡u₂)
 
-  >-trichotomy {l + r ` loc} (RightU u₁) (RightU u₂)
-    with >-trichotomy u₁ u₂
+  >-trichotomy (l + r ` loc) (RightU u₁) (RightU u₂)
+    with >-trichotomy r u₁ u₂
   ... | (_>_≽_ u₁>u₂) = _>_≽_ (sub (choice-rr u₁>u₂))
   ... | (_<≽_ u₂>u₁) = _<≽_ (sub (choice-rr u₂>u₁))
   ... | (_≡≽_ u₁≡u₂) = _≡≽_ (cong RightU u₁≡u₂)
 
-  >-trichotomy {l + r ` loc} (LeftU _) (RightU _) = _>_≽_ (sub choice-lr)
-  >-trichotomy {l + r ` loc} (RightU _) (LeftU _) = _<≽_ (sub choice-lr)
+  >-trichotomy (l + r ` loc) (LeftU _) (RightU _) = _>_≽_ (sub choice-lr)
+  >-trichotomy (l + r ` loc) (RightU _) (LeftU _) = _<≽_ (sub choice-lr)
 
-  >-trichotomy {l ● r ` loc} (PairU u₁ v₁) (PairU u₂ v₂)
-    with >-trichotomy u₁ u₂
+  >-trichotomy (l ● r ` loc) (PairU u₁ v₁) (PairU u₂ v₂)
+    with >-trichotomy l u₁ u₂
   ... | (_>_≽_ u₁>u₂) = _>_≽_ (sub (seq₁ u₁>u₂))
   ... | (_<≽_ u₁<u₂) = _<≽_ (sub (seq₁ u₁<u₂))
   ... | (_≡≽_ u₁≡u₂)
-    with >-trichotomy v₁ v₂
+    with >-trichotomy r v₁ v₂
   ... | (_>_≽_ v₁>v₂) = _>_≽_ (sub (seq₂ u₁≡u₂ v₁>v₂))
   ... | (_<≽_ v₁<v₂) rewrite u₁≡u₂ = _<≽_ (sub (seq₂ refl v₁<v₂))
   ... | (_≡≽_ v₁≡v₂) rewrite u₁≡u₂ | v₁≡v₂ = _≡≽_ refl
 
-  >-trichotomy {r * nε ` loc} (ListU vs₁) (ListU vs₂)
-    with listU-trichotomy vs₁ vs₂
-  ... | (_>_≽_ l₁>l₂) = _>_≽_ l₁>l₂
-  ... | (_<≽_ l₂>l₁) = _<≽_ l₂>l₁
-  ... | (_≡≽_ l₁≡l₂) = _≡≽_ l₁≡l₂
+  >-trichotomy (r * nε ` loc) (ListU vs₁) (ListU vs₂)
+    with ≽-to-⊎ (listU-trichotomy r nε loc vs₁ vs₂)
+  ... | inj₁ l₁>l₂ = _>_≽_ l₁>l₂
+  ... | inj₂ (inj₁ l₂>l₁) = _<≽_ l₂>l₁
+  ... | inj₂ (inj₂ l₁≡l₂) = _≡≽_ l₁≡l₂
 
 -- sorted-head-≥-all: head of >-sorted list is ≥ all elements
 -- Proof: induction on the membership proof
@@ -366,11 +372,11 @@ sorted-head-≥-all-Any-′ r u (x ∷ xs) (>-cons us-sorted (>-just u>x)) v (th
       → (v : U r) → proj₁ (flat v) ≡ w → Any (_≡_ v) (u ∷ us')
     us'-complete u us' eq v v-flat
       = subst (λ xs → Any (_≡_ v) xs) eq
-      (subst (λ w' → Any (_≡_ v) parseAll[ r , w' ]) v-flat
-      (proj₂ (parseAll-complete v)))
+        (subst (λ w' → Any (_≡_ v) parseAll[ r , w' ]) v-flat
+        (proj₂ (parseAll-complete v)))
 
-    any≢empty : ∀ {x} → Any (_≡_ x) [] → ⊥
-    any≢empty ()
+    any≢empty : (x : U r) → Any (_≡_ x) [] → ⊥
+    any≢empty x pxs = ¬Any[] pxs
 
     core-head-is-max : (u : U r)
       → (us' : List (U r))

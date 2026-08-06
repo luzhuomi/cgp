@@ -162,6 +162,11 @@ nat+0→>0 {n} p rewrite NatProperties.+-identityʳ n = p
 ¬≡0→>0 {0} ¬0≡0 = Nullary.contradiction refl ¬0≡0
 ¬≡0→>0 {suc n} ¬suc-n≡0 = Nat.s≤s Nat.z≤n 
 
+>0→¬≡0 : ∀ { n : ℕ }
+  → n > 0
+  --------------------------
+  → ¬ n ≡ 0
+>0→¬≡0 {0} ()
 
 ¬≡[]→¬length≡0 : ∀ { A : Set } { xs : List A }
   → ¬ xs ≡ []
@@ -177,7 +182,11 @@ nat+0→>0 {n} p rewrite NatProperties.+-identityʳ n = p
 ¬≡[]→length>0 {A} {xs} ¬xs≡[] = ¬≡0→>0   (¬≡[]→¬length≡0 ¬xs≡[] ) 
 
 
-
+length>0→¬≡[] : ∀ { A : Set } { xs : List A }
+  → List.length xs > 0
+  -----------------------
+  → ¬ xs ≡ []
+length>0→¬≡[] {A} {xs} len|xs|>0 xs≡[] = >0→¬≡0  len|xs|>0  ([]→length≡0 xs≡[])
 
 
 

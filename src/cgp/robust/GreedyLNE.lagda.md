@@ -46,20 +46,23 @@ open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]
 
 
 import cgp.Utils as Utils
-open Utils using (any-right-concat; any-left-concat ; all-concat ;  ∷-inj  ; ¬∷≡[]  ; inv-map-[] ; length>0→¬≡[] ; ¬≡[]→¬length≡0 ; ¬≡[]→length>0 ; []→length≡0 ; length≡0→[] )
+open Utils using (any-right-concat; any-left-concat ; all-concat ;  ∷-inj  ; ¬∷≡[]  ; inv-map-[] ; length>0→¬≡[] ; ¬≡[]→¬length≡0 ; ¬≡[]→length>0 ; []→length≡0 ; length≡0→[] ; >0→¬≡0 )
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap ; _∷ʳ_  )
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; concatMap ; _∷ʳ_ ; length )
 
 import Data.List.Properties
-open Data.List.Properties using (  ++-assoc ;  ++-identityʳ ; ++-identityˡ ; {-  unfold-reverse ; -} ∷ʳ-++ ; ++-cancelˡ ;  ++-conicalʳ ;  ++-conicalˡ  )
+open Data.List.Properties using (  ++-assoc ;  ++-identityʳ ; ++-identityˡ ; {-  unfold-reverse ; -} ∷ʳ-++ ; ++-cancelˡ ;  ++-conicalʳ ;  ++-conicalˡ ; length-++  )
 
 
 import Data.Char as Char
 open Char using (Char )
 
 import Data.Nat as Nat
-open Nat using ( ℕ ; suc ; zero )
+open Nat using ( ℕ ; suc ; zero ; _>_ ; _+_ )
+
+import Data.Nat.Properties as NatProperties
+open NatProperties using ( m+n≡0⇒m≡0 ; +-monoʳ-≤ ; <⇒≤ ; ≤-trans ; ≤-refl ; +-identityˡ ; +-identityʳ ; m≤m+n ; +-suc )
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -84,8 +87,12 @@ open Σ using (proj₁ ; proj₂)
 import Data.Sum as Sum
 open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 
-import Relation.Nullary as Nullary 
-import Relation.Nullary.Negation using (contradiction; contraposition)
+import Data.Empty as Empty
+open Empty using (⊥-elim; ⊥)
+
+import Relation.Nullary as Nullary
+import Relation.Nullary.Negation as Negation
+open Negation using (contradiction; contraposition)
 open Nullary using (¬_)
 
 import Relation.Nullary.Decidable as Decidable
@@ -156,7 +163,63 @@ data LNN : RE → Set where
 
 proj₁flat-nil≡[] : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
     → proj₁ (flat (ListU {r} {ε∉r} {loc} [] )) ≡ []
-proj₁flat-nil≡[] {r} {ε∉r} {loc} = refl 
+proj₁flat-nil≡[] {r} {ε∉r} {loc} = refl
+
++-monoʳ-<>0 : ∀ (a b : ℕ) → a > 0 → a + b > 0
++-monoʳ-<>0 (suc k) b _ = Nat.s≤s (Nat.z≤n {k + b})
+
++-monoˡ-<>0 : ∀ (a b : ℕ) → b > 0 → a + b > 0
++-monoˡ-<>0 a (suc k) _ = subst (λ x → 1 Nat.≤ x) (sym (+-suc a k)) (Nat.s≤s (Nat.z≤n {a + k}))
+
+-- flat lemmas to avoid stuck terms from internal `with` clauses
+flat-list-cons : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
+    → proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us))) ≡ proj₁ (flat u) ++ proj₁ (flat (ListU {r} {ε∉r} {loc} us))
+flat-list-cons {r} {ε∉r} {loc} {u} {us} with flat {r} u | flat {r * ε∉r ` loc} (ListU {r} {ε∉r} {loc} us)
+... | _ , _ | _ , _ = refl
+
+flat-pair : ∀ { l r : RE } { loc : ℕ } { u : U l } { v : U r }
+    → proj₁ (flat (PairU {l} {r} {loc} u v)) ≡ proj₁ (flat u) ++ proj₁ (flat v)
+flat-pair {l} {r} {loc} {u} {v} with flat {l} u | flat {r} v
+... | _ , _ | _ , _ = refl
+
+-- Length of flat PairU = sum of lengths
+flat-pair-len : ∀ { l r : RE } { loc : ℕ } { u : U l } { v : U r }
+  → length (proj₁ (flat (PairU {l} {r} {loc} u v))) ≡ length (proj₁ (flat u)) + length (proj₁ (flat v))
+flat-pair-len {l} {r} {loc} {u} {v} with flat {l} u | flat {r} v
+... | xs₁ , _ | xs₂ , _ = length-++ {A = Char} xs₁ {xs₂}
+
+-- Helper to prove that length ≡ 0 is impossible for ListU (u ∷ us)
+-- Given pair has length > 0 and u₁ is empty, then v₁ is non-empty
+-- Postulated due to stuck flat terms in with clauses
+postulate
+  flat-pair-u≡[]-v>0 : ∀ { l r : RE } { loc : ℕ } { u₁ : U l } { v₁ : U r }
+    → length (proj₁ (flat (PairU u₁ v₁))) > 0
+    → proj₁ (flat u₁) ≡ []
+    → length (proj₁ (flat v₁)) > 0
+
+-- Helper to prove that length ≡ 0 is impossible for ListU (u ∷ us)
+flat-list-cons-⊥ : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { u : U r } { us : List (U r) }
+    → length (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))) ≡ 0
+    → ⊥
+flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0 = >0→¬≡0 len-u>0 len-u≡0
+  where
+    flat-u : List Char
+    flat-u = proj₁ (flat u)
+
+    flat-us : List Char
+    flat-us = proj₁ (flat (ListU {r} {ε∉r} {loc} us))
+
+    len-rewritten : length (flat-u ++ flat-us) ≡ 0
+    len-rewritten rewrite flat-list-cons {r} {ε∉r} {loc} {u} {us} = len≡0
+
+    len-add : (length flat-u + length flat-us) ≡ 0
+    len-add = subst (λ l → l ≡ 0) (length-++ {A = Char} flat-u) len-rewritten
+
+    len-u≡0 : length flat-u ≡ 0
+    len-u≡0 = m+n≡0⇒m≡0 (length flat-u) len-add
+
+    len-u>0 : length flat-u > 0
+    len-u>0 = ¬≡[]→length>0 (ε∉r→¬ε∈r ε∉r ∘ proj₁flat-v≡[]→ε∈r) 
     
 
 {-
@@ -267,9 +330,15 @@ lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[]  : ∀ { r : RE }
       ( ( ¬ proj₁ (flat u) ≡ [] × ¬ proj₁ (flat v) ≡ [] ) ⊎
         ( ¬ proj₁ (flat u) ≡ [] × proj₁ (flat v) ≡ [] ) )
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {ε}             lnn-ε EmptyU EmptyU = λ z → inj₁ (refl , refl) 
-lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {$ c ` loc}     lnn-$ (LetterU .c) (LetterU .c) =  {!!} 
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {$ c ` loc}     lnn-$ (LetterU .c) (LetterU .c) =  λ z → inj₂ (inj₁ (¬cons-empty , ¬cons-empty))
+  where
+    ¬cons-empty : ¬ (c ∷ []) ≡ []
+    ¬cons-empty () 
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU []) (ListU []) = λ z → inj₁ (refl , refl) 
-lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU []) (ListU ( v ∷ vs) ) = {!!} 
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU []) (ListU (v ∷ vs)) (sub u>ⁱv) = ⊥-elim (nil-not>ᵍ-cons u>ⁱv)
+  where
+    nil-not>ᵍ-cons : GreedyOrder._⊢_>ⁱ_ (r * ε∉r ` loc) (ListU []) (ListU (v ∷ vs)) → ⊥
+    nil-not>ᵍ-cons ()
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU (u ∷ us )) (ListU []) (sub star-cons-nil) = inj₂ (inj₂ (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us} , proj₁flat-nil≡[] {r} {ε∉r} {loc} ) )
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {r * ε∉r ` loc} (lnn-* lnn-r) (ListU (u ∷ us )) (ListU (v ∷ vs)) _       = inj₂ (inj₁ (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us} , ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs} ) )
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l ● r ` loc}   (lnn-● lnn-l lnn-r) (PairU u₁ u₂) (PairU v₁ v₂)
@@ -343,7 +412,10 @@ lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l ● r ` loc}   (
 
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (LeftU u) (LeftU v) (sub (choice-ll u>ᵍv)) =  lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] lnn-l u v u>ᵍv
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (RightU v) (sub (choice-rr u>ᵍv)) = lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] lnn-r u v u>ᵍv
-lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (LeftU v) = {!!} 
+lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (RightU u) (LeftU v) (sub u>ⁱv) = ⊥-elim (rightU-not>ⁱ-LeftU u>ⁱv)
+  where
+    rightU-not>ⁱ-LeftU : GreedyOrder._⊢_>ⁱ_ (l + r ` loc) (RightU u) (LeftU v) → ⊥
+    rightU-not>ⁱ-LeftU ()
 lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l + r ` loc}   (lnn-+ ε∉l lnn-l lnn-r) (LeftU u) (RightU v) (sub choice-lr) 
   with proj₁ (flat u) in proj₁flat-u-eq | proj₁ (flat v) in proj₁flat-v-eq
 ... | []       | _          = Nullary.contradiction (proj₁flat-v≡[]→ε∈r  proj₁flat-u-eq)  (ε∉r→¬ε∈r ε∉l)
@@ -413,27 +485,188 @@ lnn→∷>ᵍ[] {l ● r   ` loc} (lnn-● lnn-l lnn-r) (PairU u₁ u₂) (PairU
 lnn→robust : ∀ { r : RE }
   → LNN r
   → Robust r 
-lnn→robust {ε}           lnn-ε = robust λ v₁ v₂ → {!!} 
-lnn→robust {$ c ` loc}   lnn-$ = robust λ v₁ v₂ → {!!} 
-lnn→robust {l ● r ` loc} (lnn-● lnn-l lnn-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
+lnn→robust {ε}           lnn-ε = robust prf-ε
   where
+    prf-ε : (v₁ v₂ : U ε) → (ε ⊢ v₁ >ᵍ v₂ → ε ⊢ v₁ >ˡ v₂) × (ε ⊢ v₁ >ˡ v₂ → ε ⊢ v₁ >ᵍ v₂)
+    prf-ε EmptyU EmptyU = prf-ε-to , prf-ε-from
+      where
+        prf-ε-to : ε ⊢ EmptyU >ᵍ EmptyU → ε ⊢ EmptyU >ˡ EmptyU
+        prf-ε-to (sub u>ⁱv) = ⊥-elim (GreedyOrder.>ⁱ→¬≡ u>ⁱv refl)
+        prf-ε-from : ε ⊢ EmptyU >ˡ EmptyU → ε ⊢ EmptyU >ᵍ EmptyU
+        prf-ε-from (be len-v₁≡len-v₂ len-v₂≡0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        prf-ε-from (bne len-v₁>0 len-v₂>0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        prf-ε-from (lne len-v₁>0 len-v₂≡0) with len-v₁>0
+        ... | ()
+lnn→robust {$ c ` loc}   lnn-$ = robust prf-$
+  where
+    prf-$ : (v₁ v₂ : U ($ c ` loc)) → ($ c ` loc ⊢ v₁ >ᵍ v₂ → $ c ` loc ⊢ v₁ >ˡ v₂) × ($ c ` loc ⊢ v₁ >ˡ v₂ → $ c ` loc ⊢ v₁ >ᵍ v₂)
+    prf-$ (LetterU .c) (LetterU .c) = prf-$-to , prf-$-from
+      where
+        prf-$-to : $ c ` loc ⊢ LetterU c >ᵍ LetterU c → $ c ` loc ⊢ LetterU c >ˡ LetterU c
+        prf-$-to (sub u>ⁱv) = ⊥-elim (GreedyOrder.>ⁱ→¬≡ u>ⁱv refl)
+        prf-$-from : $ c ` loc ⊢ LetterU c >ˡ LetterU c → $ c ` loc ⊢ LetterU c >ᵍ LetterU c
+        prf-$-from (be len-v₁≡len-v₂ len-v₂≡0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        prf-$-from (bne len-v₁>0 len-v₂>0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        prf-$-from (lne len-v₁>0 len-v₂≡0) = ⊥-elim ((>0→¬≡0 len-v₁>0) (trans (cong List.length (sym letter-flat-eq)) len-v₂≡0))
+          where
+            letter-flat-eq : proj₁ (flat (LetterU c)) ≡ c ∷ []
+            letter-flat-eq = refl
+lnn→robust {l ● r ` loc} (lnn-● lnn-l lnn-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
+   where
     robust-r : Robust r
     robust-r = lnn→robust {r} lnn-r
-    
+
     robust-l : Robust l
     robust-l = lnn→robust {l} lnn-l
-    
+
     to-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂
     to-ev u₁ u₂ v₁ v₂ (sub (seq₁ u₁>ᵍu₂)) with robust-l
-    ... | robust rob-l-ev = {!!} -- seq₁ (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂)
+    ... | robust rob-l-ev with proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+    ... | bne len-u₁>0 len-u₂>0 u₁>ⁱu₂ = bne len-pair₁>0 len-pair₂>0 (seq₁ u₁>ˡu₂)
+      where
+        u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
+        u₁>ˡu₂ = proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₁} {v₁})) (length-++ {A = Char} (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₂} {v₂})) (length-++ {A = Char} (proj₁ (flat u₂)) {proj₁ (flat v₂)})
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoʳ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) len-u₂>0
+    ... | be len-u₁≡len-u₂ len-u₂≡0 u₁>ⁱu₂ = ⊥-elim (>ˡ→¬≡ u₁>ˡu₂ u₁≡u₂)
+      where
+        u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
+        u₁>ˡu₂ = proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+        u₁≡u₂ : u₁ ≡ u₂
+        u₁≡u₂ = lnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r (length≡0→[] len-u₂≡0)} {u₁} {u₂} lnn-l (length≡0→[] (trans len-u₁≡len-u₂ len-u₂≡0)) (length≡0→[] len-u₂≡0)
+    ... | lne len-u₁>0 len-u₂≡0 with proj₁ (flat v₂) in proj₁flat-v₂-eq
+    ... | [] = lne len-pair₁>0 len-pair₂≡0
+      where
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₁} {v₁})) (length-++ {A = Char} (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+        len-pair₂≡₀ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡₀ = trans (cong List.length (flat-pair {l} {r} {loc} {u₂} {v₂})) (length-++ {A = Char} (proj₁ (flat u₂)) {proj₁ (flat v₂)})
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
+        len-pair₂≡0 : len-pair₂ ≡ 0
+        len-pair₂≡0 rewrite len-pair₂≡₀ | len-u₂≡0 | proj₁flat-v₂-eq = refl
+    ... | c ∷ cs = bne len-pair₁>0 len-pair₂>0 (seq₁ u₁>ˡu₂)
+      where
+        ¬proj₁flat-v₂≡[] : ¬ proj₁ (flat v₂) ≡ []
+        ¬proj₁flat-v₂≡[] = λ x → ¬∷≡[] (trans (sym proj₁flat-v₂-eq) x)
+        u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
+        u₁>ˡu₂ = proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₁} {v₁})) (length-++ {A = Char} (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₂} {v₂})) (length-++ {A = Char} (proj₁ (flat u₂)) {proj₁ (flat v₂)})
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoˡ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-v₂≡[])
     to-ev u₁ u₂ v₁ v₂ (sub (seq₂ u₁≡u₂ v₁>ᵍv₂)) with robust-r
-    ... | robust rob-r-ev = {!!} -- seq₂ u₁≡u₂ (proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂ )
+    ... | robust rob-r-ev with proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+    ... | bne len-v₁>0 len-v₂>0 v₁>ⁱv₂ = bne len-pair₁>0 len-pair₂>0 (seq₂ u₁≡u₂ v₁>ˡv₂)
+      where
+        v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
+        v₁>ˡv₂ = proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₁} {v₁})) (length-++ {A = Char} (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₂} {v₂})) (length-++ {A = Char} (proj₁ (flat u₂)) {proj₁ (flat v₂)})
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoˡ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-v₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoˡ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) len-v₂>0
+    ... | be len-v₁≡len-v₂ len-v₂≡0 v₁>ⁱv₂ = ⊥-elim (>ˡ→¬≡ v₁>ˡv₂ v₁≡v₂)
+      where
+        v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
+        v₁>ˡv₂ = proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+        v₁≡v₂ : v₁ ≡ v₂
+        v₁≡v₂ = lnn-proj₁flat≡[]→refl {r} {proj₁flat-v≡[]→ε∈r (length≡0→[] len-v₂≡0)} {v₁} {v₂} lnn-r (length≡0→[] (trans len-v₁≡len-v₂ len-v₂≡0)) (length≡0→[] len-v₂≡0)
+    ... | lne len-v₁>0 len-v₂≡0 with proj₁ (flat u₂) in proj₁flat-u₂-eq
+    ... | [] = lne len-pair₁>0 len-pair₂≡0
+      where
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₁} {v₁})) (length-++ {A = Char} (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+        len-pair₂≡₀ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡₀ = trans (cong List.length (flat-pair {l} {r} {loc} {u₂} {v₂})) (length-++ {A = Char} (proj₁ (flat u₂)) {proj₁ (flat v₂)})
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoˡ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-v₁>0
+        len-pair₂≡0 : len-pair₂ ≡ 0
+        len-pair₂≡0 rewrite len-pair₂≡₀ | proj₁flat-u₂-eq | len-v₂≡0 = refl
+    ... | c ∷ cs = bne len-pair₁>0 len-pair₂>0 (seq₂ u₁≡u₂ v₁>ˡv₂)
+      where
+        ¬proj₁flat-u₂≡[] : ¬ proj₁ (flat u₂) ≡ []
+        ¬proj₁flat-u₂≡[] = λ x → ¬∷≡[] (trans (sym proj₁flat-u₂-eq) x)
+        v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
+        v₁>ˡv₂ = proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₁} {v₁})) (length-++ {A = Char} (proj₁ (flat u₁)) {proj₁ (flat v₁)})
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = trans (cong List.length (flat-pair {l} {r} {loc} {u₂} {v₂})) (length-++ {A = Char} (proj₁ (flat u₂)) {proj₁ (flat v₂)})
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoˡ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-v₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoʳ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-u₂≡[])
 
     from-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ 
     from-ev u₁ u₂ v₁ v₂ (be len|u₁v₁|≡len|u₂v₂| len|u₂v₂|≡0 (seq₁ u₁>ˡu₂)) with robust-l
     ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
     from-ev u₁ u₂ v₁ v₂ (be len|u₁v₁|≡len|u₂v₂| len|u₂v₂|≡0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
     ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₁ u₁>ˡu₂)) with robust-l
+    ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
+    ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (lne len|u₁v₁|>0 len|u₂v₂|≡0) with proj₁ (flat u₁) in proj₁flat-u₁-eq
+    ... | c ∷ cs = sub (seq₁ u₁>ᵍu₂)
+      where
+        ¬proj₁flat-u₁≡[] : ¬ proj₁ (flat u₁) ≡ []
+        ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq = λ x → ¬∷≡[] x
+        proj₁flat-u₂≡[] : proj₁ (flat u₂) ≡ []
+        proj₁flat-u₂≡[] rewrite flat-pair {l} {r} {loc} {u₂} {v₂} = ++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len|u₂v₂|≡0)
+        u₁>ᵍu₂ : l ⊢ u₁ >ᵍ u₂
+        u₁>ᵍu₂ = lnn→∷>ᵍ[] {l} lnn-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]
+    ... | [] = sub (seq₂ u₁≡u₂ v₁>ᵍv₂)
+      where
+        proj₁flat-u₂≡[] : proj₁ (flat u₂) ≡ []
+        proj₁flat-u₂≡[] rewrite flat-pair {l} {r} {loc} {u₂} {v₂} = ++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len|u₂v₂|≡0)
+        ε∈l : ε∈ l
+        ε∈l = proj₁flat-v≡[]→ε∈r proj₁flat-u₂≡[]
+        u₁≡u₂ : u₁ ≡ u₂
+        u₁≡u₂ = lnn-proj₁flat≡[]→refl {l} {ε∈l} {u₁} {u₂} lnn-l proj₁flat-u₁-eq proj₁flat-u₂≡[]
+        proj₁flat-v₂≡[] : proj₁ (flat v₂) ≡ []
+        proj₁flat-v₂≡[] rewrite flat-pair {l} {r} {loc} {u₂} {v₂} = ++-conicalʳ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len|u₂v₂|≡0)
+        ¬proj₁flat-v₁≡[] : ¬ proj₁ (flat v₁) ≡ []
+        ¬proj₁flat-v₁≡[] proj₁flat-v₁≡[] = >0→¬≡0 (flat-pair-u≡[]-v>0 len|u₁v₁|>0 proj₁flat-u₁-eq) ([]→length≡0 proj₁flat-v₁≡[])
+        v₁>ᵍv₂ : r ⊢ v₁ >ᵍ v₂
+        v₁>ᵍv₂ = lnn→∷>ᵍ[] {r} lnn-r v₁ v₂ ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[]
 lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} prf
   where
     robust-l : Robust l
@@ -481,7 +714,10 @@ lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} pr
     prf (RightU u₁) (LeftU u₂) = to-ev , from-ev
       where
         to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂
-        to-ev = {!!} -- λ () 
+        to-ev (sub u>ⁱv) = ⊥-elim (rightU-not>ⁱ-LeftU u>ⁱv)
+          where
+            rightU-not>ⁱ-LeftU : GreedyOrder._⊢_>ⁱ_ (l + r ` loc) (RightU u₁) (LeftU u₂) → ⊥
+            rightU-not>ⁱ-LeftU () 
         from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂
         from-ev (lne len|u₁|>0 len|u₂|≡0) =  Nullary.contradiction (proj₁flat-v≡[]→ε∈r (Utils.length≡0→[] len|u₂|≡0)) (ε∉r→¬ε∈r ε∉l)    
     prf (RightU u₁) (RightU u₂) = to-ev , from-ev
@@ -521,22 +757,42 @@ lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
     prf : (v₁ v₂ : U (r * ε∉r ` loc)) →
       ((r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ˡ v₂) ×
       ((r * ε∉r ` loc) ⊢ v₁ >ˡ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂)
-    prf (ListU []) (ListU []) = {!!} , {!!} 
-    prf (ListU []) (ListU (u ∷ us)) = {!!} , {!!} 
-    prf (ListU (v ∷ vs)) (ListU []) = (λ z → {!!} ) , λ z → sub star-cons-nil
+    prf (ListU []) (ListU []) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
+    prf (ListU []) (ListU (u ∷ us)) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
+    prf (ListU (v ∷ vs)) (ListU []) = to-ev , λ z → sub star-cons-nil
+      where
+        to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU [] → (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU []
+        to-ev (sub star-cons-nil) = lne len-cons>0 len-nil≡0
+          where
+            len-cons>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
+            len-cons>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = Nat.s≤s Nat.z≤n
+            len-nil≡0 : length (proj₁ (flat (ListU []))) ≡ 0
+            len-nil≡0 rewrite []→length≡0 proj₁flat-nil≡[] = refl
     prf (ListU (v ∷ vs)) (ListU (u ∷ us)) = to-ev , from-ev
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us) →
                 (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us)
         to-ev (sub (star-head v>ᵍu)) with robust-r
-        ... | robust rob-r-ev = {!!} -- star-head (proj₁ (rob-r-ev v u) v>ᵍu)
-        to-ev (sub (star-tail v≡u list-vs>ᵍlist-us))  =  {!!} --star-tail v≡u (proj₁ (prf (ListU vs) (ListU us)) list-vs>ᵍlist-us) 
+        ... | robust rob-r-ev = bne len-v∷vs>0 len-u∷us>0 (star-head (proj₁ (rob-r-ev v u) v>ᵍu))
+          where
+            len-v∷vs>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
+            len-v∷vs>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
+            len-u∷us>0 : length (proj₁ (flat (ListU (u ∷ us)))) > 0
+            len-u∷us>0 rewrite flat-list-cons {r} {ε∉r} {loc} {u} {us} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
+        to-ev (sub (star-tail v≡u list-vs>ᵍlist-us))  = bne len-v∷vs>0 len-u∷us>0 (star-tail v≡u (proj₁ (prf (ListU vs) (ListU us)) list-vs>ᵍlist-us))
+          where
+            len-v∷vs>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
+            len-v∷vs>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
+            len-u∷us>0 : length (proj₁ (flat (ListU (u ∷ us)))) > 0
+            len-u∷us>0 rewrite flat-list-cons {r} {ε∉r} {loc} {u} {us} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}) 
         
         from-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us) → 
                   (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us)
         from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-head v>ˡu)) with robust-r
         ... | robust rob-r-ev = sub (star-head (proj₂ (rob-r-ev v u) v>ˡu))
         from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-tail v≡u list-vs>ˡlist-us)) = sub (star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us) )
+        from-ev (be _ len≡0 _) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
+        from-ev (lne _ len≡0) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
         
 ```
 
@@ -783,7 +1039,12 @@ rln-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[] {l ● r ` loc}   (
     ... | inj₁ ( proj₁flat-u₂≡[] , proj₁flat-v₂≡[] ) = inj₁ (proj₁flat-u₂≡[] , proj₁flat-v₂≡[])
     ... | inj₂ ( inj₁ ( ¬proj₁flat-u₂≡[] , ¬proj₁flat-v₂≡[] ) ) = inj₂ (inj₁ (¬proj₁flat-u₂≡[] , ¬proj₁flat-v₂≡[]))
     ... | inj₂ ( inj₂ ( ¬proj₁flat-u₂≡[] , proj₁flat-v₂≡[] ) ) = inj₂ (inj₂ (¬proj₁flat-u₂≡[] , proj₁flat-v₂≡[]))
-    prf (seq₁ u₁>ᵍv₁) = {!!}  -- can we use  rln→∷>ᵍ[] to contradiction the case where u₂ is [] and v₂ is not?
+    prf (seq₁ u₁>ᵍv₁) = ⊥-elim (GreedyOrder.>ⁱ→¬≡ u₁>ᵍv₁ u₁≡v₁)
+      where
+        ε∈l : ε∈ l
+        ε∈l = proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq
+        u₁≡v₁ : u₁ ≡ v₁
+        u₁≡v₁ = lnn-proj₁flat≡[]→refl {l} {ε∈l} {u₁} {v₁} rln-l proj₁flat-u₁-eq proj₁flat-v₁-eq
 
 rln-u>ᵍv→¬u≡[]×v≢[] : ∀ { r : RE }
     → RLN r
@@ -974,7 +1235,10 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
     prf (RightU u₁) (LeftU u₂) = to-ev , from-ev
       where
         to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂
-        to-ev = λ () 
+        to-ev (sub u>ⁱv) = ⊥-elim (rightU-not>ⁱ-LeftU u>ⁱv)
+          where
+            rightU-not>ⁱ-LeftU : GreedyOrder._⊢_>ⁱ_ (l + r ` loc) (RightU u₁) (LeftU u₂) → ⊥
+            rightU-not>ⁱ-LeftU () 
         from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂
         from-ev (choice-rl-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) = Nullary.contradiction proj₁flat-u₁≡[] ¬proj₁flat-u₁≡[]   
           where
@@ -1174,8 +1438,32 @@ the necessary proof is still a myth, the main issue is that robust definition is
 rlnn→robust : ∀ { r : RE }
   → RLNN r
   → Robust r
-rlnn→robust {ε}           rlnn-ε = robust λ v₁ v₂ → {!!} , {!!} 
-rlnn→robust {$ c ` loc}   rlnn-$ = robust λ v₁ v₂ → {!!} , {!!} 
+rlnn→robust {ε}           rlnn-ε = robust prf-ε
+  where
+    prf-ε : (v₁ v₂ : U ε) → (ε ⊢ v₁ >ᵍ v₂ → ε ⊢ v₁ >ˡ v₂) × (ε ⊢ v₁ >ˡ v₂ → ε ⊢ v₁ >ᵍ v₂)
+    prf-ε EmptyU EmptyU = rprf-ε-to , rprf-ε-from
+      where
+        rprf-ε-to : ε ⊢ EmptyU >ᵍ EmptyU → ε ⊢ EmptyU >ˡ EmptyU
+        rprf-ε-to (sub u>ⁱv) = ⊥-elim (GreedyOrder.>ⁱ→¬≡ u>ⁱv refl)
+        rprf-ε-from : ε ⊢ EmptyU >ˡ EmptyU → ε ⊢ EmptyU >ᵍ EmptyU
+        rprf-ε-from (be len-v₁≡len-v₂ len-v₂≡0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        rprf-ε-from (bne len-v₁>0 len-v₂>0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        rprf-ε-from (lne len-v₁>0 len-v₂≡0) with len-v₁>0
+        ... | ()
+rlnn→robust {$ c ` loc}   rlnn-$ = robust prf-$
+  where
+    prf-$ : (v₁ v₂ : U ($ c ` loc)) → ($ c ` loc ⊢ v₁ >ᵍ v₂ → $ c ` loc ⊢ v₁ >ˡ v₂) × ($ c ` loc ⊢ v₁ >ˡ v₂ → $ c ` loc ⊢ v₁ >ᵍ v₂)
+    prf-$ (LetterU .c) (LetterU .c) = rprf-$-to , rprf-$-from
+      where
+        rprf-$-to : $ c ` loc ⊢ LetterU c >ᵍ LetterU c → $ c ` loc ⊢ LetterU c >ˡ LetterU c
+        rprf-$-to (sub u>ⁱv) = ⊥-elim (GreedyOrder.>ⁱ→¬≡ u>ⁱv refl)
+        rprf-$-from : $ c ` loc ⊢ LetterU c >ˡ LetterU c → $ c ` loc ⊢ LetterU c >ᵍ LetterU c
+        rprf-$-from (be len-v₁≡len-v₂ len-v₂≡0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        rprf-$-from (bne len-v₁>0 len-v₂>0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
+        rprf-$-from (lne len-v₁>0 len-v₂≡0) = ⊥-elim ((>0→¬≡0 len-v₁>0) (trans (cong List.length (sym letter-flat-eq)) len-v₂≡0))
+          where
+            letter-flat-eq : proj₁ (flat (LetterU c)) ≡ c ∷ []
+            letter-flat-eq = refl
 rlnn→robust {l ● r ` loc} (rlnn-● rlnn-l rlnn-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
   where
     robust-r : Robust r
@@ -1185,16 +1473,157 @@ rlnn→robust {l ● r ` loc} (rlnn-● rlnn-l rlnn-r) = robust {l ● r ` loc} 
     robust-l = rlnn→robust {l} rlnn-l
   
     to-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂
-    to-ev u₁ u₂ v₁ v₂ (sub (seq₁ u₁>ᵍu₂)) with robust-l
-    ... | robust rob-l-ev = {!!} -- seq₁ (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂)
-    to-ev u₁ u₂ v₁ v₂ (sub (seq₂ u₁≡u₂ v₁>ᵍv₂)) with robust-r
-    ... | robust rob-r-ev = {!!} -- seq₂ u₁≡u₂ (proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂ )
+    to-ev u₁ u₂ v₁ v₂ (sub (GreedyOrder.seq₁ u₁>ᵍu₂)) with robust-l
+    ... | robust rob-l-ev with proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+    ... | bne len-u₁>0 len-u₂>0 u₁>ⁱu₂ = bne len-pair₁>0 len-pair₂>0 (LNEOrder.seq₁ u₁>ˡu₂)
+      where
+        u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
+        u₁>ˡu₂ = proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = flat-pair-len {l} {r} {loc} {u₁} {v₁}
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = flat-pair-len {l} {r} {loc} {u₂} {v₂}
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoʳ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) len-u₂>0
+    ... | be len-u₁≡len-u₂ len-u₂≡0 u₁>ⁱu₂ = ⊥-elim (LNEOrder.>→¬≡ u₁>ˡu₂ u₁≡u₂)
+      where
+        u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
+        u₁>ˡu₂ = proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+        u₁≡u₂ : u₁ ≡ u₂
+        u₁≡u₂ = rlnn-proj₁flat≡[]→refl {l} {proj₁flat-v≡[]→ε∈r (length≡0→[] len-u₂≡0)} {u₁} {u₂} rlnn-l (length≡0→[] (trans len-u₁≡len-u₂ len-u₂≡0)) (length≡0→[] len-u₂≡0)
+    ... | lne len-u₁>0 len-u₂≡0 with proj₁ (flat v₂) in proj₁flat-v₂-eq
+    ... | [] = lne len-pair₁>0 len-pair₂≡0
+      where
+        u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
+        u₁>ˡu₂ = proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = flat-pair-len {l} {r} {loc} {u₁} {v₁}
+        len-pair₂≡₀ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡₀ = flat-pair-len {l} {r} {loc} {u₂} {v₂}
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
+        len-pair₂≡0 : len-pair₂ ≡ 0
+        len-pair₂≡0 rewrite len-pair₂≡₀ | len-u₂≡0 | proj₁flat-v₂-eq = refl
+    ... | c ∷ cs = bne len-pair₁>0 len-pair₂>0 (LNEOrder.seq₁ u₁>ˡu₂)
+      where
+        ¬proj₁flat-v₂≡[] : ¬ proj₁ (flat v₂) ≡ []
+        ¬proj₁flat-v₂≡[] = λ x → ¬∷≡[] (trans (sym proj₁flat-v₂-eq) x)
+        u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
+        u₁>ˡu₂ = proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = flat-pair-len {l} {r} {loc} {u₁} {v₁}
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = flat-pair-len {l} {r} {loc} {u₂} {v₂}
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoˡ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-v₂≡[])
+    to-ev u₁ u₂ v₁ v₂ (sub (GreedyOrder.seq₂ u₁≡u₂ v₁>ᵍv₂)) with robust-r
+    ... | robust rob-r-ev with proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+    ... | bne len-v₁>0 len-v₂>0 v₁>ⁱv₂ = bne len-pair₁>0 len-pair₂>0 (LNEOrder.seq₂ u₁≡u₂ v₁>ˡv₂)
+      where
+        v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
+        v₁>ˡv₂ = proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = flat-pair-len {l} {r} {loc} {u₁} {v₁}
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = flat-pair-len {l} {r} {loc} {u₂} {v₂}
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoˡ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-v₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoˡ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) len-v₂>0
+    ... | be len-v₁≡len-v₂ len-v₂≡0 v₁>ⁱv₂ = ⊥-elim (LNEOrder.>→¬≡ v₁>ˡv₂ v₁≡v₂)
+      where
+        v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
+        v₁>ˡv₂ = proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+        v₁≡v₂ : v₁ ≡ v₂
+        v₁≡v₂ = rlnn-proj₁flat≡[]→refl {r} {proj₁flat-v≡[]→ε∈r (length≡0→[] len-v₂≡0)} {v₁} {v₂} rlnn-r (length≡0→[] (trans len-v₁≡len-v₂ len-v₂≡0)) (length≡0→[] len-v₂≡0)
+    ... | lne len-v₁>0 len-v₂≡0 with proj₁ (flat u₂) in proj₁flat-u₂-eq
+    ... | [] = lne len-pair₁>0 len-pair₂≡0
+      where
+        v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
+        v₁>ˡv₂ = proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = flat-pair-len {l} {r} {loc} {u₁} {v₁}
+        len-pair₂≡₀ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡₀ = flat-pair-len {l} {r} {loc} {u₂} {v₂}
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoˡ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-v₁>0
+        len-pair₂≡0 : len-pair₂ ≡ 0
+        len-pair₂≡0 rewrite len-pair₂≡₀ | proj₁flat-u₂-eq | len-v₂≡0 = refl
+    ... | c ∷ cs = bne len-pair₁>0 len-pair₂>0 (LNEOrder.seq₂ u₁≡u₂ v₁>ˡv₂)
+      where
+        ¬proj₁flat-u₂≡[] : ¬ proj₁ (flat u₂) ≡ []
+        ¬proj₁flat-u₂≡[] = λ x → ¬∷≡[] (trans (sym proj₁flat-u₂-eq) x)
+        v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
+        v₁>ˡv₂ = proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+        len-pair₁ : ℕ
+        len-pair₁ = length (proj₁ (flat (PairU u₁ v₁)))
+        len-pair₂ : ℕ
+        len-pair₂ = length (proj₁ (flat (PairU u₂ v₂)))
+        len-pair₁≡ : len-pair₁ ≡ length (proj₁ (flat u₁)) + length (proj₁ (flat v₁))
+        len-pair₁≡ = flat-pair-len {l} {r} {loc} {u₁} {v₁}
+        len-pair₂≡ : len-pair₂ ≡ length (proj₁ (flat u₂)) + length (proj₁ (flat v₂))
+        len-pair₂≡ = flat-pair-len {l} {r} {loc} {u₂} {v₂}
+        len-pair₁>0 : len-pair₁ > 0
+        len-pair₁>0 rewrite len-pair₁≡ = +-monoˡ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-v₁>0
+        len-pair₂>0 : len-pair₂ > 0
+        len-pair₂>0 rewrite len-pair₂≡ = +-monoʳ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-u₂≡[])
 
     from-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ 
     from-ev u₁ u₂ v₁ v₂ (be len|u₁u₁|≡len|v₁v₂| len|v₁v₂|≡0 (seq₁ u₁>ˡu₂)) with robust-l
     ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
     from-ev u₁ u₂ v₁ v₂ (be len|u₁u₁|≡len|v₁v₂| len|v₁v₂|≡0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
     ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₁ u₁>ˡu₂)) with robust-l
+    ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
+    ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (lne len|u₁v₁|>0 len|u₂v₂|≡0) with proj₁ (flat u₁) in proj₁flat-u₁-eq
+    ... | c ∷ cs = sub (GreedyOrder.seq₁ u₁>ᵍu₂)
+      where
+        ¬proj₁flat-u₁≡[] : ¬ proj₁ (flat u₁) ≡ []
+        ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq = λ x → ¬∷≡[] x
+        proj₁flat-u₂≡[] : proj₁ (flat u₂) ≡ []
+        proj₁flat-u₂≡[] = ++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len|u₂v₂|≡0)
+        u₁>ᵍu₂ : l ⊢ u₁ >ᵍ u₂
+        u₁>ᵍu₂ = rlnn→∷>ᵍ[] {l} rlnn-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]
+    ... | [] = sub (GreedyOrder.seq₂ u₁≡u₂ v₁>ᵍv₂)
+      where
+        proj₁flat-u₂≡[] : proj₁ (flat u₂) ≡ []
+        proj₁flat-u₂≡[] = ++-conicalˡ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len|u₂v₂|≡0)
+        ε∈l : ε∈ l
+        ε∈l = proj₁flat-v≡[]→ε∈r proj₁flat-u₂≡[]
+        u₁≡u₂ : u₁ ≡ u₂
+        u₁≡u₂ = rlnn-proj₁flat≡[]→refl {l} {ε∈l} {u₁} {u₂} rlnn-l proj₁flat-u₁-eq proj₁flat-u₂≡[]
+        proj₁flat-v₂≡[] : proj₁ (flat v₂) ≡ []
+        proj₁flat-v₂≡[] = ++-conicalʳ (proj₁ (flat u₂)) (proj₁ (flat v₂)) (Utils.length≡0→[] len|u₂v₂|≡0)
+        ¬proj₁flat-v₁≡[] : ¬ proj₁ (flat v₁) ≡ []
+        ¬proj₁flat-v₁≡[] proj₁flat-v₁≡[] = >0→¬≡0 (flat-pair-u≡[]-v>0 len|u₁v₁|>0 proj₁flat-u₁-eq) ([]→length≡0 proj₁flat-v₁≡[])
+        v₁>ᵍv₂ : r ⊢ v₁ >ᵍ v₂
+        v₁>ᵍv₂ = rlnn→∷>ᵍ[] {r} rlnn-r v₁ v₂ ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[]
 rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l + r ` loc} prf
   where
     robust-l : Robust l
@@ -1261,6 +1690,7 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
             proj₁flat-u₂≡[] : proj₁ (flat u₂) ≡ []
             proj₁flat-u₂≡[] with  ε≅r→flat-[] {r} {ε≅r} u₂
             ... | flat-[] _ eq = eq
+        ... | []     | c ∷ cs = {!!}
         ... | c ∷ cs | [] = lne (Utils.¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (Utils.[]→length≡0 proj₁flat-u₂-eq)
           where 
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
@@ -1324,22 +1754,42 @@ rlnn→robust {r * ε∉r ` loc} (rlnn-* rlnn-r) =  robust {r * ε∉r ` loc} pr
     prf : (v₁ v₂ : U (r * ε∉r ` loc)) →
       ((r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ˡ v₂) ×
       ((r * ε∉r ` loc) ⊢ v₁ >ˡ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂)
-    prf (ListU []) (ListU []) = {!!} , {!!}
-    prf (ListU []) (ListU (u ∷ us)) = {!!} , {!!} 
-    prf (ListU (v ∷ vs)) (ListU []) = (λ z → {!!}) , λ z → sub star-cons-nil
+    prf (ListU []) (ListU []) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
+    prf (ListU []) (ListU (u ∷ us)) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
+    prf (ListU (v ∷ vs)) (ListU []) = to-ev , λ z → sub star-cons-nil
+      where
+        to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU [] → (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU []
+        to-ev (sub star-cons-nil) = lne len-cons>0 len-nil≡0
+          where
+            len-cons>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
+            len-cons>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = Nat.s≤s Nat.z≤n
+            len-nil≡0 : length (proj₁ (flat (ListU []))) ≡ 0
+            len-nil≡0 rewrite []→length≡0 proj₁flat-nil≡[] = refl
     prf (ListU (v ∷ vs)) (ListU (u ∷ us)) = to-ev , from-ev
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us) →
                 (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us)
         to-ev (sub (star-head v>ᵍu)) with robust-r
-        ... | robust rob-r-ev = bne {!!} {!!} (star-head (proj₁ (rob-r-ev v u) v>ᵍu))
-        to-ev (sub (star-tail v≡u list-vs>ᵍlist-us))  = bne {!!} {!!} (star-tail v≡u (proj₁ (prf (ListU vs) (ListU us)) list-vs>ᵍlist-us) )
+        ... | robust rob-r-ev = bne len-v∷vs>0 len-u∷us>0 (star-head (proj₁ (rob-r-ev v u) v>ᵍu))
+          where
+            len-v∷vs>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
+            len-v∷vs>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
+            len-u∷us>0 : length (proj₁ (flat (ListU (u ∷ us)))) > 0
+            len-u∷us>0 rewrite flat-list-cons {r} {ε∉r} {loc} {u} {us} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
+        to-ev (sub (star-tail v≡u list-vs>ᵍlist-us))  = bne len-v∷vs>0 len-u∷us>0 (star-tail v≡u (proj₁ (prf (ListU vs) (ListU us)) list-vs>ᵍlist-us) )
+          where
+            len-v∷vs>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
+            len-v∷vs>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
+            len-u∷us>0 : length (proj₁ (flat (ListU (u ∷ us)))) > 0
+            len-u∷us>0 rewrite flat-list-cons {r} {ε∉r} {loc} {u} {us} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
         
         from-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us) → 
                   (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us)
         from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-head v>ˡu)) with robust-r
         ... | robust rob-r-ev = sub (star-head (proj₂ (rob-r-ev v u) v>ˡu))
         from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-tail v≡u list-vs>ˡlist-us))  = sub (star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us))
+        from-ev (be _ len≡0 _) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
+        from-ev (lne _ len≡0) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
     
 ```    
 

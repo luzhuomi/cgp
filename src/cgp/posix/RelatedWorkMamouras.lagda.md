@@ -95,6 +95,8 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁻ ; ∈
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; sym; cong; cong₂; cong-app; subst; inspect; _≢_)
+
+open import Relation.Nullary using (¬_)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 
 import Data.Product as Product
@@ -333,10 +335,119 @@ data <-Min where
       
 
 
->-wellfounded : ∀ { r : RE} { w : List Char } { i j : ℕ } 
-  → r , i , j ⊨ w 
-  → ∃[ t ] ( <-Min r w i j t )
->-wellfounded {r} {w} {i} {j} = {!!} 
+-- The lemma >-wellfounded is unprovable.  The definition of <-Min requires
+-- both sub-terms to be minimal before the order can lift through a plus/seq/star
+-- constructor.  This creates incomparable evidences, so a match need not have a
+-- <-Min witness.
+--
+-- Counterexample: r = (a + a) + a over w = [a], i = 0, j = 1.
+-- There are three evidences:
+--   P1 = left (left a)
+--   P2 = left (right a)
+--   P3 = right a
+-- P1 and P2 are incomparable because comparing two outer-left proofs requires
+-- the inner non-minimal proof (L2) to be minimal.  Hence no evidence is <-Min.
+
+counterexample : (∀ {r : RE} {w : List Char} {i j : ℕ}
+                   → r , i , j ⊨ w
+                   → ∃[ t ] (<-Min r w i j t))
+                 → ⊥
+counterexample wellfounded = contradiction (proj₁ (wellfounded P1)) (proj₂ (wellfounded P1))
+  where
+    a0 : RE
+    a0 = $ 'a' ` 0
+
+    a1 : RE
+    a1 = $ 'a' ` 1
+
+    a2 : RE
+    a2 = $ 'a' ` 3
+
+    l : RE
+    l = a0 + a1 ` 2
+
+    r : RE
+    r = l + a2 ` 4
+
+    w : List Char
+    w = 'a' ∷ []
+
+    i : ℕ
+    i = 0
+
+    j : ℕ
+    j = 1
+
+    t$0 : a0 , i , j ⊨ w
+    t$0 = ⊨$ 'a' 0 i w refl
+
+    L1 : l , i , j ⊨ w
+    L1 = ⊨inl a0 a1 2 i j w t$0
+
+    t$1 : a1 , i , j ⊨ w
+    t$1 = ⊨$ 'a' 1 i w refl
+
+    L2 : l , i , j ⊨ w
+    L2 = ⊨inr a0 a1 2 i j w t$1
+
+    t$2 : a2 , i , j ⊨ w
+    t$2 = ⊨$ 'a' 3 i w refl
+
+    P1 : r , i , j ⊨ w
+    P1 = ⊨inl l a2 4 i j w L1
+
+    P2 : r , i , j ⊨ w
+    P2 = ⊨inl l a2 4 i j w L2
+
+    P3 : r , i , j ⊨ w
+    P3 = ⊨inr l a2 4 i j w t$2
+
+    L1≢L2 : ¬ (L1 ≡ L2)
+    L1≢L2 ()
+
+    L2≮L1 : ¬ (l , w , i , j , j ⊢ L2 < L1)
+    L2≮L1 ()
+
+    ¬Min-L2 : ¬ (<-Min l w i j L2)
+    ¬Min-L2 (<-min .l .w .i .j .L2 min-ev) =
+      case-⊎ L2≮L1 (λ L2≡L1 → L1≢L2 (sym L2≡L1)) (min-ev L1)
+
+    inl-inj : {t₁ t₂ : l , i , j ⊨ w}
+            → ⊨inl l a2 4 i j w t₁ ≡ ⊨inl l a2 4 i j w t₂
+            → t₁ ≡ t₂
+    inl-inj refl = refl
+
+    P1≢P2 : ¬ (P1 ≡ P2)
+    P1≢P2 P1≡P2 = L1≢L2 (inl-inj P1≡P2)
+
+    P3≢P1 : ¬ (P3 ≡ P1)
+    P3≢P1 ()
+
+    ¬P1<P2 : ¬ (r , w , i , j , j ⊢ P1 < P2)
+    ¬P1<P2 (choice-ll i j j .L1 .L2 _ minL2 _) = ¬Min-L2 minL2
+
+    ¬P2<P1 : ¬ (r , w , i , j , j ⊢ P2 < P1)
+    ¬P2<P1 (choice-ll i j j .L2 .L1 _ _ L2<L1) = L2≮L1 L2<L1
+
+    ¬P3<P1 : ¬ (r , w , i , j , j ⊢ P3 < P1)
+    ¬P3<P1 ()
+
+    ¬Min-P1 : ¬ (<-Min r w i j P1)
+    ¬Min-P1 (<-min .r .w .i .j .P1 min-ev) =
+      case-⊎ ¬P1<P2 P1≢P2 (min-ev P2)
+
+    ¬Min-P2 : ¬ (<-Min r w i j P2)
+    ¬Min-P2 (<-min .r .w .i .j .P2 min-ev) =
+      case-⊎ ¬P2<P1 (λ P2≡P1 → P1≢P2 (sym P2≡P1)) (min-ev P1)
+
+    ¬Min-P3 : ¬ (<-Min r w i j P3)
+    ¬Min-P3 (<-min .r .w .i .j .P3 min-ev) =
+      case-⊎ ¬P3<P1 P3≢P1 (min-ev P1)
+
+    contradiction : (t : r , i , j ⊨ w) → ¬ (<-Min r w i j t)
+    contradiction (⊨inl .l .a2 .4 .i .j .w (⊨inl .a0 .a1 .2 .i .j .w (⊨$ 'a' .0 .i .w refl))) min = ¬Min-P1 min
+    contradiction (⊨inl .l .a2 .4 .i .j .w (⊨inr .a0 .a1 .2 .i .j .w (⊨$ 'a' .1 .i .w refl))) min = ¬Min-P2 min
+    contradiction (⊨inr .l .a2 .4 .i .j .w (⊨$ 'a' .3 .i .w refl)) min = ¬Min-P3 min
 
 ```
 

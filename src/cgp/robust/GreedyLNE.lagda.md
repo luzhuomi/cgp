@@ -32,6 +32,12 @@ open GreedyOrder renaming ( _⊢_>_  to  _⊢_>ᵍ_
 import cgp.greedy.PartialDerivative as GreedyPD
 open GreedyPD renaming ( parseAll[_,_] to parseAllᵍ[_,_] ; parseAll-sound to parseAllᵍ-sound ; parseAll-complete to parseAllᵍ-complete ) 
 
+
+import cgp.greedy.MaxWord as GreedyMax
+open GreedyMax renaming ( ≥-Max to ≥-Maxᵍ ; ≥-max to ≥-maxᵍ )
+
+
+
 import cgp.lne.Order as LNEOrder
 open LNEOrder renaming ( _⊢_>_  to  _⊢_>ˡ_
   ; >→¬≡ to >ˡ→¬≡
@@ -43,6 +49,9 @@ open LNEPD renaming ( parseAll[_,_] to parseAllˡ[_,_]
   ; parseAll-complete to parseAllˡ-complete
 --   ; parseAll-r-w≡[]→¬w∈⟦r⟧ to parseAllˡ-r-w≡[]→¬w∈⟦r⟧ 
      ) 
+
+import cgp.lne.MaxWord as LNEMax
+open LNEMax renaming ( ≥-Max to ≥-Maxˡ ; ≥-max to ≥-maxˡ )
 
 
 import cgp.Utils as Utils
@@ -1334,8 +1343,9 @@ rln→iso {r * ε∉r ` loc} (rln-* rln-r) =  iso {r * ε∉r ` loc} prf
 ### Definition RLNN 
 
 RLN is not sufficient, let's a "in-between" of RLN and LNN 
--- relaxed LNN ? 
+relaxed LNN ?
 
+RLNN is also not sufficient to ensure isomorphism, see counter exampe (ε + ε) ● a* as before 
 ```agda
 data RLNN : RE → Set where
   rlnn-ε : RLNN ε
@@ -1358,12 +1368,13 @@ data RLNN : RE → Set where
 
 
 ```
-is rlnn sufficiently guaranteeing isomoprhism?
+is rlnn sufficiently guaranteeing isomoprhism? no. 
 
 
 ### sub lemma 
 
 ```agda
+{- 
 -- not true, counter example ε + ε 
 postulate
   rlnn-proj₁flat≡[]→refl : ∀ { r : RE } { ε∈r : ε∈ r } { u v : U r }
@@ -1451,16 +1462,12 @@ rlnn-u>ᵍv→u≡[]→v≡[] {r} rlnn-r u v u>ᵍv proj₁flat-u≡[] = prf
       where
         ¬proj₁flat-v≡[] : ¬ proj₁ (flat v) ≡ []
         ¬proj₁flat-v≡[] rewrite proj₁flat-v-eq = λ proj₁flat-v≡[] → ¬∷≡[] proj₁flat-v≡[]
-```
 
 
+-- this sufficient proof is incomplete, it depends on some on the invalid sub lemmas above.
 
-this sufficient proof is incomplete, it depends on some on the invalid sub lemmas above.
+-- the necessary proof is still a myth, the main issue is that iso definition is not inductive 
 
-the necessary proof is still a myth, the main issue is that iso definition is not inductive 
-
-
-```agda
 
 {-# TERMINATING #-}
 rlnn→iso : ∀ { r : RE }
@@ -1842,7 +1849,8 @@ rlnn→iso {r * ε∉r ` loc} (rlnn-* rlnn-r) =  iso {r * ε∉r ` loc} prf
         from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-tail v≡u list-vs>ˡlist-us))  = sub (star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us))
         from-ev (be _ len≡0 _) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
         from-ev (lne _ len≡0) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
-    
+
+-} 
 ```    
 
 
@@ -1942,3 +1950,26 @@ iso→rlnn {l + r ` loc} (iso {_ + _ ` _} iso-l+r-ev) = rlnn-+ ε∈l→ε≅r l
 
 -} 
 ```
+
+
+
+```agda
+
+data Robust : RE → Set where
+  robust : ∀ { r : RE } 
+             → ( ∀ ( w : List Char )
+               → ( v : U r )
+               → ( ( ≥-Maxᵍ {r} w v ) → (≥-Maxˡ {r} w v ) ) × ( ( ≥-Maxˡ {r} w v ) → (≥-Maxᵍ {r} w v ) )
+               )
+           -----------------------------------------
+           → Robust r  
+
+
+iso→robust : ∀ ( r : RE )
+  → Iso r
+  → Robust r
+iso→robust = {!!}   
+
+```
+
+

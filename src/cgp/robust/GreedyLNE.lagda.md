@@ -2050,3 +2050,11 @@ iso→robust r (iso iso-ev) = robust {r} ev
             ... | inj₂ v'≡u = inj₂ v'≡u
 
 ```
+
+
+```agda
+rlnn→robust : ∀ ( r : RE )
+  → RLNN r
+  → Robust r 
+rlnn→robust = ? 
+```

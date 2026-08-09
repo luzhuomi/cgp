@@ -75,7 +75,7 @@ open NatProperties using ( m+n≡0⇒m≡0 ; +-monoʳ-≤ ; <⇒≤ ; ≤-trans 
 
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong-app; subst)
+open Eq using (_≡_; refl; trans; sym; cong; cong₂; cong-app; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 
 import Data.List.Relation.Unary.All as All
@@ -2053,8 +2053,768 @@ iso→robust r (iso iso-ev) = robust {r} ev
 
 
 ```agda
+
+lnn→rlnn : ∀ { r : RE }
+  → LNN r
+  → RLNN r
+lnn→rlnn lnn-ε = rlnn-ε
+lnn→rlnn lnn-$ = rlnn-$
+lnn→rlnn (lnn-● lnn-l lnn-r) = rlnn-● (lnn→rlnn lnn-l) (lnn→rlnn lnn-r)
+lnn→rlnn (lnn-+ ε∉l lnn-l lnn-r) =
+  rlnn-+ (λ ε∈l → ⊥-elim ((ε∉r→¬ε∈r ε∉l) ε∈l))
+    lnn-l (lnn→rlnn lnn-r)
+lnn→rlnn (lnn-* lnn-r) = rlnn-* (lnn→rlnn lnn-r)
+
+
+robust-flat-pair-cong : ∀ { l r : RE } { loc : ℕ }
+  → { u₁ v₁ : U l } { u₂ v₂ : U r }
+  → proj₁ (flat u₁) ≡ proj₁ (flat v₁)
+  → proj₁ (flat u₂) ≡ proj₁ (flat v₂)
+  → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))
+      ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))
+robust-flat-pair-cong {l} {r} {loc} {u₁} {v₁} {u₂} {v₂} u₁≡v₁ u₂≡v₂ =
+  trans (flat-pair {l} {r} {loc} {u = u₁} {v = u₂})
+    (trans (cong₂ _++_ u₁≡v₁ u₂≡v₂)
+      (sym (flat-pair {l} {r} {loc} {u = v₁} {v = v₂})))
+
+robust-flat-left-cong : ∀ { l r : RE } { loc : ℕ }
+  → { u v : U l }
+  → proj₁ (flat u) ≡ proj₁ (flat v)
+  → proj₁ (flat (LeftU {l} {r} {loc} u))
+      ≡ proj₁ (flat (LeftU {l} {r} {loc} v))
+robust-flat-left-cong {l} {r} {loc} {u} {v} u≡v =
+  trans (flat-LeftU {l} {r} {loc} {u = u})
+    (trans u≡v (sym (flat-LeftU {l} {r} {loc} {u = v})))
+
+robust-flat-right-cong : ∀ { l r : RE } { loc : ℕ }
+  → { u v : U r }
+  → proj₁ (flat u) ≡ proj₁ (flat v)
+  → proj₁ (flat (RightU {l} {r} {loc} u))
+      ≡ proj₁ (flat (RightU {l} {r} {loc} v))
+robust-flat-right-cong {l} {r} {loc} {u} {v} u≡v =
+  trans (flat-RightU {l} {r} {loc} {u = u})
+    (trans u≡v (sym (flat-RightU {l} {r} {loc} {u = v})))
+
+robust-length-empty : ∀ { xs : List Char }
+  → xs ≡ []
+  → length xs ≡ 0
+robust-length-empty refl = refl
+
+robust-not-empty : List Char → Set
+robust-not-empty xs = ¬ (xs ≡ [])
+
+robust-lne-be : ∀ { r : RE } { u v : U r }
+  → proj₁ (flat u) ≡ []
+  → proj₁ (flat v) ≡ []
+  → LNEOrder._⊢_>ⁱ_ r u v
+  → LNEOrder._⊢_>_ r u v
+robust-lne-be u≡[] v≡[] u>ⁱv = LNEOrder.be
+  (trans (robust-length-empty u≡[]) (sym (robust-length-empty v≡[])))
+  (robust-length-empty v≡[]) u>ⁱv
+
+robust-lne-bne : ∀ { r : RE } { u v : U r }
+  → ¬ (proj₁ (flat u) ≡ [])
+  → ¬ (proj₁ (flat v) ≡ [])
+  → LNEOrder._⊢_>ⁱ_ r u v
+  → LNEOrder._⊢_>_ r u v
+robust-lne-bne ¬u≡[] ¬v≡[] u>ⁱv =
+  LNEOrder.bne (¬≡[]→length>0 ¬u≡[]) (¬≡[]→length>0 ¬v≡[]) u>ⁱv
+
+robust-lne-lne : ∀ { r : RE } { u v : U r }
+  → ¬ (proj₁ (flat u) ≡ [])
+  → proj₁ (flat v) ≡ []
+  → LNEOrder._⊢_>_ r u v
+robust-lne-lne ¬u≡[] v≡[] =
+  LNEOrder.lne (¬≡[]→length>0 ¬u≡[]) ([]→length≡0 v≡[])
+
+robust-letter-flat : ∀ { c : Char } { loc : ℕ }
+  → proj₁ (flat { $ c ` loc } (LetterU c)) ≡ c ∷ []
+robust-letter-flat = refl
+
+robust-flat-empty? : ∀ { r : RE } ( v : U r )
+  → (proj₁ (flat v) ≡ []) ⊎ robust-not-empty (proj₁ (flat v))
+robust-flat-empty? v with flat v
+... | [] , _ = inj₁ refl
+... | c ∷ cs , _ = inj₂ (λ ())
+
+{-# TERMINATING #-}
+robust-empty→nonempty : ∀ { r : RE }
+  → RLNN r
+  → ( u : U r )
+  → ( v : U r )
+  → proj₁ (flat u) ≡ []
+  → robust-not-empty (proj₁ (flat v))
+  → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+              × (r ⊢ z >ᵍ u)
+robust-empty→nonempty {ε} rlnn-ε EmptyU EmptyU u≡[] not-v-empty =
+  ⊥-elim (not-v-empty refl)
+robust-empty→nonempty {$ c ` loc} rlnn-$
+  (LetterU {loc = .loc} .c) (LetterU {loc = .loc} .c) u≡[] not-v-empty =
+  ⊥-elim (helper u≡[])
+  where
+    helper : proj₁ (flat { $ c ` loc } (LetterU c)) ≡ [] → ⊥
+    helper eq = ¬∷≡[] (trans (sym (robust-letter-flat {c} {loc})) eq)
+robust-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
+  (ListU []) (ListU (v ∷ vs)) u≡[] not-v-empty =
+  ListU (v ∷ vs) , refl , sub GreedyOrder.star-cons-nil
+robust-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
+  (ListU []) (ListU []) u≡[] not-v-empty =
+  ⊥-elim (not-v-empty refl)
+robust-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
+  (ListU (u ∷ us)) v u≡[] not-v-empty =
+  ⊥-elim ((¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}) u≡[])
+robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
+  (PairU u₁ u₂) (PairU v₁ v₂) u≡[] not-pair-empty =
+  pair-helper u₁ u₂ v₁ v₂
+    (++-conicalˡ (proj₁ (flat u₁)) (proj₁ (flat u₂)) u≡[])
+    (++-conicalʳ (proj₁ (flat u₁)) (proj₁ (flat u₂)) u≡[])
+    u≡[] not-pair-empty
+  where
+    pair-first : ∀ (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
+      → proj₁ (flat u₁) ≡ []
+      → robust-not-empty (proj₁ (flat v₁))
+      → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
+    pair-first u₁ u₂ v₁ v₂ u₁-empty not-v₁-empty
+      with robust-empty→nonempty {l} rlnn-l u₁ v₁ u₁-empty not-v₁-empty
+    ... | z₁ , z₁≡v₁ , z₁>u₁ =
+      PairU z₁ v₂ , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+        , sub (GreedyOrder.seq₁ z₁>u₁)
+
+    pair-second : ∀ (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
+      → proj₁ (flat u₂) ≡ []
+      → proj₁ (flat u₁) ≡ []
+      → proj₁ (flat v₁) ≡ []
+      → robust-not-empty (proj₁ (flat v₂))
+      → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
+    pair-second u₁ u₂ v₁ v₂ u₂-empty u₁-empty v₁-empty not-v₂-empty
+      with robust-empty→nonempty {r} rlnn-r u₂ v₂ u₂-empty not-v₂-empty
+    ... | z₂ , z₂≡v₂ , z₂>u₂ =
+      PairU u₁ z₂ , robust-flat-pair-cong {l} {r} {loc}
+        (trans u₁-empty (sym v₁-empty)) z₂≡v₂
+        , sub (GreedyOrder.seq₂ refl z₂>u₂)
+
+    pair-helper : ∀ (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
+      → proj₁ (flat u₁) ≡ []
+      → proj₁ (flat u₂) ≡ []
+      → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
+      → robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+      → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
+    pair-helper u₁ u₂ v₁ v₂ u₁-empty u₂-empty u≡[] not-pair-empty
+      with robust-flat-empty? v₁ | robust-flat-empty? v₂
+    ... | inj₂ not-v₁-empty | _ =
+      pair-first u₁ u₂ v₁ v₂ u₁-empty not-v₁-empty
+    ... | inj₁ v₁-empty | inj₁ v₂-empty =
+      ⊥-elim (not-pair-empty pair-empty)
+      where
+        pair-empty : proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ []
+        pair-empty = trans
+          (sym (flat-pair {l} {r} {loc} {u = v₁} {v = v₂}))
+          (trans (cong₂ _++_ v₁-empty v₂-empty) refl)
+    ... | inj₁ v₁-empty | inj₂ not-v₂-empty =
+      pair-second u₁ u₂ v₁ v₂ u₂-empty u₁-empty v₁-empty not-v₂-empty
+robust-empty→nonempty {l + r ` loc}
+  (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
+  (LeftU u) (LeftU v) u≡[] not-v-empty
+  with robust-empty→nonempty {l} (lnn→rlnn lnn-l) u v u≡[] not-v-empty
+... | z , z≡v , z>u =
+  LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v , sub (GreedyOrder.choice-ll z>u)
+robust-empty→nonempty {l + r ` loc}
+  (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
+  (RightU u) (RightU v) u≡[] not-v-empty
+  with robust-empty→nonempty {r} rlnn-r u v u≡[] not-v-empty
+... | z , z≡v , z>u =
+  RightU z , robust-flat-right-cong {l} {r} {loc} z≡v , sub (GreedyOrder.choice-rr z>u)
+robust-empty→nonempty {l + r ` loc}
+  (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
+  (RightU u) (LeftU v) u≡[] not-v-empty =
+  LeftU v , refl , sub GreedyOrder.choice-lr
+robust-empty→nonempty {l + r ` loc}
+  (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
+  (LeftU u) (RightU v) u≡[] not-v-empty =
+  ⊥-elim (right-empty-impossible u≡[] not-v-empty)
+  where
+    right-empty-impossible : proj₁ (flat u) ≡ []
+      → ¬ (proj₁ (flat (RightU {l} {r} {loc} v)) ≡ [])
+      → ⊥
+    right-empty-impossible u≡[] not-right-empty =
+      not-right-empty (trans (sym (flat-RightU {l} {r} {loc} {u = v})) right≡[])
+      where
+        ε∈l : ε∈ l
+        ε∈l = proj₁flat-v≡[]→ε∈r u≡[]
+
+        ε≅r : ε≅ r
+        ε≅r = ε∈l→ε≅r ε∈l
+
+        right≡[] : proj₁ (flat v) ≡ []
+        right≡[] with ε≅r→flat-[] {r} {ε≅r} v
+        ... | flat-[] _ eq = eq
+
+robust-no-lne-empty-nonempty : ∀ { r : RE } { u v : U r }
+  → proj₁ (flat u) ≡ []
+  → robust-not-empty (proj₁ (flat v))
+  → LNEOrder._⊢_>_ r u v
+  → ⊥
+robust-no-lne-empty-nonempty u≡[] not-v-empty
+  (LNEOrder.be _ len-v≡0 _) =
+  not-v-empty (length≡0→[] len-v≡0)
+robust-no-lne-empty-nonempty u≡[] not-v-empty
+  (LNEOrder.bne len-u>0 _ _) =
+  (>0→¬≡0 len-u>0) (robust-length-empty u≡[])
+robust-no-lne-empty-nonempty u≡[] not-v-empty
+  (LNEOrder.lne len-u>0 _) =
+  (>0→¬≡0 len-u>0) (robust-length-empty u≡[])
+
+robust-pair-first-empty : ∀ { l r : RE } { loc : ℕ }
+  → { u₁ : U l } { u₂ : U r }
+  → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
+  → proj₁ (flat u₁) ≡ []
+robust-pair-first-empty pair≡[] =
+  ++-conicalˡ _ _ pair≡[]
+
+robust-pair-second-empty : ∀ { l r : RE } { loc : ℕ }
+  → { u₁ : U l } { u₂ : U r }
+  → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
+  → proj₁ (flat u₂) ≡ []
+robust-pair-second-empty pair≡[] =
+  ++-conicalʳ _ _ pair≡[]
+
+robust-pair-second-not-empty : ∀ { l r : RE } { loc : ℕ }
+  → { v₁ : U l } { v₂ : U r }
+  → robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+  → proj₁ (flat v₁) ≡ []
+  → robust-not-empty (proj₁ (flat v₂))
+robust-pair-second-not-empty {l} {r} {loc} {v₁} {v₂}
+  not-pair-empty v₁-empty v₂-empty =
+  not-pair-empty pair-empty
+  where
+    pair-empty :
+      proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ []
+    pair-empty = trans
+      (sym (flat-pair {l} {r} {loc} {u = v₁} {v = v₂}))
+      (trans (cong₂ _++_ v₁-empty v₂-empty) refl)
+
+robust-flat-list-head-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+  → { u v : U r } { us : List (U r) }
+  → proj₁ (flat u) ≡ proj₁ (flat v)
+  → proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))
+      ≡ proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ us)))
+robust-flat-list-head-cong {r} {ε∉r} {loc} {u} {v} {us} u≡v =
+  trans (flat-list-cons {r} {ε∉r} {loc} {u} {us})
+    (trans (cong (λ xs → xs ++ proj₁ (flat (ListU {r} {ε∉r} {loc} us))) u≡v)
+      (sym (flat-list-cons {r} {ε∉r} {loc} {u = v} {us})))
+
+robust-flat-list-tail-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+  → { u : U r } { us vs : List (U r) }
+  → proj₁ (flat (ListU {r} {ε∉r} {loc} us))
+      ≡ proj₁ (flat (ListU {r} {ε∉r} {loc} vs))
+  → proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))
+      ≡ proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ vs)))
+robust-flat-list-tail-cong {r} {ε∉r} {loc} {u} {us} {vs} us≡vs =
+  trans (flat-list-cons {r} {ε∉r} {loc} {u} {us})
+    (trans (cong (λ xs → proj₁ (flat u) ++ xs) us≡vs)
+      (sym (flat-list-cons {r} {ε∉r} {loc} {u} {vs})))
+
+{-# TERMINATING #-}
+mutual
+  robust-repair : ∀ { r : RE }
+    → RLNN r
+    → ( u : U r )
+    → ( v : U r )
+    → r ⊢ u >ᵍ v
+    → (r ⊢ u >ˡ v)
+      ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+                  × (r ⊢ z >ᵍ u)
+
+  robust-repair-seq₁ : ∀ { l r : RE } { loc : ℕ }
+    → RLNN r
+    → (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
+    → ((l ⊢ u₁ >ˡ v₁)
+        ⊎ ∃[ z₁ ] (proj₁ (flat z₁) ≡ proj₁ (flat v₁))
+                       × (l ⊢ z₁ >ᵍ u₁))
+    → ((l ● r ` loc) ⊢ PairU {l} {r} {loc} u₁ u₂ >ˡ PairU {l} {r} {loc} v₁ v₂)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                    × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
+
+  robust-repair-seq₁-special : ∀ { l r : RE } { loc : ℕ }
+    → RLNN r
+    → (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
+    → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
+    → robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+    → proj₁ (flat v₁) ≡ []
+    → l ⊢ u₁ >ˡ v₁
+    → ((l ● r ` loc) ⊢ PairU {l} {r} {loc} u₁ u₂ >ˡ PairU {l} {r} {loc} v₁ v₂)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                    × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
+
+  robust-repair-seq₂ : ∀ { l r : RE } { loc : ℕ }
+    → (u₁ v₁ : U l) (u₂ v₂ : U r)
+    → u₁ ≡ v₁
+    → ((r ⊢ u₂ >ˡ v₂)
+        ⊎ ∃[ z₂ ] (proj₁ (flat z₂) ≡ proj₁ (flat v₂))
+                       × (r ⊢ z₂ >ᵍ u₂))
+    → ((l ● r ` loc) ⊢ PairU {l} {r} {loc} u₁ u₂ >ˡ PairU {l} {r} {loc} v₁ v₂)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                    × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
+
+  robust-repair {ε} rlnn-ε EmptyU EmptyU (sub ())
+  robust-repair {$ c ` loc} rlnn-$ (LetterU .c) (LetterU .c) (sub ())
+  robust-repair {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
+    (PairU u₁ u₂) (PairU v₁ v₂) (sub (GreedyOrder.seq₁ u₁>ᵍv₁)) =
+    robust-repair-seq₁ {l} {r} {loc} rlnn-r u₁ u₂ v₁ v₂
+      (robust-repair {l} rlnn-l u₁ v₁ u₁>ᵍv₁)
+  robust-repair {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
+    (PairU u₁ u₂) (PairU v₁ v₂)
+    (sub (GreedyOrder.seq₂ u₁≡v₁ u₂>ᵍv₂)) =
+    robust-repair-seq₂ {l} {r} {loc} u₁ v₁ u₂ v₂ u₁≡v₁
+      (robust-repair {r} rlnn-r u₂ v₂ u₂>ᵍv₂)
+  robust-repair {l + r ` loc}
+    (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
+    (LeftU u) (LeftU v) (sub (GreedyOrder.choice-ll u>ᵍv)) =
+    robust-repair-choice-left {l} {r} {loc} u v
+      (robust-repair {l} (lnn→rlnn lnn-l) u v u>ᵍv)
+  robust-repair {l + r ` loc}
+    (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
+    (RightU u) (RightU v) (sub (GreedyOrder.choice-rr u>ᵍv)) =
+    robust-repair-choice-right {l} {r} {loc} u v
+      (robust-repair {r} rlnn-r u v u>ᵍv)
+  robust-repair {l + r ` loc}
+    (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
+    (LeftU u) (RightU v) (sub GreedyOrder.choice-lr) =
+    robust-repair-choice-cross {l} {r} {loc} ε∈l→ε≅r u v
+  robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+    (ListU (u ∷ us)) (ListU []) (sub GreedyOrder.star-cons-nil) =
+    inj₁ (robust-lne-lne
+      (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}) refl)
+  robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+    (ListU (u ∷ us)) (ListU (v ∷ vs)) (sub (GreedyOrder.star-head u>ᵍv)) =
+    robust-repair-star-head {r} {ε∉r} {loc} u v us vs
+      (robust-repair {r} rlnn-r u v u>ᵍv)
+  robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+    (ListU (u ∷ us)) (ListU (v ∷ vs))
+    (sub (GreedyOrder.star-tail u≡v us>ᵍvs)) =
+    robust-repair-star-tail {r} {ε∉r} {loc} u v us vs u≡v
+      (robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+        (ListU us) (ListU vs) us>ᵍvs)
+
+  robust-repair-seq₁ {l} {r} {loc} rlnn-r u₁ u₂ v₁ v₂ result =
+    helper (robust-flat-empty? (PairU {l} {r} {loc} u₁ u₂))
+      (robust-flat-empty? (PairU {l} {r} {loc} v₁ v₂))
+      (robust-flat-empty? v₁) result
+    where
+      helper :
+        (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))))
+        → (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))))
+        → (proj₁ (flat v₁) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat v₁)))
+        → ((l ⊢ u₁ >ˡ v₁)
+          ⊎ ∃[ z₁ ] (proj₁ (flat z₁) ≡ proj₁ (flat v₁))
+                         × (l ⊢ z₁ >ᵍ u₁))
+        → ((l ● r ` loc) ⊢ PairU {l} {r} {loc} u₁ u₂ >ˡ PairU {l} {r} {loc} v₁ v₂)
+            ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                        × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
+      helper (inj₂ u-not-empty) (inj₁ v-empty) _ _ =
+        inj₁ (robust-lne-lne u-not-empty v-empty)
+      helper (inj₂ u-not-empty) (inj₂ v-not-empty) _ (inj₁ u₁>ˡv₁) =
+        inj₁ (robust-lne-bne u-not-empty v-not-empty
+          (LNEOrder.seq₁ u₁>ˡv₁))
+      helper (inj₂ u-not-empty) (inj₂ v-not-empty) _
+        (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
+        inj₂ (PairU z₁ v₂
+          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
+      helper (inj₁ u-empty) (inj₁ v-empty) _ (inj₁ u₁>ˡv₁) =
+        inj₁ (robust-lne-be u-empty v-empty
+          (LNEOrder.seq₁ u₁>ˡv₁))
+      helper (inj₁ u-empty) (inj₁ v-empty) _
+        (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
+        inj₂ (PairU z₁ v₂
+          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
+      helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₂ v₁-not-empty)
+        (inj₁ u₁>ˡv₁) =
+        ⊥-elim (robust-no-lne-empty-nonempty
+          (robust-pair-first-empty {l} {r} {loc} u-empty)
+          v₁-not-empty u₁>ˡv₁)
+      helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₂ v₁-not-empty)
+        (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
+        inj₂ (PairU z₁ v₂
+          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
+      helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₁ v₁-empty)
+        (inj₁ u₁>ˡv₁) =
+        robust-repair-seq₁-special {l} {r} {loc} rlnn-r
+          u₁ u₂ v₁ v₂ u-empty v-not-empty v₁-empty u₁>ˡv₁
+      helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₁ v₁-empty)
+        (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
+        inj₂ (PairU z₁ v₂
+          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
+
+  robust-repair-seq₁-special {l} {r} {loc} rlnn-r
+    u₁ u₂ v₁ v₂ u-empty v-not-empty v₁-empty u₁>ˡv₁
+    with robust-empty→nonempty {r} rlnn-r u₂ v₂
+      (robust-pair-second-empty {l} {r} {loc} u-empty)
+      (robust-pair-second-not-empty {l} {r} {loc} v-not-empty v₁-empty)
+  ... | z₂ , z₂≡v₂ , z₂>u₂ =
+    inj₂ (PairU u₁ z₂
+      , robust-flat-pair-cong {l} {r} {loc}
+          (trans (robust-pair-first-empty {l} {r} {loc} u-empty)
+            (sym v₁-empty))
+          z₂≡v₂
+      , sub (GreedyOrder.seq₂ refl z₂>u₂))
+
+  robust-repair-seq₂ {l} {r} {loc} u₁ v₁ u₂ v₂ u₁≡v₁ result =
+    helper (robust-flat-empty? (PairU {l} {r} {loc} u₁ u₂))
+      (robust-flat-empty? (PairU {l} {r} {loc} v₁ v₂)) result
+    where
+      helper :
+        (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
+          ⊎ robust-not-empty
+              (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))))
+        → (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ []
+          ⊎ robust-not-empty
+              (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))))
+        → ((r ⊢ u₂ >ˡ v₂)
+          ⊎ ∃[ z₂ ] (proj₁ (flat z₂) ≡ proj₁ (flat v₂))
+                         × (r ⊢ z₂ >ᵍ u₂))
+        → ((l ● r ` loc) ⊢ PairU {l} {r} {loc} u₁ u₂ >ˡ PairU {l} {r} {loc} v₁ v₂)
+            ⊎ ∃[ z ] (proj₁ (flat z) ≡
+                proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+                        × ((l ● r ` loc) ⊢ z >ᵍ
+                            PairU {l} {r} {loc} u₁ u₂)
+      helper (inj₂ u-not-empty) (inj₁ v-empty) _ =
+        inj₁ (robust-lne-lne u-not-empty v-empty)
+      helper (inj₂ u-not-empty) (inj₂ v-not-empty) (inj₁ u₂>ˡv₂) =
+        inj₁ (robust-lne-bne u-not-empty v-not-empty
+          (LNEOrder.seq₂ u₁≡v₁ u₂>ˡv₂))
+      helper (inj₂ u-not-empty) (inj₂ v-not-empty)
+        (inj₂ (z₂ , z₂≡v₂ , z₂>ᵍu₂)) =
+        inj₂ (PairU v₁ z₂
+          , robust-flat-pair-cong {l} {r} {loc} refl z₂≡v₂
+          , sub (GreedyOrder.seq₂ (sym u₁≡v₁) z₂>ᵍu₂))
+      helper (inj₁ u-empty) (inj₁ v-empty) (inj₁ u₂>ˡv₂) =
+        inj₁ (robust-lne-be u-empty v-empty
+          (LNEOrder.seq₂ u₁≡v₁ u₂>ˡv₂))
+      helper (inj₁ u-empty) (inj₁ v-empty)
+        (inj₂ (z₂ , z₂≡v₂ , z₂>ᵍu₂)) =
+        inj₂ (PairU v₁ z₂
+          , robust-flat-pair-cong {l} {r} {loc} refl z₂≡v₂
+          , sub (GreedyOrder.seq₂ (sym u₁≡v₁) z₂>ᵍu₂))
+      helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₁ u₂>ˡv₂) =
+        ⊥-elim (robust-no-lne-empty-nonempty
+          (robust-pair-second-empty {l} {r} {loc} u-empty)
+          (robust-pair-second-not-empty {l} {r} {loc} v-not-empty
+            (trans (sym (cong (λ x → proj₁ (flat x)) u₁≡v₁))
+              (robust-pair-first-empty {l} {r} {loc} u-empty)))
+          u₂>ˡv₂)
+      helper (inj₁ u-empty) (inj₂ v-not-empty)
+        (inj₂ (z₂ , z₂≡v₂ , z₂>ᵍu₂)) =
+        inj₂ (PairU v₁ z₂
+          , robust-flat-pair-cong {l} {r} {loc} refl z₂≡v₂
+          , sub (GreedyOrder.seq₂ (sym u₁≡v₁) z₂>ᵍu₂))
+
+  robust-repair-choice-left : ∀ { l r : RE } { loc : ℕ }
+    → (u v : U l)
+    → ((l ⊢ u >ˡ v)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+                       × (l ⊢ z >ᵍ u))
+    → ((l + r ` loc) ⊢ LeftU u >ˡ LeftU v)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (LeftU {l} {r} {loc} v)))
+                    × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
+
+  robust-repair-choice-left {l} {r} {loc} u v result =
+    helper (robust-flat-empty? (LeftU {l} {r} {loc} u))
+      (robust-flat-empty? (LeftU {l} {r} {loc} v)) result
+    where
+      helper :
+        (proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (LeftU {l} {r} {loc} u))))
+        → (proj₁ (flat (LeftU {l} {r} {loc} v)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (LeftU {l} {r} {loc} v))))
+        → ((l ⊢ u >ˡ v)
+          ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+                         × (l ⊢ z >ᵍ u))
+        → ((l + r ` loc) ⊢ LeftU {l} {r} {loc} u >ˡ LeftU v)
+            ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (LeftU {l} {r} {loc} v)))
+                        × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
+      helper (inj₂ not-u) (inj₁ v-empty) _ =
+        inj₁ (robust-lne-lne not-u v-empty)
+      helper (inj₂ not-u) (inj₂ not-v) (inj₁ u>ˡv) =
+        inj₁ (robust-lne-bne not-u not-v (LNEOrder.choice-ll u>ˡv))
+      helper (inj₂ not-u) (inj₂ not-v)
+        (inj₂ (z , z≡v , z>ᵍu)) =
+        inj₂ (LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v
+          , sub (GreedyOrder.choice-ll z>ᵍu))
+      helper (inj₁ u-empty) (inj₁ v-empty) (inj₁ u>ˡv) =
+        inj₁ (robust-lne-be u-empty v-empty (LNEOrder.choice-ll u>ˡv))
+      helper (inj₁ u-empty) (inj₁ v-empty)
+        (inj₂ (z , z≡v , z>ᵍu)) =
+        inj₂ (LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v
+          , sub (GreedyOrder.choice-ll z>ᵍu))
+      helper (inj₁ u-empty) (inj₂ not-v) (inj₁ u>ˡv) =
+        ⊥-elim (robust-no-lne-empty-nonempty u-empty not-v u>ˡv)
+      helper (inj₁ u-empty) (inj₂ not-v)
+        (inj₂ (z , z≡v , z>ᵍu)) =
+        inj₂ (LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v
+          , sub (GreedyOrder.choice-ll z>ᵍu))
+
+  robust-repair-choice-right : ∀ { l r : RE } { loc : ℕ }
+    → (u v : U r)
+    → ((r ⊢ u >ˡ v)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+                       × (r ⊢ z >ᵍ u))
+    → ((l + r ` loc) ⊢ RightU u >ˡ RightU v)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
+                    × ((l + r ` loc) ⊢ z >ᵍ RightU {l} {r} {loc} u)
+
+  robust-repair-choice-right {l} {r} {loc} u v result =
+    helper (robust-flat-empty? (RightU {l} {r} {loc} u))
+      (robust-flat-empty? (RightU {l} {r} {loc} v)) result
+    where
+      helper :
+        (proj₁ (flat (RightU {l} {r} {loc} u)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} u))))
+        → (proj₁ (flat (RightU {l} {r} {loc} v)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} v))))
+        → ((r ⊢ u >ˡ v)
+          ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+                         × (r ⊢ z >ᵍ u))
+        → ((l + r ` loc) ⊢ RightU {l} {r} {loc} u >ˡ RightU v)
+            ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
+                        × ((l + r ` loc) ⊢ z >ᵍ RightU {l} {r} {loc} u)
+      helper (inj₂ not-u) (inj₁ v-empty) _ =
+        inj₁ (robust-lne-lne not-u v-empty)
+      helper (inj₂ not-u) (inj₂ not-v) (inj₁ u>ˡv) =
+        inj₁ (robust-lne-bne not-u not-v (LNEOrder.choice-rr u>ˡv))
+      helper (inj₂ not-u) (inj₂ not-v)
+        (inj₂ (z , z≡v , z>ᵍu)) =
+        inj₂ (RightU z , robust-flat-right-cong {l} {r} {loc} z≡v
+          , sub (GreedyOrder.choice-rr z>ᵍu))
+      helper (inj₁ u-empty) (inj₁ v-empty) (inj₁ u>ˡv) =
+        inj₁ (robust-lne-be u-empty v-empty (LNEOrder.choice-rr u>ˡv))
+      helper (inj₁ u-empty) (inj₁ v-empty)
+        (inj₂ (z , z≡v , z>ᵍu)) =
+        inj₂ (RightU z , robust-flat-right-cong {l} {r} {loc} z≡v
+          , sub (GreedyOrder.choice-rr z>ᵍu))
+      helper (inj₁ u-empty) (inj₂ not-v) (inj₁ u>ˡv) =
+        ⊥-elim (robust-no-lne-empty-nonempty u-empty not-v u>ˡv)
+      helper (inj₁ u-empty) (inj₂ not-v)
+        (inj₂ (z , z≡v , z>ᵍu)) =
+        inj₂ (RightU z , robust-flat-right-cong {l} {r} {loc} z≡v
+          , sub (GreedyOrder.choice-rr z>ᵍu))
+
+  robust-repair-choice-cross : ∀ { l r : RE } { loc : ℕ }
+    → (ε∈ l → ε≅ r)
+    → (u : U l) (v : U r)
+    → ((l + r ` loc) ⊢ LeftU u >ˡ RightU v)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
+                    × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
+
+  robust-repair-star-head : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+    → (u v : U r) (us vs : List (U r))
+    → ((r ⊢ u >ˡ v)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+                       × (r ⊢ z >ᵍ u))
+    → ((r * ε∉r ` loc) ⊢ ListU (u ∷ us) >ˡ ListU (v ∷ vs))
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (ListU (v ∷ vs))))
+                    × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU (u ∷ us))
+
+  robust-repair-star-tail : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+    → (u v : U r) (us vs : List (U r))
+    → u ≡ v
+    → ((r * ε∉r ` loc) ⊢ ListU us >ˡ ListU vs)
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (ListU vs)))
+                    × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU us)
+    → ((r * ε∉r ` loc) ⊢ ListU (u ∷ us) >ˡ ListU (v ∷ vs))
+        ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (ListU (v ∷ vs))))
+                    × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU (u ∷ us))
+
+  robust-repair-choice-cross {l} {r} {loc} ε∈l→ε≅r u v =
+    helper (robust-flat-empty? (LeftU {l} {r} {loc} u))
+      (robust-flat-empty? (RightU {l} {r} {loc} v))
+    where
+      helper :
+        (proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (LeftU {l} {r} {loc} u))))
+        → (proj₁ (flat (RightU {l} {r} {loc} v)) ≡ []
+          ⊎ robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} v))))
+        → ((l + r ` loc) ⊢ LeftU {l} {r} {loc} u >ˡ RightU v)
+            ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
+                        × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
+      helper (inj₂ not-u) (inj₁ v-empty) =
+        inj₁ (robust-lne-lne not-u v-empty)
+      helper (inj₂ not-u) (inj₂ not-v) =
+        inj₁ (robust-lne-bne not-u not-v LNEOrder.choice-lr)
+      helper (inj₁ u-empty) (inj₁ v-empty) =
+        inj₁ (robust-lne-be u-empty v-empty LNEOrder.choice-lr)
+      helper (inj₁ u-empty) (inj₂ not-v) =
+        ⊥-elim (bad-cross u-empty not-v)
+        where
+          bad-cross : proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ []
+            → robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} v)))
+            → ⊥
+          bad-cross left-empty not-right-empty =
+            not-right-empty (trans (sym (flat-RightU {l} {r} {loc} {u = v})) right-empty)
+            where
+              ε∈l' : ε∈ l
+              ε∈l' = proj₁flat-v≡[]→ε∈r
+                (trans (sym (flat-LeftU {l} {r} {loc} {u = u})) left-empty)
+              ε≅r' : ε≅ r
+              ε≅r' = ε∈l→ε≅r ε∈l'
+              right-empty : proj₁ (flat v) ≡ []
+              right-empty with ε≅r→flat-[] {r} {ε≅r'} v
+              ... | flat-[] _ eq = eq
+  robust-repair-star-head {r} {ε∉r} {loc} u v us vs result =
+    helper result
+    where
+      not-u : robust-not-empty
+        (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us))))
+      not-u = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}
+
+      not-v : robust-not-empty
+        (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))))
+      not-v = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs}
+
+      helper : ((r ⊢ u >ˡ v)
+          ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
+                         × (r ⊢ z >ᵍ u))
+        → ((r * ε∉r ` loc) ⊢ ListU (u ∷ us) >ˡ ListU (v ∷ vs))
+            ⊎ ∃[ z ] (proj₁ (flat z) ≡
+                proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))))
+                        × ((r * ε∉r ` loc) ⊢ z >ᵍ
+                            ListU {r} {ε∉r} {loc} (u ∷ us))
+      helper (inj₁ u>ˡv) =
+        inj₁ (robust-lne-bne not-u not-v (LNEOrder.star-head u>ˡv))
+      helper (inj₂ (z , z≡v , z>ᵍu)) =
+        inj₂ (ListU {r} {ε∉r} {loc} (z ∷ vs)
+          , robust-flat-list-head-cong {r} {ε∉r} {loc}
+              {u = z} {v = v} {us = vs} z≡v
+          , sub (GreedyOrder.star-head z>ᵍu))
+
+  robust-repair-star-tail {r} {ε∉r} {loc} u v us vs u≡v result =
+    helper result
+    where
+      not-u : robust-not-empty
+        (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us))))
+      not-u = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}
+
+      not-v : robust-not-empty
+        (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))))
+      not-v = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs}
+
+      helper : ((r * ε∉r ` loc) ⊢ ListU us >ˡ ListU vs)
+          ⊎ ∃[ z ] (proj₁ (flat z) ≡
+                proj₁ (flat (ListU {r} {ε∉r} {loc} vs)))
+                         × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU us)
+        → ((r * ε∉r ` loc) ⊢ ListU (u ∷ us) >ˡ ListU (v ∷ vs))
+            ⊎ ∃[ z ] (proj₁ (flat z) ≡
+                proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))))
+                        × ((r * ε∉r ` loc) ⊢ z >ᵍ
+                            ListU {r} {ε∉r} {loc} (u ∷ us))
+      helper (inj₁ us>ˡvs) =
+        inj₁ (robust-lne-bne not-u not-v
+          (LNEOrder.star-tail u≡v us>ˡvs))
+      helper (inj₂ (ListU zs , zs≡vs , zs>ᵍus)) =
+        inj₂ (ListU {r} {ε∉r} {loc} (v ∷ zs)
+          , robust-flat-list-tail-cong {r} {ε∉r} {loc}
+              {u = v} {us = zs} {vs = vs} zs≡vs
+          , sub (GreedyOrder.star-tail (sym u≡v) zs>ᵍus))
+
+robust-gmax-no-better : ∀ { r : RE } { u v : U r }
+  → r ⊢ u >ᵍ v
+  → GreedyMax._⊢_≥_ r v u
+  → ⊥
+robust-gmax-no-better u>ᵍv (inj₁ v>ᵍu) =
+  u>ᵍv→¬v>ᵍu u>ᵍv v>ᵍu
+robust-gmax-no-better u>ᵍv (inj₂ v≡u) =
+  (>ᵍ→¬≡ u>ᵍv) (sym v≡u)
+
+robust-lmax-no-better : ∀ { r : RE } { u v : U r }
+  → LNEOrder._⊢_>_ r u v
+  → LNEOrder._⊢_≥_ r v u
+  → ⊥
+robust-lmax-no-better u>ˡv (inj₁ v>ˡu) =
+  LNEOrder.>-asym u>ˡv v>ˡu
+robust-lmax-no-better u>ˡv (inj₂ v≡u) =
+  LNEOrder.>→¬≡ u>ˡv (sym v≡u)
+
+robust-gmax→lmax : ∀ { r : RE }
+  → RLNN r
+  → ∀ { w : List Char } { v : U r }
+  → ≥-Maxᵍ {r} w v
+  → ≥-Maxˡ {r} w v
+robust-gmax→lmax {r} rlnn-r
+  (GreedyMax.≥-max w v flat-v≡w max-v) =
+  LNEMax.≥-max w v flat-v≡w max-vˡ
+  where
+    max-vˡ : (u : U r)
+      → proj₁ (flat u) ≡ w
+      → LNEOrder._⊢_≥_ r v u
+    max-vˡ u flat-u≡w with max-v u flat-u≡w
+    ... | inj₂ v≡u = inj₂ v≡u
+    ... | inj₁ v>ᵍu with robust-repair rlnn-r v u v>ᵍu
+    ... | inj₁ v>ˡu = inj₁ v>ˡu
+    ... | inj₂ (z , z≡u , z>ᵍv) =
+      ⊥-elim (robust-gmax-no-better z>ᵍv
+        (max-v z (trans z≡u flat-u≡w)))
+
+robust-lmax-unique : ∀ { r : RE } { w : List Char } { u v : U r }
+  → ≥-Maxˡ {r} w u
+  → ≥-Maxˡ {r} w v
+  → u ≡ v
+robust-lmax-unique {r}
+  (LNEMax.≥-max w u flat-u≡w max-u)
+  (LNEMax.≥-max .w v flat-v≡w max-v)
+  with LNEOrder.>-trichotomy u v
+... | inj₁ u>ˡv =
+  ⊥-elim (robust-lmax-no-better u>ˡv (max-v u flat-u≡w))
+... | inj₂ (inj₁ v>ˡu) =
+  ⊥-elim (robust-lmax-no-better v>ˡu (max-u v flat-v≡w))
+... | inj₂ (inj₂ u≡v) = u≡v
+
+robust-lmax→gmax : ∀ { r : RE }
+  → RLNN r
+  → ∀ { w : List Char } { v : U r }
+  → ≥-Maxˡ {r} w v
+  → ≥-Maxᵍ {r} w v
+robust-lmax→gmax {r} rlnn-r
+  (LNEMax.≥-max w v flat-v≡w max-v) with
+    GreedyMax.>-wellfounded {r} {proj₁ (flat v)} (proj₂ (flat v))
+... | g , max-g =
+  max-g-v
+  where
+    max-g-w : ≥-Maxᵍ {r} w g
+    max-g-w = subst (λ w' → ≥-Maxᵍ {r} w' g) flat-v≡w max-g
+
+    max-gˡ : ≥-Maxˡ {r} (proj₁ (flat v)) g
+    max-gˡ = robust-gmax→lmax rlnn-r max-g
+
+    v≡g : v ≡ g
+    v≡g = robust-lmax-unique
+      (LNEMax.≥-max (proj₁ (flat v)) v refl max-v-flat)
+      max-gˡ
+      where
+        max-v-flat : (u : U r)
+          → proj₁ (flat u) ≡ proj₁ (flat v)
+          → LNEOrder._⊢_≥_ r v u
+        max-v-flat u flat-u≡flat-v = max-v u
+          (trans flat-u≡flat-v flat-v≡w)
+
+    max-g-v : ≥-Maxᵍ {r} w v
+    max-g-v rewrite v≡g = max-g-w
+
 rlnn→robust : ∀ ( r : RE )
   → RLNN r
-  → Robust r 
-rlnn→robust = ? 
+  → Robust r
+rlnn→robust r rlnn-r = robust {r} ev
+  where
+    ev : (w : List Char) (v : U r)
+      → (≥-Maxᵍ {r} w v → ≥-Maxˡ {r} w v)
+        × (≥-Maxˡ {r} w v → ≥-Maxᵍ {r} w v)
+    ev w v = robust-gmax→lmax rlnn-r , robust-lmax→gmax rlnn-r
 ```

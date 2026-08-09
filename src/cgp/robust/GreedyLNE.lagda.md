@@ -105,18 +105,18 @@ open import Level using (Level)
 
 ```
 
--- actually this is order robustness, not maximality robustness 
-### Robustness definition 
+-- actually this is order isomoprhism, not maximality robustness 
+### Isomoprhic definition 
 
 ```agda
 
-data Robust : RE → Set where
-  robust : ∀ { r : RE } 
+data Iso : RE → Set where
+  iso : ∀ { r : RE } 
              → ( ∀ ( v₁ : U r ) → ( v₂ : U r ) 
                → ( r ⊢ v₁ >ᵍ v₂ → r ⊢ v₁ >ˡ v₂ ) × ( r ⊢ v₁ >ˡ v₂ → r ⊢ v₁ >ᵍ v₂ )
                )
            -----------------------------------------
-           → Robust r  
+           → Iso r  
 ```
 
 
@@ -501,10 +501,10 @@ lnn→∷>ᵍ[] {l ● r   ` loc} (lnn-● lnn-l lnn-r) (PairU u₁ u₂) (PairU
 
 
 {-# TERMINATING #-}
-lnn→robust : ∀ { r : RE }
+lnn→iso : ∀ { r : RE }
   → LNN r
-  → Robust r 
-lnn→robust {ε}           lnn-ε = robust prf-ε
+  → Iso r 
+lnn→iso {ε}           lnn-ε = iso prf-ε
   where
     prf-ε : (v₁ v₂ : U ε) → (ε ⊢ v₁ >ᵍ v₂ → ε ⊢ v₁ >ˡ v₂) × (ε ⊢ v₁ >ˡ v₂ → ε ⊢ v₁ >ᵍ v₂)
     prf-ε EmptyU EmptyU = prf-ε-to , prf-ε-from
@@ -516,7 +516,7 @@ lnn→robust {ε}           lnn-ε = robust prf-ε
         prf-ε-from (bne len-v₁>0 len-v₂>0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
         prf-ε-from (lne len-v₁>0 len-v₂≡0) with len-v₁>0
         ... | ()
-lnn→robust {$ c ` loc}   lnn-$ = robust prf-$
+lnn→iso {$ c ` loc}   lnn-$ = iso prf-$
   where
     prf-$ : (v₁ v₂ : U ($ c ` loc)) → ($ c ` loc ⊢ v₁ >ᵍ v₂ → $ c ` loc ⊢ v₁ >ˡ v₂) × ($ c ` loc ⊢ v₁ >ˡ v₂ → $ c ` loc ⊢ v₁ >ᵍ v₂)
     prf-$ (LetterU .c) (LetterU .c) = prf-$-to , prf-$-from
@@ -530,17 +530,17 @@ lnn→robust {$ c ` loc}   lnn-$ = robust prf-$
           where
             letter-flat-eq : proj₁ (flat { $ c ` loc } (LetterU c)) ≡ c ∷ []
             letter-flat-eq = refl
-lnn→robust {l ● r ` loc} (lnn-● lnn-l lnn-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
+lnn→iso {l ● r ` loc} (lnn-● lnn-l lnn-r) = iso {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
    where
-    robust-r : Robust r
-    robust-r = lnn→robust {r} lnn-r
+    iso-r : Iso r
+    iso-r = lnn→iso {r} lnn-r
 
-    robust-l : Robust l
-    robust-l = lnn→robust {l} lnn-l
+    iso-l : Iso l
+    iso-l = lnn→iso {l} lnn-l
 
     to-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂
-    to-ev u₁ u₂ v₁ v₂ (sub (seq₁ u₁>ᵍu₂)) with robust-l
-    ... | robust rob-l-ev with proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+    to-ev u₁ u₂ v₁ v₂ (sub (seq₁ u₁>ᵍu₂)) with iso-l
+    ... | iso rob-l-ev with proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
     ... | bne len-u₁>0 len-u₂>0 u₁>ⁱu₂ = bne len-pair₁>0 len-pair₂>0 (seq₁ u₁>ˡu₂)
       where
         u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
@@ -596,8 +596,8 @@ lnn→robust {l ● r ` loc} (lnn-● lnn-l lnn-r) = robust {l ● r ` loc} λ {
         len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
         len-pair₂>0 : len-pair₂ > 0
         len-pair₂>0 rewrite len-pair₂≡ = +-monoˡ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-v₂≡[])
-    to-ev u₁ u₂ v₁ v₂ (sub (seq₂ u₁≡u₂ v₁>ᵍv₂)) with robust-r
-    ... | robust rob-r-ev with proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+    to-ev u₁ u₂ v₁ v₂ (sub (seq₂ u₁≡u₂ v₁>ᵍv₂)) with iso-r
+    ... | iso rob-r-ev with proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
     ... | bne len-v₁>0 len-v₂>0 v₁>ⁱv₂ = bne len-pair₁>0 len-pair₂>0 (seq₂ u₁≡u₂ v₁>ˡv₂)
       where
         v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
@@ -655,14 +655,14 @@ lnn→robust {l ● r ` loc} (lnn-● lnn-l lnn-r) = robust {l ● r ` loc} λ {
         len-pair₂>0 rewrite len-pair₂≡ = +-monoʳ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-u₂≡[])
 
     from-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ 
-    from-ev u₁ u₂ v₁ v₂ (be len|u₁v₁|≡len|u₂v₂| len|u₂v₂|≡0 (seq₁ u₁>ˡu₂)) with robust-l
-    ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
-    from-ev u₁ u₂ v₁ v₂ (be len|u₁v₁|≡len|u₂v₂| len|u₂v₂|≡0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
-    ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
-    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₁ u₁>ˡu₂)) with robust-l
-    ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
-    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
-    ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (be len|u₁v₁|≡len|u₂v₂| len|u₂v₂|≡0 (seq₁ u₁>ˡu₂)) with iso-l
+    ... | iso rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
+    from-ev u₁ u₂ v₁ v₂ (be len|u₁v₁|≡len|u₂v₂| len|u₂v₂|≡0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with iso-r
+    ... | iso rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₁ u₁>ˡu₂)) with iso-l
+    ... | iso rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with iso-r
+    ... | iso rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
     from-ev u₁ u₂ v₁ v₂ (lne {v₁ = PairU {l} {r} {loc} u₁ v₁} {v₂ = PairU {l} {r} {loc} u₂ v₂} len|u₁v₁|>0 len|u₂v₂|≡0) with proj₁ (flat u₁) in proj₁flat-u₁-eq
     ... | c ∷ cs = sub (seq₁ u₁>ᵍu₂)
       where
@@ -688,13 +688,13 @@ lnn→robust {l ● r ` loc} (lnn-● lnn-l lnn-r) = robust {l ● r ` loc} λ {
         ¬proj₁flat-v₁≡[] proj₁flat-v₁≡[] = >0→¬≡0 (pair-u₁v₁>0→v₁>0 len|u₁v₁|>0 proj₁flat-u₁-eq) ([]→length≡0 proj₁flat-v₁≡[])
         v₁>ᵍv₂ : r ⊢ v₁ >ᵍ v₂
         v₁>ᵍv₂ = lnn→∷>ᵍ[] {r} lnn-r v₁ v₂ ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[]
-lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} prf
+lnn→iso {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  iso {l + r ` loc} prf
   where
-    robust-l : Robust l
-    robust-l = lnn→robust {l} lnn-l
+    iso-l : Iso l
+    iso-l = lnn→iso {l} lnn-l
 
-    robust-r : Robust r
-    robust-r = lnn→robust {r} lnn-r
+    iso-r : Iso r
+    iso-r = lnn→iso {r} lnn-r
 
     prf : (v₁ v₂ : U (l + r ` loc)) →
       ((l + r ` loc) ⊢ v₁ >ᵍ v₂ → (l + r ` loc) ⊢ v₁ >ˡ v₂) ×
@@ -704,17 +704,17 @@ lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} pr
         ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
         ¬proj₁flat-u₁≡[] proj₁flat-u₁≡[] = (ε∉r→¬ε∈r ε∉l) (proj₁flat-v≡[]→ε∈r proj₁flat-u₁≡[])
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
-        to-ev (sub (choice-ll u₁>ᵍu₂)) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
-        ... | robust rob-l-ev  | [] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₂-eq) (ε∉r→¬ε∈r ε∉l) 
-        ... | robust rob-l-ev  | c ∷ cs = bne (¬≡[]→length>0  ¬proj₁flat-u₁≡[] ) (¬≡[]→length>0  ¬proj₁flat-u₂≡[]) (choice-ll (rob-l-ev u₁ u₂ .Product.proj₁ u₁>ᵍu₂)) 
+        to-ev (sub (choice-ll u₁>ᵍu₂)) with iso-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
+        ... | iso rob-l-ev  | [] = Nullary.contradiction (proj₁flat-v≡[]→ε∈r proj₁flat-u₂-eq) (ε∉r→¬ε∈r ε∉l) 
+        ... | iso rob-l-ev  | c ∷ cs = bne (¬≡[]→length>0  ¬proj₁flat-u₁≡[] ) (¬≡[]→length>0  ¬proj₁flat-u₂≡[]) (choice-ll (rob-l-ev u₁ u₂ .Product.proj₁ u₁>ᵍu₂)) 
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[] 
         from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
         from-ev (lne len|u₁|>0 len|u₂|≡0) = Nullary.contradiction (proj₁flat-v≡[]→ε∈r (Utils.length≡0→[] len|u₂|≡0)) (ε∉r→¬ε∈r ε∉l)
         from-ev (be len|u₁|≡len|u₂| len|u₂|≡0 _ ) = Nullary.contradiction (proj₁flat-v≡[]→ε∈r (Utils.length≡0→[] len|u₂|≡0)) (ε∉r→¬ε∈r ε∉l)
-        from-ev (bne len|u₁|>0 len|u₂|>0 (choice-ll u₁>ˡu₂) ) with robust-l
-        ... | robust rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
+        from-ev (bne len|u₁|>0 len|u₂|>0 (choice-ll u₁>ˡu₂) ) with iso-l
+        ... | iso rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
     prf (LeftU u₁) (RightU u₂) = to-ev , from-ev
       where
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ RightU u₂
@@ -744,35 +744,35 @@ lnn→robust {l + r ` loc} (lnn-+ ε∉l lnn-l lnn-r) =  robust {l + r ` loc} pr
     prf (RightU u₁) (RightU u₂) = to-ev , from-ev
       where 
         to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂
-        to-ev (sub (choice-rr u₁>ᵍu₂)) with robust-r | proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
-        ... | robust rob-r-ev | []     |     []    = be (cong List.length (trans proj₁flat-u₁-eq (sym proj₁flat-u₂-eq)) ) ([]→length≡0 proj₁flat-u₂-eq) (choice-rr (rob-r-ev u₁ u₂ .Product.proj₁ u₁>ᵍu₂)) 
-        ... | robust rob-r-ev | c ∷ cs | c' ∷ cs'  = bne (¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (¬≡[]→length>0 ¬proj₁flat-u₂≡[]) (choice-rr (rob-r-ev u₁ u₂ .Product.proj₁ u₁>ᵍu₂)) -- choice-rr-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
+        to-ev (sub (choice-rr u₁>ᵍu₂)) with iso-r | proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
+        ... | iso rob-r-ev | []     |     []    = be (cong List.length (trans proj₁flat-u₁-eq (sym proj₁flat-u₂-eq)) ) ([]→length≡0 proj₁flat-u₂-eq) (choice-rr (rob-r-ev u₁ u₂ .Product.proj₁ u₁>ᵍu₂)) 
+        ... | iso rob-r-ev | c ∷ cs | c' ∷ cs'  = bne (¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (¬≡[]→length>0 ¬proj₁flat-u₂≡[]) (choice-rr (rob-r-ev u₁ u₂ .Product.proj₁ u₁>ᵍu₂)) -- choice-rr-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
-        ... | robust rob-r-ev | c ∷ cs |     []    = lne (¬≡[]→length>0 ¬proj₁flat-u₁≡[]) ([]→length≡0 proj₁flat-u₂-eq) 
+        ... | iso rob-r-ev | c ∷ cs |     []    = lne (¬≡[]→length>0 ¬proj₁flat-u₁≡[]) ([]→length≡0 proj₁flat-u₂-eq) 
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
-        ... | robust rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction ( proj₁flat-u₁-eq ,  ¬proj₁flat-u₂≡[] ) (lnn-u>ᵍv→¬u≡[]×v≢[] {r} lnn-r u₁ u₂  u₁>ᵍu₂)
+        ... | iso rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction ( proj₁flat-u₁-eq ,  ¬proj₁flat-u₂≡[] ) (lnn-u>ᵍv→¬u≡[]×v≢[] {r} lnn-r u₁ u₂  u₁>ᵍu₂)
           -- TODO: this can be simplified using lnn-u>ᵍv→u≡[]→v≡[]; then we can skip lnn-u>ᵍv→u≡[]×v≡[]⊎u≢[]×v≢[]×u≢[]×v≡[],  refer to rlnn-u>ᵍv→u≡[]→v≡[]
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
 
         from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂
-        from-ev (be  len|u₁|≡len|u₂| len|u₂|≡0 (choice-rr u₁>ˡu₂))  with robust-r
-        ... | robust rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
-        from-ev (bne  len|u₁|>0 len|u₂|>0 (choice-rr u₁>ˡu₂))  with robust-r
-        ... | robust rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
-        from-ev (lne  len|u₁|>0 len|u₂|≡0)  with robust-r
-        ... | robust rob-r-ev = sub (choice-rr (lnn→∷>ᵍ[] lnn-r u₁ u₂ (Utils.length>0→¬≡[] len|u₁|>0)  (length≡0→[] len|u₂|≡0)) )
-lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
+        from-ev (be  len|u₁|≡len|u₂| len|u₂|≡0 (choice-rr u₁>ˡu₂))  with iso-r
+        ... | iso rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
+        from-ev (bne  len|u₁|>0 len|u₂|>0 (choice-rr u₁>ˡu₂))  with iso-r
+        ... | iso rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
+        from-ev (lne  len|u₁|>0 len|u₂|≡0)  with iso-r
+        ... | iso rob-r-ev = sub (choice-rr (lnn→∷>ᵍ[] lnn-r u₁ u₂ (Utils.length>0→¬≡[] len|u₁|>0)  (length≡0→[] len|u₂|≡0)) )
+lnn→iso {r * ε∉r ` loc} (lnn-* lnn-r) =  iso {r * ε∉r ` loc} prf
   where
-    robust-r : Robust r
-    robust-r = lnn→robust {r} lnn-r
+    iso-r : Iso r
+    iso-r = lnn→iso {r} lnn-r
 
     ¬[]->ˡ-cons : ∀ { u : U r } { us : List (U r) } → ¬ (r * ε∉r ` loc) ⊢ ListU [] >ˡ ListU (u ∷ us)
     ¬[]->ˡ-cons {u} {us} (be len≡ len0 u>ⁱv) = ⊥-elim (>0→¬≡0 len-right>0 (sym len≡))
@@ -800,8 +800,8 @@ lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us) →
                 (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us)
-        to-ev (sub (star-head v>ᵍu)) with robust-r
-        ... | robust rob-r-ev = bne len-v∷vs>0 len-u∷us>0 (star-head (proj₁ (rob-r-ev v u) v>ᵍu))
+        to-ev (sub (star-head v>ᵍu)) with iso-r
+        ... | iso rob-r-ev = bne len-v∷vs>0 len-u∷us>0 (star-head (proj₁ (rob-r-ev v u) v>ᵍu))
           where
             len-v∷vs>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
             len-v∷vs>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
@@ -816,8 +816,8 @@ lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
         
         from-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us) → 
                   (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us)
-        from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-head v>ˡu)) with robust-r
-        ... | robust rob-r-ev = sub (star-head (proj₂ (rob-r-ev v u) v>ˡu))
+        from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-head v>ˡu)) with iso-r
+        ... | iso rob-r-ev = sub (star-head (proj₂ (rob-r-ev v u) v>ˡu))
         from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-tail v≡u list-vs>ˡlist-us)) = sub (star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us) )
         from-ev (be _ len≡0 _) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
         from-ev (lne _ len≡0) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
@@ -830,7 +830,7 @@ lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
 
 ### Is LNN necessary?
 
-No. A counter example, ε + ε is robust but not in LNN.
+No. A counter example, ε + ε is iso but not in LNN.
 
 
 
@@ -838,18 +838,18 @@ No. A counter example, ε + ε is robust but not in LNN.
 -- does not hold
             
 {-         
-robust→lnn : ∀ { r : RE }
-  → Robust r 
+iso→lnn : ∀ { r : RE }
+  → Iso r 
   → LNN r
-robust→lnn {ε}           (robust {ε} robust-ev)             = lnn-ε
-robust→lnn {$ c ` loc}   (robust {$ _ ` _ } robust-ev)      = lnn-$ {c} {loc}
-robust→lnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = lnn-● lnn-l lnn-r
+iso→lnn {ε}           (iso {ε} iso-ev)             = lnn-ε
+iso→lnn {$ c ` loc}   (iso {$ _ ` _ } iso-ev)      = lnn-$ {c} {loc}
+iso→lnn {l ● r ` loc} (iso {_ ● _ ` _} iso-l●r-ev) = lnn-● lnn-l lnn-r
   where
     u : U r
     u = proj₁ (r-∃u r) 
-    robust-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
+    iso-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
       → ( l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂ ) × ( l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂ )
-    robust-l-ev v₁ v₂ with robust-l●r-ev (PairU v₁ u) (PairU v₂ u)
+    iso-l-ev v₁ v₂ with iso-l●r-ev (PairU v₁ u) (PairU v₂ u)
     ... | v₁u>ᵍv₂u→v₁u>ˡv₂u , v₁u>ˡv₂u→v₁u>ᵍv₂u = v₁>ᵍv₂→v₁>ˡv₂ , v₁>ˡv₂→v₁>ᵍv₂   
       where
         v₁>ᵍv₂→v₁>ˡv₂ : l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂
@@ -860,15 +860,15 @@ robust→lnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = lnn-● ln
         v₁>ˡv₂→v₁>ᵍv₂ v₁>ˡv₂ with v₁u>ˡv₂u→v₁u>ᵍv₂u (LNEOrder.seq₁ v₁>ˡv₂)
         ... | GreedyOrder.seq₁ v₁>ᵍv₂ = v₁>ᵍv₂
         ... | GreedyOrder.seq₂ v₁≡v₂ u>ᵍu = Nullary.contradiction v₁≡v₂ (>ˡ→¬≡ v₁>ˡv₂)         
-    robust-l : Robust l
-    robust-l = robust {l} robust-l-ev 
+    iso-l : Iso l
+    iso-l = iso {l} iso-l-ev 
     lnn-l : LNN l
-    lnn-l = robust→lnn {l} robust-l
+    lnn-l = iso→lnn {l} iso-l
     v : U l
     v = proj₁ (r-∃u l)
-    robust-r-ev : ∀ ( u₁ : U r ) → ( u₂ : U r )
+    iso-r-ev : ∀ ( u₁ : U r ) → ( u₂ : U r )
       → ( r ⊢ u₁ >ᵍ u₂ → r ⊢ u₁ >ˡ u₂ ) × ( r ⊢ u₁ >ˡ u₂ → r ⊢ u₁ >ᵍ u₂ )
-    robust-r-ev u₁ u₂ with robust-l●r-ev (PairU v u₁) (PairU v u₂)
+    iso-r-ev u₁ u₂ with iso-l●r-ev (PairU v u₁) (PairU v u₂)
     ... | vu₁>ᵍvu₂→vu₁>ˡvu₂ , vu₁>ˡvu₂→vu₁>ᵍvu₂ = u₁>ᵍu₂→u₁>ˡu₂ , u₁>ˡu₂→u₁>ᵍu₂
       where
         u₁>ᵍu₂→u₁>ˡu₂ : r ⊢ u₁ >ᵍ u₂ → r ⊢ u₁ >ˡ u₂
@@ -879,16 +879,16 @@ robust→lnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = lnn-● ln
         u₁>ˡu₂→u₁>ᵍu₂ u₁>ˡu₂ with vu₁>ˡvu₂→vu₁>ᵍvu₂ (LNEOrder.seq₂ refl u₁>ˡu₂)
         ... | GreedyOrder.seq₁ v>ᵍv = Nullary.contradiction refl (>ᵍ→¬≡ v>ᵍv)
         ... | GreedyOrder.seq₂ refl u₁>ᵍu₂ = u₁>ᵍu₂
-    robust-r : Robust r
-    robust-r = robust {r} robust-r-ev 
+    iso-r : Iso r
+    iso-r = iso {r} iso-r-ev 
     lnn-r : LNN r
-    lnn-r = robust→lnn {r} robust-r
+    lnn-r = iso→lnn {r} iso-r
 
-robust→lnn {l + r ` loc} (robust {_ + _ ` _} robust-l+r-ev) = lnn-+ ε∉l lnn-l lnn-r
+iso→lnn {l + r ` loc} (iso {_ + _ ` _} iso-l+r-ev) = lnn-+ ε∉l lnn-l lnn-r
   where
     ¬ε∈l : ¬ ε∈ l
     ¬ε∈l = {!!}  -- how? we need u>ᵍv→¬v>ᵍu ?
-    -- hm it seems ¬ε∈l is not necessary, counter example, ε + ε is robust but not in LNN. we need 
+    -- hm it seems ¬ε∈l is not necessary, counter example, ε + ε is iso but not in LNN. we need 
     ε∉l : ε∉ l
     ε∉l = ¬ε∈r→ε∉r ¬ε∈l
     lnn-l : LNN l
@@ -930,7 +930,7 @@ postulate
 
 Definition: A relaxed form of LNN, restricted left-nullability form (not sufficient)
 
-But it is not sufficient to ensure robustness 
+But it is not sufficient to ensure isoness 
 
 ```agda
     
@@ -958,7 +958,7 @@ data RLN : RE → Set where
 ```
 
 
-rln is sufficient to ensure robustness ?
+rln is sufficient to ensure isoness ?
 
 
 
@@ -1152,42 +1152,42 @@ can we prove
 No, none of  choice-ll-bothempty, choice-ll-notempty , choice-ll-empty can be applied. 
 
 
-the current RLN is not sufficient to guarantee robustness
+the current RLN is not sufficient to guarantee isoness
 
 
 
 {-# TERMINATING #-}
-rln→robust : ∀ { r : RE }
+rln→iso : ∀ { r : RE }
   → RLN r
-  → Robust r
-rln→robust {ε}           rln-ε = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) )
-rln→robust {$ c ` loc}   rln-$ = robust λ v₁ v₂ → ( ( λ() ) , (λ ()) ) 
-rln→robust {l ● r ` loc} (rln-● rln-l rln-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
+  → Iso r
+rln→iso {ε}           rln-ε = iso λ v₁ v₂ → ( ( λ() ) , (λ ()) )
+rln→iso {$ c ` loc}   rln-$ = iso λ v₁ v₂ → ( ( λ() ) , (λ ()) ) 
+rln→iso {l ● r ` loc} (rln-● rln-l rln-r) = iso {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
   where
-    robust-r : Robust r
-    robust-r = rln→robust {r} rln-r
+    iso-r : Iso r
+    iso-r = rln→iso {r} rln-r
     
-    robust-l : Robust l
-    robust-l = rln→robust {l} rln-l
+    iso-l : Iso l
+    iso-l = rln→iso {l} rln-l
   
     to-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂
-    to-ev u₁ u₂ v₁ v₂ (seq₁ u₁>ᵍu₂) with robust-l
-    ... | robust rob-l-ev = seq₁ (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂)
-    to-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ᵍv₂) with robust-r
-    ... | robust rob-r-ev = seq₂ u₁≡u₂ (proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂ )
+    to-ev u₁ u₂ v₁ v₂ (seq₁ u₁>ᵍu₂) with iso-l
+    ... | iso rob-l-ev = seq₁ (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂)
+    to-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ᵍv₂) with iso-r
+    ... | iso rob-r-ev = seq₂ u₁≡u₂ (proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂ )
 
     from-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ 
-    from-ev u₁ u₂ v₁ v₂ (seq₁ u₁>ˡu₂) with robust-l
-    ... | robust rob-l-ev = seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) 
-    from-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ˡv₂) with robust-r
-    ... | robust rob-r-ev = seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ )
-rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r ` loc} prf
+    from-ev u₁ u₂ v₁ v₂ (seq₁ u₁>ˡu₂) with iso-l
+    ... | iso rob-l-ev = seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) 
+    from-ev u₁ u₂ v₁ v₂ (seq₂ u₁≡u₂ v₁>ˡv₂) with iso-r
+    ... | iso rob-r-ev = seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ )
+rln→iso {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  iso {l + r ` loc} prf
   where
-    robust-l : Robust l
-    robust-l = rln→robust {l} rln-l
+    iso-l : Iso l
+    iso-l = rln→iso {l} rln-l
 
-    robust-r : Robust r
-    robust-r = rln→robust {r} rln-r
+    iso-r : Iso r
+    iso-r = rln→iso {r} rln-r
 
     prf : (v₁ v₂ : U (l + r ` loc)) →
       ((l + r ` loc) ⊢ v₁ >ᵍ v₂ → (l + r ` loc) ⊢ v₁ >ˡ v₂) ×
@@ -1198,9 +1198,9 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
         εεl : ε∈ l
         εεl = proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
-        to-ev (choice-ll u₁>ᵍu₂) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq
-        ... | robust rob-l-ev | [] = choice-ll-bothempty proj₁flat-u₁-eq proj₁flat-u₂-eq ((proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ ))
-        ... | robust rob-l-ev | c ∷ cs = Nullary.contradiction u₂>ᵍu₁ (u>ᵍv→¬v>ᵍu u₁>ᵍu₂)  -- we don't need a contradiction here. It is possible to get u₁>ˡu₂?
+        to-ev (choice-ll u₁>ᵍu₂) with iso-l | proj₁ (flat u₂) in proj₁flat-u₂-eq
+        ... | iso rob-l-ev | [] = choice-ll-bothempty proj₁flat-u₁-eq proj₁flat-u₂-eq ((proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ ))
+        ... | iso rob-l-ev | c ∷ cs = Nullary.contradiction u₂>ᵍu₁ (u>ᵍv→¬v>ᵍu u₁>ᵍu₂)  -- we don't need a contradiction here. It is possible to get u₁>ˡu₂?
         -- note ε∈ l does not mean ε≅ l.  ¬proj₁flat-u₂≡[]  is possible
         -- for lne, we have choice-ll-bothempty, choice-ll-notempty, choice-ll-empty
                               
@@ -1211,28 +1211,28 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
             u₂>ᵍu₁ = rln→∷>ᵍ[] rln-l u₂ u₁ ¬proj₁flat-u₂≡[] proj₁flat-u₁-eq 
         from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
         from-ev (choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =  choice-ll (rln→∷>ᵍ[] rln-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])
-        from-ev (choice-ll-bothempty proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
-        ... | robust rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
-        from-ev (choice-ll-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
-        ... | robust rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
+        from-ev (choice-ll-bothempty proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂ ) with iso-l
+        ... | iso rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
+        from-ev (choice-ll-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂ ) with iso-l
+        ... | iso rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
     ... | c ∷ cs = to-ev , from-ev 
       where
         ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
         ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]                     
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
-        to-ev (choice-ll u₁>ᵍu₂) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
-        ... | robust rob-l-ev  | [] = choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂-eq 
-        ... | robust rob-l-ev  | c ∷ cs = choice-ll-notempty ¬proj₁flat-u₁≡[]  ¬proj₁flat-u₂≡[]  (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )
+        to-ev (choice-ll u₁>ᵍu₂) with iso-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
+        ... | iso rob-l-ev  | [] = choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂-eq 
+        ... | iso rob-l-ev  | c ∷ cs = choice-ll-notempty ¬proj₁flat-u₁≡[]  ¬proj₁flat-u₂≡[]  (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )
           where
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]         
         from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
         from-ev (choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) = choice-ll (rln→∷>ᵍ[] rln-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) 
-        from-ev (choice-ll-bothempty proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
-        ... | robust rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
+        from-ev (choice-ll-bothempty proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂ ) with iso-l
+        ... | iso rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
 
-        from-ev (choice-ll-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
-        ... | robust rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
+        from-ev (choice-ll-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂ ) with iso-l
+        ... | iso rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
     prf (LeftU u₁) (RightU u₂) = to-ev , from-ev
       where
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ RightU u₂
@@ -1280,34 +1280,34 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
     prf (RightU u₁) (RightU u₂) = to-ev , from-ev
       where 
         to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂
-        to-ev (choice-rr u₁>ᵍu₂) with robust-r | proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
-        ... | robust rob-r-ev | []     |     []    = choice-rr-bothempty proj₁flat-u₁-eq proj₁flat-u₂-eq (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
-        ... | robust rob-r-ev | c ∷ cs | c' ∷ cs'  = choice-rr-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
+        to-ev (choice-rr u₁>ᵍu₂) with iso-r | proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
+        ... | iso rob-r-ev | []     |     []    = choice-rr-bothempty proj₁flat-u₁-eq proj₁flat-u₂-eq (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
+        ... | iso rob-r-ev | c ∷ cs | c' ∷ cs'  = choice-rr-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ )
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
-        ... | robust rob-r-ev | c ∷ cs |     []    = choice-rr-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂-eq  
+        ... | iso rob-r-ev | c ∷ cs |     []    = choice-rr-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂-eq  
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
-        ... | robust rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction (rln-u>ᵍv→u≡[]→v≡[] {r} rln-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[]
+        ... | iso rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction (rln-u>ᵍv→u≡[]→v≡[] {r} rln-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[]
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
 
         from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂
-        from-ev (choice-rr-bothempty  proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂)  with robust-r
-        ... | robust rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
-        from-ev (choice-rr-notempty  ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂)  with robust-r
-        ... | robust rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
-        from-ev (choice-rr-empty  ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  with robust-r
-        ... | robust rob-r-ev = choice-rr (rln→∷>ᵍ[] rln-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  
-rln→robust {r * ε∉r ` loc} (rln-* rln-r) =  robust {r * ε∉r ` loc} prf
+        from-ev (choice-rr-bothempty  proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂)  with iso-r
+        ... | iso rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
+        from-ev (choice-rr-notempty  ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂)  with iso-r
+        ... | iso rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
+        from-ev (choice-rr-empty  ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  with iso-r
+        ... | iso rob-r-ev = choice-rr (rln→∷>ᵍ[] rln-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  
+rln→iso {r * ε∉r ` loc} (rln-* rln-r) =  iso {r * ε∉r ` loc} prf
   where
-    robust-r : Robust r
-    robust-r = rln→robust {r} rln-r
+    iso-r : Iso r
+    iso-r = rln→iso {r} rln-r
 
 
     prf : (v₁ v₂ : U (r * ε∉r ` loc)) →
@@ -1320,14 +1320,14 @@ rln→robust {r * ε∉r ` loc} (rln-* rln-r) =  robust {r * ε∉r ` loc} prf
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us) →
                 (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us)
-        to-ev (star-head v>ᵍu) with robust-r
-        ... | robust rob-r-ev = star-head (proj₁ (rob-r-ev v u) v>ᵍu)
+        to-ev (star-head v>ᵍu) with iso-r
+        ... | iso rob-r-ev = star-head (proj₁ (rob-r-ev v u) v>ᵍu)
         to-ev (star-tail v≡u list-vs>ᵍlist-us)  = star-tail v≡u (proj₁ (prf (ListU vs) (ListU us)) list-vs>ᵍlist-us) 
         
         from-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us) → 
                   (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us)
-        from-ev (star-head v>ˡu) with robust-r
-        ... | robust rob-r-ev = star-head (proj₂ (rob-r-ev v u) v>ˡu)
+        from-ev (star-head v>ˡu) with iso-r
+        ... | iso rob-r-ev = star-head (proj₂ (rob-r-ev v u) v>ˡu)
         from-ev (star-tail v≡u list-vs>ˡlist-us)  = star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us)             
 
 
@@ -1358,7 +1358,7 @@ data RLNN : RE → Set where
 
 
 ```
-is rlnn sufficiently guaranteeing robustness?
+is rlnn sufficiently guaranteeing isoness?
 
 
 ### sub lemma 
@@ -1457,16 +1457,16 @@ rlnn-u>ᵍv→u≡[]→v≡[] {r} rlnn-r u v u>ᵍv proj₁flat-u≡[] = prf
 
 this sufficient proof is incomplete, it depends on some on the invalid sub lemmas above.
 
-the necessary proof is still a myth, the main issue is that robust definition is not inductive 
+the necessary proof is still a myth, the main issue is that iso definition is not inductive 
 
 
 ```agda
 
 {-# TERMINATING #-}
-rlnn→robust : ∀ { r : RE }
+rlnn→iso : ∀ { r : RE }
   → RLNN r
-  → Robust r
-rlnn→robust {ε}           rlnn-ε = robust prf-ε
+  → Iso r
+rlnn→iso {ε}           rlnn-ε = iso prf-ε
   where
     prf-ε : (v₁ v₂ : U ε) → (ε ⊢ v₁ >ᵍ v₂ → ε ⊢ v₁ >ˡ v₂) × (ε ⊢ v₁ >ˡ v₂ → ε ⊢ v₁ >ᵍ v₂)
     prf-ε EmptyU EmptyU = rprf-ε-to , rprf-ε-from
@@ -1478,7 +1478,7 @@ rlnn→robust {ε}           rlnn-ε = robust prf-ε
         rprf-ε-from (bne len-v₁>0 len-v₂>0 u>ⁱv) = ⊥-elim (LNEOrder.>ⁱ→¬≡ u>ⁱv refl)
         rprf-ε-from (lne len-v₁>0 len-v₂≡0) with len-v₁>0
         ... | ()
-rlnn→robust {$ c ` loc}   rlnn-$ = robust prf-$
+rlnn→iso {$ c ` loc}   rlnn-$ = iso prf-$
   where
     prf-$ : (v₁ v₂ : U ($ c ` loc)) → ($ c ` loc ⊢ v₁ >ᵍ v₂ → $ c ` loc ⊢ v₁ >ˡ v₂) × ($ c ` loc ⊢ v₁ >ˡ v₂ → $ c ` loc ⊢ v₁ >ᵍ v₂)
     prf-$ (LetterU .c) (LetterU .c) = rprf-$-to , rprf-$-from
@@ -1492,17 +1492,17 @@ rlnn→robust {$ c ` loc}   rlnn-$ = robust prf-$
           where
             letter-flat-eq : proj₁ (flat { $ c ` loc } (LetterU c)) ≡ c ∷ []
             letter-flat-eq = refl
-rlnn→robust {l ● r ` loc} (rlnn-● rlnn-l rlnn-r) = robust {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
+rlnn→iso {l ● r ` loc} (rlnn-● rlnn-l rlnn-r) = iso {l ● r ` loc} λ { (PairU u₁ v₁) (PairU u₂ v₂) → to-ev u₁ u₂ v₁ v₂ , from-ev  u₁ u₂ v₁ v₂ }
   where
-    robust-r : Robust r
-    robust-r = rlnn→robust {r} rlnn-r
+    iso-r : Iso r
+    iso-r = rlnn→iso {r} rlnn-r
     
-    robust-l : Robust l
-    robust-l = rlnn→robust {l} rlnn-l
+    iso-l : Iso l
+    iso-l = rlnn→iso {l} rlnn-l
   
     to-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂
-    to-ev u₁ u₂ v₁ v₂ (sub (GreedyOrder.seq₁ u₁>ᵍu₂)) with robust-l
-    ... | robust rob-l-ev with proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
+    to-ev u₁ u₂ v₁ v₂ (sub (GreedyOrder.seq₁ u₁>ᵍu₂)) with iso-l
+    ... | iso rob-l-ev with proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂
     ... | bne len-u₁>0 len-u₂>0 u₁>ⁱu₂ = bne len-pair₁>0 len-pair₂>0 (LNEOrder.seq₁ u₁>ˡu₂)
       where
         u₁>ˡu₂ : l ⊢ u₁ >ˡ u₂
@@ -1560,8 +1560,8 @@ rlnn→robust {l ● r ` loc} (rlnn-● rlnn-l rlnn-r) = robust {l ● r ` loc} 
         len-pair₁>0 rewrite len-pair₁≡ = +-monoʳ-<>0 (length (proj₁ (flat u₁))) (length (proj₁ (flat v₁))) len-u₁>0
         len-pair₂>0 : len-pair₂ > 0
         len-pair₂>0 rewrite len-pair₂≡ = +-monoˡ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-v₂≡[])
-    to-ev u₁ u₂ v₁ v₂ (sub (GreedyOrder.seq₂ u₁≡u₂ v₁>ᵍv₂)) with robust-r
-    ... | robust rob-r-ev with proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
+    to-ev u₁ u₂ v₁ v₂ (sub (GreedyOrder.seq₂ u₁≡u₂ v₁>ᵍv₂)) with iso-r
+    ... | iso rob-r-ev with proj₁ (rob-r-ev v₁ v₂) v₁>ᵍv₂
     ... | bne len-v₁>0 len-v₂>0 v₁>ⁱv₂ = bne len-pair₁>0 len-pair₂>0 (LNEOrder.seq₂ u₁≡u₂ v₁>ˡv₂)
       where
         v₁>ˡv₂ : r ⊢ v₁ >ˡ v₂
@@ -1621,14 +1621,14 @@ rlnn→robust {l ● r ` loc} (rlnn-● rlnn-l rlnn-r) = robust {l ● r ` loc} 
         len-pair₂>0 rewrite len-pair₂≡ = +-monoʳ-<>0 (length (proj₁ (flat u₂))) (length (proj₁ (flat v₂))) (¬≡[]→length>0 ¬proj₁flat-u₂≡[])
 
     from-ev : ( u₁ u₂ : U l ) → ( v₁ v₂ : U r ) → (l ● r ` loc) ⊢ PairU u₁ v₁ >ˡ PairU u₂ v₂ → (l ● r ` loc) ⊢ PairU u₁ v₁ >ᵍ PairU u₂ v₂ 
-    from-ev u₁ u₂ v₁ v₂ (be len|u₁u₁|≡len|v₁v₂| len|v₁v₂|≡0 (seq₁ u₁>ˡu₂)) with robust-l
-    ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
-    from-ev u₁ u₂ v₁ v₂ (be len|u₁u₁|≡len|v₁v₂| len|v₁v₂|≡0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
-    ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
-    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₁ u₁>ˡu₂)) with robust-l
-    ... | robust rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
-    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with robust-r
-    ... | robust rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (be len|u₁u₁|≡len|v₁v₂| len|v₁v₂|≡0 (seq₁ u₁>ˡu₂)) with iso-l
+    ... | iso rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
+    from-ev u₁ u₂ v₁ v₂ (be len|u₁u₁|≡len|v₁v₂| len|v₁v₂|≡0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with iso-r
+    ... | iso rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₁ u₁>ˡu₂)) with iso-l
+    ... | iso rob-l-ev = sub (seq₁ (proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂) )
+    from-ev u₁ u₂ v₁ v₂ (bne len|u₁v₁|>0 len|u₂v₂|>0 (seq₂ u₁≡u₂ v₁>ˡv₂)) with iso-r
+    ... | iso rob-r-ev = sub (seq₂ u₁≡u₂ (proj₂ (rob-r-ev v₁ v₂) v₁>ˡv₂ ))
     from-ev u₁ u₂ v₁ v₂ (lne {v₁ = PairU {l} {r} {loc} u₁ v₁} {v₂ = PairU {l} {r} {loc} u₂ v₂} len|u₁v₁|>0 len|u₂v₂|≡0) with proj₁ (flat u₁) in proj₁flat-u₁-eq
     ... | c ∷ cs = sub (GreedyOrder.seq₁ u₁>ᵍu₂)
       where
@@ -1654,13 +1654,13 @@ rlnn→robust {l ● r ` loc} (rlnn-● rlnn-l rlnn-r) = robust {l ● r ` loc} 
         ¬proj₁flat-v₁≡[] proj₁flat-v₁≡[] = >0→¬≡0 (pair-u₁v₁>0→v₁>0 len|u₁v₁|>0 proj₁flat-u₁-eq) ([]→length≡0 proj₁flat-v₁≡[])
         v₁>ᵍv₂ : r ⊢ v₁ >ᵍ v₂
         v₁>ᵍv₂ = rlnn→∷>ᵍ[] {r} rlnn-r v₁ v₂ ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[]
-rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l + r ` loc} prf
+rlnn→iso {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  iso {l + r ` loc} prf
   where
-    robust-l : Robust l
-    robust-l = lnn→robust {l} lnn-l
+    iso-l : Iso l
+    iso-l = lnn→iso {l} lnn-l
 
-    robust-r : Robust r
-    robust-r = rlnn→robust {r} rlnn-r
+    iso-r : Iso r
+    iso-r = rlnn→iso {r} rlnn-r
 
     prf : (v₁ v₂ : U (l + r ` loc)) →
       ((l + r ` loc) ⊢ v₁ >ᵍ v₂ → (l + r ` loc) ⊢ v₁ >ˡ v₂) ×
@@ -1671,12 +1671,12 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
         εεl : ε∈ l
         εεl = proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
-        to-ev (sub (choice-ll u₁>ᵍu₂)) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq
-        ... | robust rob-l-ev | [] = be len≡ (Utils.[]→length≡0 proj₁flat-u₂-eq) (choice-ll ((proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )))
+        to-ev (sub (choice-ll u₁>ᵍu₂)) with iso-l | proj₁ (flat u₂) in proj₁flat-u₂-eq
+        ... | iso rob-l-ev | [] = be len≡ (Utils.[]→length≡0 proj₁flat-u₂-eq) (choice-ll ((proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )))
           where
             len≡ : length (proj₁ (flat (LeftU {l} {r} {loc} u₁))) ≡ length (proj₁ (flat (LeftU {l} {r} {loc} u₂)))
             len≡ = trans (flat-LeftU-len {l} {r} {loc} {u₁}) (trans (cong List.length (trans proj₁flat-u₁-eq (sym proj₁flat-u₂-eq))) (sym (flat-LeftU-len {l} {r} {loc} {u₂})))
-        ... | robust rob-l-ev | c ∷ cs = Nullary.contradiction u₂>ᵍu₁ (u>ᵍv→¬v>ᵍu u₁>ᵍu₂)  -- we don't need a contradiction here. It is possible to get u₁>ˡu₂?
+        ... | iso rob-l-ev | c ∷ cs = Nullary.contradiction u₂>ᵍu₁ (u>ᵍv→¬v>ᵍu u₁>ᵍu₂)  -- we don't need a contradiction here. It is possible to get u₁>ˡu₂?
         -- note ε∈ l does not mean ε≅ l.  ¬proj₁flat-u₂≡[]  is possible
         -- for lne, we have choice-ll-bothempty, choice-ll-notempty, choice-ll-empty
                               
@@ -1690,18 +1690,18 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ (flat u₁) ≡ []
             ¬proj₁flat-u₁≡[] = length>0→¬≡[] (subst (λ x → x > 0) (cong List.length (flat-LeftU {l} {r} {loc} {u₁})) len|u₁|>0)
-        from-ev (be len|u₁|≡0 len|u₂|≡0 (choice-ll u₁>ˡu₂) ) with robust-l
-        ... | robust rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
-        from-ev (bne  len|u₁|>0 len|u₂|>0 (choice-ll u₁>ˡu₂) ) with robust-l
-        ... | robust rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
+        from-ev (be len|u₁|≡0 len|u₂|≡0 (choice-ll u₁>ˡu₂) ) with iso-l
+        ... | iso rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
+        from-ev (bne  len|u₁|>0 len|u₂|>0 (choice-ll u₁>ˡu₂) ) with iso-l
+        ... | iso rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
     ... | c ∷ cs = to-ev , from-ev 
       where
         ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
         ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]                     
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
-        to-ev (sub (choice-ll u₁>ᵍu₂)) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
-        ... | robust rob-l-ev  | [] = lne (Utils.¬≡0→>0  (Utils.¬≡[]→¬length≡0 ¬proj₁flat-u₁≡[])) (Utils.[]→length≡0 proj₁flat-u₂-eq)
-        ... | robust rob-l-ev  | c ∷ cs = bne (Utils.¬≡0→>0  (Utils.¬≡[]→¬length≡0 ¬proj₁flat-u₁≡[])) (Utils.¬≡0→>0  (Utils.¬≡[]→¬length≡0 ¬proj₁flat-u₂≡[]))  (choice-ll (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ ))
+        to-ev (sub (choice-ll u₁>ᵍu₂)) with iso-l | proj₁ (flat u₂) in proj₁flat-u₂-eq 
+        ... | iso rob-l-ev  | [] = lne (Utils.¬≡0→>0  (Utils.¬≡[]→¬length≡0 ¬proj₁flat-u₁≡[])) (Utils.[]→length≡0 proj₁flat-u₂-eq)
+        ... | iso rob-l-ev  | c ∷ cs = bne (Utils.¬≡0→>0  (Utils.¬≡[]→¬length≡0 ¬proj₁flat-u₁≡[])) (Utils.¬≡0→>0  (Utils.¬≡[]→¬length≡0 ¬proj₁flat-u₂≡[]))  (choice-ll (proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ ))
           where
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]         
@@ -1710,11 +1710,11 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
           where
             ¬proj₁flat-u₁≡[]-lne : ¬ proj₁ (flat u₁) ≡ []
             ¬proj₁flat-u₁≡[]-lne = length>0→¬≡[] (subst (λ x → x > 0) (cong List.length (flat-LeftU {l} {r} {loc} {u₁})) len|u₁|>0)
-        from-ev (be len|u₁|≡len|u₂∣  len|u₂|≡0 (choice-ll u₁>ˡu₂) ) with robust-l
-        ... | robust rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
+        from-ev (be len|u₁|≡len|u₂∣  len|u₂|≡0 (choice-ll u₁>ˡu₂) ) with iso-l
+        ... | iso rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
 
-        from-ev (bne len|u₁|>0 len|u₂|>0 (choice-ll u₁>ˡu₂) ) with robust-l
-        ... | robust rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
+        from-ev (bne len|u₁|>0 len|u₂|>0 (choice-ll u₁>ˡu₂) ) with iso-l
+        ... | iso rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
     prf (LeftU u₁) (RightU u₂) = to-ev , from-ev
       where
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ RightU u₂
@@ -1766,34 +1766,34 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
     prf (RightU u₁) (RightU u₂) = to-ev , from-ev
       where 
         to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂
-        to-ev (sub (choice-rr u₁>ᵍu₂)) with robust-r | proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
-        ... | robust rob-r-ev | []     |     []    = be (cong List.length (trans proj₁flat-u₁-eq (sym proj₁flat-u₂-eq)))  (Utils.[]→length≡0 proj₁flat-u₂-eq) (choice-rr (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ ))
-        ... | robust rob-r-ev | c ∷ cs | c' ∷ cs'  = bne (Utils.¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (Utils.¬≡[]→length>0 ¬proj₁flat-u₂≡[]) (choice-rr (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ ))
+        to-ev (sub (choice-rr u₁>ᵍu₂)) with iso-r | proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
+        ... | iso rob-r-ev | []     |     []    = be (cong List.length (trans proj₁flat-u₁-eq (sym proj₁flat-u₂-eq)))  (Utils.[]→length≡0 proj₁flat-u₂-eq) (choice-rr (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ ))
+        ... | iso rob-r-ev | c ∷ cs | c' ∷ cs'  = bne (Utils.¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (Utils.¬≡[]→length>0 ¬proj₁flat-u₂≡[]) (choice-rr (proj₁ (rob-r-ev u₁ u₂) u₁>ᵍu₂ ))
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
-        ... | robust rob-r-ev | c ∷ cs |     []    = lne (Utils.¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (Utils.[]→length≡0 proj₁flat-u₂-eq)
+        ... | iso rob-r-ev | c ∷ cs |     []    = lne (Utils.¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (Utils.[]→length≡0 proj₁flat-u₂-eq)
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
-        ... | robust rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction (rlnn-u>ᵍv→u≡[]→v≡[] {r} rlnn-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[] -- does not hold -- does it implies, r must be lnn-r too? 
+        ... | iso rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction (rlnn-u>ᵍv→u≡[]→v≡[] {r} rlnn-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[] -- does not hold -- does it implies, r must be lnn-r too? 
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
 
         from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ RightU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ RightU u₂
-        from-ev (be  len|u₁|≡len|u₂| len|u₂|≡0 (choice-rr u₁>ˡu₂))  with robust-r
-        ... | robust rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
-        from-ev (bne len|u₁|>0 len|u₂|>0  (choice-rr u₁>ˡu₂))  with robust-r
-        ... | robust rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
-        from-ev (lne len|u₁|>0 len|u₂|≡0)  with robust-r
-        ... | robust rob-r-ev = sub (choice-rr  (rlnn→∷>ᵍ[] rlnn-r u₁ u₂ (length>0→¬≡[]  len|u₁|>0)  (length≡0→[] len|u₂|≡0) ))
-rlnn→robust {r * ε∉r ` loc} (rlnn-* rlnn-r) =  robust {r * ε∉r ` loc} prf
+        from-ev (be  len|u₁|≡len|u₂| len|u₂|≡0 (choice-rr u₁>ˡu₂))  with iso-r
+        ... | iso rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
+        from-ev (bne len|u₁|>0 len|u₂|>0  (choice-rr u₁>ˡu₂))  with iso-r
+        ... | iso rob-r-ev = sub (choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) )
+        from-ev (lne len|u₁|>0 len|u₂|≡0)  with iso-r
+        ... | iso rob-r-ev = sub (choice-rr  (rlnn→∷>ᵍ[] rlnn-r u₁ u₂ (length>0→¬≡[]  len|u₁|>0)  (length≡0→[] len|u₂|≡0) ))
+rlnn→iso {r * ε∉r ` loc} (rlnn-* rlnn-r) =  iso {r * ε∉r ` loc} prf
   where
-    robust-r : Robust r
-    robust-r = rlnn→robust {r} rlnn-r
+    iso-r : Iso r
+    iso-r = rlnn→iso {r} rlnn-r
 
     ¬[]->ˡ-cons : ∀ { u : U r } { us : List (U r) } → ¬ (r * ε∉r ` loc) ⊢ ListU [] >ˡ ListU (u ∷ us)
     ¬[]->ˡ-cons {u} {us} (be len≡ len0 u>ⁱv) = ⊥-elim (>0→¬≡0 len-right>0 (sym len≡))
@@ -1821,8 +1821,8 @@ rlnn→robust {r * ε∉r ` loc} (rlnn-* rlnn-r) =  robust {r * ε∉r ` loc} pr
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us) →
                 (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us)
-        to-ev (sub (star-head v>ᵍu)) with robust-r
-        ... | robust rob-r-ev = bne len-v∷vs>0 len-u∷us>0 (star-head (proj₁ (rob-r-ev v u) v>ᵍu))
+        to-ev (sub (star-head v>ᵍu)) with iso-r
+        ... | iso rob-r-ev = bne len-v∷vs>0 len-u∷us>0 (star-head (proj₁ (rob-r-ev v u) v>ᵍu))
           where
             len-v∷vs>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
             len-v∷vs>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
@@ -1837,8 +1837,8 @@ rlnn→robust {r * ε∉r ` loc} (rlnn-* rlnn-r) =  robust {r * ε∉r ` loc} pr
         
         from-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU (u ∷ us) → 
                   (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us)
-        from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-head v>ˡu)) with robust-r
-        ... | robust rob-r-ev = sub (star-head (proj₂ (rob-r-ev v u) v>ˡu))
+        from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-head v>ˡu)) with iso-r
+        ... | iso rob-r-ev = sub (star-head (proj₂ (rob-r-ev v u) v>ˡu))
         from-ev (bne len|v∷vs|>0 len|u∷us|>0 (star-tail v≡u list-vs>ˡlist-us))  = sub (star-tail v≡u (proj₂ (prf (ListU vs) (ListU us)) list-vs>ˡlist-us))
         from-ev (be _ len≡0 _) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
         from-ev (lne _ len≡0) = Empty.⊥-elim (flat-list-cons-⊥ {r} {ε∉r} {loc} {u} {us} len≡0)
@@ -1871,18 +1871,18 @@ postulate
 
 ```agda
 {-
-robust→rlnn : ∀ { r : RE }
-  → Robust r 
+iso→rlnn : ∀ { r : RE }
+  → Iso r 
   → RLNN r
-robust→rlnn {ε}           (robust {ε} robust-ev)             = rlnn-ε
-robust→rlnn {$ c ` loc}   (robust {$ _ ` _ } robust-ev)      = rlnn-$ {c} {loc}
-robust→rlnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = rlnn-● rlnn-l rlnn-r -- we need lnn-l here not rlnn-l 
+iso→rlnn {ε}           (iso {ε} iso-ev)             = rlnn-ε
+iso→rlnn {$ c ` loc}   (iso {$ _ ` _ } iso-ev)      = rlnn-$ {c} {loc}
+iso→rlnn {l ● r ` loc} (iso {_ ● _ ` _} iso-l●r-ev) = rlnn-● rlnn-l rlnn-r -- we need lnn-l here not rlnn-l 
   where
     u : U r
     u = proj₁ (r-∃u r) 
-    robust-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
+    iso-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
       → ( l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂ ) × ( l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂ )
-    robust-l-ev v₁ v₂ with robust-l●r-ev (PairU v₁ u) (PairU v₂ u)
+    iso-l-ev v₁ v₂ with iso-l●r-ev (PairU v₁ u) (PairU v₂ u)
     ... | v₁u>ᵍv₂u→v₁u>ˡv₂u , v₁u>ˡv₂u→v₁u>ᵍv₂u = v₁>ᵍv₂→v₁>ˡv₂ , v₁>ˡv₂→v₁>ᵍv₂   
       where
         v₁>ᵍv₂→v₁>ˡv₂ : l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂
@@ -1893,15 +1893,15 @@ robust→rlnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = rlnn-● 
         v₁>ˡv₂→v₁>ᵍv₂ v₁>ˡv₂ with v₁u>ˡv₂u→v₁u>ᵍv₂u (LNEOrder.seq₁ v₁>ˡv₂)
         ... | GreedyOrder.seq₁ v₁>ᵍv₂ = v₁>ᵍv₂
         ... | GreedyOrder.seq₂ v₁≡v₂ u>ᵍu = Nullary.contradiction v₁≡v₂ (>ˡ→¬≡ v₁>ˡv₂)         
-    robust-l : Robust l
-    robust-l = robust {l} robust-l-ev 
+    iso-l : Iso l
+    iso-l = iso {l} iso-l-ev 
     rlnn-l : RLNN l
-    rlnn-l = robust→rlnn {l} robust-l
+    rlnn-l = iso→rlnn {l} iso-l
     v : U l
     v = proj₁ (r-∃u l)
-    robust-r-ev : ∀ ( u₁ : U r ) → ( u₂ : U r )
+    iso-r-ev : ∀ ( u₁ : U r ) → ( u₂ : U r )
       → ( r ⊢ u₁ >ᵍ u₂ → r ⊢ u₁ >ˡ u₂ ) × ( r ⊢ u₁ >ˡ u₂ → r ⊢ u₁ >ᵍ u₂ )
-    robust-r-ev u₁ u₂ with robust-l●r-ev (PairU v u₁) (PairU v u₂)
+    iso-r-ev u₁ u₂ with iso-l●r-ev (PairU v u₁) (PairU v u₂)
     ... | vu₁>ᵍvu₂→vu₁>ˡvu₂ , vu₁>ˡvu₂→vu₁>ᵍvu₂ = u₁>ᵍu₂→u₁>ˡu₂ , u₁>ˡu₂→u₁>ᵍu₂
       where
         u₁>ᵍu₂→u₁>ˡu₂ : r ⊢ u₁ >ᵍ u₂ → r ⊢ u₁ >ˡ u₂
@@ -1912,29 +1912,29 @@ robust→rlnn {l ● r ` loc} (robust {_ ● _ ` _} robust-l●r-ev) = rlnn-● 
         u₁>ˡu₂→u₁>ᵍu₂ u₁>ˡu₂ with vu₁>ˡvu₂→vu₁>ᵍvu₂ (LNEOrder.seq₂ refl u₁>ˡu₂)
         ... | GreedyOrder.seq₁ v>ᵍv = Nullary.contradiction refl (>ᵍ→¬≡ v>ᵍv)
         ... | GreedyOrder.seq₂ refl u₁>ᵍu₂ = u₁>ᵍu₂
-    robust-r : Robust r
-    robust-r = robust {r} robust-r-ev 
+    iso-r : Iso r
+    iso-r = iso {r} iso-r-ev 
     rlnn-r : RLNN r
-    rlnn-r = robust→rlnn {r} robust-r
+    rlnn-r = iso→rlnn {r} iso-r
 
-robust→rlnn {l + r ` loc} (robust {_ + _ ` _} robust-l+r-ev) = rlnn-+ ε∈l→ε≅r lnn-l rlnn-r
+iso→rlnn {l + r ` loc} (iso {_ + _ ` _} iso-l+r-ev) = rlnn-+ ε∈l→ε≅r lnn-l rlnn-r
   where
     ε∈l→ε≅r : ε∈ l → ε≅ r
     ε∈l→ε≅r = {!!}
-    robust-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
+    iso-l-ev : ∀ ( v₁ : U l ) → ( v₂ : U l )
       → ( l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂ ) × ( l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂ )
-    robust-l-ev v₁ v₂ with robust-l+r-ev (LeftU v₁) (LeftU v₂)
+    iso-l-ev v₁ v₂ with iso-l+r-ev (LeftU v₁) (LeftU v₂)
     ... | left-v₁>ᵍleft-v₂→left-v₁>ˡleft-v₂ , left-v₁>ˡleft-v₂→left-v₁>ᵍleft-v₂ =  v₁>ᵍv₂→v₁>ˡv₂ , v₁>ˡv₂→v₁>ᵍv₂
       where
         v₁>ᵍv₂→v₁>ˡv₂ : l ⊢ v₁ >ᵍ v₂ → l ⊢ v₁ >ˡ v₂
         v₁>ᵍv₂→v₁>ˡv₂ v₁>ᵍv₂ with left-v₁>ᵍleft-v₂→left-v₁>ˡleft-v₂ (choice-ll v₁>ᵍv₂)
         ... | be proj₁flat-v₁≡[] proj₁flat-v₂≡[] v₁>ˡv₂ = v₁>ˡv₂
         ... | bne ¬proj₁flat-v₁≡[] ¬proj₁flat-v₂≡[] v₁>ˡv₂ = v₁>ˡv₂
-        ... | lne ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[] = {!!}  --  ∷>ˡ[]  ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[]  -- this is not true! -- this means (l + r) is robust does not implies l is robust!!!? 
+        ... | lne ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[] = {!!}  --  ∷>ˡ[]  ¬proj₁flat-v₁≡[] proj₁flat-v₂≡[]  -- this is not true! -- this means (l + r) is iso does not implies l is iso!!!? 
         v₁>ˡv₂→v₁>ᵍv₂ : l ⊢ v₁ >ˡ v₂ → l ⊢ v₁ >ᵍ v₂
         v₁>ˡv₂→v₁>ᵍv₂ = {!!}
-    robust-l : Robust l
-    robust-l = robust {l} robust-l-ev         
+    iso-l : Iso l
+    iso-l = iso {l} iso-l-ev         
     lnn-l : LNN l
     lnn-l = {!!} -- can be proven similarly to the ● case above 
     rlnn-r : RLNN r

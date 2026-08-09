@@ -218,6 +218,11 @@ data _,_,_,_,_⊢_<_ : ∀ ( r :  RE ) → ( w : List Char ) → ( i j j' : ℕ 
 data <-Min : ∀ ( r : RE ) → ( w : List Char )  → ( i j : ℕ ) →  ( r , i , j ⊨ w ) → Set
 
 
+find-<-Min : ∀ ( r : RE ) ( w : List Char ) ( i j : ℕ )
+  → r , i , j ⊨ w 
+  → ∃[ t ] ( <-Min r w i j t )
+
+
 -- is this well-founded, wellfounded is depending on <-Min hahah.. circular definition
 data _,_,_,_,_⊢_<_ where
   choice-lr : ∀ { l r : RE } { loc : ℕ } { w : List Char }
@@ -231,9 +236,7 @@ data _,_,_,_,_⊢_<_ where
     → ( i j j' : ℕ )
     → ( t₁ : (l , i , j  ⊨ w) )  
     → ( t₂ : (l , i , j' ⊨ w) )  
-    → <-Min l w i j t₁  -- t₁ must be the min
-    → <-Min l w i j' t₂ -- t₂ must be the min
-    → ( l , w , i , j , j' ⊢ t₁ < t₂ )
+    → l , w , i , j , j' ⊢ proj₁ ( find-<-Min l w i j t₁ ) < proj₁ ( find-<-Min l w i j' t₂) 
     -----------------------------------------------------------------
     → (l + r ` loc) , w , i , j , j' ⊢ ( ⊨inl l r loc i j w t₁ ) < ( ⊨inl l r loc i j' w t₂ ) 
 
@@ -242,9 +245,7 @@ data _,_,_,_,_⊢_<_ where
     → ( i j j' : ℕ )
     → ( t₁ : (r , i , j  ⊨ w) )
     → ( t₂ : (r , i , j' ⊨ w ) )
-    → <-Min r w i j t₁ 
-    → <-Min r w i j' t₂ 
-    → ( r , w , i , j , j' ⊢ t₁ < t₂ )
+    → r , w , i , j , j' ⊢ proj₁ ( find-<-Min r w i j t₁ ) < proj₁ ( find-<-Min r w i j' t₂)     
     -----------------------------------------------------------------
     → (l + r ` loc) , w , i , j , j' ⊢ ( ⊨inr l r loc i j w t₁ ) < ( ⊨inr l r loc i j' w t₂ )
 
@@ -258,9 +259,7 @@ data _,_,_,_,_⊢_<_ where
     → ( t₂ : ( r , j , k ⊨ w ) )
     → ( t₁' : ( l , i , j' ⊨ w ) )
     → ( t₂' : ( r , j' , k' ⊨ w ) )
-    → <-Min l w i j t₁
-    → <-Min l w i j' t₁' 
-    → l , w , i , j , j' ⊢ t₁ < t₁' 
+    → l , w , i , j , j' ⊢ proj₁ ( find-<-Min l w i j t₁ ) < proj₁ ( find-<-Min l w i j' t₁')     
     -----------------------------------------------------------------------
     → (l ● r ` loc) , w , i , k , k' ⊢ (⊨● l r loc i k w ( j , i≤j , j≤k , t₁ , t₂ )) < ( ⊨● l r loc i k' w ( j' , i≤j' , j'≤k' , t₁' , t₂' ) )
 
@@ -273,9 +272,7 @@ data _,_,_,_,_⊢_<_ where
     → ( t₁ : ( l , i , j ⊨ w ) )
     → ( t₂ : ( r , j , k ⊨ w ) )
     → ( t₂' : ( r , j , k' ⊨ w ) )
-    → <-Min r w j k t₂
-    → <-Min r w j k' t₂' 
-    → r , w , j , k , k' ⊢ t₂ < t₂' 
+    → r , w , j , k , k' ⊢ proj₁ ( find-<-Min r w j k t₂ ) < proj₁ ( find-<-Min r w j k' t₂')         
     -----------------------------------------------------------------------
     → (l ● r ` loc) , w , i , k , k' ⊢ (⊨● l r loc i k w ( j , i≤j , j≤k , t₁ , t₂ )) < ( ⊨● l r loc i k' w ( j , i≤j , j≤k' , t₁ , t₂' ) )
 
@@ -299,9 +296,7 @@ data _,_,_,_,_⊢_<_ where
     → ( t₂ : ( r * ε∉r ` loc , j , k ⊨ w ) )
     → ( t₁' : ( r , i , j' ⊨ w ) )
     → ( t₂' : ( r * ε∉r ` loc , j' , k' ⊨ w ) )
-    → <-Min r w i j t₁
-    → <-Min r w i j' t₁' 
-    → r , w , i , j , j' ⊢ t₁ < t₁' 
+    → r , w , i , j , j' ⊢ proj₁ ( find-<-Min r w i j t₁ ) < proj₁ ( find-<-Min r w i j' t₁')         
     -----------------------------------------------------------------------
     → ( r * ε∉r ` loc ) , w , i , k , k' ⊢  (⊨∷ r  ε∉r loc w i k ( j , i<j , j≤k , t₁ , t₂ ) ) <  (⊨∷ r  ε∉r loc w i k' ( j' , i<j' , j'≤k' , t₁' , t₂' ) )
 
@@ -314,9 +309,7 @@ data _,_,_,_,_⊢_<_ where
     → ( t₁ : ( r , i , j ⊨ w ) )
     → ( t₂ : ( r * ε∉r ` loc , j , k ⊨ w ) )
     → ( t₂' : ( r * ε∉r ` loc , j , k' ⊨ w ) )
-    → <-Min ( r * ε∉r ` loc) w j k t₂
-    → <-Min ( r * ε∉r ` loc) w j k' t₂' 
-    → ( r * ε∉r ` loc) , w , j , k , k' ⊢ t₂ < t₂' 
+    → (r * ε∉r ` loc) , w , j , k , k' ⊢ proj₁ ( find-<-Min (r * ε∉r ` loc) w j k t₂ ) < proj₁ ( find-<-Min (r * ε∉r ` loc) w j k' t₂')         
     -----------------------------------------------------------------------
     → ( r * ε∉r ` loc ) , w , i , k , k' ⊢  (⊨∷ r  ε∉r loc w i k ( j , i<j , j≤k , t₁ , t₂ ) ) <  (⊨∷ r  ε∉r loc w i k' ( j , i<j , j≤k' , t₁ , t₂' ) )
 
@@ -331,10 +324,17 @@ data <-Min where
     → ( ( t₂ : (r , i , j  ⊨ w) )
       → ( r , w , i , j , j ⊢ t₁ < t₂ ) ⊎ (t₁ ≡ t₂) 
       )
-    → <-Min r w i j t₁ 
+    → <-Min r w i j t₁
+
+
+
+  
+find-<-Min ε w i .i (⊨ε .i .w) =  ⊨ε i w , <-min ε w i i (⊨ε i w) (λ { (⊨ε .i .w)  → inj₂ refl } )
+find-<-Min ($ c ` loc) w i j (⊨$ .c .loc .i .w w!!i≡just-c) = (⊨$ c loc i w w!!i≡just-c , <-min ($ c ` loc) w i (suc i) (⊨$ c loc i w w!!i≡just-c) (λ t₂ → inj₂ {!!}) ) 
       
 
 
+{-
 -- The lemma >-wellfounded is unprovable.  The definition of <-Min requires
 -- both sub-terms to be minimal before the order can lift through a plus/seq/star
 -- constructor.  This creates incomparable evidences, so a match need not have a
@@ -449,6 +449,7 @@ counterexample wellfounded = contradiction (proj₁ (wellfounded P1)) (proj₂ (
     contradiction (⊨inl .l .a2 .4 .i .j .w (⊨inr .a0 .a1 .2 .i .j .w (⊨$ 'a' .1 .i .w refl))) min = ¬Min-P2 min
     contradiction (⊨inr .l .a2 .4 .i .j .w (⊨$ 'a' .3 .i .w refl)) min = ¬Min-P3 min
 
+-} 
 ```
 
 

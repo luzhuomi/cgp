@@ -80,7 +80,7 @@ import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; tail; concatMap ; _∷ʳ_ ; length )
+open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; tail; concatMap ; _∷ʳ_ ; length ; take ; drop )
 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-cancelʳ ; ++-conicalʳ ; ++-conicalˡ ;
@@ -94,7 +94,7 @@ open import Data.List.Membership.Propositional.Properties using (∈-++⁻ ; ∈
 
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; sym; cong; cong₂; cong-app; subst; inspect; _≢_)
+open Eq using (_≡_; refl; trans; sym; cong; cong₂; cong-app; subst; subst₂; inspect; _≢_)
 
 open import Relation.Nullary using (¬_)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
@@ -218,9 +218,10 @@ data _,_,_,_,_⊢_<_ : ∀ ( r :  RE ) → ( w : List Char ) → ( i j j' : ℕ 
 data <-Min : ∀ ( r : RE ) → ( w : List Char )  → ( i j : ℕ ) →  ( r , i , j ⊨ w ) → Set
 
 
-find-<-Min : ∀ ( r : RE ) ( w : List Char ) ( i j : ℕ )
-  → r , i , j ⊨ w 
-  → ∃[ t ] ( <-Min r w i j t )
+postulate
+  find-<-Min : ∀ ( r : RE ) ( w : List Char ) ( i j : ℕ )
+    → r , i , j ⊨ w 
+    → ∃[ t ] ( <-Min r w i j t )
 
 
 -- is this well-founded, wellfounded is depending on <-Min hahah.. circular definition
@@ -329,13 +330,15 @@ data <-Min where
 
 
   
-find-<-Min ε w i .i (⊨ε .i .w) =  ⊨ε i w , <-min ε w i i (⊨ε i w) (λ { (⊨ε .i .w)  → inj₂ refl } )
-find-<-Min ($ c ` loc) w i j (⊨$ .c .loc .i .w w!!i≡just-c) = (⊨$ c loc i w w!!i≡just-c , <-min ($ c ` loc) w i (suc i) (⊨$ c loc i w w!!i≡just-c) (λ t₂ → inj₂ {!!}) ) 
-      
+-- K is available (no --without-K), so equality proofs are unique.
+UIP-≡ : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
+UIP-≡ refl refl = refl
 
 
-{-
--- The lemma >-wellfounded is unprovable.  The definition of <-Min requires
+-- The current definition of the order makes find-<-Min impossible to define.
+-- The counterexample below shows that assuming such a function leads to a contradiction.
+
+-- The lemma find-<-Min is unprovable.  The definition of <-Min requires
 -- both sub-terms to be minimal before the order can lift through a plus/seq/star
 -- constructor.  This creates incomparable evidences, so a match need not have a
 -- <-Min witness.
@@ -346,11 +349,12 @@ find-<-Min ($ c ` loc) w i j (⊨$ .c .loc .i .w w!!i≡just-c) = (⊨$ c loc i 
 --   P2 = left (right a)
 --   P3 = right a
 -- P1 and P2 are incomparable because comparing two outer-left proofs requires
--- the inner non-minimal proof (L2) to be minimal.  Hence no evidence is <-Min.
+-- comparing the minima of L1 and L2, both of which are L1, yielding L1 < L1.
+-- Hence no evidence is <-Min.
 
 counterexample : (∀ {r : RE} {w : List Char} {i j : ℕ}
-                   → r , i , j ⊨ w
-                   → ∃[ t ] (<-Min r w i j t))
+                   → (t : r , i , j ⊨ w)
+                   → ∃[ t' ] (<-Min r w i j t'))
                  → ⊥
 counterexample wellfounded = contradiction (proj₁ (wellfounded P1)) (proj₂ (wellfounded P1))
   where
@@ -402,15 +406,97 @@ counterexample wellfounded = contradiction (proj₁ (wellfounded P1)) (proj₂ (
     P3 : r , i , j ⊨ w
     P3 = ⊨inr l a2 4 i j w t$2
 
-    L1≢L2 : ¬ (L1 ≡ L2)
-    L1≢L2 ()
+    -- uniqueness of atomic evidences
+    $-evidence-unique : ∀ {c loc w i j} (t t' : ($ c ` loc) , i , j ⊨ w) → t ≡ t'
+    $-evidence-unique (⊨$ c loc i w eq) (⊨$ .c .loc .i .w eq') =
+      cong (λ p → ⊨$ c loc i w p) (UIP-≡ eq eq')
 
-    L2≮L1 : ¬ (l , w , i , j , j ⊢ L2 < L1)
-    L2≮L1 ()
+    find-<-Min-$-returns-t : ∀ {c loc w i j} (t : ($ c ` loc) , i , j ⊨ w)
+      → proj₁ (find-<-Min ($ c ` loc) w i j t) ≡ t
+    find-<-Min-$-returns-t {c} {loc} {w} {i} {j} t = $-evidence-unique (proj₁ (find-<-Min ($ c ` loc) w i j t)) t
 
-    ¬Min-L2 : ¬ (<-Min l w i j L2)
-    ¬Min-L2 (<-min .l .w .i .j .L2 min-ev) =
-      case-⊎ L2≮L1 (λ L2≡L1 → L1≢L2 (sym L2≡L1)) (min-ev L1)
+    t$0-unique : (t : a0 , i , j ⊨ w) → t ≡ t$0
+    t$0-unique t = $-evidence-unique t t$0
+
+    t$1-unique : (t : a1 , i , j ⊨ w) → t ≡ t$1
+    t$1-unique t = $-evidence-unique t t$1
+
+    t$2-unique : (t : a2 , i , j ⊨ w) → t ≡ t$2
+    t$2-unique t = $-evidence-unique t t$2
+
+    -- every evidence of l is either L1 or L2
+    l-evidence : (t : l , i , j ⊨ w) → t ≡ L1 ⊎ t ≡ L2
+    l-evidence (⊨inl .a0 .a1 .2 .i .j .w t') = inj₁ (cong (λ z → ⊨inl a0 a1 2 i j w z) (t$0-unique t'))
+    l-evidence (⊨inr .a0 .a1 .2 .i .j .w t') = inj₂ (cong (λ z → ⊨inr a0 a1 2 i j w z) (t$1-unique t'))
+
+    -- every evidence of r is either P1, P2, or P3
+    r-evidence : (t : r , i , j ⊨ w) → t ≡ P1 ⊎ t ≡ P2 ⊎ t ≡ P3
+    r-evidence (⊨inl .l .a2 .4 .i .j .w t')
+      with l-evidence t'
+    ... | inj₁ t'≡L1 = inj₁ (cong (λ z → ⊨inl l a2 4 i j w z) t'≡L1)
+    ... | inj₂ t'≡L2 = inj₂ (inj₁ (cong (λ z → ⊨inl l a2 4 i j w z) t'≡L2))
+    r-evidence (⊨inr .l .a2 .4 .i .j .w t') = inj₂ (inj₂ (cong (λ z → ⊨inr l a2 4 i j w z) (t$2-unique t')))
+
+    -- no atomic evidence is less than itself
+    ¬t$0<t$0 : ¬ (a0 , w , i , j , j ⊢ t$0 < t$0)
+    ¬t$0<t$0 ()
+
+    ¬t$1<t$1 : ¬ (a1 , w , i , j , j ⊢ t$1 < t$1)
+    ¬t$1<t$1 ()
+
+    -- L2 is not less than L1 (no constructor gives inr < inl)
+    ¬L2<L1 : ¬ (l , w , i , j , j ⊢ L2 < L1)
+    ¬L2<L1 ()
+
+    -- L1 is not less than itself: any proof would use choice-ll, whose premise
+    -- reduces to t$0 < t$0, which is impossible.
+    ¬L1<L1 : ¬ (l , w , i , j , j ⊢ L1 < L1)
+    ¬L1<L1 (choice-ll i j j .t$0 .t$0 L1<L1-premise)
+      rewrite find-<-Min-$-returns-t t$0
+      = ¬t$0<t$0 L1<L1-premise
+
+    -- L2 is not less than itself: any proof would use choice-rr, whose premise
+    -- reduces to t$1 < t$1, which is impossible.
+    ¬L2<L2 : ¬ (l , w , i , j , j ⊢ L2 < L2)
+    ¬L2<L2 (choice-rr i j j .t$1 .t$1 L2<L2-premise)
+      rewrite find-<-Min-$-returns-t t$1
+      = ¬t$1<t$1 L2<L2-premise
+
+    -- find-<-Min on l always returns L1, because L1 is the unique minimal evidence
+    find-<-Min-l-returns-L1 : (t : l , i , j ⊨ w)
+      → proj₁ (find-<-Min l w i j t) ≡ L1
+    find-<-Min-l-returns-L1 t
+      with find-<-Min l w i j t
+    ... | M , <-min .l .w .i .j .M minM
+      with minM L2 | l-evidence M
+    ... | inj₁ M<L2 | inj₁ M≡L1 = M≡L1
+    ... | inj₁ M<L2 | inj₂ M≡L2 = ⊥-elim (¬L2<L2 (subst₂ (λ x y → l , w , i , j , j ⊢ x < y) M≡L2 (refl {x = L2}) M<L2))
+    ... | inj₂ M≡L2 | _ = ⊥-elim (¬L2-min M≡L2 (<-min l w i j M minM))
+      where
+        L2≢L1 : ¬ (L2 ≡ L1)
+        L2≢L1 ()
+
+        ¬L2-min : M ≡ L2 → ¬ (<-Min l w i j M)
+        ¬L2-min M≡L2 (<-min .l .w .i .j .M minM')
+          with minM' L1
+        ... | inj₁ M<L1 = ¬L2<L1 (subst₂ (λ x y → l , w , i , j , j ⊢ x < y) M≡L2 (refl {x = L1}) M<L1)
+        ... | inj₂ M≡L1 = L2≢L1 (trans (sym M≡L2) M≡L1)
+
+    -- P1 is not less than P2
+    ¬P1<P2 : ¬ (r , w , i , j , j ⊢ P1 < P2)
+    ¬P1<P2 (choice-ll i j j .L1 .L2 prem)
+      rewrite find-<-Min-l-returns-L1 L1 | find-<-Min-l-returns-L1 L2
+      = ¬L1<L1 prem
+
+    -- P2 is not less than P1
+    ¬P2<P1 : ¬ (r , w , i , j , j ⊢ P2 < P1)
+    ¬P2<P1 (choice-ll i j j .L2 .L1 prem)
+      rewrite find-<-Min-l-returns-L1 L2 | find-<-Min-l-returns-L1 L1
+      = ¬L1<L1 prem
+
+    -- P3 is not less than P1
+    ¬P3<P1 : ¬ (r , w , i , j , j ⊢ P3 < P1)
+    ¬P3<P1 ()
 
     inl-inj : {t₁ t₂ : l , i , j ⊨ w}
             → ⊨inl l a2 4 i j w t₁ ≡ ⊨inl l a2 4 i j w t₂
@@ -419,37 +505,39 @@ counterexample wellfounded = contradiction (proj₁ (wellfounded P1)) (proj₂ (
 
     P1≢P2 : ¬ (P1 ≡ P2)
     P1≢P2 P1≡P2 = L1≢L2 (inl-inj P1≡P2)
+      where
+        L1≢L2 : ¬ (L1 ≡ L2)
+        L1≢L2 ()
 
     P3≢P1 : ¬ (P3 ≡ P1)
     P3≢P1 ()
 
-    ¬P1<P2 : ¬ (r , w , i , j , j ⊢ P1 < P2)
-    ¬P1<P2 (choice-ll i j j .L1 .L2 _ minL2 _) = ¬Min-L2 minL2
-
-    ¬P2<P1 : ¬ (r , w , i , j , j ⊢ P2 < P1)
-    ¬P2<P1 (choice-ll i j j .L2 .L1 _ _ L2<L1) = L2≮L1 L2<L1
-
-    ¬P3<P1 : ¬ (r , w , i , j , j ⊢ P3 < P1)
-    ¬P3<P1 ()
-
+    -- no evidence of r is minimal
     ¬Min-P1 : ¬ (<-Min r w i j P1)
-    ¬Min-P1 (<-min .r .w .i .j .P1 min-ev) =
-      case-⊎ ¬P1<P2 P1≢P2 (min-ev P2)
+    ¬Min-P1 (<-min .r .w .i .j .P1 minP1)
+      with minP1 P2
+    ... | inj₁ P1<P2 = ¬P1<P2 P1<P2
+    ... | inj₂ P1≡P2 = P1≢P2 P1≡P2
 
     ¬Min-P2 : ¬ (<-Min r w i j P2)
-    ¬Min-P2 (<-min .r .w .i .j .P2 min-ev) =
-      case-⊎ ¬P2<P1 (λ P2≡P1 → P1≢P2 (sym P2≡P1)) (min-ev P1)
+    ¬Min-P2 (<-min .r .w .i .j .P2 minP2)
+      with minP2 P1
+    ... | inj₁ P2<P1 = ¬P2<P1 P2<P1
+    ... | inj₂ P2≡P1 = P1≢P2 (sym P2≡P1)
 
     ¬Min-P3 : ¬ (<-Min r w i j P3)
-    ¬Min-P3 (<-min .r .w .i .j .P3 min-ev) =
-      case-⊎ ¬P3<P1 P3≢P1 (min-ev P1)
+    ¬Min-P3 (<-min .r .w .i .j .P3 minP3)
+      with minP3 P1
+    ... | inj₁ P3<P1 = ¬P3<P1 P3<P1
+    ... | inj₂ P3≡P1 = P3≢P1 P3≡P1
 
     contradiction : (t : r , i , j ⊨ w) → ¬ (<-Min r w i j t)
-    contradiction (⊨inl .l .a2 .4 .i .j .w (⊨inl .a0 .a1 .2 .i .j .w (⊨$ 'a' .0 .i .w refl))) min = ¬Min-P1 min
-    contradiction (⊨inl .l .a2 .4 .i .j .w (⊨inr .a0 .a1 .2 .i .j .w (⊨$ 'a' .1 .i .w refl))) min = ¬Min-P2 min
-    contradiction (⊨inr .l .a2 .4 .i .j .w (⊨$ 'a' .3 .i .w refl)) min = ¬Min-P3 min
+    contradiction t min
+      with r-evidence t
+    ... | inj₁ t≡P1 = ¬Min-P1 (subst (<-Min r w i j) t≡P1 min)
+    ... | inj₂ (inj₁ t≡P2) = ¬Min-P2 (subst (<-Min r w i j) t≡P2 min)
+    ... | inj₂ (inj₂ t≡P3) = ¬Min-P3 (subst (<-Min r w i j) t≡P3 min)
 
--} 
 ```
 
 

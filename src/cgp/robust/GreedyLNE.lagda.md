@@ -2024,6 +2024,29 @@ data Robust : RE → Set where
 iso→robust : ∀ ( r : RE )
   → Iso r
   → Robust r
-iso→robust = {!!}   
+iso→robust r (iso iso-ev) = robust {r} ev
+  where
+    ev : ( w : List Char ) → ( v : U r )
+      → ( ≥-Maxᵍ {r} w v → ≥-Maxˡ {r} w v )
+      × ( ≥-Maxˡ {r} w v → ≥-Maxᵍ {r} w v )
+    ev w v = to-ev , from-ev
+      where
+        to-ev : ≥-Maxᵍ {r} w v → ≥-Maxˡ {r} w v
+        to-ev (GreedyMax.≥-max w' v' flat-v'≡w' max-v') =
+          LNEMax.≥-max w' v' flat-v'≡w' max-vˡ
+          where
+            max-vˡ : ( u : U r ) → proj₁ (flat u) ≡ w' → LNEOrder._⊢_≥_ r v' u
+            max-vˡ u flat-u≡w' with max-v' u flat-u≡w'
+            ... | inj₁ v'>ᵍu = inj₁ (proj₁ (iso-ev v' u) v'>ᵍu)
+            ... | inj₂ v'≡u = inj₂ v'≡u
+
+        from-ev : ≥-Maxˡ {r} w v → ≥-Maxᵍ {r} w v
+        from-ev (LNEMax.≥-max w' v' flat-v'≡w' max-v') =
+          GreedyMax.≥-max w' v' flat-v'≡w' max-vᵍ
+          where
+            max-vᵍ : ( u : U r ) → proj₁ (flat u) ≡ w' → GreedyMax._⊢_≥_ r v' u
+            max-vᵍ u flat-u≡w' with max-v' u flat-u≡w'
+            ... | inj₁ v'>ˡu = inj₁ (proj₂ (iso-ev v' u) v'>ˡu)
+            ... | inj₂ v'≡u = inj₂ v'≡u
 
 ```

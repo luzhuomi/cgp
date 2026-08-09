@@ -930,7 +930,7 @@ postulate
 
 Definition: A relaxed form of LNN, restricted left-nullability form (not sufficient)
 
-But it is not sufficient to ensure isoness 
+But it is not sufficient to ensure isomorphism 
 
 ```agda
     
@@ -958,7 +958,7 @@ data RLN : RE → Set where
 ```
 
 
-rln is sufficient to ensure isoness ?
+rln is sufficient to ensure isomoprhism ?
 
 
 
@@ -1152,7 +1152,7 @@ can we prove
 No, none of  choice-ll-bothempty, choice-ll-notempty , choice-ll-empty can be applied. 
 
 
-the current RLN is not sufficient to guarantee isoness
+the current RLN is not sufficient to guarantee isomoprhism
 
 
 
@@ -1358,7 +1358,7 @@ data RLNN : RE → Set where
 
 
 ```
-is rlnn sufficiently guaranteeing isoness?
+is rlnn sufficiently guaranteeing isomoprhism?
 
 
 ### sub lemma 

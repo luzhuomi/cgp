@@ -188,6 +188,15 @@ flat-pair-len : ∀ { l r : RE } { loc : ℕ } { u : U l } { v : U r }
 flat-pair-len {l} {r} {loc} {u} {v} with flat {l} u | flat {r} v
 ... | xs₁ , _ | xs₂ , _ = length-++ {A = Char} xs₁ {xs₂}
 
+-- Helpers to relate flat of LeftU/RightU to flat of inner tree
+flat-LeftU : ∀ { l r : RE } { loc : ℕ } { u : U l } → proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ proj₁ (flat u)
+flat-LeftU {l} {r} {loc} {u} with flat {l} u
+... | xs , _ = refl
+
+flat-RightU : ∀ { l r : RE } { loc : ℕ } { u : U r } → proj₁ (flat (RightU {l} {r} {loc} u)) ≡ proj₁ (flat u)
+flat-RightU {l} {r} {loc} {u} with flat {r} u
+... | xs , _ = refl
+
 -- Helper to prove that length ≡ 0 is impossible for ListU (u ∷ us)
 -- Given pair has length > 0 and u₁ is empty, then v₁ is non-empty
 -- Postulated due to stuck flat terms in with clauses
@@ -753,21 +762,28 @@ lnn→robust {r * ε∉r ` loc} (lnn-* lnn-r) =  robust {r * ε∉r ` loc} prf
     robust-r : Robust r
     robust-r = lnn→robust {r} lnn-r
 
+    ¬[]->ˡ-cons : ∀ { u : U r } { us : List (U r) } → ¬ (r * ε∉r ` loc) ⊢ ListU [] >ˡ ListU (u ∷ us)
+    ¬[]->ˡ-cons {u} {us} (be len≡ len0 u>ⁱv) = ⊥-elim (>0→¬≡0 len-right>0 (sym len≡))
+      where
+        len-right>0 : length (proj₁ (flat (ListU (u ∷ us)))) > 0
+        len-right>0 = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
+    ¬[]->ˡ-cons (bne len>0 _ _) = ⊥-elim (>0→¬≡0 len>0 refl)
+    ¬[]->ˡ-cons (lne len>0 _) = ⊥-elim (>0→¬≡0 len>0 refl)
 
     prf : (v₁ v₂ : U (r * ε∉r ` loc)) →
       ((r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ˡ v₂) ×
       ((r * ε∉r ` loc) ⊢ v₁ >ˡ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂)
-    prf (ListU []) (ListU []) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
-    prf (ListU []) (ListU (u ∷ us)) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
+    prf (ListU []) (ListU []) = (λ { (sub z) → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl)) }) , (λ z → ⊥-elim (LNEOrder.>→¬≡ z refl))
+    prf (ListU []) (ListU (u ∷ us)) = (λ { (sub ()) }) , (λ z → ⊥-elim (¬[]->ˡ-cons z))
     prf (ListU (v ∷ vs)) (ListU []) = to-ev , λ z → sub star-cons-nil
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU [] → (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU []
         to-ev (sub star-cons-nil) = lne len-cons>0 len-nil≡0
           where
             len-cons>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
-            len-cons>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = Nat.s≤s Nat.z≤n
+            len-cons>0 = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
             len-nil≡0 : length (proj₁ (flat (ListU []))) ≡ 0
-            len-nil≡0 rewrite []→length≡0 proj₁flat-nil≡[] = refl
+            len-nil≡0 = []→length≡0 proj₁flat-nil≡[]
     prf (ListU (v ∷ vs)) (ListU (u ∷ us)) = to-ev , from-ev
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us) →
@@ -1180,9 +1196,9 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]                     
             u₂>ᵍu₁ : l ⊢ u₂ >ᵍ u₁
-            u₂>ᵍu₁ = {!!} -- rln→∷>ᵍ[] rln-l u₂ u₁ ¬proj₁flat-u₂≡[] proj₁flat-u₁-eq -- shall we specialize it to l + r only? 
+            u₂>ᵍu₁ = rln→∷>ᵍ[] rln-l u₂ u₁ ¬proj₁flat-u₂≡[] proj₁flat-u₁-eq 
         from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
-        from-ev (choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =  choice-ll {!!} -- (rln→∷>ᵍ[] rln-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])
+        from-ev (choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) =  choice-ll (rln→∷>ᵍ[] rln-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])
         from-ev (choice-ll-bothempty proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
         ... | robust rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
         from-ev (choice-ll-notempty ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
@@ -1199,7 +1215,7 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]         
         from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
-        from-ev (choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) = choice-ll {!!} -- (rln→∷>ᵍ[] rln-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) 
+        from-ev (choice-ll-empty ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) = choice-ll (rln→∷>ᵍ[] rln-l u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[]) 
         from-ev (choice-ll-bothempty proj₁flat-u₁≡[] proj₁flat-u₂≡[] u₁>ˡu₂ ) with robust-l
         ... | robust rob-l-ev = choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ ))
 
@@ -1264,7 +1280,7 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
           where
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
             ¬proj₁flat-u₁≡[] rewrite proj₁flat-u₁-eq  = λ proj₁flat-u₁≡[] → ¬∷≡[] proj₁flat-u₁≡[]
-        ... | robust rob-r-ev | []     | c' ∷ cs'  =  {!!} -- Nullary.contradiction (rln-u>ᵍv→u≡[]→v≡[] {r} rln-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[]
+        ... | robust rob-r-ev | []     | c' ∷ cs'  =  Nullary.contradiction (rln-u>ᵍv→u≡[]→v≡[] {r} rln-r u₁ u₂ u₁>ᵍu₂ proj₁flat-u₁-eq) ¬proj₁flat-u₂≡[]
           where 
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]           
@@ -1275,7 +1291,7 @@ rln→robust {l + r ` loc} (rln-+ ε∈l→ε≅r rln-l rln-r) =  robust {l + r 
         from-ev (choice-rr-notempty  ¬proj₁flat-u₁≡[] ¬proj₁flat-u₂≡[] u₁>ˡu₂)  with robust-r
         ... | robust rob-r-ev = choice-rr (proj₂ (rob-r-ev u₁ u₂) u₁>ˡu₂ ) 
         from-ev (choice-rr-empty  ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  with robust-r
-        ... | robust rob-r-ev = choice-rr {!!} -- (rln→∷>ᵍ[] rln-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  
+        ... | robust rob-r-ev = choice-rr (rln→∷>ᵍ[] rln-r u₁ u₂ ¬proj₁flat-u₁≡[] proj₁flat-u₂≡[])  
 rln→robust {r * ε∉r ` loc} (rln-* rln-r) =  robust {r * ε∉r ` loc} prf
   where
     robust-r : Robust r
@@ -1642,7 +1658,10 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
         εεl = proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂
         to-ev (sub (choice-ll u₁>ᵍu₂)) with robust-l | proj₁ (flat u₂) in proj₁flat-u₂-eq
-        ... | robust rob-l-ev | [] = be {!!} (Utils.[]→length≡0 proj₁flat-u₂-eq) (choice-ll ((proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )))
+        ... | robust rob-l-ev | [] = be len≡ (Utils.[]→length≡0 proj₁flat-u₂-eq) (choice-ll ((proj₁ (rob-l-ev u₁ u₂) u₁>ᵍu₂ )))
+          where
+            len≡ : length (proj₁ (flat (LeftU u₁))) ≡ length (proj₁ (flat (LeftU u₂)))
+            len≡ = trans (cong List.length flat-LeftU) (trans (cong List.length (trans proj₁flat-u₁-eq (sym proj₁flat-u₂-eq))) (cong List.length (sym flat-LeftU)))
         ... | robust rob-l-ev | c ∷ cs = Nullary.contradiction u₂>ᵍu₁ (u>ᵍv→¬v>ᵍu u₁>ᵍu₂)  -- we don't need a contradiction here. It is possible to get u₁>ˡu₂?
         -- note ε∈ l does not mean ε≅ l.  ¬proj₁flat-u₂≡[]  is possible
         -- for lne, we have choice-ll-bothempty, choice-ll-notempty, choice-ll-empty
@@ -1653,7 +1672,10 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
             u₂>ᵍu₁ : l ⊢ u₂ >ᵍ u₁
             u₂>ᵍu₁ =  lnn→∷>ᵍ[] lnn-l u₂ u₁ ¬proj₁flat-u₂≡[] proj₁flat-u₁-eq
         from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
-        from-ev (lne len|u₁|>0 len|u₂|≡0) =  sub (choice-ll (lnn→∷>ᵍ[] lnn-l u₁ u₂ {!!} (Utils.length≡0→[] len|u₂|≡0)) )
+        from-ev (lne len|u₁|>0 len|u₂|≡0) =  sub (choice-ll (lnn→∷>ᵍ[] lnn-l u₁ u₂ ¬proj₁flat-u₁≡[] (Utils.length≡0→[] len|u₂|≡0)) )
+          where
+            ¬proj₁flat-u₁≡[] : ¬ proj₁ (flat u₁) ≡ []
+            ¬proj₁flat-u₁≡[] = length>0→¬≡[] (subst (λ x → x > 0) (cong List.length flat-LeftU) len|u₁|>0)
         from-ev (be len|u₁|≡0 len|u₂|≡0 (choice-ll u₁>ˡu₂) ) with robust-l
         ... | robust rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
         from-ev (bne  len|u₁|>0 len|u₂|>0 (choice-ll u₁>ˡu₂) ) with robust-l
@@ -1670,7 +1692,10 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
             ¬proj₁flat-u₂≡[] : ¬ proj₁ ( flat u₂ ) ≡ []
             ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq  = λ proj₁flat-u₂≡[] → ¬∷≡[] proj₁flat-u₂≡[]         
         from-ev :  (l + r ` loc) ⊢ LeftU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ᵍ LeftU u₂
-        from-ev (lne len|u₁|>0 len|u₂|≡0) = sub (choice-ll (lnn→∷>ᵍ[] lnn-l u₁ u₂ {!!} (Utils.length≡0→[] len|u₂|≡0)) )
+        from-ev (lne len|u₁|>0 len|u₂|≡0) = sub (choice-ll (lnn→∷>ᵍ[] lnn-l u₁ u₂ ¬proj₁flat-u₁≡[]-lne (Utils.length≡0→[] len|u₂|≡0)) )
+          where
+            ¬proj₁flat-u₁≡[]-lne : ¬ proj₁ (flat u₁) ≡ []
+            ¬proj₁flat-u₁≡[]-lne = length>0→¬≡[] (subst (λ x → x > 0) (cong List.length flat-LeftU) len|u₁|>0)
         from-ev (be len|u₁|≡len|u₂∣  len|u₂|≡0 (choice-ll u₁>ˡu₂) ) with robust-l
         ... | robust rob-l-ev = sub (choice-ll ((proj₂ (rob-l-ev u₁ u₂) u₁>ˡu₂ )))
 
@@ -1680,17 +1705,21 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
       where
         to-ev : (l + r ` loc) ⊢ LeftU u₁ >ᵍ RightU u₂ → (l + r ` loc) ⊢ LeftU u₁ >ˡ RightU u₂
         to-ev (sub choice-lr) with proj₁ (flat u₁) in proj₁flat-u₁-eq | proj₁ (flat u₂) in proj₁flat-u₂-eq
-        ... | []     | []   = be {!!}  (Utils.[]→length≡0 proj₁flat-u₂≡[]) choice-lr 
+        ... | []     | []   = be len≡  (Utils.[]→length≡0 proj₁flat-u₂-eq) choice-lr
+          where
+            len≡ : length (proj₁ (flat (LeftU u₁))) ≡ length (proj₁ (flat (RightU u₂)))
+            len≡ = trans (cong List.length flat-LeftU) (trans (cong List.length proj₁flat-u₁-eq) (trans (sym (cong List.length proj₁flat-u₂-eq)) (cong List.length (sym flat-RightU))))
+        ... | []     | c ∷ cs = ⊥-elim (¬proj₁flat-u₂≡[] proj₁flat-u₂≡[])
           where
             εεl : ε∈ l
             εεl = proj₁flat-v≡[]→ε∈r proj₁flat-u₁-eq
-  
             ε≅r : ε≅ r
             ε≅r = ε∈l→ε≅r εεl
             proj₁flat-u₂≡[] : proj₁ (flat u₂) ≡ []
-            proj₁flat-u₂≡[] with  ε≅r→flat-[] {r} {ε≅r} u₂
+            proj₁flat-u₂≡[] with ε≅r→flat-[] {r} {ε≅r} u₂
             ... | flat-[] _ eq = eq
-        ... | []     | c ∷ cs = {!!}
+            ¬proj₁flat-u₂≡[] : ¬ proj₁ (flat u₂) ≡ []
+            ¬proj₁flat-u₂≡[] rewrite proj₁flat-u₂-eq = λ x → ¬∷≡[] x
         ... | c ∷ cs | [] = lne (Utils.¬≡[]→length>0 ¬proj₁flat-u₁≡[]) (Utils.[]→length≡0 proj₁flat-u₂-eq)
           where 
             ¬proj₁flat-u₁≡[] : ¬ proj₁ ( flat u₁ ) ≡ []
@@ -1707,10 +1736,12 @@ rlnn→robust {l + r ` loc} (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r) =  robust {l +
     prf (RightU u₁) (LeftU u₂) = to-ev , from-ev
       where
         to-ev : (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂
-        to-ev = {!!} 
+        to-ev (sub ()) 
         from-ev : (l + r ` loc) ⊢ RightU u₁ >ˡ LeftU u₂ → (l + r ` loc) ⊢ RightU u₁ >ᵍ LeftU u₂
-        from-ev (lne len|u₁|>0 len|u₂|≡0) = Nullary.contradiction proj₁flat-u₁≡[] {!!} 
+        from-ev (lne len|u₁|>0 len|u₂|≡0) = Nullary.contradiction proj₁flat-u₁≡[] ¬proj₁flat-u₁≡[]
           where
+            ¬proj₁flat-u₁≡[] : ¬ proj₁ (flat u₁) ≡ []
+            ¬proj₁flat-u₁≡[] = length>0→¬≡[] (subst (λ x → x > 0) (cong List.length flat-RightU) len|u₁|>0)
             ε∈l : ε∈ l
             ε∈l = proj₁flat-v≡[]→ε∈r (Utils.length≡0→[] len|u₂|≡0)
             ε≅r : ε≅ r 
@@ -1750,21 +1781,28 @@ rlnn→robust {r * ε∉r ` loc} (rlnn-* rlnn-r) =  robust {r * ε∉r ` loc} pr
     robust-r : Robust r
     robust-r = rlnn→robust {r} rlnn-r
 
+    ¬[]->ˡ-cons : ∀ { u : U r } { us : List (U r) } → ¬ (r * ε∉r ` loc) ⊢ ListU [] >ˡ ListU (u ∷ us)
+    ¬[]->ˡ-cons {u} {us} (be len≡ len0 u>ⁱv) = ⊥-elim (>0→¬≡0 len-right>0 (sym len≡))
+      where
+        len-right>0 : length (proj₁ (flat (ListU (u ∷ us)))) > 0
+        len-right>0 = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us})
+    ¬[]->ˡ-cons (bne len>0 _ _) = ⊥-elim (>0→¬≡0 len>0 refl)
+    ¬[]->ˡ-cons (lne len>0 _) = ⊥-elim (>0→¬≡0 len>0 refl)
 
     prf : (v₁ v₂ : U (r * ε∉r ` loc)) →
       ((r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ˡ v₂) ×
       ((r * ε∉r ` loc) ⊢ v₁ >ˡ v₂ → (r * ε∉r ` loc) ⊢ v₁ >ᵍ v₂)
-    prf (ListU []) (ListU []) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
-    prf (ListU []) (ListU (u ∷ us)) = (λ z → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl))) , (λ z → ⊥-elim (LNEOrder.>ⁱ→¬≡ z (sym refl)))
+    prf (ListU []) (ListU []) = (λ { (sub z) → ⊥-elim (GreedyOrder.>ⁱ→¬≡ z (sym refl)) }) , (λ z → ⊥-elim (LNEOrder.>→¬≡ z refl))
+    prf (ListU []) (ListU (u ∷ us)) = (λ { (sub ()) }) , (λ z → ⊥-elim (¬[]->ˡ-cons z))
     prf (ListU (v ∷ vs)) (ListU []) = to-ev , λ z → sub star-cons-nil
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU [] → (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ˡ ListU []
         to-ev (sub star-cons-nil) = lne len-cons>0 len-nil≡0
           where
             len-cons>0 : length (proj₁ (flat (ListU (v ∷ vs)))) > 0
-            len-cons>0 rewrite flat-list-cons {r} {ε∉r} {loc} {v} {vs} = Nat.s≤s Nat.z≤n
+            len-cons>0 = ¬≡[]→length>0 (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs})
             len-nil≡0 : length (proj₁ (flat (ListU []))) ≡ 0
-            len-nil≡0 rewrite []→length≡0 proj₁flat-nil≡[] = refl
+            len-nil≡0 = []→length≡0 proj₁flat-nil≡[]
     prf (ListU (v ∷ vs)) (ListU (u ∷ us)) = to-ev , from-ev
       where
         to-ev : (r * ε∉r ` loc) ⊢ ListU (v ∷ vs) >ᵍ ListU (u ∷ us) →

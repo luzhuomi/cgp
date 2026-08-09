@@ -1366,6 +1366,62 @@ data RLNN : RE → Set where
     --------------------------------
     → RLNN ( r * ε∉r ` loc )
 
+-- Concrete counterexample to RLNN implying Iso.
+counter-left : RE
+counter-left = ε + ε ` 1
+
+counter-letter : RE
+counter-letter = $ 'a' ` 2
+
+counter-star : RE
+counter-star = counter-letter * ε∉$ ` 3
+
+counter-re : RE
+counter-re = counter-left ● counter-star ` 4
+
+counter-rlnn-left : RLNN counter-left
+counter-rlnn-left = rlnn-+ (λ _ → ε≅ε) lnn-ε rlnn-ε
+
+counter-rlnn-star : RLNN counter-star
+counter-rlnn-star = rlnn-* rlnn-$
+
+counter-rlnn : RLNN counter-re
+counter-rlnn = rlnn-● counter-rlnn-left counter-rlnn-star
+
+counter-u : U counter-re
+counter-u = PairU
+  (LeftU EmptyU)
+  (ListU {r = counter-letter} {nε = ε∉$} {loc = 3} [])
+
+counter-v : U counter-re
+counter-v = PairU
+  (RightU EmptyU)
+  (ListU {r = counter-letter} {nε = ε∉$} {loc = 3} (LetterU 'a' ∷ []))
+
+counter-u>ᵍv : counter-re ⊢ counter-u >ᵍ counter-v
+counter-u>ᵍv = sub (GreedyOrder.seq₁ (sub GreedyOrder.choice-lr))
+
+counter-u-flat : proj₁ (flat counter-u) ≡ []
+counter-u-flat = refl
+
+counter-v-flat : proj₁ (flat counter-v) ≡ 'a' ∷ []
+counter-v-flat = refl
+
+counter-no-u>ˡv : ¬ counter-re ⊢ counter-u >ˡ counter-v
+counter-no-u>ˡv (be () _ _)
+counter-no-u>ˡv (bne () _ _)
+counter-no-u>ˡv (lne () _)
+
+-- The smaller ε + ε witness invalidates empty-flat uniqueness.
+empty-flat-left : proj₁ (flat (LeftU {l = ε} {r = ε} {loc = 1} EmptyU)) ≡ []
+empty-flat-left = refl
+
+empty-flat-right : proj₁ (flat (RightU {l = ε} {r = ε} {loc = 1} EmptyU)) ≡ []
+empty-flat-right = refl
+
+empty-left≢right : ¬ (LeftU {l = ε} {r = ε} {loc = 1} EmptyU ≡ RightU {l = ε} {r = ε} {loc = 1} EmptyU)
+empty-left≢right = LeftU≢RightU EmptyU EmptyU
+
 
 ```
 is rlnn sufficiently guaranteeing isomoprhism? no. 
@@ -1971,5 +2027,3 @@ iso→robust : ∀ ( r : RE )
 iso→robust = {!!}   
 
 ```
-
-

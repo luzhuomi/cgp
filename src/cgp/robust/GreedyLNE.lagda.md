@@ -2054,6 +2054,9 @@ iso→robust r (iso iso-ev) = robust {r} ev
 
 ```agda
 
+-- Purpose: Embed the stronger LNN condition into RLNN.
+-- Used by: The choice-left repair case, where the RLNN constructor stores LNN l.
+-- Main idea: Recursively reuse each LNN constructor as the corresponding RLNN constructor.
 lnn→rlnn : ∀ { r : RE }
   → LNN r
   → RLNN r
@@ -2066,6 +2069,9 @@ lnn→rlnn (lnn-+ ε∉l lnn-l lnn-r) =
 lnn→rlnn (lnn-* lnn-r) = rlnn-* (lnn→rlnn lnn-r)
 
 
+-- Purpose: Transport equal flattened words through a concatenating parse pair.
+-- Used by: Repair branches that replace one component of a PairU tree.
+-- Main idea: Rewrite both pair flattenings to concatenations and apply congruence of _++_.
 robust-flat-pair-cong : ∀ { l r : RE } { loc : ℕ }
   → { u₁ v₁ : U l } { u₂ v₂ : U r }
   → proj₁ (flat u₁) ≡ proj₁ (flat v₁)
@@ -2077,6 +2083,9 @@ robust-flat-pair-cong {l} {r} {loc} {u₁} {v₁} {u₂} {v₂} u₁≡v₁ u₂
     (trans (cong₂ _++_ u₁≡v₁ u₂≡v₂)
       (sym (flat-pair {l} {r} {loc} {u = v₁} {v = v₂})))
 
+-- Purpose: Transport a flattened-word equality through LeftU.
+-- Used by: Choice-left repair branches.
+-- Main idea: Compose the defining LeftU flattening equalities around the inner equality.
 robust-flat-left-cong : ∀ { l r : RE } { loc : ℕ }
   → { u v : U l }
   → proj₁ (flat u) ≡ proj₁ (flat v)
@@ -2086,6 +2095,9 @@ robust-flat-left-cong {l} {r} {loc} {u} {v} u≡v =
   trans (flat-LeftU {l} {r} {loc} {u = u})
     (trans u≡v (sym (flat-LeftU {l} {r} {loc} {u = v})))
 
+-- Purpose: Transport a flattened-word equality through RightU.
+-- Used by: Choice-right repair branches.
+-- Main idea: Compose the defining RightU flattening equalities around the inner equality.
 robust-flat-right-cong : ∀ { l r : RE } { loc : ℕ }
   → { u v : U r }
   → proj₁ (flat u) ≡ proj₁ (flat v)
@@ -2095,14 +2107,23 @@ robust-flat-right-cong {l} {r} {loc} {u} {v} u≡v =
   trans (flat-RightU {l} {r} {loc} {u = u})
     (trans u≡v (sym (flat-RightU {l} {r} {loc} {u = v})))
 
+-- Purpose: Convert an empty list equality into a zero-length equality.
+-- Used by: The LNE be constructor helper.
+-- Main idea: Pattern matching on the equality reduces both lengths to zero.
 robust-length-empty : ∀ { xs : List Char }
   → xs ≡ []
   → length xs ≡ 0
 robust-length-empty refl = refl
 
+-- Purpose: Give a reusable predicate for a flattened word being nonempty.
+-- Used by: The repair case split and empty/nonempty contradiction lemmas.
+-- Main idea: Define nonemptiness as the negation of equality with [].
 robust-not-empty : List Char → Set
 robust-not-empty xs = ¬ (xs ≡ [])
 
+-- Purpose: Build an LNE be proof from two empty flattened words.
+-- Used by: Repair branches whose source and target words are empty.
+-- Main idea: Supply zero lengths and reuse the internal LNE order proof.
 robust-lne-be : ∀ { r : RE } { u v : U r }
   → proj₁ (flat u) ≡ []
   → proj₁ (flat v) ≡ []
@@ -2112,6 +2133,9 @@ robust-lne-be u≡[] v≡[] u>ⁱv = LNEOrder.be
   (trans (robust-length-empty u≡[]) (sym (robust-length-empty v≡[])))
   (robust-length-empty v≡[]) u>ⁱv
 
+-- Purpose: Build an LNE bne proof from two nonempty flattened words.
+-- Used by: Repair branches whose source and target words are both nonempty.
+-- Main idea: Derive both positive lengths and reuse the internal LNE order proof.
 robust-lne-bne : ∀ { r : RE } { u v : U r }
   → ¬ (proj₁ (flat u) ≡ [])
   → ¬ (proj₁ (flat v) ≡ [])
@@ -2120,6 +2144,9 @@ robust-lne-bne : ∀ { r : RE } { u v : U r }
 robust-lne-bne ¬u≡[] ¬v≡[] u>ⁱv =
   LNEOrder.bne (¬≡[]→length>0 ¬u≡[]) (¬≡[]→length>0 ¬v≡[]) u>ⁱv
 
+-- Purpose: Build an LNE lne proof from a nonempty left word and empty right word.
+-- Used by: Repair branches with a left-only nonempty word.
+-- Main idea: Derive the positive left length and zero right length directly.
 robust-lne-lne : ∀ { r : RE } { u v : U r }
   → ¬ (proj₁ (flat u) ≡ [])
   → proj₁ (flat v) ≡ []
@@ -2127,10 +2154,16 @@ robust-lne-lne : ∀ { r : RE } { u v : U r }
 robust-lne-lne ¬u≡[] v≡[] =
   LNEOrder.lne (¬≡[]→length>0 ¬u≡[]) ([]→length≡0 v≡[])
 
+-- Purpose: Record the flattening of a letter parse tree.
+-- Used by: The letter base case of empty-to-nonempty repair.
+-- Main idea: The LetterU flattening equation reduces definitionally to c ∷ [].
 robust-letter-flat : ∀ { c : Char } { loc : ℕ }
   → proj₁ (flat { $ c ` loc } (LetterU c)) ≡ c ∷ []
 robust-letter-flat = refl
 
+-- Purpose: Split any flattened word into the empty or nonempty case.
+-- Used by: Every structural repair helper to select the appropriate LNE constructor.
+-- Main idea: Inspect the first component of flat v and pattern-match on the list.
 robust-flat-empty? : ∀ { r : RE } ( v : U r )
   → (proj₁ (flat v) ≡ []) ⊎ robust-not-empty (proj₁ (flat v))
 robust-flat-empty? v with flat v
@@ -2138,6 +2171,9 @@ robust-flat-empty? v with flat v
 ... | c ∷ cs , _ = inj₂ (λ ())
 
 {-# TERMINATING #-}
+-- Purpose: Find a strictly greedier tree with the target word when the source is empty.
+-- Used by: Repairing an order that cannot be represented directly in LNE.
+-- Main idea: Recurse through RLNN; choose star-cons-nil, a choice constructor, or repair one PairU component.
 robust-empty→nonempty : ∀ { r : RE }
   → RLNN r
   → ( u : U r )
@@ -2252,6 +2288,9 @@ robust-empty→nonempty {l + r ` loc}
         right≡[] with ε≅r→flat-[] {r} {ε≅r} v
         ... | flat-[] _ eq = eq
 
+-- Purpose: Rule out an LNE order from an empty left word to a nonempty right word.
+-- Used by: Sequence repair when a direct LNE branch would have impossible lengths.
+-- Main idea: Each LNE constructor contradicts either the zero left length or the nonzero right length.
 robust-no-lne-empty-nonempty : ∀ { r : RE } { u v : U r }
   → proj₁ (flat u) ≡ []
   → robust-not-empty (proj₁ (flat v))
@@ -2267,6 +2306,9 @@ robust-no-lne-empty-nonempty u≡[] not-v-empty
   (LNEOrder.lne len-u>0 _) =
   (>0→¬≡0 len-u>0) (robust-length-empty u≡[])
 
+-- Purpose: Extract an empty first component from an empty PairU flattening.
+-- Used by: Pair repair when selecting a nonempty replacement in the second component.
+-- Main idea: Apply left conicality to the pair concatenation.
 robust-pair-first-empty : ∀ { l r : RE } { loc : ℕ }
   → { u₁ : U l } { u₂ : U r }
   → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
@@ -2274,6 +2316,9 @@ robust-pair-first-empty : ∀ { l r : RE } { loc : ℕ }
 robust-pair-first-empty pair≡[] =
   ++-conicalˡ _ _ pair≡[]
 
+-- Purpose: Extract an empty second component from an empty PairU flattening.
+-- Used by: Pair repair when selecting a nonempty replacement in the first component.
+-- Main idea: Apply right conicality to the pair concatenation.
 robust-pair-second-empty : ∀ { l r : RE } { loc : ℕ }
   → { u₁ : U l } { u₂ : U r }
   → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
@@ -2281,6 +2326,9 @@ robust-pair-second-empty : ∀ { l r : RE } { loc : ℕ }
 robust-pair-second-empty pair≡[] =
   ++-conicalʳ _ _ pair≡[]
 
+-- Purpose: Show that a nonempty pair with an empty first component has a nonempty second component.
+-- Used by: The second-component PairU repair branch.
+-- Main idea: Prove the contrapositive by concatenating two empty component words.
 robust-pair-second-not-empty : ∀ { l r : RE } { loc : ℕ }
   → { v₁ : U l } { v₂ : U r }
   → robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
@@ -2296,6 +2344,9 @@ robust-pair-second-not-empty {l} {r} {loc} {v₁} {v₂}
       (sym (flat-pair {l} {r} {loc} {u = v₁} {v = v₂}))
       (trans (cong₂ _++_ v₁-empty v₂-empty) refl)
 
+-- Purpose: Transport a flattened-word equality through a nonempty list head.
+-- Used by: Star-head repair when replacing the head parse tree.
+-- Main idea: Rewrite both list flattenings with flat-list-cons and use congruence on concatenation.
 robust-flat-list-head-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
   → { u v : U r } { us : List (U r) }
   → proj₁ (flat u) ≡ proj₁ (flat v)
@@ -2306,6 +2357,9 @@ robust-flat-list-head-cong {r} {ε∉r} {loc} {u} {v} {us} u≡v =
     (trans (cong (λ xs → xs ++ proj₁ (flat (ListU {r} {ε∉r} {loc} us))) u≡v)
       (sym (flat-list-cons {r} {ε∉r} {loc} {u = v} {us})))
 
+-- Purpose: Transport a flattened-word equality through a fixed list head and varying tail.
+-- Used by: Star-tail repair when replacing the tail parse list.
+-- Main idea: Rewrite both list flattenings and apply congruence to the tail concatenation.
 robust-flat-list-tail-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
   → { u : U r } { us vs : List (U r) }
   → proj₁ (flat (ListU {r} {ε∉r} {loc} us))
@@ -2319,6 +2373,9 @@ robust-flat-list-tail-cong {r} {ε∉r} {loc} {u} {us} {vs} us≡vs =
 
 {-# TERMINATING #-}
 mutual
+  -- Purpose: Convert a greedy order into either an LNE order or a same-word greedy repair.
+  -- Used by: Greedy-max to LNE-max transfer.
+  -- Main idea: Recurse over RLNN and order constructors; repair empty/nonempty mismatches by replacing the source tree.
   robust-repair : ∀ { r : RE }
     → RLNN r
     → ( u : U r )
@@ -2328,6 +2385,9 @@ mutual
       ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
                   × (r ⊢ z >ᵍ u)
 
+  -- Purpose: Lift the repair disjunction through a concatenation seq₁ order.
+  -- Used by: robust-repair for PairU trees ordered through their first components.
+  -- Main idea: Split source and target words into empty/nonempty cases and either build bne/be/lne or repair a component.
   robust-repair-seq₁ : ∀ { l r : RE } { loc : ℕ }
     → RLNN r
     → (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
@@ -2338,6 +2398,9 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
 
+  -- Purpose: Handle seq₁ when the source pair is empty but the target pair is nonempty.
+  -- Used by: The exceptional empty-first-component branch of robust-repair-seq₁.
+  -- Main idea: Repair the second component and lift it with seq₂ when the first component cannot provide an LNE order.
   robust-repair-seq₁-special : ∀ { l r : RE } { loc : ℕ }
     → RLNN r
     → (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
@@ -2349,6 +2412,9 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
 
+  -- Purpose: Lift the repair disjunction through a concatenation seq₂ order.
+  -- Used by: robust-repair for PairU trees ordered through their second components.
+  -- Main idea: Preserve the equal first component and either lift the LNE order or replace the second component.
   robust-repair-seq₂ : ∀ { l r : RE } { loc : ℕ }
     → (u₁ v₁ : U l) (u₂ v₂ : U r)
     → u₁ ≡ v₁
@@ -2518,6 +2584,9 @@ mutual
           , robust-flat-pair-cong {l} {r} {loc} refl z₂≡v₂
           , sub (GreedyOrder.seq₂ (sym u₁≡v₁) z₂>ᵍu₂))
 
+  -- Purpose: Lift repair through choice-ll.
+  -- Used by: robust-repair for LeftU/LeftU trees.
+  -- Main idea: Split empty/nonempty words, reuse the inner LNE order when possible, and inject a repaired tree with LeftU.
   robust-repair-choice-left : ∀ { l r : RE } { loc : ℕ }
     → (u v : U l)
     → ((l ⊢ u >ˡ v)
@@ -2563,6 +2632,9 @@ mutual
         inj₂ (LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-ll z>ᵍu))
 
+  -- Purpose: Lift repair through choice-rr.
+  -- Used by: robust-repair for RightU/RightU trees.
+  -- Main idea: Split empty/nonempty words, reuse the inner LNE order when possible, and inject a repaired tree with RightU.
   robust-repair-choice-right : ∀ { l r : RE } { loc : ℕ }
     → (u v : U r)
     → ((r ⊢ u >ˡ v)
@@ -2608,6 +2680,9 @@ mutual
         inj₂ (RightU z , robust-flat-right-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-rr z>ᵍu))
 
+  -- Purpose: Handle the cross-choice greedy order LeftU > RightU.
+  -- Used by: robust-repair for LeftU/RightU trees.
+  -- Main idea: Build be/bne/lne from the two word statuses; the empty-left/nonempty-right case contradicts ε∈l → ε≅r.
   robust-repair-choice-cross : ∀ { l r : RE } { loc : ℕ }
     → (ε∈ l → ε≅ r)
     → (u : U l) (v : U r)
@@ -2615,6 +2690,9 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
                     × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
 
+  -- Purpose: Lift repair through star-head.
+  -- Used by: robust-repair for nonempty star lists ordered by their heads.
+  -- Main idea: Build bne for a direct LNE head order or replace the head and preserve the list word.
   robust-repair-star-head : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
     → (u v : U r) (us vs : List (U r))
     → ((r ⊢ u >ˡ v)
@@ -2624,6 +2702,9 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (ListU (v ∷ vs))))
                     × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU (u ∷ us))
 
+  -- Purpose: Lift repair through star-tail.
+  -- Used by: robust-repair for equal star heads and recursively ordered tails.
+  -- Main idea: Preserve the head equality and either lift the tail LNE order or replace the tail list.
   robust-repair-star-tail : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
     → (u v : U r) (us vs : List (U r))
     → u ≡ v
@@ -2725,6 +2806,9 @@ mutual
               {u = v} {us = zs} {vs = vs} zs≡vs
           , sub (GreedyOrder.star-tail (sym u≡v) zs>ᵍus))
 
+-- Purpose: Contradict a greedy maximum when a strictly greedier same-word repair exists.
+-- Used by: robust-gmax→lmax after the repair branch.
+-- Main idea: Split the greedy ≥ witness and use asymmetry or non-equality.
 robust-gmax-no-better : ∀ { r : RE } { u v : U r }
   → r ⊢ u >ᵍ v
   → GreedyMax._⊢_≥_ r v u
@@ -2734,6 +2818,9 @@ robust-gmax-no-better u>ᵍv (inj₁ v>ᵍu) =
 robust-gmax-no-better u>ᵍv (inj₂ v≡u) =
   (>ᵍ→¬≡ u>ᵍv) (sym v≡u)
 
+-- Purpose: Contradict an LNE maximum when a strictly greater same-word tree exists.
+-- Used by: robust-lmax-unique and the reverse maximality transfer.
+-- Main idea: Split the LNE ≥ witness and use LNE asymmetry or non-equality.
 robust-lmax-no-better : ∀ { r : RE } { u v : U r }
   → LNEOrder._⊢_>_ r u v
   → LNEOrder._⊢_≥_ r v u
@@ -2743,6 +2830,9 @@ robust-lmax-no-better u>ˡv (inj₁ v>ˡu) =
 robust-lmax-no-better u>ˡv (inj₂ v≡u) =
   LNEOrder.>→¬≡ u>ˡv (sym v≡u)
 
+-- Purpose: Convert a greedy maximal witness into an LNE maximal witness.
+-- Used by: rlnn→robust and robust-lmax→gmax.
+-- Main idea: Apply robust-repair to every greedy strict comparison; a repair would contradict greedy maximality.
 robust-gmax→lmax : ∀ { r : RE }
   → RLNN r
   → ∀ { w : List Char } { v : U r }
@@ -2763,6 +2853,9 @@ robust-gmax→lmax {r} rlnn-r
       ⊥-elim (robust-gmax-no-better z>ᵍv
         (max-v z (trans z≡u flat-u≡w)))
 
+-- Purpose: Prove uniqueness of LNE maximal trees for a fixed word.
+-- Used by: robust-lmax→gmax to identify the LNE maximum with the supplied tree.
+-- Main idea: Use LNE trichotomy; either strict direction contradicts one maximality witness, or equality remains.
 robust-lmax-unique : ∀ { r : RE } { w : List Char } { u v : U r }
   → ≥-Maxˡ {r} w u
   → ≥-Maxˡ {r} w v
@@ -2777,6 +2870,9 @@ robust-lmax-unique {r}
   ⊥-elim (robust-lmax-no-better v>ˡu (max-u v flat-v≡w))
 ... | inj₂ (inj₂ u≡v) = u≡v
 
+-- Purpose: Convert an LNE maximal witness into a greedy maximal witness.
+-- Used by: rlnn→robust for the reverse direction.
+-- Main idea: Obtain a greedy maximum by well-foundedness, convert it to an LNE maximum, then use LNE uniqueness.
 robust-lmax→gmax : ∀ { r : RE }
   → RLNN r
   → ∀ { w : List Char } { v : U r }
@@ -2808,6 +2904,9 @@ robust-lmax→gmax {r} rlnn-r
     max-g-v : ≥-Maxᵍ {r} w v
     max-g-v rewrite v≡g = max-g-w
 
+-- Purpose: Establish maximality robustness for every RLNN regular expression.
+-- Used by: Clients needing Greedy/LNE maximality equivalence without full pointwise Iso.
+-- Main idea: Transfer greedy maxima directly using repair, and transfer LNE maxima through well-founded greedy maxima plus LNE uniqueness.
 rlnn→robust : ∀ ( r : RE )
   → RLNN r
   → Robust r

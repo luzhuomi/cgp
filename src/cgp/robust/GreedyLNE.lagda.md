@@ -2107,19 +2107,9 @@ robust-flat-right-cong {l} {r} {loc} {u} {v} u≡v =
   trans (flat-RightU {l} {r} {loc} {u = u})
     (trans u≡v (sym (flat-RightU {l} {r} {loc} {u = v})))
 
--- Purpose: Convert an empty list equality into a zero-length equality.
--- Used by: The LNE be constructor helper.
--- Main idea: Pattern matching on the equality reduces both lengths to zero.
-robust-length-empty : ∀ { xs : List Char }
-  → xs ≡ []
-  → length xs ≡ 0
-robust-length-empty refl = refl
-
--- Purpose: Give a reusable predicate for a flattened word being nonempty.
--- Used by: The repair case split and empty/nonempty contradiction lemmas.
--- Main idea: Define nonemptiness as the negation of equality with [].
-robust-not-empty : List Char → Set
-robust-not-empty xs = ¬ (xs ≡ [])
+-- type alias 
+not-empty : List Char → Set
+not-empty xs = ¬ (xs ≡ [])
 
 -- Purpose: Build an LNE be proof from two empty flattened words.
 -- Used by: Repair branches whose source and target words are empty.
@@ -2130,8 +2120,8 @@ robust-lne-be : ∀ { r : RE } { u v : U r }
   → LNEOrder._⊢_>ⁱ_ r u v
   → LNEOrder._⊢_>_ r u v
 robust-lne-be u≡[] v≡[] u>ⁱv = LNEOrder.be
-  (trans (robust-length-empty u≡[]) (sym (robust-length-empty v≡[])))
-  (robust-length-empty v≡[]) u>ⁱv
+  (trans ([]→length≡0  u≡[]) (sym ([]→length≡0  v≡[])))
+  ([]→length≡0  v≡[]) u>ⁱv
 
 -- Purpose: Build an LNE bne proof from two nonempty flattened words.
 -- Used by: Repair branches whose source and target words are both nonempty.
@@ -2164,9 +2154,9 @@ robust-letter-flat = refl
 -- Purpose: Split any flattened word into the empty or nonempty case.
 -- Used by: Every structural repair helper to select the appropriate LNE constructor.
 -- Main idea: Inspect the first component of flat v and pattern-match on the list.
-robust-flat-empty? : ∀ { r : RE } ( v : U r )
-  → (proj₁ (flat v) ≡ []) ⊎ robust-not-empty (proj₁ (flat v))
-robust-flat-empty? v with flat v
+flat-empty? : ∀ { r : RE } ( v : U r )
+  → (proj₁ (flat v) ≡ []) ⊎ not-empty (proj₁ (flat v))
+flat-empty? v with flat v
 ... | [] , _ = inj₁ refl
 ... | c ∷ cs , _ = inj₂ (λ ())
 
@@ -2179,7 +2169,7 @@ robust-empty→nonempty : ∀ { r : RE }
   → ( u : U r )
   → ( v : U r )
   → proj₁ (flat u) ≡ []
-  → robust-not-empty (proj₁ (flat v))
+  → not-empty (proj₁ (flat v)) -- ¬ (proj₁ (flat v)) ≡ []
   → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
               × (r ⊢ z >ᵍ u)
 robust-empty→nonempty {ε} rlnn-ε EmptyU EmptyU u≡[] not-v-empty =
@@ -2208,7 +2198,7 @@ robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
   where
     pair-first : ∀ (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
       → proj₁ (flat u₁) ≡ []
-      → robust-not-empty (proj₁ (flat v₁))
+      → not-empty (proj₁ (flat v₁))
       → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                      × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
     pair-first u₁ u₂ v₁ v₂ u₁-empty not-v₁-empty
@@ -2221,7 +2211,7 @@ robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
       → proj₁ (flat u₂) ≡ []
       → proj₁ (flat u₁) ≡ []
       → proj₁ (flat v₁) ≡ []
-      → robust-not-empty (proj₁ (flat v₂))
+      → not-empty (proj₁ (flat v₂))
       → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                      × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
     pair-second u₁ u₂ v₁ v₂ u₂-empty u₁-empty v₁-empty not-v₂-empty
@@ -2235,11 +2225,11 @@ robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
       → proj₁ (flat u₁) ≡ []
       → proj₁ (flat u₂) ≡ []
       → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
-      → robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+      → not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
       → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                      × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
     pair-helper u₁ u₂ v₁ v₂ u₁-empty u₂-empty u≡[] not-pair-empty
-      with robust-flat-empty? v₁ | robust-flat-empty? v₂
+      with flat-empty? v₁ | flat-empty? v₂
     ... | inj₂ not-v₁-empty | _ =
       pair-first u₁ u₂ v₁ v₂ u₁-empty not-v₁-empty
     ... | inj₁ v₁-empty | inj₁ v₂-empty =
@@ -2293,7 +2283,7 @@ robust-empty→nonempty {l + r ` loc}
 -- Main idea: Each LNE constructor contradicts either the zero left length or the nonzero right length.
 robust-no-lne-empty-nonempty : ∀ { r : RE } { u v : U r }
   → proj₁ (flat u) ≡ []
-  → robust-not-empty (proj₁ (flat v))
+  → not-empty (proj₁ (flat v))
   → LNEOrder._⊢_>_ r u v
   → ⊥
 robust-no-lne-empty-nonempty u≡[] not-v-empty
@@ -2301,10 +2291,10 @@ robust-no-lne-empty-nonempty u≡[] not-v-empty
   not-v-empty (length≡0→[] len-v≡0)
 robust-no-lne-empty-nonempty u≡[] not-v-empty
   (LNEOrder.bne len-u>0 _ _) =
-  (>0→¬≡0 len-u>0) (robust-length-empty u≡[])
+  (>0→¬≡0 len-u>0) ([]→length≡0  u≡[])
 robust-no-lne-empty-nonempty u≡[] not-v-empty
   (LNEOrder.lne len-u>0 _) =
-  (>0→¬≡0 len-u>0) (robust-length-empty u≡[])
+  (>0→¬≡0 len-u>0) ([]→length≡0  u≡[])
 
 -- Purpose: Extract an empty first component from an empty PairU flattening.
 -- Used by: Pair repair when selecting a nonempty replacement in the second component.
@@ -2331,9 +2321,9 @@ robust-pair-second-empty pair≡[] =
 -- Main idea: Prove the contrapositive by concatenating two empty component words.
 robust-pair-second-not-empty : ∀ { l r : RE } { loc : ℕ }
   → { v₁ : U l } { v₂ : U r }
-  → robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+  → not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
   → proj₁ (flat v₁) ≡ []
-  → robust-not-empty (proj₁ (flat v₂))
+  → not-empty (proj₁ (flat v₂))
 robust-pair-second-not-empty {l} {r} {loc} {v₁} {v₂}
   not-pair-empty v₁-empty v₂-empty =
   not-pair-empty pair-empty
@@ -2405,7 +2395,7 @@ mutual
     → RLNN r
     → (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
     → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
-    → robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
+    → not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
     → proj₁ (flat v₁) ≡ []
     → l ⊢ u₁ >ˡ v₁
     → ((l ● r ` loc) ⊢ PairU {l} {r} {loc} u₁ u₂ >ˡ PairU {l} {r} {loc} v₁ v₂)
@@ -2466,17 +2456,17 @@ mutual
         (ListU us) (ListU vs) us>ᵍvs)
 
   robust-repair-seq₁ {l} {r} {loc} rlnn-r u₁ u₂ v₁ v₂ result =
-    helper (robust-flat-empty? (PairU {l} {r} {loc} u₁ u₂))
-      (robust-flat-empty? (PairU {l} {r} {loc} v₁ v₂))
-      (robust-flat-empty? v₁) result
+    helper (flat-empty? (PairU {l} {r} {loc} u₁ u₂))
+      (flat-empty? (PairU {l} {r} {loc} v₁ v₂))
+      (flat-empty? v₁) result
     where
       helper :
         (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))))
+          ⊎ not-empty (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))))
         → (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))))
+          ⊎ not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))))
         → (proj₁ (flat v₁) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat v₁)))
+          ⊎ not-empty (proj₁ (flat v₁)))
         → ((l ⊢ u₁ >ˡ v₁)
           ⊎ ∃[ z₁ ] (proj₁ (flat z₁) ≡ proj₁ (flat v₁))
                          × (l ⊢ z₁ >ᵍ u₁))
@@ -2535,15 +2525,15 @@ mutual
       , sub (GreedyOrder.seq₂ refl z₂>u₂))
 
   robust-repair-seq₂ {l} {r} {loc} u₁ v₁ u₂ v₂ u₁≡v₁ result =
-    helper (robust-flat-empty? (PairU {l} {r} {loc} u₁ u₂))
-      (robust-flat-empty? (PairU {l} {r} {loc} v₁ v₂)) result
+    helper (flat-empty? (PairU {l} {r} {loc} u₁ u₂))
+      (flat-empty? (PairU {l} {r} {loc} v₁ v₂)) result
     where
       helper :
         (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
-          ⊎ robust-not-empty
+          ⊎ not-empty
               (proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))))
         → (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)) ≡ []
-          ⊎ robust-not-empty
+          ⊎ not-empty
               (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))))
         → ((r ⊢ u₂ >ˡ v₂)
           ⊎ ∃[ z₂ ] (proj₁ (flat z₂) ≡ proj₁ (flat v₂))
@@ -2597,14 +2587,14 @@ mutual
                     × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
 
   robust-repair-choice-left {l} {r} {loc} u v result =
-    helper (robust-flat-empty? (LeftU {l} {r} {loc} u))
-      (robust-flat-empty? (LeftU {l} {r} {loc} v)) result
+    helper (flat-empty? (LeftU {l} {r} {loc} u))
+      (flat-empty? (LeftU {l} {r} {loc} v)) result
     where
       helper :
         (proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (LeftU {l} {r} {loc} u))))
+          ⊎ not-empty (proj₁ (flat (LeftU {l} {r} {loc} u))))
         → (proj₁ (flat (LeftU {l} {r} {loc} v)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (LeftU {l} {r} {loc} v))))
+          ⊎ not-empty (proj₁ (flat (LeftU {l} {r} {loc} v))))
         → ((l ⊢ u >ˡ v)
           ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
                          × (l ⊢ z >ᵍ u))
@@ -2645,14 +2635,14 @@ mutual
                     × ((l + r ` loc) ⊢ z >ᵍ RightU {l} {r} {loc} u)
 
   robust-repair-choice-right {l} {r} {loc} u v result =
-    helper (robust-flat-empty? (RightU {l} {r} {loc} u))
-      (robust-flat-empty? (RightU {l} {r} {loc} v)) result
+    helper (flat-empty? (RightU {l} {r} {loc} u))
+      (flat-empty? (RightU {l} {r} {loc} v)) result
     where
       helper :
         (proj₁ (flat (RightU {l} {r} {loc} u)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} u))))
+          ⊎ not-empty (proj₁ (flat (RightU {l} {r} {loc} u))))
         → (proj₁ (flat (RightU {l} {r} {loc} v)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} v))))
+          ⊎ not-empty (proj₁ (flat (RightU {l} {r} {loc} v))))
         → ((r ⊢ u >ˡ v)
           ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
                          × (r ⊢ z >ᵍ u))
@@ -2716,14 +2706,14 @@ mutual
                     × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU (u ∷ us))
 
   robust-repair-choice-cross {l} {r} {loc} ε∈l→ε≅r u v =
-    helper (robust-flat-empty? (LeftU {l} {r} {loc} u))
-      (robust-flat-empty? (RightU {l} {r} {loc} v))
+    helper (flat-empty? (LeftU {l} {r} {loc} u))
+      (flat-empty? (RightU {l} {r} {loc} v))
     where
       helper :
         (proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (LeftU {l} {r} {loc} u))))
+          ⊎ not-empty (proj₁ (flat (LeftU {l} {r} {loc} u))))
         → (proj₁ (flat (RightU {l} {r} {loc} v)) ≡ []
-          ⊎ robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} v))))
+          ⊎ not-empty (proj₁ (flat (RightU {l} {r} {loc} v))))
         → ((l + r ` loc) ⊢ LeftU {l} {r} {loc} u >ˡ RightU v)
             ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
                         × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
@@ -2737,7 +2727,7 @@ mutual
         ⊥-elim (bad-cross u-empty not-v)
         where
           bad-cross : proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ []
-            → robust-not-empty (proj₁ (flat (RightU {l} {r} {loc} v)))
+            → not-empty (proj₁ (flat (RightU {l} {r} {loc} v)))
             → ⊥
           bad-cross left-empty not-right-empty =
             not-right-empty (trans (sym (flat-RightU {l} {r} {loc} {u = v})) right-empty)
@@ -2753,11 +2743,11 @@ mutual
   robust-repair-star-head {r} {ε∉r} {loc} u v us vs result =
     helper result
     where
-      not-u : robust-not-empty
+      not-u : not-empty
         (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us))))
       not-u = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}
 
-      not-v : robust-not-empty
+      not-v : not-empty
         (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))))
       not-v = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs}
 
@@ -2780,11 +2770,11 @@ mutual
   robust-repair-star-tail {r} {ε∉r} {loc} u v us vs u≡v result =
     helper result
     where
-      not-u : robust-not-empty
+      not-u : not-empty
         (proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us))))
       not-u = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}
 
-      not-v : robust-not-empty
+      not-v : not-empty
         (proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ vs))))
       not-v = ¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {v} {vs}
 
@@ -2916,4 +2906,12 @@ rlnn→robust r rlnn-r = robust {r} ev
       → (≥-Maxᵍ {r} w v → ≥-Maxˡ {r} w v)
         × (≥-Maxˡ {r} w v → ≥-Maxᵍ {r} w v)
     ev w v = robust-gmax→lmax rlnn-r , robust-lmax→gmax rlnn-r
+```
+
+
+```agda
+rln→robust : ∀ ( r : RE )
+  → RLN r
+  → Robust r
+rln→robust = {!!} 
 ```

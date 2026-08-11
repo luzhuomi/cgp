@@ -2072,13 +2072,13 @@ lnn→rlnn (lnn-* lnn-r) = rlnn-* (lnn→rlnn lnn-r)
 -- Purpose: Transport equal flattened words through a concatenating parse pair.
 -- Used by: Repair branches that replace one component of a PairU tree.
 -- Main idea: Rewrite both pair flattenings to concatenations and apply congruence of _++_.
-robust-flat-pair-cong : ∀ { l r : RE } { loc : ℕ }
+flat-pair-cong : ∀ { l r : RE } { loc : ℕ }
   → { u₁ v₁ : U l } { u₂ v₂ : U r }
   → proj₁ (flat u₁) ≡ proj₁ (flat v₁)
   → proj₁ (flat u₂) ≡ proj₁ (flat v₂)
   → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂))
       ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂))
-robust-flat-pair-cong {l} {r} {loc} {u₁} {v₁} {u₂} {v₂} u₁≡v₁ u₂≡v₂ =
+flat-pair-cong {l} {r} {loc} {u₁} {v₁} {u₂} {v₂} u₁≡v₁ u₂≡v₂ =
   trans (flat-pair {l} {r} {loc} {u = u₁} {v = u₂})
     (trans (cong₂ _++_ u₁≡v₁ u₂≡v₂)
       (sym (flat-pair {l} {r} {loc} {u = v₁} {v = v₂})))
@@ -2086,24 +2086,24 @@ robust-flat-pair-cong {l} {r} {loc} {u₁} {v₁} {u₂} {v₂} u₁≡v₁ u₂
 -- Purpose: Transport a flattened-word equality through LeftU.
 -- Used by: Choice-left repair branches.
 -- Main idea: Compose the defining LeftU flattening equalities around the inner equality.
-robust-flat-left-cong : ∀ { l r : RE } { loc : ℕ }
+flat-left-cong : ∀ { l r : RE } { loc : ℕ }
   → { u v : U l }
   → proj₁ (flat u) ≡ proj₁ (flat v)
   → proj₁ (flat (LeftU {l} {r} {loc} u))
       ≡ proj₁ (flat (LeftU {l} {r} {loc} v))
-robust-flat-left-cong {l} {r} {loc} {u} {v} u≡v =
+flat-left-cong {l} {r} {loc} {u} {v} u≡v =
   trans (flat-LeftU {l} {r} {loc} {u = u})
     (trans u≡v (sym (flat-LeftU {l} {r} {loc} {u = v})))
 
 -- Purpose: Transport a flattened-word equality through RightU.
 -- Used by: Choice-right repair branches.
 -- Main idea: Compose the defining RightU flattening equalities around the inner equality.
-robust-flat-right-cong : ∀ { l r : RE } { loc : ℕ }
+flat-right-cong : ∀ { l r : RE } { loc : ℕ }
   → { u v : U r }
   → proj₁ (flat u) ≡ proj₁ (flat v)
   → proj₁ (flat (RightU {l} {r} {loc} u))
       ≡ proj₁ (flat (RightU {l} {r} {loc} v))
-robust-flat-right-cong {l} {r} {loc} {u} {v} u≡v =
+flat-right-cong {l} {r} {loc} {u} {v} u≡v =
   trans (flat-RightU {l} {r} {loc} {u = u})
     (trans u≡v (sym (flat-RightU {l} {r} {loc} {u = v})))
 
@@ -2114,42 +2114,42 @@ not-empty xs = ¬ (xs ≡ [])
 -- Purpose: Build an LNE be proof from two empty flattened words.
 -- Used by: Repair branches whose source and target words are empty.
 -- Main idea: Supply zero lengths and reuse the internal LNE order proof.
-robust-lne-be : ∀ { r : RE } { u v : U r }
+lne-be : ∀ { r : RE } { u v : U r }
   → proj₁ (flat u) ≡ []
   → proj₁ (flat v) ≡ []
   → LNEOrder._⊢_>ⁱ_ r u v
   → LNEOrder._⊢_>_ r u v
-robust-lne-be u≡[] v≡[] u>ⁱv = LNEOrder.be
+lne-be u≡[] v≡[] u>ⁱv = LNEOrder.be
   (trans ([]→length≡0  u≡[]) (sym ([]→length≡0  v≡[])))
   ([]→length≡0  v≡[]) u>ⁱv
 
 -- Purpose: Build an LNE bne proof from two nonempty flattened words.
 -- Used by: Repair branches whose source and target words are both nonempty.
 -- Main idea: Derive both positive lengths and reuse the internal LNE order proof.
-robust-lne-bne : ∀ { r : RE } { u v : U r }
+lne-bne : ∀ { r : RE } { u v : U r }
   → ¬ (proj₁ (flat u) ≡ [])
   → ¬ (proj₁ (flat v) ≡ [])
   → LNEOrder._⊢_>ⁱ_ r u v
   → LNEOrder._⊢_>_ r u v
-robust-lne-bne ¬u≡[] ¬v≡[] u>ⁱv =
+lne-bne ¬u≡[] ¬v≡[] u>ⁱv =
   LNEOrder.bne (¬≡[]→length>0 ¬u≡[]) (¬≡[]→length>0 ¬v≡[]) u>ⁱv
 
 -- Purpose: Build an LNE lne proof from a nonempty left word and empty right word.
 -- Used by: Repair branches with a left-only nonempty word.
 -- Main idea: Derive the positive left length and zero right length directly.
-robust-lne-lne : ∀ { r : RE } { u v : U r }
+lne-lne : ∀ { r : RE } { u v : U r }
   → ¬ (proj₁ (flat u) ≡ [])
   → proj₁ (flat v) ≡ []
   → LNEOrder._⊢_>_ r u v
-robust-lne-lne ¬u≡[] v≡[] =
+lne-lne ¬u≡[] v≡[] =
   LNEOrder.lne (¬≡[]→length>0 ¬u≡[]) ([]→length≡0 v≡[])
 
 -- Purpose: Record the flattening of a letter parse tree.
 -- Used by: The letter base case of empty-to-nonempty repair.
 -- Main idea: The LetterU flattening equation reduces definitionally to c ∷ [].
-robust-letter-flat : ∀ { c : Char } { loc : ℕ }
+letter-flat : ∀ { c : Char } { loc : ℕ }
   → proj₁ (flat { $ c ` loc } (LetterU c)) ≡ c ∷ []
-robust-letter-flat = refl
+letter-flat = refl
 
 -- Purpose: Split any flattened word into the empty or nonempty case.
 -- Used by: Every structural repair helper to select the appropriate LNE constructor.
@@ -2164,7 +2164,7 @@ flat-empty? v with flat v
 -- Purpose: Find a strictly greedier tree with the target word when the source is empty.
 -- Used by: Repairing an order that cannot be represented directly in LNE.
 -- Main idea: Recurse through RLNN; choose star-cons-nil, a choice constructor, or repair one PairU component.
-robust-empty→nonempty : ∀ { r : RE }
+rlnn-empty→nonempty : ∀ { r : RE }
   → RLNN r
   → ( u : U r )
   → ( v : U r )
@@ -2172,24 +2172,24 @@ robust-empty→nonempty : ∀ { r : RE }
   → not-empty (proj₁ (flat v)) -- ¬ (proj₁ (flat v)) ≡ []
   → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
               × (r ⊢ z >ᵍ u)
-robust-empty→nonempty {ε} rlnn-ε EmptyU EmptyU u≡[] not-v-empty =
+rlnn-empty→nonempty {ε} rlnn-ε EmptyU EmptyU u≡[] not-v-empty =
   ⊥-elim (not-v-empty refl)
-robust-empty→nonempty {$ c ` loc} rlnn-$
+rlnn-empty→nonempty {$ c ` loc} rlnn-$
   (LetterU {loc = .loc} .c) (LetterU {loc = .loc} .c) u≡[] not-v-empty =
   ⊥-elim (helper u≡[])
   where
     helper : proj₁ (flat { $ c ` loc } (LetterU c)) ≡ [] → ⊥
-    helper eq = ¬∷≡[] (trans (sym (robust-letter-flat {c} {loc})) eq)
-robust-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
+    helper eq = ¬∷≡[] (trans (sym (letter-flat {c} {loc})) eq)
+rlnn-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
   (ListU []) (ListU (v ∷ vs)) u≡[] not-v-empty =
   ListU (v ∷ vs) , refl , sub GreedyOrder.star-cons-nil
-robust-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
+rlnn-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
   (ListU []) (ListU []) u≡[] not-v-empty =
   ⊥-elim (not-v-empty refl)
-robust-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
+rlnn-empty→nonempty {r * ε∉r ` loc} (rlnn-* rlnn-r)
   (ListU (u ∷ us)) v u≡[] not-v-empty =
   ⊥-elim ((¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}) u≡[])
-robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
+rlnn-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
   (PairU u₁ u₂) (PairU v₁ v₂) u≡[] not-pair-empty =
   pair-helper u₁ u₂ v₁ v₂
     (++-conicalˡ (proj₁ (flat u₁)) (proj₁ (flat u₂)) u≡[])
@@ -2202,9 +2202,9 @@ robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
       → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                      × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
     pair-first u₁ u₂ v₁ v₂ u₁-empty not-v₁-empty
-      with robust-empty→nonempty {l} rlnn-l u₁ v₁ u₁-empty not-v₁-empty
+      with rlnn-empty→nonempty {l} rlnn-l u₁ v₁ u₁-empty not-v₁-empty
     ... | z₁ , z₁≡v₁ , z₁>u₁ =
-      PairU z₁ v₂ , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+      PairU z₁ v₂ , flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
         , sub (GreedyOrder.seq₁ z₁>u₁)
 
     pair-second : ∀ (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
@@ -2215,9 +2215,9 @@ robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
       → ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                      × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
     pair-second u₁ u₂ v₁ v₂ u₂-empty u₁-empty v₁-empty not-v₂-empty
-      with robust-empty→nonempty {r} rlnn-r u₂ v₂ u₂-empty not-v₂-empty
+      with rlnn-empty→nonempty {r} rlnn-r u₂ v₂ u₂-empty not-v₂-empty
     ... | z₂ , z₂≡v₂ , z₂>u₂ =
-      PairU u₁ z₂ , robust-flat-pair-cong {l} {r} {loc}
+      PairU u₁ z₂ , flat-pair-cong {l} {r} {loc}
         (trans u₁-empty (sym v₁-empty)) z₂≡v₂
         , sub (GreedyOrder.seq₂ refl z₂>u₂)
 
@@ -2241,23 +2241,23 @@ robust-empty→nonempty {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
           (trans (cong₂ _++_ v₁-empty v₂-empty) refl)
     ... | inj₁ v₁-empty | inj₂ not-v₂-empty =
       pair-second u₁ u₂ v₁ v₂ u₂-empty u₁-empty v₁-empty not-v₂-empty
-robust-empty→nonempty {l + r ` loc}
+rlnn-empty→nonempty {l + r ` loc}
   (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
   (LeftU u) (LeftU v) u≡[] not-v-empty
-  with robust-empty→nonempty {l} (lnn→rlnn lnn-l) u v u≡[] not-v-empty
+  with rlnn-empty→nonempty {l} (lnn→rlnn lnn-l) u v u≡[] not-v-empty
 ... | z , z≡v , z>u =
-  LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v , sub (GreedyOrder.choice-ll z>u)
-robust-empty→nonempty {l + r ` loc}
+  LeftU z , flat-left-cong {l} {r} {loc} z≡v , sub (GreedyOrder.choice-ll z>u)
+rlnn-empty→nonempty {l + r ` loc}
   (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
   (RightU u) (RightU v) u≡[] not-v-empty
-  with robust-empty→nonempty {r} rlnn-r u v u≡[] not-v-empty
+  with rlnn-empty→nonempty {r} rlnn-r u v u≡[] not-v-empty
 ... | z , z≡v , z>u =
-  RightU z , robust-flat-right-cong {l} {r} {loc} z≡v , sub (GreedyOrder.choice-rr z>u)
-robust-empty→nonempty {l + r ` loc}
+  RightU z , flat-right-cong {l} {r} {loc} z≡v , sub (GreedyOrder.choice-rr z>u)
+rlnn-empty→nonempty {l + r ` loc}
   (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
   (RightU u) (LeftU v) u≡[] not-v-empty =
   LeftU v , refl , sub GreedyOrder.choice-lr
-robust-empty→nonempty {l + r ` loc}
+rlnn-empty→nonempty {l + r ` loc}
   (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
   (LeftU u) (RightU v) u≡[] not-v-empty =
   ⊥-elim (right-empty-impossible u≡[] not-v-empty)
@@ -2281,50 +2281,50 @@ robust-empty→nonempty {l + r ` loc}
 -- Purpose: Rule out an LNE order from an empty left word to a nonempty right word.
 -- Used by: Sequence repair when a direct LNE branch would have impossible lengths.
 -- Main idea: Each LNE constructor contradicts either the zero left length or the nonzero right length.
-robust-no-lne-empty-nonempty : ∀ { r : RE } { u v : U r }
+no-lne-empty-nonempty : ∀ { r : RE } { u v : U r }
   → proj₁ (flat u) ≡ []
   → not-empty (proj₁ (flat v))
   → LNEOrder._⊢_>_ r u v
   → ⊥
-robust-no-lne-empty-nonempty u≡[] not-v-empty
+no-lne-empty-nonempty u≡[] not-v-empty
   (LNEOrder.be _ len-v≡0 _) =
   not-v-empty (length≡0→[] len-v≡0)
-robust-no-lne-empty-nonempty u≡[] not-v-empty
+no-lne-empty-nonempty u≡[] not-v-empty
   (LNEOrder.bne len-u>0 _ _) =
   (>0→¬≡0 len-u>0) ([]→length≡0  u≡[])
-robust-no-lne-empty-nonempty u≡[] not-v-empty
+no-lne-empty-nonempty u≡[] not-v-empty
   (LNEOrder.lne len-u>0 _) =
   (>0→¬≡0 len-u>0) ([]→length≡0  u≡[])
 
 -- Purpose: Extract an empty first component from an empty PairU flattening.
 -- Used by: Pair repair when selecting a nonempty replacement in the second component.
 -- Main idea: Apply left conicality to the pair concatenation.
-robust-pair-first-empty : ∀ { l r : RE } { loc : ℕ }
+pair-first-empty : ∀ { l r : RE } { loc : ℕ }
   → { u₁ : U l } { u₂ : U r }
   → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
   → proj₁ (flat u₁) ≡ []
-robust-pair-first-empty pair≡[] =
+pair-first-empty pair≡[] =
   ++-conicalˡ _ _ pair≡[]
 
 -- Purpose: Extract an empty second component from an empty PairU flattening.
 -- Used by: Pair repair when selecting a nonempty replacement in the first component.
 -- Main idea: Apply right conicality to the pair concatenation.
-robust-pair-second-empty : ∀ { l r : RE } { loc : ℕ }
+pair-second-empty : ∀ { l r : RE } { loc : ℕ }
   → { u₁ : U l } { u₂ : U r }
   → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
   → proj₁ (flat u₂) ≡ []
-robust-pair-second-empty pair≡[] =
+pair-second-empty pair≡[] =
   ++-conicalʳ _ _ pair≡[]
 
 -- Purpose: Show that a nonempty pair with an empty first component has a nonempty second component.
 -- Used by: The second-component PairU repair branch.
 -- Main idea: Prove the contrapositive by concatenating two empty component words.
-robust-pair-second-not-empty : ∀ { l r : RE } { loc : ℕ }
+pair-second-not-empty : ∀ { l r : RE } { loc : ℕ }
   → { v₁ : U l } { v₂ : U r }
   → not-empty (proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
   → proj₁ (flat v₁) ≡ []
   → not-empty (proj₁ (flat v₂))
-robust-pair-second-not-empty {l} {r} {loc} {v₁} {v₂}
+pair-second-not-empty {l} {r} {loc} {v₁} {v₂}
   not-pair-empty v₁-empty v₂-empty =
   not-pair-empty pair-empty
   where
@@ -2337,12 +2337,12 @@ robust-pair-second-not-empty {l} {r} {loc} {v₁} {v₂}
 -- Purpose: Transport a flattened-word equality through a nonempty list head.
 -- Used by: Star-head repair when replacing the head parse tree.
 -- Main idea: Rewrite both list flattenings with flat-list-cons and use congruence on concatenation.
-robust-flat-list-head-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+flat-list-head-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
   → { u v : U r } { us : List (U r) }
   → proj₁ (flat u) ≡ proj₁ (flat v)
   → proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))
       ≡ proj₁ (flat (ListU {r} {ε∉r} {loc} (v ∷ us)))
-robust-flat-list-head-cong {r} {ε∉r} {loc} {u} {v} {us} u≡v =
+flat-list-head-cong {r} {ε∉r} {loc} {u} {v} {us} u≡v =
   trans (flat-list-cons {r} {ε∉r} {loc} {u} {us})
     (trans (cong (λ xs → xs ++ proj₁ (flat (ListU {r} {ε∉r} {loc} us))) u≡v)
       (sym (flat-list-cons {r} {ε∉r} {loc} {u = v} {us})))
@@ -2350,13 +2350,13 @@ robust-flat-list-head-cong {r} {ε∉r} {loc} {u} {v} {us} u≡v =
 -- Purpose: Transport a flattened-word equality through a fixed list head and varying tail.
 -- Used by: Star-tail repair when replacing the tail parse list.
 -- Main idea: Rewrite both list flattenings and apply congruence to the tail concatenation.
-robust-flat-list-tail-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+flat-list-tail-cong : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
   → { u : U r } { us vs : List (U r) }
   → proj₁ (flat (ListU {r} {ε∉r} {loc} us))
       ≡ proj₁ (flat (ListU {r} {ε∉r} {loc} vs))
   → proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ us)))
       ≡ proj₁ (flat (ListU {r} {ε∉r} {loc} (u ∷ vs)))
-robust-flat-list-tail-cong {r} {ε∉r} {loc} {u} {us} {vs} us≡vs =
+flat-list-tail-cong {r} {ε∉r} {loc} {u} {us} {vs} us≡vs =
   trans (flat-list-cons {r} {ε∉r} {loc} {u} {us})
     (trans (cong (λ xs → proj₁ (flat u) ++ xs) us≡vs)
       (sym (flat-list-cons {r} {ε∉r} {loc} {u} {vs})))
@@ -2366,7 +2366,7 @@ mutual
   -- Purpose: Convert a greedy order into either an LNE order or a same-word greedy repair.
   -- Used by: Greedy-max to LNE-max transfer.
   -- Main idea: Recurse over RLNN and order constructors; repair empty/nonempty mismatches by replacing the source tree.
-  robust-repair : ∀ { r : RE }
+  rlnn-repair : ∀ { r : RE }
     → RLNN r
     → ( u : U r )
     → ( v : U r )
@@ -2376,9 +2376,9 @@ mutual
                   × (r ⊢ z >ᵍ u)
 
   -- Purpose: Lift the repair disjunction through a concatenation seq₁ order.
-  -- Used by: robust-repair for PairU trees ordered through their first components.
+  -- Used by: rlnn-repair for PairU trees ordered through their first components.
   -- Main idea: Split source and target words into empty/nonempty cases and either build bne/be/lne or repair a component.
-  robust-repair-seq₁ : ∀ { l r : RE } { loc : ℕ }
+  rlnn-repair-seq₁ : ∀ { l r : RE } { loc : ℕ }
     → RLNN r
     → (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
     → ((l ⊢ u₁ >ˡ v₁)
@@ -2389,9 +2389,9 @@ mutual
                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
 
   -- Purpose: Handle seq₁ when the source pair is empty but the target pair is nonempty.
-  -- Used by: The exceptional empty-first-component branch of robust-repair-seq₁.
+  -- Used by: The exceptional empty-first-component branch of rlnn-repair-seq₁.
   -- Main idea: Repair the second component and lift it with seq₂ when the first component cannot provide an LNE order.
-  robust-repair-seq₁-special : ∀ { l r : RE } { loc : ℕ }
+  rlnn-repair-seq₁-special : ∀ { l r : RE } { loc : ℕ }
     → RLNN r
     → (u₁ : U l) (u₂ : U r) (v₁ : U l) (v₂ : U r)
     → proj₁ (flat (PairU {l} {r} {loc} u₁ u₂)) ≡ []
@@ -2403,9 +2403,9 @@ mutual
                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
 
   -- Purpose: Lift the repair disjunction through a concatenation seq₂ order.
-  -- Used by: robust-repair for PairU trees ordered through their second components.
+  -- Used by: rlnn-repair for PairU trees ordered through their second components.
   -- Main idea: Preserve the equal first component and either lift the LNE order or replace the second component.
-  robust-repair-seq₂ : ∀ { l r : RE } { loc : ℕ }
+  rlnn-repair-seq₂ : ∀ { l r : RE } { loc : ℕ }
     → (u₁ v₁ : U l) (u₂ v₂ : U r)
     → u₁ ≡ v₁
     → ((r ⊢ u₂ >ˡ v₂)
@@ -2415,47 +2415,47 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                     × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
 
-  robust-repair {ε} rlnn-ε EmptyU EmptyU (sub ())
-  robust-repair {$ c ` loc} rlnn-$ (LetterU .c) (LetterU .c) (sub ())
-  robust-repair {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
+  rlnn-repair {ε} rlnn-ε EmptyU EmptyU (sub ())
+  rlnn-repair {$ c ` loc} rlnn-$ (LetterU .c) (LetterU .c) (sub ())
+  rlnn-repair {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
     (PairU u₁ u₂) (PairU v₁ v₂) (sub (GreedyOrder.seq₁ u₁>ᵍv₁)) =
-    robust-repair-seq₁ {l} {r} {loc} rlnn-r u₁ u₂ v₁ v₂
-      (robust-repair {l} rlnn-l u₁ v₁ u₁>ᵍv₁)
-  robust-repair {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
+    rlnn-repair-seq₁ {l} {r} {loc} rlnn-r u₁ u₂ v₁ v₂
+      (rlnn-repair {l} rlnn-l u₁ v₁ u₁>ᵍv₁)
+  rlnn-repair {l ● r ` loc} (rlnn-● rlnn-l rlnn-r)
     (PairU u₁ u₂) (PairU v₁ v₂)
     (sub (GreedyOrder.seq₂ u₁≡v₁ u₂>ᵍv₂)) =
-    robust-repair-seq₂ {l} {r} {loc} u₁ v₁ u₂ v₂ u₁≡v₁
-      (robust-repair {r} rlnn-r u₂ v₂ u₂>ᵍv₂)
-  robust-repair {l + r ` loc}
+    rlnn-repair-seq₂ {l} {r} {loc} u₁ v₁ u₂ v₂ u₁≡v₁
+      (rlnn-repair {r} rlnn-r u₂ v₂ u₂>ᵍv₂)
+  rlnn-repair {l + r ` loc}
     (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
     (LeftU u) (LeftU v) (sub (GreedyOrder.choice-ll u>ᵍv)) =
-    robust-repair-choice-left {l} {r} {loc} u v
-      (robust-repair {l} (lnn→rlnn lnn-l) u v u>ᵍv)
-  robust-repair {l + r ` loc}
+    rlnn-repair-choice-left {l} {r} {loc} u v
+      (rlnn-repair {l} (lnn→rlnn lnn-l) u v u>ᵍv)
+  rlnn-repair {l + r ` loc}
     (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
     (RightU u) (RightU v) (sub (GreedyOrder.choice-rr u>ᵍv)) =
-    robust-repair-choice-right {l} {r} {loc} u v
-      (robust-repair {r} rlnn-r u v u>ᵍv)
-  robust-repair {l + r ` loc}
+    rlnn-repair-choice-right {l} {r} {loc} u v
+      (rlnn-repair {r} rlnn-r u v u>ᵍv)
+  rlnn-repair {l + r ` loc}
     (rlnn-+ ε∈l→ε≅r lnn-l rlnn-r)
     (LeftU u) (RightU v) (sub GreedyOrder.choice-lr) =
-    robust-repair-choice-cross {l} {r} {loc} ε∈l→ε≅r u v
-  robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+    rlnn-repair-choice-cross {l} {r} {loc} ε∈l→ε≅r u v
+  rlnn-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
     (ListU (u ∷ us)) (ListU []) (sub GreedyOrder.star-cons-nil) =
-    inj₁ (robust-lne-lne
+    inj₁ (lne-lne
       (¬proj₁flat-cons≡[] {r} {ε∉r} {loc} {u} {us}) refl)
-  robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+  rlnn-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
     (ListU (u ∷ us)) (ListU (v ∷ vs)) (sub (GreedyOrder.star-head u>ᵍv)) =
-    robust-repair-star-head {r} {ε∉r} {loc} u v us vs
-      (robust-repair {r} rlnn-r u v u>ᵍv)
-  robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+    rlnn-repair-star-head {r} {ε∉r} {loc} u v us vs
+      (rlnn-repair {r} rlnn-r u v u>ᵍv)
+  rlnn-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
     (ListU (u ∷ us)) (ListU (v ∷ vs))
     (sub (GreedyOrder.star-tail u≡v us>ᵍvs)) =
-    robust-repair-star-tail {r} {ε∉r} {loc} u v us vs u≡v
-      (robust-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
+    rlnn-repair-star-tail {r} {ε∉r} {loc} u v us vs u≡v
+      (rlnn-repair {r * ε∉r ` loc} (rlnn-* rlnn-r)
         (ListU us) (ListU vs) us>ᵍvs)
 
-  robust-repair-seq₁ {l} {r} {loc} rlnn-r u₁ u₂ v₁ v₂ result =
+  rlnn-repair-seq₁ {l} {r} {loc} rlnn-r u₁ u₂ v₁ v₂ result =
     helper (flat-empty? (PairU {l} {r} {loc} u₁ u₂))
       (flat-empty? (PairU {l} {r} {loc} v₁ v₂))
       (flat-empty? v₁) result
@@ -2474,57 +2474,57 @@ mutual
             ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (PairU {l} {r} {loc} v₁ v₂)))
                         × ((l ● r ` loc) ⊢ z >ᵍ PairU {l} {r} {loc} u₁ u₂)
       helper (inj₂ u-not-empty) (inj₁ v-empty) _ _ =
-        inj₁ (robust-lne-lne u-not-empty v-empty)
+        inj₁ (lne-lne u-not-empty v-empty)
       helper (inj₂ u-not-empty) (inj₂ v-not-empty) _ (inj₁ u₁>ˡv₁) =
-        inj₁ (robust-lne-bne u-not-empty v-not-empty
+        inj₁ (lne-bne u-not-empty v-not-empty
           (LNEOrder.seq₁ u₁>ˡv₁))
       helper (inj₂ u-not-empty) (inj₂ v-not-empty) _
         (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
         inj₂ (PairU z₁ v₂
-          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
           , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
       helper (inj₁ u-empty) (inj₁ v-empty) _ (inj₁ u₁>ˡv₁) =
-        inj₁ (robust-lne-be u-empty v-empty
+        inj₁ (lne-be u-empty v-empty
           (LNEOrder.seq₁ u₁>ˡv₁))
       helper (inj₁ u-empty) (inj₁ v-empty) _
         (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
         inj₂ (PairU z₁ v₂
-          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
           , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
       helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₂ v₁-not-empty)
         (inj₁ u₁>ˡv₁) =
-        ⊥-elim (robust-no-lne-empty-nonempty
-          (robust-pair-first-empty {l} {r} {loc} u-empty)
+        ⊥-elim (no-lne-empty-nonempty
+          (pair-first-empty {l} {r} {loc} u-empty)
           v₁-not-empty u₁>ˡv₁)
       helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₂ v₁-not-empty)
         (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
         inj₂ (PairU z₁ v₂
-          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
           , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
       helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₁ v₁-empty)
         (inj₁ u₁>ˡv₁) =
-        robust-repair-seq₁-special {l} {r} {loc} rlnn-r
+        rlnn-repair-seq₁-special {l} {r} {loc} rlnn-r
           u₁ u₂ v₁ v₂ u-empty v-not-empty v₁-empty u₁>ˡv₁
       helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₁ v₁-empty)
         (inj₂ (z₁ , z₁≡v₁ , z₁>ᵍu₁)) =
         inj₂ (PairU z₁ v₂
-          , robust-flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
+          , flat-pair-cong {l} {r} {loc} z₁≡v₁ refl
           , sub (GreedyOrder.seq₁ z₁>ᵍu₁))
 
-  robust-repair-seq₁-special {l} {r} {loc} rlnn-r
+  rlnn-repair-seq₁-special {l} {r} {loc} rlnn-r
     u₁ u₂ v₁ v₂ u-empty v-not-empty v₁-empty u₁>ˡv₁
-    with robust-empty→nonempty {r} rlnn-r u₂ v₂
-      (robust-pair-second-empty {l} {r} {loc} u-empty)
-      (robust-pair-second-not-empty {l} {r} {loc} v-not-empty v₁-empty)
+    with rlnn-empty→nonempty {r} rlnn-r u₂ v₂
+      (pair-second-empty {l} {r} {loc} u-empty)
+      (pair-second-not-empty {l} {r} {loc} v-not-empty v₁-empty)
   ... | z₂ , z₂≡v₂ , z₂>u₂ =
     inj₂ (PairU u₁ z₂
-      , robust-flat-pair-cong {l} {r} {loc}
-          (trans (robust-pair-first-empty {l} {r} {loc} u-empty)
+      , flat-pair-cong {l} {r} {loc}
+          (trans (pair-first-empty {l} {r} {loc} u-empty)
             (sym v₁-empty))
           z₂≡v₂
       , sub (GreedyOrder.seq₂ refl z₂>u₂))
 
-  robust-repair-seq₂ {l} {r} {loc} u₁ v₁ u₂ v₂ u₁≡v₁ result =
+  rlnn-repair-seq₂ {l} {r} {loc} u₁ v₁ u₂ v₂ u₁≡v₁ result =
     helper (flat-empty? (PairU {l} {r} {loc} u₁ u₂))
       (flat-empty? (PairU {l} {r} {loc} v₁ v₂)) result
     where
@@ -2544,40 +2544,40 @@ mutual
                         × ((l ● r ` loc) ⊢ z >ᵍ
                             PairU {l} {r} {loc} u₁ u₂)
       helper (inj₂ u-not-empty) (inj₁ v-empty) _ =
-        inj₁ (robust-lne-lne u-not-empty v-empty)
+        inj₁ (lne-lne u-not-empty v-empty)
       helper (inj₂ u-not-empty) (inj₂ v-not-empty) (inj₁ u₂>ˡv₂) =
-        inj₁ (robust-lne-bne u-not-empty v-not-empty
+        inj₁ (lne-bne u-not-empty v-not-empty
           (LNEOrder.seq₂ u₁≡v₁ u₂>ˡv₂))
       helper (inj₂ u-not-empty) (inj₂ v-not-empty)
         (inj₂ (z₂ , z₂≡v₂ , z₂>ᵍu₂)) =
         inj₂ (PairU v₁ z₂
-          , robust-flat-pair-cong {l} {r} {loc} refl z₂≡v₂
+          , flat-pair-cong {l} {r} {loc} refl z₂≡v₂
           , sub (GreedyOrder.seq₂ (sym u₁≡v₁) z₂>ᵍu₂))
       helper (inj₁ u-empty) (inj₁ v-empty) (inj₁ u₂>ˡv₂) =
-        inj₁ (robust-lne-be u-empty v-empty
+        inj₁ (lne-be u-empty v-empty
           (LNEOrder.seq₂ u₁≡v₁ u₂>ˡv₂))
       helper (inj₁ u-empty) (inj₁ v-empty)
         (inj₂ (z₂ , z₂≡v₂ , z₂>ᵍu₂)) =
         inj₂ (PairU v₁ z₂
-          , robust-flat-pair-cong {l} {r} {loc} refl z₂≡v₂
+          , flat-pair-cong {l} {r} {loc} refl z₂≡v₂
           , sub (GreedyOrder.seq₂ (sym u₁≡v₁) z₂>ᵍu₂))
       helper (inj₁ u-empty) (inj₂ v-not-empty) (inj₁ u₂>ˡv₂) =
-        ⊥-elim (robust-no-lne-empty-nonempty
-          (robust-pair-second-empty {l} {r} {loc} u-empty)
-          (robust-pair-second-not-empty {l} {r} {loc} v-not-empty
+        ⊥-elim (no-lne-empty-nonempty
+          (pair-second-empty {l} {r} {loc} u-empty)
+          (pair-second-not-empty {l} {r} {loc} v-not-empty
             (trans (sym (cong (λ x → proj₁ (flat x)) u₁≡v₁))
-              (robust-pair-first-empty {l} {r} {loc} u-empty)))
+              (pair-first-empty {l} {r} {loc} u-empty)))
           u₂>ˡv₂)
       helper (inj₁ u-empty) (inj₂ v-not-empty)
         (inj₂ (z₂ , z₂≡v₂ , z₂>ᵍu₂)) =
         inj₂ (PairU v₁ z₂
-          , robust-flat-pair-cong {l} {r} {loc} refl z₂≡v₂
+          , flat-pair-cong {l} {r} {loc} refl z₂≡v₂
           , sub (GreedyOrder.seq₂ (sym u₁≡v₁) z₂>ᵍu₂))
 
   -- Purpose: Lift repair through choice-ll.
-  -- Used by: robust-repair for LeftU/LeftU trees.
+  -- Used by: rlnn-repair for LeftU/LeftU trees.
   -- Main idea: Split empty/nonempty words, reuse the inner LNE order when possible, and inject a repaired tree with LeftU.
-  robust-repair-choice-left : ∀ { l r : RE } { loc : ℕ }
+  rlnn-repair-choice-left : ∀ { l r : RE } { loc : ℕ }
     → (u v : U l)
     → ((l ⊢ u >ˡ v)
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
@@ -2586,7 +2586,7 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (LeftU {l} {r} {loc} v)))
                     × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
 
-  robust-repair-choice-left {l} {r} {loc} u v result =
+  rlnn-repair-choice-left {l} {r} {loc} u v result =
     helper (flat-empty? (LeftU {l} {r} {loc} u))
       (flat-empty? (LeftU {l} {r} {loc} v)) result
     where
@@ -2602,30 +2602,30 @@ mutual
             ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (LeftU {l} {r} {loc} v)))
                         × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
       helper (inj₂ not-u) (inj₁ v-empty) _ =
-        inj₁ (robust-lne-lne not-u v-empty)
+        inj₁ (lne-lne not-u v-empty)
       helper (inj₂ not-u) (inj₂ not-v) (inj₁ u>ˡv) =
-        inj₁ (robust-lne-bne not-u not-v (LNEOrder.choice-ll u>ˡv))
+        inj₁ (lne-bne not-u not-v (LNEOrder.choice-ll u>ˡv))
       helper (inj₂ not-u) (inj₂ not-v)
         (inj₂ (z , z≡v , z>ᵍu)) =
-        inj₂ (LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v
+        inj₂ (LeftU z , flat-left-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-ll z>ᵍu))
       helper (inj₁ u-empty) (inj₁ v-empty) (inj₁ u>ˡv) =
-        inj₁ (robust-lne-be u-empty v-empty (LNEOrder.choice-ll u>ˡv))
+        inj₁ (lne-be u-empty v-empty (LNEOrder.choice-ll u>ˡv))
       helper (inj₁ u-empty) (inj₁ v-empty)
         (inj₂ (z , z≡v , z>ᵍu)) =
-        inj₂ (LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v
+        inj₂ (LeftU z , flat-left-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-ll z>ᵍu))
       helper (inj₁ u-empty) (inj₂ not-v) (inj₁ u>ˡv) =
-        ⊥-elim (robust-no-lne-empty-nonempty u-empty not-v u>ˡv)
+        ⊥-elim (no-lne-empty-nonempty u-empty not-v u>ˡv)
       helper (inj₁ u-empty) (inj₂ not-v)
         (inj₂ (z , z≡v , z>ᵍu)) =
-        inj₂ (LeftU z , robust-flat-left-cong {l} {r} {loc} z≡v
+        inj₂ (LeftU z , flat-left-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-ll z>ᵍu))
 
   -- Purpose: Lift repair through choice-rr.
-  -- Used by: robust-repair for RightU/RightU trees.
+  -- Used by: rlnn-repair for RightU/RightU trees.
   -- Main idea: Split empty/nonempty words, reuse the inner LNE order when possible, and inject a repaired tree with RightU.
-  robust-repair-choice-right : ∀ { l r : RE } { loc : ℕ }
+  rlnn-repair-choice-right : ∀ { l r : RE } { loc : ℕ }
     → (u v : U r)
     → ((r ⊢ u >ˡ v)
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
@@ -2634,7 +2634,7 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
                     × ((l + r ` loc) ⊢ z >ᵍ RightU {l} {r} {loc} u)
 
-  robust-repair-choice-right {l} {r} {loc} u v result =
+  rlnn-repair-choice-right {l} {r} {loc} u v result =
     helper (flat-empty? (RightU {l} {r} {loc} u))
       (flat-empty? (RightU {l} {r} {loc} v)) result
     where
@@ -2650,30 +2650,30 @@ mutual
             ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
                         × ((l + r ` loc) ⊢ z >ᵍ RightU {l} {r} {loc} u)
       helper (inj₂ not-u) (inj₁ v-empty) _ =
-        inj₁ (robust-lne-lne not-u v-empty)
+        inj₁ (lne-lne not-u v-empty)
       helper (inj₂ not-u) (inj₂ not-v) (inj₁ u>ˡv) =
-        inj₁ (robust-lne-bne not-u not-v (LNEOrder.choice-rr u>ˡv))
+        inj₁ (lne-bne not-u not-v (LNEOrder.choice-rr u>ˡv))
       helper (inj₂ not-u) (inj₂ not-v)
         (inj₂ (z , z≡v , z>ᵍu)) =
-        inj₂ (RightU z , robust-flat-right-cong {l} {r} {loc} z≡v
+        inj₂ (RightU z , flat-right-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-rr z>ᵍu))
       helper (inj₁ u-empty) (inj₁ v-empty) (inj₁ u>ˡv) =
-        inj₁ (robust-lne-be u-empty v-empty (LNEOrder.choice-rr u>ˡv))
+        inj₁ (lne-be u-empty v-empty (LNEOrder.choice-rr u>ˡv))
       helper (inj₁ u-empty) (inj₁ v-empty)
         (inj₂ (z , z≡v , z>ᵍu)) =
-        inj₂ (RightU z , robust-flat-right-cong {l} {r} {loc} z≡v
+        inj₂ (RightU z , flat-right-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-rr z>ᵍu))
       helper (inj₁ u-empty) (inj₂ not-v) (inj₁ u>ˡv) =
-        ⊥-elim (robust-no-lne-empty-nonempty u-empty not-v u>ˡv)
+        ⊥-elim (no-lne-empty-nonempty u-empty not-v u>ˡv)
       helper (inj₁ u-empty) (inj₂ not-v)
         (inj₂ (z , z≡v , z>ᵍu)) =
-        inj₂ (RightU z , robust-flat-right-cong {l} {r} {loc} z≡v
+        inj₂ (RightU z , flat-right-cong {l} {r} {loc} z≡v
           , sub (GreedyOrder.choice-rr z>ᵍu))
 
   -- Purpose: Handle the cross-choice greedy order LeftU > RightU.
-  -- Used by: robust-repair for LeftU/RightU trees.
+  -- Used by: rlnn-repair for LeftU/RightU trees.
   -- Main idea: Build be/bne/lne from the two word statuses; the empty-left/nonempty-right case contradicts ε∈l → ε≅r.
-  robust-repair-choice-cross : ∀ { l r : RE } { loc : ℕ }
+  rlnn-repair-choice-cross : ∀ { l r : RE } { loc : ℕ }
     → (ε∈ l → ε≅ r)
     → (u : U l) (v : U r)
     → ((l + r ` loc) ⊢ LeftU u >ˡ RightU v)
@@ -2681,9 +2681,9 @@ mutual
                     × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
 
   -- Purpose: Lift repair through star-head.
-  -- Used by: robust-repair for nonempty star lists ordered by their heads.
+  -- Used by: rlnn-repair for nonempty star lists ordered by their heads.
   -- Main idea: Build bne for a direct LNE head order or replace the head and preserve the list word.
-  robust-repair-star-head : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+  rlnn-repair-star-head : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
     → (u v : U r) (us vs : List (U r))
     → ((r ⊢ u >ˡ v)
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat v))
@@ -2693,9 +2693,9 @@ mutual
                     × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU (u ∷ us))
 
   -- Purpose: Lift repair through star-tail.
-  -- Used by: robust-repair for equal star heads and recursively ordered tails.
+  -- Used by: rlnn-repair for equal star heads and recursively ordered tails.
   -- Main idea: Preserve the head equality and either lift the tail LNE order or replace the tail list.
-  robust-repair-star-tail : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
+  rlnn-repair-star-tail : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ }
     → (u v : U r) (us vs : List (U r))
     → u ≡ v
     → ((r * ε∉r ` loc) ⊢ ListU us >ˡ ListU vs)
@@ -2705,7 +2705,7 @@ mutual
         ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (ListU (v ∷ vs))))
                     × ((r * ε∉r ` loc) ⊢ z >ᵍ ListU (u ∷ us))
 
-  robust-repair-choice-cross {l} {r} {loc} ε∈l→ε≅r u v =
+  rlnn-repair-choice-cross {l} {r} {loc} ε∈l→ε≅r u v =
     helper (flat-empty? (LeftU {l} {r} {loc} u))
       (flat-empty? (RightU {l} {r} {loc} v))
     where
@@ -2718,11 +2718,11 @@ mutual
             ⊎ ∃[ z ] (proj₁ (flat z) ≡ proj₁ (flat (RightU {l} {r} {loc} v)))
                         × ((l + r ` loc) ⊢ z >ᵍ LeftU {l} {r} {loc} u)
       helper (inj₂ not-u) (inj₁ v-empty) =
-        inj₁ (robust-lne-lne not-u v-empty)
+        inj₁ (lne-lne not-u v-empty)
       helper (inj₂ not-u) (inj₂ not-v) =
-        inj₁ (robust-lne-bne not-u not-v LNEOrder.choice-lr)
+        inj₁ (lne-bne not-u not-v LNEOrder.choice-lr)
       helper (inj₁ u-empty) (inj₁ v-empty) =
-        inj₁ (robust-lne-be u-empty v-empty LNEOrder.choice-lr)
+        inj₁ (lne-be u-empty v-empty LNEOrder.choice-lr)
       helper (inj₁ u-empty) (inj₂ not-v) =
         ⊥-elim (bad-cross u-empty not-v)
         where
@@ -2740,7 +2740,7 @@ mutual
               right-empty : proj₁ (flat v) ≡ []
               right-empty with ε≅r→flat-[] {r} {ε≅r'} v
               ... | flat-[] _ eq = eq
-  robust-repair-star-head {r} {ε∉r} {loc} u v us vs result =
+  rlnn-repair-star-head {r} {ε∉r} {loc} u v us vs result =
     helper result
     where
       not-u : not-empty
@@ -2760,14 +2760,14 @@ mutual
                         × ((r * ε∉r ` loc) ⊢ z >ᵍ
                             ListU {r} {ε∉r} {loc} (u ∷ us))
       helper (inj₁ u>ˡv) =
-        inj₁ (robust-lne-bne not-u not-v (LNEOrder.star-head u>ˡv))
+        inj₁ (lne-bne not-u not-v (LNEOrder.star-head u>ˡv))
       helper (inj₂ (z , z≡v , z>ᵍu)) =
         inj₂ (ListU {r} {ε∉r} {loc} (z ∷ vs)
-          , robust-flat-list-head-cong {r} {ε∉r} {loc}
+          , flat-list-head-cong {r} {ε∉r} {loc}
               {u = z} {v = v} {us = vs} z≡v
           , sub (GreedyOrder.star-head z>ᵍu))
 
-  robust-repair-star-tail {r} {ε∉r} {loc} u v us vs u≡v result =
+  rlnn-repair-star-tail {r} {ε∉r} {loc} u v us vs u≡v result =
     helper result
     where
       not-u : not-empty
@@ -2788,47 +2788,47 @@ mutual
                         × ((r * ε∉r ` loc) ⊢ z >ᵍ
                             ListU {r} {ε∉r} {loc} (u ∷ us))
       helper (inj₁ us>ˡvs) =
-        inj₁ (robust-lne-bne not-u not-v
+        inj₁ (lne-bne not-u not-v
           (LNEOrder.star-tail u≡v us>ˡvs))
       helper (inj₂ (ListU zs , zs≡vs , zs>ᵍus)) =
         inj₂ (ListU {r} {ε∉r} {loc} (v ∷ zs)
-          , robust-flat-list-tail-cong {r} {ε∉r} {loc}
+          , flat-list-tail-cong {r} {ε∉r} {loc}
               {u = v} {us = zs} {vs = vs} zs≡vs
           , sub (GreedyOrder.star-tail (sym u≡v) zs>ᵍus))
 
 -- Purpose: Contradict a greedy maximum when a strictly greedier same-word repair exists.
--- Used by: robust-gmax→lmax after the repair branch.
+-- Used by: rlnn-gmax→lmax after the repair branch.
 -- Main idea: Split the greedy ≥ witness and use asymmetry or non-equality.
-robust-gmax-no-better : ∀ { r : RE } { u v : U r }
+gmax-no-better : ∀ { r : RE } { u v : U r }
   → r ⊢ u >ᵍ v
   → GreedyMax._⊢_≥_ r v u
   → ⊥
-robust-gmax-no-better u>ᵍv (inj₁ v>ᵍu) =
+gmax-no-better u>ᵍv (inj₁ v>ᵍu) =
   u>ᵍv→¬v>ᵍu u>ᵍv v>ᵍu
-robust-gmax-no-better u>ᵍv (inj₂ v≡u) =
+gmax-no-better u>ᵍv (inj₂ v≡u) =
   (>ᵍ→¬≡ u>ᵍv) (sym v≡u)
 
 -- Purpose: Contradict an LNE maximum when a strictly greater same-word tree exists.
--- Used by: robust-lmax-unique and the reverse maximality transfer.
+-- Used by: lmax-unique and the reverse maximality transfer.
 -- Main idea: Split the LNE ≥ witness and use LNE asymmetry or non-equality.
-robust-lmax-no-better : ∀ { r : RE } { u v : U r }
+lmax-no-better : ∀ { r : RE } { u v : U r }
   → LNEOrder._⊢_>_ r u v
   → LNEOrder._⊢_≥_ r v u
   → ⊥
-robust-lmax-no-better u>ˡv (inj₁ v>ˡu) =
+lmax-no-better u>ˡv (inj₁ v>ˡu) =
   LNEOrder.>-asym u>ˡv v>ˡu
-robust-lmax-no-better u>ˡv (inj₂ v≡u) =
+lmax-no-better u>ˡv (inj₂ v≡u) =
   LNEOrder.>→¬≡ u>ˡv (sym v≡u)
 
 -- Purpose: Convert a greedy maximal witness into an LNE maximal witness.
--- Used by: rlnn→robust and robust-lmax→gmax.
+-- Used by: rlnn→robust and rlnn-lmax→gmax.
 -- Main idea: Apply robust-repair to every greedy strict comparison; a repair would contradict greedy maximality.
-robust-gmax→lmax : ∀ { r : RE }
+rlnn-gmax→lmax : ∀ { r : RE }
   → RLNN r
   → ∀ { w : List Char } { v : U r }
   → ≥-Maxᵍ {r} w v
   → ≥-Maxˡ {r} w v
-robust-gmax→lmax {r} rlnn-r
+rlnn-gmax→lmax {r} rlnn-r
   (GreedyMax.≥-max w v flat-v≡w max-v) =
   LNEMax.≥-max w v flat-v≡w max-vˡ
   where
@@ -2837,38 +2837,38 @@ robust-gmax→lmax {r} rlnn-r
       → LNEOrder._⊢_≥_ r v u
     max-vˡ u flat-u≡w with max-v u flat-u≡w
     ... | inj₂ v≡u = inj₂ v≡u
-    ... | inj₁ v>ᵍu with robust-repair rlnn-r v u v>ᵍu
+    ... | inj₁ v>ᵍu with rlnn-repair rlnn-r v u v>ᵍu
     ... | inj₁ v>ˡu = inj₁ v>ˡu
     ... | inj₂ (z , z≡u , z>ᵍv) =
-      ⊥-elim (robust-gmax-no-better z>ᵍv
+      ⊥-elim (gmax-no-better z>ᵍv
         (max-v z (trans z≡u flat-u≡w)))
 
 -- Purpose: Prove uniqueness of LNE maximal trees for a fixed word.
--- Used by: robust-lmax→gmax to identify the LNE maximum with the supplied tree.
+-- Used by: rlnn-lmax→gmax to identify the LNE maximum with the supplied tree.
 -- Main idea: Use LNE trichotomy; either strict direction contradicts one maximality witness, or equality remains.
-robust-lmax-unique : ∀ { r : RE } { w : List Char } { u v : U r }
+lmax-unique : ∀ { r : RE } { w : List Char } { u v : U r }
   → ≥-Maxˡ {r} w u
   → ≥-Maxˡ {r} w v
   → u ≡ v
-robust-lmax-unique {r}
+lmax-unique {r}
   (LNEMax.≥-max w u flat-u≡w max-u)
   (LNEMax.≥-max .w v flat-v≡w max-v)
   with LNEOrder.>-trichotomy u v
 ... | inj₁ u>ˡv =
-  ⊥-elim (robust-lmax-no-better u>ˡv (max-v u flat-u≡w))
+  ⊥-elim (lmax-no-better u>ˡv (max-v u flat-u≡w))
 ... | inj₂ (inj₁ v>ˡu) =
-  ⊥-elim (robust-lmax-no-better v>ˡu (max-u v flat-v≡w))
+  ⊥-elim (lmax-no-better v>ˡu (max-u v flat-v≡w))
 ... | inj₂ (inj₂ u≡v) = u≡v
 
 -- Purpose: Convert an LNE maximal witness into a greedy maximal witness.
 -- Used by: rlnn→robust for the reverse direction.
 -- Main idea: Obtain a greedy maximum by well-foundedness, convert it to an LNE maximum, then use LNE uniqueness.
-robust-lmax→gmax : ∀ { r : RE }
+rlnn-lmax→gmax : ∀ { r : RE }
   → RLNN r
   → ∀ { w : List Char } { v : U r }
   → ≥-Maxˡ {r} w v
   → ≥-Maxᵍ {r} w v
-robust-lmax→gmax {r} rlnn-r
+rlnn-lmax→gmax {r} rlnn-r
   (LNEMax.≥-max w v flat-v≡w max-v) with
     GreedyMax.>-wellfounded {r} {proj₁ (flat v)} (proj₂ (flat v))
 ... | g , max-g =
@@ -2878,10 +2878,10 @@ robust-lmax→gmax {r} rlnn-r
     max-g-w = subst (λ w' → ≥-Maxᵍ {r} w' g) flat-v≡w max-g
 
     max-gˡ : ≥-Maxˡ {r} (proj₁ (flat v)) g
-    max-gˡ = robust-gmax→lmax rlnn-r max-g
+    max-gˡ = rlnn-gmax→lmax rlnn-r max-g
 
     v≡g : v ≡ g
-    v≡g = robust-lmax-unique
+    v≡g = lmax-unique
       (LNEMax.≥-max (proj₁ (flat v)) v refl max-v-flat)
       max-gˡ
       where
@@ -2905,7 +2905,7 @@ rlnn→robust r rlnn-r = robust {r} ev
     ev : (w : List Char) (v : U r)
       → (≥-Maxᵍ {r} w v → ≥-Maxˡ {r} w v)
         × (≥-Maxˡ {r} w v → ≥-Maxᵍ {r} w v)
-    ev w v = robust-gmax→lmax rlnn-r , robust-lmax→gmax rlnn-r
+    ev w v = rlnn-gmax→lmax rlnn-r , rlnn-lmax→gmax rlnn-r
 ```
 
 

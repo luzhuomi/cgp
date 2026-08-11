@@ -3538,3 +3538,16 @@ rln→robust r rln-r = robust {r} ev
     ev w v = rln-gmax→lmax rln-r , rln-lmax→gmax rln-r
 
 ```
+
+
+RLN is more "relaxed" than RLNN.
+
+Is RLN necessary for Robustness ? 
+
+```agda
+robust→rln : ∀ ( r : RE )
+  → Robust r
+  → RLN r
+robust→rln  =  {!!} 
+
+```

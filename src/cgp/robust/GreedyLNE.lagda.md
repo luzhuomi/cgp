@@ -3542,12 +3542,71 @@ rln→robust r rln-r = robust {r} ev
 
 RLN is more "relaxed" than RLNN.
 
-Is RLN necessary for Robustness ? 
+Is RLN necessary for Robustness ? No.
+
+Counterexample: `ε + $ 'a'` is Robust (each word has at most one tree,
+so greedy max and LNE max coincide trivially) but not RLN
+(`ε∈ ε` holds yet `ε≅ $ 'a'` does not).
 
 ```agda
-robust→rln : ∀ ( r : RE )
-  → Robust r
-  → RLN r
-robust→rln  =  {!!} 
+
+counter-robust-not-rln-re : RE
+counter-robust-not-rln-re = ε + ($ 'a' ` 1) ` 1
+
+-- ε≅ has no constructor for $_`_, so it cannot hold for any literal.
+¬-ε≅-$ : ∀ { c : Char } { loc : ℕ } → ¬ ε≅ ($ c ` loc)
+¬-ε≅-$ ()
+
+-- RLN (ε + $ 'a' ` 1) requires ε∈ ε → ε≅ $ 'a', which fails because
+-- ε∈ ε is inhabited (ε∈ε) but ε≅ $ 'a' is not.
+counter-¬-rln : ¬ RLN counter-robust-not-rln-re
+counter-¬-rln (rln-+ ε∈l→ε≅r rln-ε rln-$) =
+  ¬-ε≅-$ (ε∈l→ε≅r ε∈ε)
+
+-- In U (ε + $ 'a' ` 1) there are exactly two trees:
+--   LeftU  EmptyU        → word []
+--   RightU (LetterU 'a') → word ['a']
+-- Each word is produced by exactly one tree, so any maximality predicate
+-- is trivially satisfied (the maximum is the unique tree for that word).
+counter-flat-uniq : ∀ (u u' : U counter-robust-not-rln-re)
+  → proj₁ (flat u) ≡ proj₁ (flat u')
+  → u ≡ u'
+counter-flat-uniq (LeftU EmptyU) (LeftU EmptyU) _ = refl
+counter-flat-uniq (LeftU EmptyU) (RightU (LetterU c)) flat≡ =
+  ⊥-elim (¬∷≡[] (trans (trans (sym (flat-RightU {l = ε} {r = $ 'a' ` 1} {loc = 1} {u = LetterU c})) (sym flat≡)) (flat-LeftU {l = ε} {r = $ 'a' ` 1} {loc = 1} {u = EmptyU})))
+counter-flat-uniq (RightU (LetterU c)) (LeftU EmptyU) flat≡ =
+  ⊥-elim (¬∷≡[] (trans (trans (sym (flat-RightU {l = ε} {r = $ 'a' ` 1} {loc = 1} {u = LetterU c})) flat≡) (flat-LeftU {l = ε} {r = $ 'a' ` 1} {loc = 1} {u = EmptyU})))
+counter-flat-uniq (RightU (LetterU c)) (RightU (LetterU c')) _ = refl
+
+counter-robust : Robust counter-robust-not-rln-re
+counter-robust = robust {counter-robust-not-rln-re} ev
+  where
+    r = counter-robust-not-rln-re
+
+    counter-maxᵍ→ˡ : (v : U r) (w : List Char) → proj₁ (flat v) ≡ w
+      → (u : U r) → proj₁ (flat u) ≡ w
+      → LNEOrder._⊢_≥_ r v u
+    counter-maxᵍ→ˡ v w pv≡w u pu≡w =
+      inj₂ (counter-flat-uniq v u (trans pv≡w (sym pu≡w)))
+
+    counter-maxˡ→ᵍ : (v : U r) (w : List Char) → proj₁ (flat v) ≡ w
+      → (u : U r) → proj₁ (flat u) ≡ w
+      → GreedyMax._⊢_≥_ r v u
+    counter-maxˡ→ᵍ v w pv≡w u pu≡w =
+      inj₂ (counter-flat-uniq v u (trans pv≡w (sym pu≡w)))
+
+    gmax→lmax : ∀ { w : List Char } { v : U r }
+      → ≥-Maxᵍ {r} w v → ≥-Maxˡ {r} w v
+    gmax→lmax (≥-maxᵍ w v flat-v≡w max-v) =
+      ≥-maxˡ w v flat-v≡w (counter-maxᵍ→ˡ v w flat-v≡w)
+
+    lmax→gmax : ∀ { w : List Char } { v : U r }
+      → ≥-Maxˡ {r} w v → ≥-Maxᵍ {r} w v
+    lmax→gmax (≥-maxˡ w v flat-v≡w max-v) =
+      ≥-maxᵍ w v flat-v≡w (counter-maxˡ→ᵍ v w flat-v≡w)
+
+    ev : (w : List Char) (v : U r)
+      → (≥-Maxᵍ w v → ≥-Maxˡ w v) × (≥-Maxˡ w v → ≥-Maxᵍ w v)
+    ev w v = gmax→lmax , lmax→gmax
 
 ```

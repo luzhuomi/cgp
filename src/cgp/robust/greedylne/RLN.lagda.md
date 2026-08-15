@@ -808,3 +808,66 @@ counter-robust = robust {counter-robust-not-rln-re} ev
     ev w v = gmax→lmax , lmax→gmax
 
 ```
+
+
+Is RLN sufficient for Iso ? No.
+
+The RLNN counterexample expression `(ε + ε) ● a*` is actually RLN:
+the `rln-+` side condition on `ε + ε` is `ε∈ ε → ε≅ ε`, which holds.
+The same witness trees separate the two orders, so RLN does not
+imply Iso (though it does imply Robust).
+
+```agda
+
+counter-iso-left : RE
+counter-iso-left = ε + ε ` 1
+
+counter-iso-letter : RE
+counter-iso-letter = $ 'a' ` 2
+
+counter-iso-star : RE
+counter-iso-star = counter-iso-letter * ε∉$ ` 3
+
+counter-iso-re : RE
+counter-iso-re = counter-iso-left ● counter-iso-star ` 4
+
+-- (ε + ε) is RLN: the side condition is ε∈ ε → ε≅ ε.
+counter-iso-rln-left : RLN counter-iso-left
+counter-iso-rln-left = rln-+ (λ _ → ε≅ε) rln-ε rln-ε
+
+counter-iso-rln-star : RLN counter-iso-star
+counter-iso-rln-star = rln-* rln-$
+
+counter-iso-rln : RLN counter-iso-re
+counter-iso-rln = rln-● counter-iso-rln-left counter-iso-rln-star
+
+-- u picks the left ε and an empty a*; v picks the right ε and one a.
+counter-iso-u : U counter-iso-re
+counter-iso-u = PairU
+  (LeftU EmptyU)
+  (ListU {r = counter-iso-letter} {nε = ε∉$} {loc = 3} [])
+
+counter-iso-v : U counter-iso-re
+counter-iso-v = PairU
+  (RightU EmptyU)
+  (ListU {r = counter-iso-letter} {nε = ε∉$} {loc = 3} (LetterU 'a' ∷ []))
+
+-- Greedy: the left choice beats the right choice in the first component.
+counter-iso-u>ᵍv : counter-iso-re ⊢ counter-iso-u >ᵍ counter-iso-v
+counter-iso-u>ᵍv = sub (GreedyOrder.seq₁ (sub GreedyOrder.choice-lr))
+
+-- LNE: no constructor relates u and v
+-- (u flattens to [], v flattens to 'a' ∷ [];
+--  be/bne need equal/positive lengths, lne needs a positive left length).
+counter-iso-no-u>ˡv : ¬ counter-iso-re ⊢ counter-iso-u >ˡ counter-iso-v
+counter-iso-no-u>ˡv (be () _ _)
+counter-iso-no-u>ˡv (bne () _ _)
+counter-iso-no-u>ˡv (lne () _)
+
+-- Iso would require counter-iso-u >ᵍ counter-iso-v to imply
+-- counter-iso-u >ˡ counter-iso-v; the two lines above refute that.
+counter-iso-¬-iso : ¬ Iso counter-iso-re
+counter-iso-¬-iso (iso ev) =
+  counter-iso-no-u>ˡv (proj₁ (ev counter-iso-u counter-iso-v) counter-iso-u>ᵍv)
+
+```

@@ -64,6 +64,8 @@ open Char using (Char)
 
 This is the exact semantic content used by the existing `rln→robust` proof; RLN is just one syntactic certificate for it.
 
+It is a standard "simulate order A by order B modulo repair, contradict maximality."
+
 ```agda
 
 data SWR : RE → Set where

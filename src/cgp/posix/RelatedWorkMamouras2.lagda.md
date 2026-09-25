@@ -77,7 +77,7 @@ import Data.Nat.Properties as NatProperties
 open import Data.Nat using (_<_ ; _≤_ ; _≟_ ; _≤?_ ; zero ; suc ; _+_ ; _∸_ ; s<s ; z<s ; z≤n ; s≤s)
 open import Data.Empty using (⊥ ; ⊥-elim)
 open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ ;
-  ≤-antisym ; m∸n≡0⇒m≤n )
+  ≤-antisym ; m∸n≡0⇒m≤n ; n≤1+n )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -294,10 +294,16 @@ no-$-eq c loc i j w ¬eq t with t
 
 
 
-postulate
-  rij⊨w→i≤j : ∀ { r : RE } { i j : ℕ } { w : List Char }
-             → r , i , j ⊨ w
-             → i Nat.≤ j
+rij⊨w→i≤j : ∀ { r : RE } { i j : ℕ } { w : List Char }
+           → r , i , j ⊨ w
+           → i Nat.≤ j
+rij⊨w→i≤j ( ⊨ε i w ) = ≤-refl
+rij⊨w→i≤j ( ⊨$ c loc i w eq ) = n≤1+n i
+rij⊨w→i≤j ( ⊨inl l r loc i j w t ) = rij⊨w→i≤j t
+rij⊨w→i≤j ( ⊨inr l r loc i j w t ) = rij⊨w→i≤j t
+rij⊨w→i≤j ( ⊨● l r loc i k w ( j , i≤j , j≤k , t₁ , t₂ ) ) = ≤-trans i≤j j≤k
+rij⊨w→i≤j ( ⊨[] r ε∉r loc w i ) = ≤-refl
+rij⊨w→i≤j ( ⊨∷ r ε∉r loc w i k ( j , i<j , j≤k , t₁ , t₂ ) ) = ≤-trans ( <⇒≤ i<j ) j≤k
 
 ```
 

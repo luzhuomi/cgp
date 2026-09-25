@@ -454,7 +454,7 @@ data <-Min● : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i
 find-<-Min● : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
     → l ● r ` loc , i , j ⊨ w
     → ∃[ t ] ( <-Min● l r loc  w i j t )
-find-<-Min● = ? 
+find-<-Min● = {!!} 
 
 -- is this well-founded, wellfounded is depending on <-Min hahah.. circular definition
 data _,_,_⊢_<_ where
@@ -505,8 +505,19 @@ data _,_,_,_,_,_,_⊢●_<_ where
     → ( t₁ : l , i , j ⊨ w )
     → ( t₂ : r , j , k ⊨ w )
     → ( t₂' : r , j , k' ⊨ w )
+    → r , w , j ⊢ k < k' 
     -----------------------------------------------------------------------
-    → l , r , loc , w , i , k , k' ⊢● ( ⊨● l r loc i k w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂ ) ) < ( ⊨● l r loc i k' w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂' , t₁ , t₂' ) ) 
+    → l , r , loc , w , i , k , k' ⊢● ( ⊨● l r loc i k w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂ ) ) < ( ⊨● l r loc i k' w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂' , t₁ , t₂' ) )
+
+  seq₁ : ∀ { l r : RE }  { loc : ℕ } { w : List Char }
+    → ( i j k j' k' : ℕ )
+    → ( t₁ : l , i , j ⊨ w )
+    → ( t₂ : r , j , k ⊨ w )
+    → ( t₁' : l , i , j'  ⊨ w )
+    → ( t₂' : r , j' , k' ⊨ w )
+    → l , w , i ⊢ j < j'     
+    -----------------------------------------------------------------------
+    → l , r , loc , w , i , k , k' ⊢● ( ⊨● l r loc i k w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂ ) ) < ( ⊨● l r loc i k' w ( j' , rij⊨w→i≤j t₁' , rij⊨w→i≤j t₂' , t₁' , t₂' ) )
 
 
 ```

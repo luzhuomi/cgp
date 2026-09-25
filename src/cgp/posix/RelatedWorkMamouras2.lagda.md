@@ -292,6 +292,13 @@ no-$-eq c loc i j w ¬eq t with t
     no-match n ( ⊨● _ _ _ _ _ _ ( j , i≤j , j≤k , t₁ , t₂ ) ) = n ( j , i≤j , j≤k , ( t₁ , t₂ ) )
 ⊨? ( r * nε ` loc ) i k w = star-dec r nε loc ( k ∸ i ) i k ≤-refl w ( λ i' j' → ⊨? r i' j' w )
 
+
+
+postulate
+  rij⊨w→i≤j : ∀ { r : RE } { i j : ℕ } { w : List Char }
+             → r , i , j ⊨ w
+             → i Nat.≤ j
+
 ```
 
 
@@ -322,6 +329,14 @@ In our Agda implementation, we have to include the Tᵢ evidence as part of the 
 so as to construct the min ρ⁻¹ [(i , j)]
 
 
+the <-Min and find-<-Min+ (which is min ρ⁻¹ ( . ) function from Marmouras' paper.) has to be divided into
+multiple definitions per regex operator, e.g. one for +, another one for ●, another one for *
+
+
+Their order don't differentiate parse trees, e.g. for r = (a + a) + a, w = 'a'
+they treat Left (Left 'a') the sane as Left (Right 'a') w.r.t to the above because both has the same
+match set value [0,1].
+
 ```agda
 -- [i , j] <ᵢʳ [i , j']
 
@@ -331,15 +346,14 @@ infix 4 _,_,_⊢_<_
 data _,_,_⊢_<_ : ∀ ( r :  RE ) → ( w : List Char ) → ( i : ℕ ) → ( j : ℕ ) → ( j' : ℕ )  → Set 
 
 
--- inl[i , j] <ᵢ inl[i , j']
--- inr[i , j] <ᵢ inr[i , j']
--- inl[i , j] <ᵢ inr[i , j']
-
-
 infix 4 _,_,_,_,_,_,_⊢⁺_<_
 
 -- we index this order over ( r , i , j ⊨ w ) and  ( r , i , j' ⊨ w ) 
 data _,_,_,_,_,_,_⊢⁺_<_ : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i j j' : ℕ ) →  ( l + r ` loc , i , j ⊨ w ) → ( l + r ` loc , i , j' ⊨ w ) → Set
+
+infix 4 _,_,_,_,_,_,_⊢●_<_
+
+data _,_,_,_,_,_,_⊢●_<_ : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i k k'  : ℕ ) →  ( l ● r ` loc , i , k ⊨ w ) → ( l ● r ` loc , i , k' ⊨ w ) → Set
 
 
 
@@ -356,16 +370,8 @@ data <-Min⁺ : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char )  → ( 
     → ( t₂ : (r , i , j ⊨ w ) )
     → <-Min⁺ l r loc w i j ( ⊨inr l r loc i j  w t₂ )  --  ⊨inr is the min of +
 
--- The current definition of the order makes find-<-Min⁺ impossible to define.
--- The counterexample below shows that assuming such a function leads to a contradiction.
 
--- The lemma find-<-Min⁺ is unprovable.  <-Min⁺ requires t₁ to be
--- ⊢⁺-less-than-or-equal to every evidence of the same ( i , j ) match, but the
--- ⊢⁺ order leaves two inl evidences incomparable whenever comparing their
--- minima degenerates into a self-comparison (min < min), which is empty.
--- Hence a match need not have a <-Min⁺ witness.
 
--- postulate
 find-<-Min⁺ : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
     → l + r ` loc , i , j ⊨ w
     → ∃[ t ] ( <-Min⁺ l r loc  w i j t )
@@ -376,6 +382,27 @@ find-<-Min⁺ l r loc w i j ( ⊨inr .l .r .loc .i .j .w rij⊨w )
 ... | yes  lij⊨w = ⊨inl l r loc i j w lij⊨w , <-min-l l r loc w i j lij⊨w
 ... | no  ¬lij⊨w = ⊨inr l r loc i j w rij⊨w , <-min-r l r loc w i j ¬lij⊨w rij⊨w
 
+
+data <-Min● : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i k : ℕ ) → ( l ● r ` loc , i , k ⊨ w ) → Set
+  where
+  <-min-● : ∀ ( l r : RE) ( loc : ℕ )
+    → ( w : List Char )
+    → ( i j k : ℕ )
+    → ( i≤j : i Nat.≤ j )
+    → ( j≤k : j Nat.≤ k )
+    → ( t₁ : ( l , i , j ⊨ w ) )
+    → ( t₂ : ( r , j , k ⊨ w ) )
+    → ¬ ( ∃[ j' ] ( l , i , j' ⊨ w ) × ( r , j' , k ⊨ w ) × ( j < j') )
+    --------------------------------------------------------------------
+    → <-Min● l r loc w i k (⊨● l r loc i k w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂ ))
+
+
+
+postulate
+  find-<-Min● : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+    → l ● r ` loc , i , j ⊨ w
+    → ∃[ t ] ( <-Min● l r loc  w i j t )
+
 -- is this well-founded, wellfounded is depending on <-Min hahah.. circular definition
 data _,_,_⊢_<_ where
   choice : ∀ { l r : RE } { loc : ℕ } { w : List Char }
@@ -384,8 +411,14 @@ data _,_,_⊢_<_ where
     → ( t₂ : (l + r ` loc , i , j' ⊨ w) )      
     → l , r , loc , w , i , j , j' ⊢⁺  (proj₁ ( find-<-Min⁺ l r loc w i j t₁ )) < (proj₁ ( find-<-Min⁺ l r loc w i j' t₂) )
     --------------------------------------------------------- 
-    → (l + r ` loc) , w , i ⊢ j < j' 
-  
+    → (l + r ` loc) , w , i ⊢ j < j'
+  seq : ∀ { l r : RE } { loc : ℕ } { w : List Char }
+    → ( i k k' : ℕ )
+    → ( t₁ : ( l ● r ` loc , i , k ⊨ w) )
+    → ( t₂ : ( l ● r ` loc , i , k' ⊨ w) )
+    → l , r , loc , w , i , k , k' ⊢● ( proj₁ (find-<-Min● l r loc w i k t₁) ) < (proj₁ (find-<-Min● l r loc w i k' t₂) )
+    --------------------------------------------------
+    → ( l ● r ` loc) , w , i ⊢ k < k' 
 
 
 data _,_,_,_,_,_,_⊢⁺_<_ where
@@ -413,204 +446,17 @@ data _,_,_,_,_,_,_⊢⁺_<_ where
     -----------------------------------------------------------------------
     → l , r , loc , w , i , j , j' ⊢⁺ ( ⊨inr l r loc i j w t₁ ) < ( ⊨inr l r loc i j' w t₂ )
 
+data _,_,_,_,_,_,_⊢●_<_ where
+  seq₂ : ∀ { l r : RE } { loc : ℕ } { w : List Char }
+    → ( i j k k' : ℕ )
+    → ( t₁ : l , i , j ⊨ w )
+    → ( t₂ : r , j , k ⊨ w )
+    → ( t₂' : r , j , k' ⊨ w )
+    -----------------------------------------------------------------------
+    → l , r , loc , w , i , k , k' ⊢● ( ⊨● l r loc i k w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂ ) ) < ( ⊨● l r loc i k' w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂' , t₁ , t₂' ) ) 
+
+
 ```
 
 
 
--- Counterexample: l = a0 + a1 ` 2, r = a2 over w = [a], i = 0, j = 1.
--- There are three evidences of ( l + a2 ` 4 ) , 0 , 1 ⊨ w :
---   P1 = inl (inl t$0)
---   P2 = inl (inr t$1)
---   P3 = inr t$2
--- P1 and P2 are incomparable: inlinl would require l , w , 0 ⊢ 1 < 1, whose
--- only constructor choice requires ⊢⁺ (L1 < L1) where L1 = inl t$0 is the
--- unique minimum of l's evidences; but ⊢⁺ (L1 < L1) would require
--- a0 , w , 0 ⊢ 1 < 1, which is empty because a0 is a literal, not a plus.
--- Hence no evidence is <-Min⁺.
-
-```agda
-{-
--- K is available (no --without-K), so equality proofs are unique.
-UIP-≡ : ∀ {A : Set} {x y : A} (p q : x ≡ y) → p ≡ q
-UIP-≡ refl refl = refl
-
-counterexample : (∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
-                   → ( t : l + r ` loc , i , j ⊨ w )
-                   → ∃[ t' ] (<-Min⁺ l r loc w i j t'))
-                 → ⊥
-counterexample wellfounded = contradiction (proj₁ (wellfounded l a2 4 w i j P1)) (proj₂ (wellfounded l a2 4 w i j P1))
-  where
-    a0 : RE
-    a0 = $ 'a' ` 0
-
-    a1 : RE
-    a1 = $ 'a' ` 1
-
-    a2 : RE
-    a2 = $ 'a' ` 3
-
-    l : RE
-    l = a0 + a1 ` 2
-
-    r : RE
-    r = l + a2 ` 4
-
-    w : List Char
-    w = 'a' ∷ []
-
-    i : ℕ
-    i = 0
-
-    j : ℕ
-    j = 1
-
-    t$0 : a0 , i , j ⊨ w
-    t$0 = ⊨$ 'a' 0 i w refl
-
-    L1 : l , i , j ⊨ w
-    L1 = ⊨inl a0 a1 2 i j w t$0
-
-    t$1 : a1 , i , j ⊨ w
-    t$1 = ⊨$ 'a' 1 i w refl
-
-    L2 : l , i , j ⊨ w
-    L2 = ⊨inr a0 a1 2 i j w t$1
-
-    t$2 : a2 , i , j ⊨ w
-    t$2 = ⊨$ 'a' 3 i w refl
-
-    P1 : r , i , j ⊨ w
-    P1 = ⊨inl l a2 4 i j w L1
-
-    P2 : r , i , j ⊨ w
-    P2 = ⊨inl l a2 4 i j w L2
-
-    P3 : r , i , j ⊨ w
-    P3 = ⊨inr l a2 4 i j w t$2
-
-    -- uniqueness of atomic evidences
-    $-evidence-unique : ∀ {c loc w i j} (t t' : ($ c ` loc) , i , j ⊨ w) → t ≡ t'
-    $-evidence-unique (⊨$ c loc i w eq) (⊨$ .c .loc .i .w eq') =
-      cong (λ p → ⊨$ c loc i w p) (UIP-≡ eq eq')
-
-    t$0-unique : (t : a0 , i , j ⊨ w) → t ≡ t$0
-    t$0-unique t = $-evidence-unique t t$0
-
-    t$1-unique : (t : a1 , i , j ⊨ w) → t ≡ t$1
-    t$1-unique t = $-evidence-unique t t$1
-
-    t$2-unique : (t : a2 , i , j ⊨ w) → t ≡ t$2
-    t$2-unique t = $-evidence-unique t t$2
-
-    -- every evidence of l is either L1 or L2
-    l-evidence : (t : l , i , j ⊨ w) → t ≡ L1 ⊎ t ≡ L2
-    l-evidence (⊨inl .a0 .a1 .2 .i .j .w t') = inj₁ (cong (λ z → ⊨inl a0 a1 2 i j w z) (t$0-unique t'))
-    l-evidence (⊨inr .a0 .a1 .2 .i .j .w t') = inj₂ (cong (λ z → ⊨inr a0 a1 2 i j w z) (t$1-unique t'))
-
-    -- every evidence of r is either P1, P2, or P3
-    r-evidence : (t : r , i , j ⊨ w) → t ≡ P1 ⊎ t ≡ P2 ⊎ t ≡ P3
-    r-evidence (⊨inl .l .a2 .4 .i .j .w t')
-      with l-evidence t'
-    ... | inj₁ t'≡L1 = inj₁ (cong (λ z → ⊨inl l a2 4 i j w z) t'≡L1)
-    ... | inj₂ t'≡L2 = inj₂ (inj₁ (cong (λ z → ⊨inl l a2 4 i j w z) t'≡L2))
-    r-evidence (⊨inr .l .a2 .4 .i .j .w t') = inj₂ (inj₂ (cong (λ z → ⊨inr l a2 4 i j w z) (t$2-unique t')))
-
-    -- a0 is a literal, not a plus, so the flat order on a0 is empty
-    ¬a0-flat : (j₁ j₂ : ℕ) → ¬ (a0 , w , i ⊢ j₁ < j₂)
-    ¬a0-flat _ _ ()
-
-    -- L1 is not less than itself under ⊢⁺ : only inlinl can give inl < inl,
-    -- and its premise a0 , w , i ⊢ j < j is empty
-    ¬L1<L1⁺ : ¬ (a0 , a1 , 2 , w , i , j , j ⊢⁺ (⊨inl a0 a1 2 i j w t$0) < (⊨inl a0 a1 2 i j w t$0))
-    ¬L1<L1⁺ (inlinl _ _ _ _ _ a0flat) = ¬a0-flat j j a0flat
-
-    -- L2 is not less than itself under ⊢⁺ : only inrinr can give inr < inr,
-    -- and its premise a0 , w , i ⊢ j < j is empty
-    ¬L2<L2⁺ : ¬ (a0 , a1 , 2 , w , i , j , j ⊢⁺ (⊨inr a0 a1 2 i j w t$1) < (⊨inr a0 a1 2 i j w t$1))
-    ¬L2<L2⁺ (inrinr _ _ _ _ _ a0flat) = ¬a0-flat j j a0flat
-
-    -- L2 is not less than L1 (no constructor gives inr < inl)
-    ¬L2<L1⁺ : ¬ (a0 , a1 , 2 , w , i , j , j ⊢⁺ (⊨inr a0 a1 2 i j w t$1) < (⊨inl a0 a1 2 i j w t$0))
-    ¬L2<L1⁺ ()
-
-    -- find-<-Min⁺ on l always returns L1, because L1 is the unique minimal evidence
-    find-<-Min⁺-l-returns-L1 : (t : l , i , j ⊨ w)
-      → proj₁ (find-<-Min⁺ a0 a1 2 w i j t) ≡ L1
-    find-<-Min⁺-l-returns-L1 t
-      with find-<-Min⁺ a0 a1 2 w i j t
-    ... | M , <-min⁺ .a0 .a1 .2 .w .i .j .M minM
-      with minM L2 | l-evidence M
-    ... | inj₁ M<L2 | inj₁ M≡L1 = M≡L1
-    ... | inj₁ M<L2 | inj₂ M≡L2 = ⊥-elim (¬L2<L2⁺ (subst (λ x → a0 , a1 , 2 , w , i , j , j ⊢⁺ x < L2) M≡L2 M<L2))
-    ... | inj₂ M≡L2 | _ = ⊥-elim (¬L2-min M≡L2 (<-min⁺ a0 a1 2 w i j M minM))
-      where
-        L2≢L1 : ¬ (L2 ≡ L1)
-        L2≢L1 ()
-
-        ¬L2-min : M ≡ L2 → ¬ (<-Min⁺ a0 a1 2 w i j M)
-        ¬L2-min M≡L2 (<-min⁺ .a0 .a1 .2 .w .i .j .M minM')
-          with minM' L1
-        ... | inj₁ M<L1 = ¬L2<L1⁺ (subst (λ x → a0 , a1 , 2 , w , i , j , j ⊢⁺ x < L1) M≡L2 M<L1)
-        ... | inj₂ M≡L1 = L2≢L1 (trans (sym M≡L2) M≡L1)
-
-    -- the flat order on l at ( i , j , j ) is empty: its only constructor choice
-    -- would require ⊢⁺ (L1 < L1), since find-<-Min⁺ on l always returns L1
-    ¬l-flat : ¬ (l , w , i ⊢ j < j)
-    ¬l-flat (choice .i .j .j t₁ t₂ ev)
-      rewrite find-<-Min⁺-l-returns-L1 t₁ | find-<-Min⁺-l-returns-L1 t₂
-      = ¬L1<L1⁺ ev
-
-    -- P1 is not less than P2 under ⊢⁺ : only inlinl can give inl < inl,
-    -- and its premise l , w , i ⊢ j < j is empty
-    ¬P1<P2⁺ : ¬ (l , a2 , 4 , w , i , j , j ⊢⁺ (⊨inl l a2 4 i j w L1) < (⊨inl l a2 4 i j w L2))
-    ¬P1<P2⁺ (inlinl _ _ _ _ _ lflat) = ¬l-flat lflat
-
-    -- P2 is not less than P1 under ⊢⁺
-    ¬P2<P1⁺ : ¬ (l , a2 , 4 , w , i , j , j ⊢⁺ (⊨inl l a2 4 i j w L2) < (⊨inl l a2 4 i j w L1))
-    ¬P2<P1⁺ (inlinl _ _ _ _ _ lflat) = ¬l-flat lflat
-
-    -- P3 is not less than P1 (no constructor gives inr < inl)
-    ¬P3<P1⁺ : ¬ (l , a2 , 4 , w , i , j , j ⊢⁺ (⊨inr l a2 4 i j w t$2) < (⊨inl l a2 4 i j w L1))
-    ¬P3<P1⁺ ()
-
-    inl-inj : {t₁ t₂ : l , i , j ⊨ w}
-            → ⊨inl l a2 4 i j w t₁ ≡ ⊨inl l a2 4 i j w t₂
-            → t₁ ≡ t₂
-    inl-inj refl = refl
-
-    P1≢P2 : ¬ (P1 ≡ P2)
-    P1≢P2 P1≡P2 = L1≢L2 (inl-inj P1≡P2)
-      where
-        L1≢L2 : ¬ (L1 ≡ L2)
-        L1≢L2 ()
-
-    P3≢P1 : ¬ (P3 ≡ P1)
-    P3≢P1 ()
-
-    -- no evidence of r is minimal
-    ¬Min-P1 : ¬ (<-Min⁺ l a2 4 w i j P1)
-    ¬Min-P1 (<-min⁺ .l .a2 .4 .w .i .j .P1 minP1)
-      with minP1 P2
-    ... | inj₁ P1<P2 = ¬P1<P2⁺ P1<P2
-    ... | inj₂ P1≡P2 = P1≢P2 P1≡P2
-
-    ¬Min-P2 : ¬ (<-Min⁺ l a2 4 w i j P2)
-    ¬Min-P2 (<-min⁺ .l .a2 .4 .w .i .j .P2 minP2)
-      with minP2 P1
-    ... | inj₁ P2<P1 = ¬P2<P1⁺ P2<P1
-    ... | inj₂ P2≡P1 = P1≢P2 (sym P2≡P1)
-
-    ¬Min-P3 : ¬ (<-Min⁺ l a2 4 w i j P3)
-    ¬Min-P3 (<-min⁺ .l .a2 .4 .w .i .j .P3 minP3)
-      with minP3 P1
-    ... | inj₁ P3<P1 = ¬P3<P1⁺ P3<P1
-    ... | inj₂ P3≡P1 = P3≢P1 P3≡P1
-
-    contradiction : (t : r , i , j ⊨ w) → ¬ (<-Min⁺ l a2 4 w i j t)
-    contradiction t min
-      with r-evidence t
-    ... | inj₁ t≡P1 = ¬Min-P1 (subst (<-Min⁺ l a2 4 w i j) t≡P1 min)
-    ... | inj₂ (inj₁ t≡P2) = ¬Min-P2 (subst (<-Min⁺ l a2 4 w i j) t≡P2 min)
-    ... | inj₂ (inj₂ t≡P3) = ¬Min-P3 (subst (<-Min⁺ l a2 4 w i j) t≡P3 min)
-
--} 

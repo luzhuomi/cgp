@@ -139,6 +139,12 @@ _!!_ {A} (x ∷ xs) (suc n) =  xs !! n
 -- we shuffle the order of the parameters to r , i , j ⊨ w
 -- is a proof of showing the w[i,j] is matched with r.
 
+-- NOTE: The index bounds in ⊨● (i ≤ j and j ≤ k) and in ⊨∷ (i < j and j ≤ k)
+-- are derivable from the sub-match evidences via rij⊨w→i≤j.  They are kept as
+-- explicit fields because they are convenient for the proofs below; removing
+-- them would require a wider refactor of every ⊨●/⊨∷ pattern match and
+-- construction in this file.
+
 data _,_,_⊨_ : RE →  ℕ → ℕ → List Char → Set where
   ⊨ε : ∀ ( i : ℕ )
      → ( w : List Char )

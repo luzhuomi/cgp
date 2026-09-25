@@ -72,9 +72,10 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; suc ; zero ; _>_ ; _≥_ ; _≤_  ; _+_  )
 
 import Data.Nat.Properties as NatProperties
-open import Data.Nat using (_<_ ; _≤_ ; zero ; suc ; _+_ ; _∸_ ; s<s ; z<s ; z≤n ; s≤s)
+open import Data.Nat using (_<_ ; _≤_ ; _≟_ ; _≤?_ ; zero ; suc ; _+_ ; _∸_ ; s<s ; z<s ; z≤n ; s≤s)
 open import Data.Empty using (⊥ ; ⊥-elim)
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ ;
+  ≤-antisym ; m∸n≡0⇒m≤n ; m≤n⇒m∸n≡0 ; m+[n∸m]≡n ; [m+n]∸[m+o]≡n∸o ; m+n∸n≡m ; ∸-monoʳ-≤ ; n≤1+n ; m≤n⇒m<n∨m≡n ; m<1+n⇒m<n∨m≡n )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -187,8 +188,179 @@ data _,_,_⊨_ : RE →  ℕ → ℕ → List Char → Set where
      → ( r * ε∉r ` loc ) , i , k ⊨ w 
 
 
-postulate
-  ⊨? : ∀ ( r : RE ) → ( i : ℕ ) → ( j : ℕ ) → ( w : List Char ) → Dec ( r , i , j ⊨ w ) 
+-- Eliminate a Dec by providing a handler for each branch.
+dec-elim : ∀ { a ℓ } { A : Set a } { B : Set ℓ }
+  → ( x : Dec A ) → ( yes : A → B ) → ( no : ¬ A → B ) → B
+dec-elim ( yes x ) h-yes _ = h-yes x
+dec-elim ( no ¬x ) _ h-no  = h-no ¬x
+
+-- Decidable equality of a (Maybe Char) with ( just c ).
+maybe-just-≟ : ( m : Maybe Char ) → ( c : Char ) → Dec ( m ≡ just c )
+maybe-just-≟ nothing    c    = no λ ()
+maybe-just-≟ ( just c' ) c with c' Char.≟ c
+... | no  c'≢c = no λ { refl → c'≢c refl }
+... | yes c'≡c = yes ( cong just c'≡c )
+
+-- n ∸ 0 ≡ n
+n∸0≡n : ( n : ℕ ) → n ∸ 0 ≡ n
+n∸0≡n zero    = refl
+n∸0≡n (suc n) = cong suc ( n∸0≡n n )
+
+-- Decide ∃[ j ] ( i ≤ j × j ≤ k × P j ) by recursion on the upper bound k.
+dec-∃-range : ( i k : ℕ ) → ( P : ℕ → Set )
+  → ( ∀ j → i ≤ j → j ≤ k → Dec ( P j ) )
+  → Dec ( ∃[ j ] i ≤ j × j ≤ k × P j )
+dec-∃-range i zero P dec with i ≟ zero
+... | no  i≢zero = no ( λ ( j , i≤j , j≤zero , _ ) → i≢zero ( trans ( sym ( n∸0≡n i ) ) ( m≤n⇒m∸n≡0 ( ≤-trans i≤j j≤zero ) ) ) )
+... | yes i≡zero with dec zero ( subst ( λ x → x ≤ zero ) ( sym i≡zero ) z≤n ) z≤n
+... | yes p = yes ( zero , subst ( λ x → x ≤ zero ) ( sym i≡zero ) z≤n , z≤n , p )
+... | no  ¬p = no ( λ ( j , _ , j≤zero , p ) → ¬p ( subst ( λ x → P x ) ( trans ( sym ( n∸0≡n j ) ) ( m≤n⇒m∸n≡0 j≤zero ) ) p ) )
+dec-∃-range i ( suc k' ) P dec with i ≤? suc k'
+... | no  i≰k = no λ { ( _ , i≤j , j≤k , _ ) → i≰k ( ≤-trans i≤j j≤k ) }
+... | yes i≤k with dec ( suc k' ) i≤k ≤-refl
+... | yes p = yes ( suc k' , i≤k , ≤-refl , p )
+... | no  ¬p with dec-∃-range i k' P ( λ j i≤j j≤k' → dec j i≤j ( ≤-trans j≤k' ( n≤1+n k' ) ) )
+... | yes ( j , i≤j , j≤k' , p ) = yes ( j , i≤j , ≤-trans j≤k' ( n≤1+n k' ) , p )
+... | no  n = no ( λ ( j , i≤j , j≤k , p ) → no-cand j i≤j j≤k p )
+  where
+    no-cand : ( j : ℕ ) → ( i ≤ j ) → ( j ≤ suc k' ) → ( P j ) → ⊥
+    no-cand zero i≤zero _ p = n ( zero , i≤zero , z≤n , p )
+    no-cand ( suc j ) i≤j j≤k p with m≤n⇒m<n∨m≡n j≤k
+    ... | inj₂ j≡suc-k' = ¬p ( subst ( λ x → P x ) ( j≡suc-k' ) p )
+    ... | inj₁ j<suc-k' with m<1+n⇒m<n∨m≡n j<suc-k'
+    ... | inj₁ j<k' = n ( suc j , i≤j , <⇒≤ j<k' , p )
+    ... | inj₂ j≡k' = n ( suc j , i≤j , subst ( λ x → suc j ≤ x ) ( j≡k' ) ≤-refl , p )
+
+-- m + 1 ≡ suc m
++-1≡suc : ( m : ℕ ) → m + 1 ≡ suc m
++-1≡suc zero    = refl
++-1≡suc (suc m) = cong suc ( +-1≡suc m )
+
+-- suc m ∸ 1 ≡ m
+suc-∸-1 : ( m : ℕ ) → suc m ∸ 1 ≡ m
+suc-∸-1 zero    = refl
+suc-∸-1 ( suc m ) = trans ( cong ( λ x → x ∸ 1 ) ( sym ( +-1≡suc ( suc m ) ) ) ) ( m+n∸n≡m ( suc m ) 1 )
+
+-- m ≤ suc d  ⇒  m ∸ 1 ≤ d
+∸-suc-≤ : ( m d : ℕ ) → m ≤ suc d → m ∸ 1 ≤ d
+∸-suc-≤ zero    d z≤n         = z≤n
+∸-suc-≤ (suc m) d ( s≤s m≤d ) = subst ( λ x → x ≤ d ) ( sym ( suc-∸-1 m ) ) m≤d
+
+-- i < j ≤ k and k ∸ i ≤ suc d  ⇒  k ∸ j ≤ d
+∸-step-≤ : ( i j k d : ℕ ) → i < j → j ≤ k → k ∸ i ≤ suc d → k ∸ j ≤ d
+∸-step-≤ i j k d i<j j≤k h =
+  ≤-trans ( subst ( λ x → k ∸ j ≤ x ) k∸i+1≡k∸i∸1 ( ∸-monoʳ-≤ k ( subst ( λ x → x ≤ j ) ( sym ( +-1≡suc i ) ) i<j ) ) )
+          ( ∸-suc-≤ ( k ∸ i ) d h )
+  where
+    i≤k : i ≤ k
+    i≤k = ≤-trans ( <⇒≤ i<j ) j≤k
+
+    k∸i+1≡k∸i∸1 : k ∸ ( i + 1 ) ≡ ( k ∸ i ) ∸ 1
+    k∸i+1≡k∸i∸1 = begin
+      k ∸ ( i + 1 )                ≡⟨ cong ( λ x → x ∸ ( i + 1 ) ) ( sym ( m+[n∸m]≡n i≤k ) ) ⟩
+      ( i + ( k ∸ i ) ) ∸ ( i + 1 ) ≡⟨ [m+n]∸[m+o]≡n∸o i ( k ∸ i ) 1 ⟩
+      ( k ∸ i ) ∸ 1                ∎
+
+-- Decides ( r * nε ` loc ) , i , k ⊨ w by induction on an upper bound d of
+-- the span k ∸ i.  The induction hypothesis covers all pairs with span
+-- ≤ d - 1, which is exactly what the ⊨∷ rule needs: it keeps the end index
+-- k but moves the start index strictly forward.  The decision procedure for
+-- the sub-expression r is passed as an argument.
+star-dec : ( r : RE ) → ( nε : ε∉ r ) → ( loc : ℕ ) → ( d : ℕ )
+  → ( i k : ℕ ) → ( k ∸ i ≤ d ) → ( w : List Char )
+  → ( dec-r : ( i j : ℕ ) → Dec ( r , i , j ⊨ w ) )
+  → Dec ( ( r * nε ` loc ) , i , k ⊨ w )
+star-dec r nε loc zero i k h w dec-r with k ≟ i
+... | yes k≡i rewrite k≡i = yes ( ⊨[] r nε loc w i )
+... | no  k≢i = no ( no-match )
+  where
+    no-match : ( r * nε ` loc ) , i , k ⊨ w → ⊥
+    no-match ( ⊨[] _ _ _ _ _ ) = k≢i refl
+    no-match ( ⊨∷ _ _ _ _ _ _ ( j , i<j , j≤k , _ , _ ) ) =
+      <-irrefl refl ( ≤-trans ( ≤-trans i<j j≤k ) ( m∸n≡0⇒m≤n ( ≤-antisym h z≤n ) ) )
+star-dec r nε loc ( suc d' ) i k h w dec-r with k ≤? i
+... | no  k≰i =
+    dec-elim ( dec-∃-range ( suc i ) k ( λ j → ( r , i , j ⊨ w ) × ( ( r * nε ` loc ) , j , k ⊨ w ) ) dec-j )
+      ( λ ( j , j≥ , j≤k , ( t₁ , t₂ ) ) → yes ( ⊨∷ r nε loc w i k ( j , j≥ , j≤k , t₁ , t₂ ) ) )
+      ( λ n → no ( λ t → no-match n t ) )
+    where
+      dec-j : ( j : ℕ ) → ( suc i ≤ j ) → ( j ≤ k )
+        → Dec ( ( r , i , j ⊨ w ) × ( ( r * nε ` loc ) , j , k ⊨ w ) )
+      dec-j j j≥ j≤k with dec-r i j
+      ... | no  ¬t₁ = no λ { ( t₁ , _ ) → ¬t₁ t₁ }
+      ... | yes t₁ with star-dec r nε loc d' j k ( ∸-step-≤ i j k d' j≥ j≤k h ) w dec-r
+      ... | yes t₂ = yes ( t₁ , t₂ )
+      ... | no  ¬t₂ = no λ { ( _ , t₂ ) → ¬t₂ t₂ }
+
+      no-match : ( n : ¬ ( ∃[ j ] suc i ≤ j × j ≤ k × ( ( r , i , j ⊨ w ) × ( ( r * nε ` loc ) , j , k ⊨ w ) ) ) )
+        → ( ( r * nε ` loc ) , i , k ⊨ w ) → ⊥
+      no-match n ( ⊨[] _ _ _ _ _ ) = k≰i ≤-refl
+      no-match n ( ⊨∷ _ _ _ _ _ _ ( j , i<j , j≤k , t₁ , t₂ ) ) =
+        n ( j , i<j , j≤k , ( t₁ , t₂ ) )
+... | yes k≤i with k ≟ i
+... | yes k≡i rewrite k≡i = yes ( ⊨[] r nε loc w i )
+... | no  k≢i = no ( no-match )
+  where
+    no-match : ( r * nε ` loc ) , i , k ⊨ w → ⊥
+    no-match ( ⊨[] _ _ _ _ _ ) = k≢i refl
+    no-match ( ⊨∷ _ _ _ _ _ _ ( j , i<j , j≤k , _ , _ ) ) =
+      <-irrefl refl ( ≤-trans ( ≤-trans i<j j≤k ) k≤i )
+
+-- From evidence of ( $ c ` loc ) , i , j ⊨ w extract w !! i ≡ just c.
+no-$-eq : ( c : Char ) → ( loc i j : ℕ ) → ( w : List Char )
+  → ( w !! i ≡ just c → ⊥ ) → ( ( $ c ` loc ) , i , j ⊨ w ) → ⊥
+no-$-eq c loc i j w ¬eq t with t
+... | ⊨$ _ _ _ _ eq = ¬eq eq
+
+⊨? : ∀ ( r : RE ) → ( i : ℕ ) → ( j : ℕ ) → ( w : List Char ) → Dec ( r , i , j ⊨ w )
+⊨? ε i j w with i ≟ j
+... | no  i≢j = no ( no-ε )
+  where
+    no-ε : ( ε , i , j ⊨ w ) → ⊥
+    no-ε t with t
+    ... | ⊨ε _ _ = i≢j refl
+... | yes i≡j rewrite sym i≡j = yes ( ⊨ε i w )
+⊨? ( $ c ` loc ) i j w with j ≟ suc i
+... | no  j≢suc-i = no ( no-$ )
+  where
+    no-$ : ( ( $ c ` loc ) , i , j ⊨ w ) → ⊥
+    no-$ t with t
+    ... | ⊨$ _ _ _ _ _ = j≢suc-i refl
+... | yes j≡suc-i with maybe-just-≟ ( w !! i ) c
+... | no  ¬eq = no ( no-$-eq c loc i j w ¬eq )
+... | yes eq  = yes ( subst ( λ x → ( $ c ` loc ) , i , x ⊨ w ) ( sym j≡suc-i ) ( ⊨$ c loc i w eq ) )
+⊨? ( l + r ` loc ) i j w with ⊨? l i j w
+... | yes l⊨w = yes ( ⊨inl l r loc i j w l⊨w )
+... | no  ¬l⊨w with ⊨? r i j w
+... | yes r⊨w = yes ( ⊨inr l r loc i j w r⊨w )
+... | no  ¬r⊨w = no ( no-+ )
+  where
+    no-+ : ( ( l + r ` loc ) , i , j ⊨ w ) → ⊥
+    no-+ t with t
+    ... | ⊨inl .l .r .loc .i .j .w t' = ¬l⊨w t'
+    ... | ⊨inr .l .r .loc .i .j .w t' = ¬r⊨w t'
+⊨? ( l ● r ` loc ) i k w =
+  dec-elim ( i ≤? k )
+    ( λ i≤k → dec-elim ( dec-∃-range i k ( λ j → ( l , i , j ⊨ w ) × ( r , j , k ⊨ w ) ) dec-j )
+        ( λ ( j , i≤j , j≤k , ( t₁ , t₂ ) ) → yes ( ⊨● l r loc i k w ( j , i≤j , j≤k , t₁ , t₂ ) ) )
+        ( λ n → no ( λ t → no-match n t ) ) )
+    ( λ i≰k → no ( λ t → no-match-i≰k i≰k t ) )
+  where
+    dec-j : ( j : ℕ ) → ( i ≤ j ) → ( j ≤ k )
+      → Dec ( ( l , i , j ⊨ w ) × ( r , j , k ⊨ w ) )
+    dec-j j i≤j j≤k with ⊨? l i j w
+    ... | no  ¬t₁ = no λ { ( t₁ , _ ) → ¬t₁ t₁ }
+    ... | yes t₁ with ⊨? r j k w
+    ... | no  ¬t₂ = no λ { ( _ , t₂ ) → ¬t₂ t₂ }
+    ... | yes t₂ = yes ( t₁ , t₂ )
+
+    no-match-i≰k : ( i≰k : ¬ ( i ≤ k ) ) → ( l ● r ` loc ) , i , k ⊨ w → ⊥
+    no-match-i≰k i≰k ( ⊨● _ _ _ _ _ _ ( j , i≤j , j≤k , _ , _ ) ) = i≰k ( ≤-trans i≤j j≤k )
+
+    no-match : ( n : ¬ ( ∃[ j ] i ≤ j × j ≤ k × ( ( l , i , j ⊨ w ) × ( r , j , k ⊨ w ) ) ) )
+      → ( l ● r ` loc ) , i , k ⊨ w → ⊥
+    no-match n ( ⊨● _ _ _ _ _ _ ( j , i≤j , j≤k , t₁ , t₂ ) ) = n ( j , i≤j , j≤k , ( t₁ , t₂ ) )
+⊨? ( r * nε ` loc ) i k w = star-dec r nε loc ( k ∸ i ) i k ≤-refl w ( λ i' j' → ⊨? r i' j' w )
 
 ```
 

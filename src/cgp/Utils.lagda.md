@@ -11,10 +11,11 @@ import Data.Char as Char
 open Char using (Char)
 
 import Data.Nat as Nat
-open Nat using (ℕ ; _>_ ; zero ; suc ; _+_ ) 
+open Nat using (ℕ ; _>_ ; _≤_ ; _<_ ; _≟_ ; _≤?_ ; zero ; suc ; _+_ ; _∸_ ; z≤n ; s≤s )
 
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective )
+open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ;
+  ≤-antisym ; m∸n≡0⇒m≤n ; m≤n⇒m∸n≡0 ; m+[n∸m]≡n ; [m+n]∸[m+o]≡n∸o ; m+n∸n≡m ; ∸-monoʳ-≤ ; n≤1+n ; m≤n⇒m<n∨m≡n ; m<1+n⇒m<n∨m≡n )
 
 
 import Relation.Binary.PropositionalEquality as Eq
@@ -50,6 +51,9 @@ open import Function using (_∘_ ; flip )
 
 import Relation.Nullary as Nullary 
 open Nullary using (¬_ ; contraposition)
+
+open import Relation.Nullary.Decidable using (Dec ; yes ; no)
+open import Data.Empty using (⊥ ; ⊥-elim)
 
 ```
 
@@ -561,4 +565,86 @@ all-map-∈ : ∀ { A B : Set } { P : B → Set } ( f : A → B ) ( xs : List A 
 -- all-map-∈ f (x ∷ xs) h = h x (here refl) ∷ all-map-∈ f xs (λ x' x'∈xs → h x' (there x'∈xs))
 all-map-∈ f xs h = map⁺ (tabulate (λ {x} x∈xs → h x x∈xs))
 
+```
+
+
+#### Decidability and arithmetic sub-lemmas
+
+Utility lemmas: `Dec` elimination, decidability of a bounded existential
+range, and truncated-subtraction arithmetic. Used by the POSIX matching
+proofs.
+
+```agda
+-- Eliminate a Dec by providing a handler for each branch.
+dec-elim : ∀ { a ℓ } { A : Set a } { B : Set ℓ }
+  → ( x : Dec A ) → ( yes : A → B ) → ( no : ¬ A → B ) → B
+dec-elim ( yes x ) h-yes _ = h-yes x
+dec-elim ( no ¬x ) _ h-no  = h-no ¬x
+
+-- Decidable equality of a (Maybe Char) with ( just c ).
+maybe-just-≟ : ( m : Maybe Char ) → ( c : Char ) → Dec ( m ≡ just c )
+maybe-just-≟ nothing    c    = no λ ()
+maybe-just-≟ ( just c' ) c with c' Char.≟ c
+... | no  c'≢c = no λ { refl → c'≢c refl }
+... | yes c'≡c = yes ( cong just c'≡c )
+
+-- n ∸ 0 ≡ n
+n∸0≡n : ( n : ℕ ) → n ∸ 0 ≡ n
+n∸0≡n zero    = refl
+n∸0≡n (suc n) = cong suc ( n∸0≡n n )
+
+-- Decide ∃[ j ] ( i ≤ j × j ≤ k × P j ) by recursion on the upper bound k.
+dec-∃-range : ( i k : ℕ ) → ( P : ℕ → Set )
+  → ( ∀ j → i ≤ j → j ≤ k → Dec ( P j ) )
+  → Dec ( ∃[ j ] i ≤ j × j ≤ k × P j )
+dec-∃-range i zero P dec with i ≟ zero
+... | no  i≢zero = no ( λ ( j , i≤j , j≤zero , _ ) → i≢zero ( trans ( sym ( n∸0≡n i ) ) ( m≤n⇒m∸n≡0 ( ≤-trans i≤j j≤zero ) ) ) )
+... | yes i≡zero with dec zero ( subst ( λ x → x ≤ zero ) ( sym i≡zero ) z≤n ) z≤n
+... | yes p = yes ( zero , subst ( λ x → x ≤ zero ) ( sym i≡zero ) z≤n , z≤n , p )
+... | no  ¬p = no ( λ ( j , _ , j≤zero , p ) → ¬p ( subst ( λ x → P x ) ( trans ( sym ( n∸0≡n j ) ) ( m≤n⇒m∸n≡0 j≤zero ) ) p ) )
+dec-∃-range i ( suc k' ) P dec with i ≤? suc k'
+... | no  i≰k = no λ { ( _ , i≤j , j≤k , _ ) → i≰k ( ≤-trans i≤j j≤k ) }
+... | yes i≤k with dec ( suc k' ) i≤k ≤-refl
+... | yes p = yes ( suc k' , i≤k , ≤-refl , p )
+... | no  ¬p with dec-∃-range i k' P ( λ j i≤j j≤k' → dec j i≤j ( ≤-trans j≤k' ( n≤1+n k' ) ) )
+... | yes ( j , i≤j , j≤k' , p ) = yes ( j , i≤j , ≤-trans j≤k' ( n≤1+n k' ) , p )
+... | no  n = no ( λ ( j , i≤j , j≤k , p ) → no-cand j i≤j j≤k p )
+  where
+    no-cand : ( j : ℕ ) → ( i ≤ j ) → ( j ≤ suc k' ) → ( P j ) → ⊥
+    no-cand zero i≤zero _ p = n ( zero , i≤zero , z≤n , p )
+    no-cand ( suc j ) i≤j j≤k p with m≤n⇒m<n∨m≡n j≤k
+    ... | inj₂ j≡suc-k' = ¬p ( subst ( λ x → P x ) ( j≡suc-k' ) p )
+    ... | inj₁ j<suc-k' with m<1+n⇒m<n∨m≡n j<suc-k'
+    ... | inj₁ j<k' = n ( suc j , i≤j , <⇒≤ j<k' , p )
+    ... | inj₂ j≡k' = n ( suc j , i≤j , subst ( λ x → suc j ≤ x ) ( j≡k' ) ≤-refl , p )
+
+-- m + 1 ≡ suc m
++-1≡suc : ( m : ℕ ) → m + 1 ≡ suc m
++-1≡suc zero    = refl
++-1≡suc (suc m) = cong suc ( +-1≡suc m )
+
+-- suc m ∸ 1 ≡ m
+suc-∸-1 : ( m : ℕ ) → suc m ∸ 1 ≡ m
+suc-∸-1 zero    = refl
+suc-∸-1 ( suc m ) = trans ( cong ( λ x → x ∸ 1 ) ( sym ( +-1≡suc ( suc m ) ) ) ) ( m+n∸n≡m ( suc m ) 1 )
+
+-- m ≤ suc d  ⇒  m ∸ 1 ≤ d
+∸-suc-≤ : ( m d : ℕ ) → m ≤ suc d → m ∸ 1 ≤ d
+∸-suc-≤ zero    d z≤n         = z≤n
+∸-suc-≤ (suc m) d ( s≤s m≤d ) = subst ( λ x → x ≤ d ) ( sym ( suc-∸-1 m ) ) m≤d
+
+-- i < j ≤ k and k ∸ i ≤ suc d  ⇒  k ∸ j ≤ d
+∸-step-≤ : ( i j k d : ℕ ) → i < j → j ≤ k → k ∸ i ≤ suc d → k ∸ j ≤ d
+∸-step-≤ i j k d i<j j≤k h =
+  ≤-trans ( subst ( λ x → k ∸ j ≤ x ) k∸i+1≡k∸i∸1 ( ∸-monoʳ-≤ k ( subst ( λ x → x ≤ j ) ( sym ( +-1≡suc i ) ) i<j ) ) )
+          ( ∸-suc-≤ ( k ∸ i ) d h )
+  where
+    i≤k : i ≤ k
+    i≤k = ≤-trans ( <⇒≤ i<j ) j≤k
+
+    k∸i+1≡k∸i∸1 : k ∸ ( i + 1 ) ≡ ( k ∸ i ) ∸ 1
+    k∸i+1≡k∸i∸1 = begin
+      k ∸ ( i + 1 )                ≡⟨ cong ( λ x → x ∸ ( i + 1 ) ) ( sym ( m+[n∸m]≡n i≤k ) ) ⟩
+      ( i + ( k ∸ i ) ) ∸ ( i + 1 ) ≡⟨ [m+n]∸[m+o]≡n∸o i ( k ∸ i ) 1 ⟩
+      ( k ∸ i ) ∸ 1                ∎
 ```

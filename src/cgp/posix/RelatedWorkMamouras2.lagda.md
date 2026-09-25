@@ -141,7 +141,8 @@ _!!_ {A} (x ∷ xs) (suc n) =  xs !! n
 
 -- NOTE: The index bounds in ⊨● (i ≤ j and j ≤ k) and in ⊨∷ (i < j and j ≤ k)
 -- are derivable from the sub-match evidences via rij⊨w→i≤j.  They are kept as
--- explicit fields because they are convenient for the proofs below; removing
+-- explicit fields because they are convenient for the proofs below and staying
+-- faithful to Mamoura's definition in the paper ; removing
 -- them would require a wider refactor of every ⊨●/⊨∷ pattern match and
 -- construction in this file.
 
@@ -395,6 +396,8 @@ find-<-Min⁺ l r loc w i j ( ⊨inr .l .r .loc .i .j .w rij⊨w )
 ... | no  ¬lij⊨w = ⊨inr l r loc i j w rij⊨w , <-min-r l r loc w i j ¬lij⊨w rij⊨w
 
 
+
+{-
 data <-Min● : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i k : ℕ ) → ( l ● r ` loc , i , k ⊨ w ) → Set
   where
   <-min-● : ∀ ( l r : RE) ( loc : ℕ )
@@ -431,6 +434,27 @@ find-<-Min● : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
     → ∃[ t ] ( <-Min● l r loc  w i j t )
 find-<-Min● l r loc w i j ( ⊨● _ _ _ _ _ _ ( j' , i≤j' , j'≤j , t₁ , t₂ ) ) =
   find-<-Min●-go l r loc w i j j' t₁ t₂
+-}
+
+
+data <-Min● : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i k : ℕ ) → ( l ● r ` loc , i , k ⊨ w ) → Set
+  where
+    <-min-● : ∀ ( l r : RE) ( loc : ℕ )
+      → ( w : List Char )
+      → ( i j k : ℕ )
+      → ( i≤j : i Nat.≤ j )
+      → ( j≤k : j Nat.≤ k )
+      → ( t₁ : ( l , i , j ⊨ w ) )
+      → ( t₂ : ( r , j , k ⊨ w ) )
+      → ¬ ( ∃[ j' ] ( l , i , j' ⊨ w ) × ( r , j' , k ⊨ w ) × ( l , w , i ⊢ j' < j ) ) 
+      --------------------------------------------------------------------
+      → <-Min● l r loc w i k (⊨● l r loc i k w ( j , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂ ))
+  
+
+find-<-Min● : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+    → l ● r ` loc , i , j ⊨ w
+    → ∃[ t ] ( <-Min● l r loc  w i j t )
+find-<-Min● = ? 
 
 -- is this well-founded, wellfounded is depending on <-Min hahah.. circular definition
 data _,_,_⊢_<_ where

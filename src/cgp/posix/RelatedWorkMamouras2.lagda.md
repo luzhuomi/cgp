@@ -115,7 +115,7 @@ open Sum using (_⊎_; inj₁; inj₂) renaming ([_,_] to case-⊎)
 
 import Relation.Nullary.Decidable as Decidable
 open Decidable using
-  ( Dec; yes; no )
+  ( Dec; yes; no; _×-dec_ )
 
 ```
 
@@ -404,10 +404,27 @@ data <-Min● : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i
 
 
 
-postulate
-  find-<-Min● : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+{-# TERMINATING #-}
+find-<-Min●-go : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+  → ( j' : ℕ ) → l , i , j' ⊨ w → r , j' , j ⊨ w
+  → ∃[ t ] ( <-Min● l r loc  w i j t )
+find-<-Min●-go l r loc w i j j' t₁ t₂
+  with dec-∃-range (suc j') j
+    (λ j'' → ( l , i , j'' ⊨ w ) × ( r , j'' , j ⊨ w ))
+    (λ j'' _ _ → ⊨? l i j'' w ×-dec ⊨? r j'' j w )
+... | no ¬longer =
+  ⊨● l r loc i j w ( j' , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂ ) ,
+  <-min-● l r loc w i j' j ( rij⊨w→i≤j t₁ ) ( rij⊨w→i≤j t₂ ) t₁ t₂
+    (λ { ( j'' , t₁'' , t₂'' , j'<j'' ) →
+      ¬longer ( j'' , j'<j'' , rij⊨w→i≤j t₂'' , t₁'' , t₂'' ) })
+... | yes ( j'' , _ , _ , t₁'' , t₂'' ) =
+  find-<-Min●-go l r loc w i j j'' t₁'' t₂''
+
+find-<-Min● : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
     → l ● r ` loc , i , j ⊨ w
     → ∃[ t ] ( <-Min● l r loc  w i j t )
+find-<-Min● l r loc w i j ( ⊨● _ _ _ _ _ _ ( j' , i≤j' , j'≤j , t₁ , t₂ ) ) =
+  find-<-Min●-go l r loc w i j j' t₁ t₂
 
 -- is this well-founded, wellfounded is depending on <-Min hahah.. circular definition
 data _,_,_⊢_<_ where

@@ -47,7 +47,7 @@ open import Data.List.Relation.Unary.Any using (Any; here; there ; map)
 import Data.List.Membership.Propositional
 open Data.List.Membership.Propositional using (_∈_)
 
-open import Function using (_∘_ ; flip )
+open import Function using (_∘_ ; flip ; case_of_ )
 
 import Relation.Nullary as Nullary 
 open Nullary using (¬_ ; contraposition)
@@ -617,6 +617,71 @@ dec-∃-range i ( suc k' ) P dec with i ≤? suc k'
     ... | inj₁ j<suc-k' with m<1+n⇒m<n∨m≡n j<suc-k'
     ... | inj₁ j<k' = n ( suc j , i≤j , <⇒≤ j<k' , p )
     ... | inj₂ j≡k' = n ( suc j , i≤j , subst ( λ x → suc j ≤ x ) ( j≡k' ) ≤-refl , p )
+
+-- Purpose : strengthen j ≤ suc k' to j ≤ k' when j ≠ suc k'.
+-- Used in : <suc-≤ (and through it, dec-∃-range-Max).
+-- Idea    : m≤n⇒m<n∨m≡n excludes j ≡ suc k', so j < suc k' ; then
+--           m<1+n⇒m<n∨m≡n gives j ≡ k' (→ ≤-reflexive) or j < k' (→ <⇒≤).
+≤suc-strengthen : ∀ { j k' } → j ≤ suc k' → ¬ ( j ≡ suc k' ) → j ≤ k'
+≤suc-strengthen j≤sk' j≢sk' with m≤n⇒m<n∨m≡n j≤sk'
+... | inj₂ j≡sk' = ⊥-elim ( j≢sk' j≡sk' )
+... | inj₁ j<sk' with m<1+n⇒m<n∨m≡n j<sk'
+... | inj₂ j≡k' = ≤-reflexive j≡k'
+... | inj₁ j<k' = <⇒≤ j<k'
+
+-- Purpose : strengthen j < suc k' to j ≤ k'.
+-- Used in : dec-∃-range-Max, to lift a witness that is strictly below
+--           suc k' into the range [ i , k' ] when recursing on k'.
+-- Idea    : ≤suc-strengthen with j ≠ suc k' witnessed by <-irrefl.
+<suc-≤ : ∀ { j k' } → j < suc k' → j ≤ k'
+<suc-≤ j<sk' = ≤suc-strengthen ( <⇒≤ j<sk' ) ( λ j≡sk' → <-irrefl j≡sk' j<sk' )
+
+-- Purpose : like dec-∃-range, but the yes branch returns a MAXIMAL witness
+--           a of P in [ i , k ] together with the proof that every other
+--           witness in the range is ≤ a.
+-- Used in : cgp.posix.RelatedWorkMamouras2 ( find-<-Min● and
+--           find-<-Min●-canon ), where the maximal working split point of
+--           l ● r is needed for the minimality side condition of <-Min●.
+-- Idea    : structural on k. Test the top endpoint suc k' first : if P holds
+--           there it is maximal. Otherwise recurse on [ i , k' ] and lift the
+--           bound with n≤1+n ; maximality is preserved by splitting any
+--           witness of [ i , suc k' ] via m≤n⇒m<n∨m≡n into the excluded top
+--           endpoint or the recursive range ( <suc-≤ ).
+dec-∃-range-Max : ∀ { i k } ( P : ℕ → Set )
+  → ( dec : ∀ j → i ≤ j → j ≤ k → Dec ( P j ) )
+  → ( Σ[ a ∈ ℕ ] i ≤ a × a ≤ k × P a × (∀ ( j : ℕ ) → i ≤ j → j ≤ k → P j → j ≤ a) )
+     ⊎ ¬ (∃[ a ] i ≤ a × a ≤ k × P a )
+dec-∃-range-Max {i} {zero} P dec
+  with i ≟ zero
+... | no i≢zero = inj₂ ( λ { ( j , i≤j , j≤zero , _ ) →
+  i≢zero ( trans ( sym ( n∸0≡n i ) ) ( m≤n⇒m∸n≡0 ( ≤-trans i≤j j≤zero ) ) ) } )
+... | yes i≡zero
+  with dec zero ( subst ( λ x → x ≤ zero ) ( sym i≡zero ) z≤n ) z≤n
+... | yes p = inj₁ ( zero , subst ( λ x → x ≤ zero ) ( sym i≡zero ) z≤n , z≤n , p ,
+  ( λ j i≤j j≤zero _ →
+    subst ( λ x → x ≤ zero ) ( sym ( trans ( sym ( n∸0≡n j ) ) ( m≤n⇒m∸n≡0 j≤zero ) ) ) z≤n ) )
+... | no ¬p = inj₂ ( λ { ( j , _ , j≤zero , p ) →
+  ¬p ( subst ( λ x → P x ) ( trans ( sym ( n∸0≡n j ) ) ( m≤n⇒m∸n≡0 j≤zero ) ) p ) } )
+dec-∃-range-Max {i} {suc k'} P dec
+  with i ≤? suc k'
+... | no i≰sk' = inj₂ ( λ { ( _ , i≤j , j≤sk' , _ ) → i≰sk' ( ≤-trans i≤j j≤sk' ) } )
+... | yes i≤k
+  with dec ( suc k' ) i≤k ≤-refl
+... | yes p = inj₁ ( suc k' , i≤k , ≤-refl , p ,
+  ( λ j _ j≤sk' _ → j≤sk' ) )
+... | no ¬p
+  with dec-∃-range-Max P ( λ j i≤j j≤k' → dec j i≤j ( ≤-trans j≤k' ( n≤1+n k' ) ) )
+... | inj₂ ¬ex = inj₂ ( λ { ( j , i≤j , j≤sk' , p ) →
+  case ( m≤n⇒m<n∨m≡n j≤sk' ) of λ
+    { ( inj₂ j≡suc-k' ) → ¬p ( subst ( λ x → P x ) j≡suc-k' p )
+    ; ( inj₁ j<sk' ) → ¬ex ( j , i≤j , <suc-≤ j<sk' , p )
+    } } )
+... | inj₁ ( a , i≤a , a≤k' , pa , max ) = inj₁ ( a , i≤a , ≤-trans a≤k' ( n≤1+n k' ) , pa ,
+  ( λ j i≤j j≤sk' p →
+    case ( m≤n⇒m<n∨m≡n j≤sk' ) of λ
+      { ( inj₂ j≡suc-k' ) → ⊥-elim ( ¬p ( subst ( λ x → P x ) j≡suc-k' p ) )
+      ; ( inj₁ j<sk' ) → max j i≤j ( <suc-≤ j<sk' ) p
+      } ) )
 
 -- m + 1 ≡ suc m
 +-1≡suc : ( m : ℕ ) → m + 1 ≡ suc m

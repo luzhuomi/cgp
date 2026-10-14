@@ -1118,6 +1118,40 @@ mutual
   --           descent is on a strictly better head ) ; if none exists, the
   --           current head is minimal and the tail is replaced by its own
   --           find-<-Min* minimum ( <-min-∷ side condition ¬bh ).
+  --
+  -- WHY THIS MODULE NEEDS --no-positivity-check ( finding )
+  -- Removing the flag makes Agda reject this mutual block :
+  --   "_∣_∣_⊢_<_ is not strictly positive, because it occurs … in the
+  --    third argument of dec-∃-range in the 12th argument of <the with-
+  --    abstraction of Min*-best-go> …, which is an index of _∣_∣_⊢_<_. "
+  -- The cause is a definitional CYCLE between the base order and the star
+  -- minimality, both living in this mutual block :
+  --   1. base order → minimality : the star constructor of _∣_∣_⊢_<_ takes
+  --      as premise  ⊢⋆ ( proj₁ ( find-<-Min* … t₁ ) ) < ( proj₁ ( find-<-Min* … t₂ ) ),
+  --      i.e. to prove one * -match smaller than another you compare their
+  --      CANONICAL MINIMAL forms, so find-<-Min*'s type sits in a premise
+  --      of the base order's constructor ;
+  --   2. minimality → base order : this function's with clause decides
+  --      dec-∃-range ( suc i ) k ( λ j' → … × ( r ∣ w ∣ i ⊢ j' < j ) ), i.e.
+  --      "is there a strictly better head" is decided by the BASE ORDER
+  --      itself.
+  -- So the base order's type flows through this function's ( mutually
+  -- recursive ) with-abstraction type and back into its own constructor
+  -- indices : a data type is not strictly positive in its own mutual block,
+  -- and the check ( computed over the whole block, functions included )
+  -- flags it.  The circularity is broken SEMANTICALLY, not syntactically :
+  -- the base order is introduced only by its own ( positive ) constructors
+  -- and refuted only by inspecting them ( the ( ) -cases and the
+  -- ¬⋆-order / ¬●-order contradictions ) ; the minimality relations are
+  -- built by total functions and consumed by plain pattern matching ; the
+  -- ¬∃ … ( r ∣ w ∣ i ⊢ j' < j ) side conditions are assumptions refuted,
+  -- never structures reduced.  Hence the block is safe BY INSPECTION while
+  -- the checker cannot see through the cycle — the flag waives Agda's
+  -- blanket positivity guarantee for it.  The structural alternative ( e.g.
+  -- stop indexing the star constructor by proj₁ ( find-<-Min* … ) ) would
+  -- undermine the design : indexing the order constructors by the canonical
+  -- minimal evidence is what makes decide-⊢< / trichotomy and the refl-
+  -- based canon lemmas go through.
   {-# TERMINATING #-}
   Min*-best-go : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i k : ℕ )
     → ( j : ℕ ) → ( i<j : i Nat.< j ) → ( j≤k : j Nat.≤ k )

@@ -1222,11 +1222,15 @@ mutual
      -- → _∣_∣_⊢_<_ r w 0 j k
     → r ∣ w ∣ 0 ⊢ j < k 
     ----------------------------------------------
-    → ∃[ u ] ∃[ w₁ ] ( ( ( proj₁ (flat {r} u) ) ++ w₁ ) ≡ w × 
-          ( ( v : U r )
-          → (w₂ : List Char ) 
-          → ( proj₁ (flat v) ++ w₂ ) ≡ w
-          → r ⊢ u >ᵍ v ) )
+    → ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
+         ( ( proj₁ (flat {r} u) ≡ w₁ )
+         × ( ( w₁ ++ w₂ ) ≡ w )
+         × ( length w₁ ≡ j )
+         × ( ( v : U r ) ( w₁' ,  w₂' : List Char )
+           → ( proj₁ (flat v) ≡ w₁' )
+           → ( length w₁' ≡ k )
+           → ( w₁' ++ w₂' ) ≡ w
+           → r ⊢ u >ᵍ v ) ) 
   <-greedy-sound = {!!} 
  ```
 

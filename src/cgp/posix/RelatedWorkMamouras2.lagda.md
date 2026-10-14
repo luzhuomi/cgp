@@ -1214,6 +1214,20 @@ mutual
   ... | no ¬ex = ⊥-elim ( ¬ex ( j , i<j , j≤k , t₁ , t₂ ) )
 
 
+
+  import cgp.greedy.Order as GreedyOrder
+  open GreedyOrder renaming ( _⊢_>_ to  _⊢_>ᵍ_ )
+
+  <-greedy-sound : ∀ ( r : RE ) ( w : List Char) ( j k : ℕ )
+     -- → _∣_∣_⊢_<_ r w 0 j k
+    → r ∣ w ∣ 0 ⊢ j < k 
+    ----------------------------------------------
+    → ∃[ u ] ∃[ w₁ ] ( ( ( proj₁ (flat {r} u) ) ++ w₁ ) ≡ w × 
+          ( ( v : U r )
+          → (w₂ : List Char ) 
+          → ( proj₁ (flat v) ++ w₂ ) ≡ w
+          → r ⊢ u >ᵍ v ) )
+  <-greedy-sound = {!!} 
  ```
 
 

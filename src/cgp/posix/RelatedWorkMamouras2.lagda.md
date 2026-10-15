@@ -1217,21 +1217,363 @@ mutual
 
   import cgp.greedy.Order as GreedyOrder
   open GreedyOrder renaming ( _⊢_>_ to  _⊢_>ᵍ_ )
+  open GreedyOrder renaming ( _⊢_>ⁱ_ to _⊢_>ᵍⁱ_ )
 
-  <-greedy-sound : ∀ ( r : RE ) ( w : List Char) ( j k : ℕ )
-     -- → _∣_∣_⊢_<_ r w 0 j k
-    → r ∣ w ∣ 0 ⊢ j < k 
-    ----------------------------------------------
-    → ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
-         ( ( proj₁ (flat {r} u) ≡ w₁ )
+  -- UNPROVABLE : the goal of <-greedy-sound is refuted by the counterexample
+  -- below ( for r , w , j = 1 , k = 3 the premise is inhabited but the
+  -- ∃-∀ conclusion fails ; see ¬←greedy-sound and premise-held ) .
+  --
+  -- <-greedy-sound : ∀ ( r : RE ) ( w : List Char) ( j k : ℕ )
+  --    -- → _∣_∣_⊢_<_ r w 0 j k
+  --   → r ∣ w ∣ 0 ⊢ j < k
+  --   ----------------------------------------------
+  --   → ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
+  --        ( ( proj₁ (flat {r} u) ≡ w₁ )
+  --        × ( ( w₁ ++ w₂ ) ≡ w )
+  --        × ( length w₁ ≡ j )
+  --        × ( ( v : U r ) ( w₁' ,  w₂' : List Char )
+  --          → ( proj₁ (flat v) ≡ w₁' )
+  --          → ( length w₁' ≡ k )
+  --          → ( w₁' ++ w₂' ) ≡ w
+  --          → r ⊢ u >ᵍ v ) )
+  -- <-greedy-sound = {!!}
+
+  -- ========================================================================
+  -- Counterexample to <-greedy-sound
+  -- ========================================================================
+  --
+  -- For r = ( b + ( ε + b●a ) ) ● ( ( b + c ) + a●c ) , w = "bac" , j = 1 ,
+  -- k = 3 :
+  --
+  --   * the premise r ∣ w ∣ 0 ⊢ 1 < 3 is inhabited ( <13 below ) : the
+  --     canonical ( max-split ) match of ( 0 , 1 ) splits at 0 ( l @ "" via
+  --     ε , rpp @ "b" via b ) and the canonical match of ( 0 , 3 ) splits
+  --     at 2 ( l @ "ba" via b●a , rpp @ "c" via c ) , and ε @ ( 0 , 0 ) is
+  --     below b●a @ ( 0 , 2 ) in the l-order ( inlinr : inl < inr ) ;
+  --
+  --   * but the ∃-∀ conclusion fails : the only parse u of r with a
+  --     length-1 flat is
+  --       u* = PairU (RightU (LeftU EmptyU)) (LeftU (LeftU (LetterU 'b')))
+  --     and the length-3 parse
+  --       v* = PairU (LeftU (LetterU 'b')) (RightU (PairU (LetterU 'a') (LetterU 'c')))
+  --     is NOT below u* in the greedy order : the greedy order compares the
+  --     left components first , and there is no greedy constructor for
+  --     RightU _ >ᵍⁱ LeftU _ , nor an equality RightU _ ≡ LeftU _ .
+  --
+  --   * semantically : Mamouras' order compares the canonical max-split
+  --     matches ( splits 0 and 2 ) , while the ∀ v quantifies over ALL
+  --     parses of the length-3 match , including v* whose ( non-canonical )
+  --     split at 1 puts a LeftU (LetterU 'b') on the left of a
+  --     RightU (LeftU EmptyU) .
+
+  -- The regex and the word .
+
+  b : RE
+  b = $ 'b' ` 0
+
+  a : RE
+  a = $ 'a' ` 0
+
+  c : RE
+  c = $ 'c' ` 0
+
+  ba : RE
+  ba = b ● a ` 0
+
+  r₁ : RE
+  r₁ = ε + ba ` 0
+
+  l : RE
+  l = b + r₁ ` 0
+
+  bc : RE
+  bc = b + c ` 0
+
+  ac : RE
+  ac = a ● c ` 0
+
+  rpp : RE
+  rpp = bc + ac ` 0
+
+  r : RE
+  r = l ● rpp ` 0
+
+  w : List Char
+  w = 'b' ∷ 'a' ∷ 'c' ∷ []
+
+  -- Match evidence . l matches "b" ( via b ) , "" ( via ε in r₁ ) and "ba"
+  -- ( via b●a in r₁ ) only ; rpp matches "b" ( via b ) , "c" ( via c ) and
+  -- "ac" ( via a●c ) only .
+
+  b-0-1m : b , 0 , 1 ⊨ w
+  b-0-1m = ⊨$ 'b' 0 0 w refl
+
+  a-1-2m : a , 1 , 2 ⊨ w
+  a-1-2m = ⊨$ 'a' 0 1 w refl
+
+  c-2-3m : c , 2 , 3 ⊨ w
+  c-2-3m = ⊨$ 'c' 0 2 w refl
+
+  r₁-0-0m : r₁ , 0 , 0 ⊨ w
+  r₁-0-0m = ⊨inl ε ba 0 0 0 w (⊨ε 0 w)
+
+  r₁-0-2m : r₁ , 0 , 2 ⊨ w
+  r₁-0-2m = ⊨inr ε ba 0 0 2 w (⊨● b a 0 0 2 w 1 z≤n (s≤s (z≤n)) b-0-1m a-1-2m)
+
+  l-0-0m : l , 0 , 0 ⊨ w
+  l-0-0m = ⊨inr b r₁ 0 0 0 w r₁-0-0m
+
+  l-0-2m : l , 0 , 2 ⊨ w
+  l-0-2m = ⊨inr b r₁ 0 0 2 w r₁-0-2m
+
+  rpp-0-1m : rpp , 0 , 1 ⊨ w
+  rpp-0-1m = ⊨inl bc ac 0 0 1 w (⊨inl b c 0 0 1 w b-0-1m)
+
+  -- documents that the split 1 of ( 0 , 3 ) is valid ( excluded from the
+  -- canonical split by the maximality side condition , see j₂≡2 ) .
+  rpp-1-3m : rpp , 1 , 3 ⊨ w
+  rpp-1-3m = ⊨inr bc ac 0 1 3 w (⊨● a c 0 1 3 w 2 (s≤s (z≤n)) (s≤s (s≤s (z≤n))) a-1-2m c-2-3m)
+
+  rpp-2-3m : rpp , 2 , 3 ⊨ w
+  rpp-2-3m = ⊨inl bc ac 0 2 3 w (⊨inr b c 0 2 3 w c-2-3m)
+
+  -- The two matches of r whose canonical split points drive the premise :
+  -- ( 0 , 1 ) has only the valid split 0 ; ( 0 , 3 ) has the valid splits 1
+  -- and 2 , hence the canonical ( max ) split is 2 .
+
+  t₁ : r , 0 , 1 ⊨ w
+  t₁ = ⊨● l rpp 0 0 1 w 0 ≤-refl z≤n l-0-0m rpp-0-1m
+
+  t₂ : r , 0 , 3 ⊨ w
+  t₂ = ⊨● l rpp 0 0 3 w 2 z≤n (s≤s (s≤s (z≤n))) l-0-2m rpp-2-3m
+
+  -- Purpose : base order on r₁ = ε + ba : the match of "" at ( 0 , 0 ) ( via
+  --           ε ) is below the match of "ba" at ( 0 , 2 ) ( via b●a ) ;
+  --           ⊨inl < ⊨inr carries no premise .
+  -- Used in : l-0-2 .
+  -- Idea    : find-<-Min⁺ of a closed + match reduces to its canonical
+  --           ⊨inl / ⊨inr evidence , so inlinr fits the premise of choice .
+  r₁-0-2 : r₁ ∣ w ∣ 0 ⊢ 0 < 2
+  r₁-0-2 = choice 0 0 2 r₁-0-0m r₁-0-2m
+    ( inlinr 0 0 2 (⊨ε 0 w) (⊨● b a 0 0 2 w 1 z≤n (s≤s (z≤n)) b-0-1m a-1-2m) )
+
+  -- Purpose : base order on l = b + r₁ : "" at ( 0 , 0 ) is below "ba" at
+  --           ( 0 , 2 ) ; both go through the r₁ branch ( b matches neither ) ,
+  --           so inrinr delegates to r₁-0-2 .
+  -- Used in : <13 .
+  -- Idea    : as for r₁-0-2 , the canonical evidence of the closed matches
+  --           reduces to ⊨inr / ⊨inr .
+  l-0-2 : l ∣ w ∣ 0 ⊢ 0 < 2
+  l-0-2 = choice 0 0 2 l-0-0m l-0-2m
+    ( inrinr 0 0 2 r₁-0-0m r₁-0-2m r₁-0-2 )
+
+  -- c @ ( 0 , 1 ) would require w !! 0 ≡ just 'c' , but w !! 0 = just 'b' .
+  ¬just-b≡c : ¬ ( just 'b' ≡ just 'c' )
+  ¬just-b≡c ( )
+
+  -- b @ ( 2 , 3 ) would require w !! 2 ≡ just 'b' , but w !! 2 = just 'c' .
+  ¬just-c≡b : ¬ ( just 'c' ≡ just 'b' )
+  ¬just-c≡b ( )
+
+  -- Purpose : the premise of the counterexample : r ∣ w ∣ 0 ⊢ 1 < 3 .
+  -- Used in : ¬←greedy-sound .
+  -- Idea    : seq + seq₁ on the canonical ( max-split ) matches . The rpp
+  --           side forces the split of ( 0 , 1 ) to 0 ( only "b" via b
+  --           matches a length-1 suffix ) , and the canonical split of
+  --           ( 0 , 3 ) is its max 2 : the rpp side of ( 0 , 3 ) matches "c"
+  --           at 2 ( via c ) or "ac" at 1 ( via a●c ) only , and the
+  --           maximality side condition of the canonical evidence mm₂
+  --           excludes the split 1 ( the split 2 is strictly above it ) ;
+  --           then l ∣ w ∣ 0 ⊢ 0 < 2 = l-0-2 .
+  <13 : r ∣ w ∣ 0 ⊢ 1 < 3
+  <13
+    with find-<-Min● l rpp 0 w 0 1 t₁ | inspect ( find-<-Min● l rpp 0 w 0 1 ) t₁
+       | find-<-Min● l rpp 0 w 0 3 t₂ | inspect ( find-<-Min● l rpp 0 w 0 3 ) t₂
+  ... | ( min-t₁ , mm₁ ) | [ eq₁ ] | ( min-t₂ , mm₂ ) | [ eq₂ ]
+    with min-t₁ | min-t₂
+  ... | ⊨● _ _ _ _ _ _ j₁ _ _ u₁ v₁ | ⊨● _ _ _ _ _ _ j₂ _ _ u₂ v₂ =
+    seq 0 1 3 t₁ t₂
+      ( subst₂ ( λ x y → l ∣ rpp ∣ 0 ∣ w ∣ 0 ∣ 1 ∣ 3 ⊢● x < y )
+          ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) )
+          ( seq₁ 0 j₁ 1 j₂ 3 u₁ v₁ u₂ v₂ ( l-0-2-transport j₁≡0 j₂≡2 ) ) )
+    where
+      -- transport l-0-2 ( l ∣ w ∣ 0 ⊢ 0 < 2 ) to the canonical splits .
+      l-0-2-transport : ( j₁≡0 : j₁ ≡ 0 ) ( j₂≡2 : j₂ ≡ 2 )
+        → l ∣ w ∣ 0 ⊢ j₁ < j₂
+      l-0-2-transport j₁≡0 j₂≡2 rewrite j₁≡0 | j₂≡2 = l-0-2
+
+      -- the canonical split of ( 0 , 1 ) is forced to 0 : rpp matches
+      -- w[j,1) only as "b" ( via b ) at j = 0 .
+      j₁≡0 : j₁ ≡ 0
+      j₁≡0 = j₁≡0-go j₁ v₁
+        where
+          j₁≡0-go : ( j₁ : ℕ ) ( v₁ : rpp , j₁ , 1 ⊨ w ) → j₁ ≡ 0
+          j₁≡0-go j₁ v₁ with v₁
+          ... | ⊨inl _ _ _ _ _ _ ( ⊨inl _ _ _ _ _ _ ( ⊨$ _ _ .j₁ .w _ ) ) = refl
+          ... | ⊨inl _ _ _ _ _ _ ( ⊨inr _ _ _ _ _ _ ( ⊨$ _ _ .j₁ .w p ) )
+            = ⊥-elim ( ¬just-b≡c p )
+          ... | ⊨inr _ _ _ _ _ _ ( ⊨● _ _ _ _ _ _ j₃ _ _ ( ⊨$ _ _ .j₁ .w _ ) ( () ) )
+
+      -- the canonical split of ( 0 , 3 ) is its max 2 : the rpp side allows
+      -- j₂ = 2 ( "c" via c ) or j₂ = 1 ( "ac" via a●c ) only , and the
+      -- maximality side condition of mm₂ excludes j₂ = 1 ( 2 is a valid
+      -- split strictly above it ) .
+      j₂≡2 : j₂ ≡ 2
+      j₂≡2 = j₂≡2-go j₂ u₂ v₂ mm₂
+        where
+          -- mm₂ is passed with its index rebuilt as ( ⊨● … j₂ … ) from j₂ ,
+          -- u₂ , v₂ : otherwise the telescope variables j₂ and min-t₂ stay
+          -- independent , and the <-min-● pattern 's split could not be
+          -- unified with j₂ .
+          j₂≡2-go : ( j₂ : ℕ )
+            → ( u₂ : l , 0 , j₂ ⊨ w )
+            → ( v₂ : rpp , j₂ , 3 ⊨ w )
+            → ( mm₂ : <-Min● l rpp 0 w 0 3
+                     ( ⊨● l rpp 0 0 3 w j₂ ( rij⊨w→i≤j u₂ ) ( rij⊨w→i≤j v₂ ) u₂ v₂ ) )
+            → j₂ ≡ 2
+          j₂≡2-go j₂ u₂ v₂ mm₂ with v₂
+          ... | ⊨inl _ _ _ _ _ _ ( ⊨inl _ _ _ _ _ _ ( ⊨$ _ _ .j₂ .w p ) )
+            = ⊥-elim ( ¬just-c≡b p )
+          ... | ⊨inl _ _ _ _ _ _ ( ⊨inr _ _ _ _ _ _ ( ⊨$ _ _ .j₂ .w _ ) ) = refl
+          ... | ⊨inr _ _ _ _ _ _ ( ⊨● _ _ _ _ _ _ j₃ _ _ ( ⊨$ _ _ .j₂ .w _ ) ( ⊨$ _ _ .j₃ .w _ ) )
+            with mm₂
+          ... | ( <-min-● ) _ _ _ _ _ _ _ _ _ _ _ ¬ex =
+            ⊥-elim ( ¬ex ( 2 , l-0-2m , rpp-2-3m , s<s (s≤s (z≤n)) ) )
+
+  -- The parse trees .
+
+  -- the only parse of r with a length-1 flat ( l @ "" via ε , rpp @ "b" via
+  -- b )
+  u* : U r
+  u* = PairU ( RightU ( LeftU EmptyU ) ) ( LeftU ( LeftU ( LetterU 'b' ) ) )
+
+  -- a parse of r whose flat is the whole word ( l @ "b" via b , rpp @ "ac"
+  -- via a●c )
+  v* : U r
+  v* = PairU ( LeftU ( LetterU 'b' ) ) ( RightU ( PairU ( LetterU 'a' ) ( LetterU 'c' ) ) )
+
+  flat-u* : proj₁ ( flat { r } u* ) ≡ 'b' ∷ []
+  flat-u* = refl
+
+  flat-v* : proj₁ ( flat { r } v* ) ≡ w
+  flat-v* = refl
+
+  len-w : length w ≡ 3
+  len-w = refl
+
+  -- Purpose : u* is not greedily above v* .
+  -- Used in : ¬←greedy-sound .
+  -- Idea    : r ⊢ u* >ᵍ v* would be sub of a >ᵍⁱ evidence ; on r = l ● rpp
+  --           the only candidates are GreedyOrder.seq₁ ( needs l ⊢ RightU _
+  --           >ᵍ LeftU _ : no greedy constructor relates RightU >ᵍⁱ LeftU on
+  --           a + regex ) and GreedyOrder.seq₂ ( needs RightU _ ≡ LeftU _ :
+  --           different constructors ) .
+  ¬u*>ᵍv* : ¬ ( r ⊢ u* >ᵍ v* )
+  ¬u*>ᵍv* ( sub u*>ⁱv* ) = ⊥-elim ( ¬u*>ⁱv* u*>ⁱv* )
+    where
+      ¬RightU≡LeftU : ¬ ( RightU ( LeftU EmptyU ) ≡ LeftU ( LetterU 'b' ) )
+      ¬RightU≡LeftU ( )
+
+      -- on a + regex the greedy >ᵍⁱ constructors are choice-lr ( LeftU >ᵍⁱ
+      -- RightU ) , choice-ll ( LeftU >ᵍⁱ LeftU ) and choice-rr ( RightU
+      -- >ᵍⁱ RightU ) : none relates RightU >ᵍⁱ LeftU , so the type is empty
+      -- and the function needs no clauses .
+      ¬RightU>ⁱLeftU : ¬ ( l ⊢ RightU ( LeftU EmptyU ) >ᵍⁱ LeftU ( LetterU 'b' ) )
+      ¬RightU>ⁱLeftU ( ( ) )
+
+      ¬RightU>LeftU : ¬ ( l ⊢ RightU ( LeftU EmptyU ) >ᵍ LeftU ( LetterU 'b' ) )
+      ¬RightU>LeftU ( sub p ) = ⊥-elim ( ¬RightU>ⁱLeftU p )
+
+      ¬u*>ⁱv* : ¬ ( r ⊢ u* >ᵍⁱ v* )
+      ¬u*>ⁱv* ( GreedyOrder.seq₁ l>v ) = ⊥-elim ( ¬RightU>LeftU l>v )
+      ¬u*>ⁱv* ( GreedyOrder.seq₂ u₁≡v₁ _ ) = ⊥-elim ( ¬RightU≡LeftU u₁≡v₁ )
+
+  -- Purpose : rpp has no parse of the empty word ( its language is
+  --           { "b" , "c" , "ac" } ) .
+  -- Used in : uniq-u .
+  -- Idea    : case split on the parse tree : every flat starts with a letter .
+  no-empty-rpp : ( u : U rpp ) → ¬ ( proj₁ ( flat { rpp } u ) ≡ [] )
+  no-empty-rpp ( LeftU ( LeftU ( LetterU _ ) ) ) ( )
+  no-empty-rpp ( LeftU ( RightU ( LetterU _ ) ) ) ( )
+  no-empty-rpp ( RightU ( PairU ( LetterU _ ) ( LetterU _ ) ) ) ( )
+
+  -- Purpose : any parse u of r with flat u = w₁ , w₁ ++ w₂ = w and
+  --           length w₁ = 1 is u* .
+  -- Used in : ¬←greedy-sound .
+  -- Idea    : u = PairU u₁ u₂ with u₁ : U l ( parses "b" , "" or "ba" ) and
+  --           u₂ : U rpp ( parses "b" , "c" or "ac" ) ; length ( flat u₁ ) +
+  --           length ( flat u₂ ) = 1 leaves only ( "" , "b" ) : "c" is
+  --           excluded by the first letter of w and "ac" by its length .
+  uniq-u : ( u : U r ) ( w₁ w₂ : List Char )
+    → proj₁ ( flat { r } u ) ≡ w₁
+    → w₁ ++ w₂ ≡ w
+    → length w₁ ≡ 1
+    → u ≡ u*
+  uniq-u ( PairU u₁ u₂ ) w₁ w₂ flat-u≡w₁ w₁w₂≡w len-w₁≡1 with u₁ | u₂
+  ... | RightU ( LeftU EmptyU ) | LeftU ( LeftU ( LetterU 'b' ) ) = refl
+  ... | RightU ( LeftU EmptyU ) | LeftU ( RightU ( LetterU 'c' ) ) =
+    ⊥-elim ( ¬'c'≡'b' ( proj₁ ( ∷-inj ( subst ( λ x → x ++ w₂ ≡ w ) ( sym flat-u≡w₁ ) w₁w₂≡w ) ) ) )
+    where
+      ¬'c'≡'b' : ¬ ( 'c' ≡ 'b' )
+      ¬'c'≡'b' ( )
+  ... | RightU ( LeftU EmptyU ) | RightU ( PairU ( LetterU 'a' ) ( LetterU 'c' ) ) =
+    ⊥-elim ( ¬2≡1 ( trans ( cong length flat-u≡w₁ ) len-w₁≡1 ) )
+    where
+      ¬2≡1 : ¬ ( 2 ≡ 1 )
+      ¬2≡1 ( )
+  ... | LeftU ( LetterU 'b' ) | u₂ =
+    ⊥-elim ( no-empty-rpp u₂ ( length≡0→[] ( suc-injective ( trans ( cong length flat-u≡w₁ ) len-w₁≡1 ) ) ) )
+  ... | RightU ( RightU ( PairU ( LetterU 'b' ) ( LetterU 'a' ) ) ) | u₂ =
+    ⊥-elim ( ¬suc≡0 ( suc-injective ( trans ( cong length flat-u≡w₁ ) len-w₁≡1 ) ) )
+    where
+      ¬suc≡0 : { n : ℕ } → ¬ ( suc n ≡ 0 )
+      ¬suc≡0 ( )
+
+  -- Purpose : refutation of <-greedy-sound at r , w , j = 1 , k = 3 : the
+  --           premise is inhabited ( <13 ) but the ∃-∀ conclusion fails .
+  -- Used in : counterexample .
+  -- Idea    : the premise holds ( <13 ) . Any u in the ∃ is u* ( uniq-u ) ,
+  --           and v* satisfies the ∀ side conditions ( flat v* = w , length
+  --           w = 3 , w ++ [] = w ) but ¬u*>ᵍv* : the greedy order compares
+  --           the left components first and cannot put u* above v* .
+  ¬←greedy-sound : ( r ∣ w ∣ 0 ⊢ 1 < 3 )
+    → ¬ ( ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
+         ( ( proj₁ ( flat { r } u ) ≡ w₁ )
          × ( ( w₁ ++ w₂ ) ≡ w )
-         × ( length w₁ ≡ j )
-         × ( ( v : U r ) ( w₁' ,  w₂' : List Char )
-           → ( proj₁ (flat v) ≡ w₁' )
-           → ( length w₁' ≡ k )
-           → ( w₁' ++ w₂' ) ≡ w
-           → r ⊢ u >ᵍ v ) ) 
-  <-greedy-sound = {!!} 
+         × ( length w₁ ≡ 1 )
+         × ( ( v : U r ) ( w₁' , w₂' : List Char )
+           → ( proj₁ ( flat v ) ≡ w₁' )
+           → ( length w₁' ≡ 3 )
+           → ( ( w₁' ++ w₂' ) ≡ w )
+           → r ⊢ u >ᵍ v ) ) )
+  ¬←greedy-sound _ ( u , w₁ , w₂ , ( flat-u≡w₁ , w₁w₂≡w , len-w₁≡1 , ∀v ) ) =
+    -- the comma form ( w₁' , w₂' : List Char ) elaborates to THREE list PIs
+    -- in Agda 2.7.0.1 ( the third is anonymous and unused in the body ) , so
+    -- a dummy third list argument ( [] ) must be supplied before the
+    -- equality evidence .
+    ⊥-elim ( ¬u*>ᵍv* ( subst ( λ u → r ⊢ u >ᵍ v* ) u≡u* ( ∀v v* w [] [] flat-v* len-w refl ) ) )
+    where
+      u≡u* : u ≡ u*
+      u≡u* = uniq-u u w₁ w₂ flat-u≡w₁ w₁w₂≡w len-w₁≡1
+
+  -- the premise is inhabited :
+  premise-held : r ∣ w ∣ 0 ⊢ 1 < 3
+  premise-held = <13
+
+  -- the counterexample assembled : the premise holds but the conclusion
+  -- fails .  ( the pair ( premise-held , ¬←greedy-sound premise-held ) :
+  -- the premise is inhabited while the conclusion is refuted )
+  counterexample : ( r ∣ w ∣ 0 ⊢ 1 < 3 )
+    × ¬ ( ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
+         ( ( proj₁ ( flat { r } u ) ≡ w₁ )
+         × ( ( w₁ ++ w₂ ) ≡ w )
+         × ( length w₁ ≡ 1 )
+         × ( ( v : U r ) ( w₁' , w₂' : List Char )
+           → ( proj₁ ( flat v ) ≡ w₁' )
+           → ( length w₁' ≡ 3 )
+           → ( ( w₁' ++ w₂' ) ≡ w )
+           → r ⊢ u >ᵍ v ) ) )
+  counterexample = premise-held , ¬←greedy-sound premise-held
  ```
 
 

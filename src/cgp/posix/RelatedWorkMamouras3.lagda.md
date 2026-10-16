@@ -13,7 +13,7 @@ open Utils using (foldr++ys-map-λ_→[]-xs≡ys ; all-concat ; ∷-inj  ;
   ¬m>n→n≡m⊎n>m ;
   len-w₁++w₃>len-w₂++w₃→len-w₁>len-w₂ ; concatmap-λx→[]-xs≡[] ;
   length≡0→[] ; ¬≡[]→¬length≡0 ;
-  dec-elim ; maybe-just-≟ ; n∸0≡n ; dec-∃-range ; dec-∃-range-Max ;
+  dec-elim ; maybe-just-≟ ; n∸0≡n ; dec-∃-range ;
   +-1≡suc ; suc-∸-1 ; ∸-suc-≤ ; ∸-step-≤)
 
 
@@ -192,7 +192,7 @@ data _,_,_⊨_ : RE →  ℕ → ℕ → List Char → Set where
   -- but they are erased from the term and cannot be extracted.  Hence the
   -- term identity of a ●-match depends only on ( j , t₁ , t₂ ).  This erasure
   -- is load-bearing for canonicity : find-<-Min● reconstructs the minimal
-  -- evidence from the closed search dec-∃-range-Max ( independent of the
+  -- evidence from the closed search dec-∃-range ( independent of the
   -- starting evidence T ), so find-<-Min●-canon is refl ; and the subst₂
   -- transports in decide-⊢< / trichotomy-● require that the ⊨● rebuilt from
   -- the pattern-matched sub-evidences be judgmentally equal to the
@@ -940,7 +940,7 @@ mutual
   -- Purpose : decide whether a given position a is a valid split point of
   --           l ● r on ( i , k ) : ( l , i , a ⊨ w ) × ( r , a , k ⊨ w ).
   -- Used in : find-<-Min● and find-<-Min●-canon, as the dec predicate of
-  --           dec-∃-range-Max.
+  --           dec-∃-range.
   -- Idea    : two independent calls to ⊨?.
   Min●-val : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i k : ℕ )
     → ( a : ℕ ) → Dec ( ( l , i , a ⊨ w ) × ( r , a , k ⊨ w ) )
@@ -950,42 +950,76 @@ mutual
   ...   | no ¬r = no (λ { (_ , t₂a) → ¬r t₂a })
   ...   | yes t₂a = yes ( t₁a , t₂a )
 
-  -- Purpose : given the result of the maximal-split search, build the minimal
+  -- Purpose : given the result of the working-split search, build the minimal
   --           ● evidence ( or ⊥ if the search found no working split ).
   -- Used in : find-<-Min● only.
-  -- Idea    : inj₂ ( no split ) contradicts the witness extracted from the
-  --           given evidence T. inj₁ : take the maximal split a as the
-  --           evidence ; its minimality side condition ( no strictly larger
-  --           working split ) follows directly from the maximality property
-  --           of dec-∃-range-Max by <-irrefl.
+  -- Idea    : no ( no split ) contradicts the witness extracted from the
+  --           given evidence T. yes : some working split a — descend to the
+  --           order-minimal one ( find-<-Min●-descend ).
   find-<-Min●-go : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
-    → ( ( Σ[ a ∈ ℕ ] i ≤ a × a ≤ j × (( l , i , a ⊨ w ) × ( r , a , j ⊨ w )) × (∀ ( j' : ℕ ) → i ≤ j' → j' ≤ j → ( l , i , j' ⊨ w ) × ( r , j' , j ⊨ w ) → j' ≤ a ) )
-        ⊎ ( ¬ ( ∃[ a ] i ≤ a × a ≤ j × ( l , i , a ⊨ w ) × ( r , a , j ⊨ w ) ) ) )
+    → Dec ( ∃[ a ] i ≤ a × a ≤ j × ( l , i , a ⊨ w ) × ( r , a , j ⊨ w ) )
     → ( T : l ● r ` loc , i , j ⊨ w )
     → ∃[ t ] ( <-Min● l r loc w i j t )
-  find-<-Min●-go l r loc w i j ( inj₂ ¬ex ) T = ⊥-elim ( ¬ex ( witness T ) )
+  find-<-Min●-go l r loc w i j ( no ¬ex ) T = ⊥-elim ( ¬ex ( witness T ) )
     where
       witness : ( t : l ● r ` loc , i , j ⊨ w ) → ∃[ a ] i ≤ a × a ≤ j × ( l , i , a ⊨ w ) × ( r , a , j ⊨ w )
       witness ( ⊨● _ _ _ _ _ _ j₀ _ _ t₁ t₂ ) = j₀ , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂
-  find-<-Min●-go l r loc w i j ( inj₁ ( a , _ , _ , ( t₁a , t₂a ) , max ) ) T =
-    ⊨● l r loc i j w a (rij⊨w→i≤j t₁a) (rij⊨w→i≤j t₂a) t₁a t₂a ,
-    <-min-● l r loc w i a j (rij⊨w→i≤j t₁a) (rij⊨w→i≤j t₂a) t₁a t₂a
-      (λ { ( a' , t₁a' , t₂a' , a<a' ) →
-        ⊥-elim ( <-irrefl refl ( ≤-trans a<a' (max a' (rij⊨w→i≤j t₁a') (rij⊨w→i≤j t₂a') (t₁a' , t₂a')) ) ) })
+  find-<-Min●-go l r loc w i j ( yes ( a , i≤a , a≤j , ( t₁a , t₂a ) ) ) T
+    = find-<-Min●-descend l r loc w i j a i≤a a≤j t₁a t₂a
+
+  -- Purpose : from a working split s of l ● r on ( i , j ), descend through
+  --           working splits strictly smaller in the l-order
+  --           ( l ∣ w ∣ i ⊢ s' < s ) until none remains : the order-minimal
+  --           working split, with its <-Min● evidence.
+  -- Used in : find-<-Min●-go ( yes case ) only.
+  -- Idea    : same descent scheme as Min*-best-go : search [ i , j ] for a
+  --           strictly smaller working split, the l-order being decided by
+  --           decide-⊢< on l ; if one exists, recurse on it ; if none
+  --           exists, the current split is order-minimal and ¬bh ( bounds
+  --           dropped , derivable via rij⊨w→i≤j ) is exactly the <-min-●
+  --           side condition. Termination : the descent is strictly
+  --           decreasing in the base order of l, which is a strict total
+  --           order on the finite positions of [ i , j ] ( trichotomy ).
+  {-# TERMINATING #-}
+  find-<-Min●-descend : ∀ ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+    → ( s : ℕ ) → ( i≤s : i ≤ s ) → ( s≤j : s ≤ j )
+    → ( t₁ : l , i , s ⊨ w ) → ( t₂ : r , s , j ⊨ w )
+    → ∃[ t ] ( <-Min● l r loc w i j t )
+  find-<-Min●-descend l r loc w i j s i≤s s≤j t₁ t₂
+    with dec-∃-range i j
+      ( λ s' → ( l , i , s' ⊨ w ) × ( r , s' , j ⊨ w ) × ( l ∣ w ∣ i ⊢ s' < s ) )
+      ( λ s' i≤s' s'≤j → dec-elim ( ⊨? l i s' w )
+        ( λ t₁' → dec-elim ( ⊨? r s' j w )
+          ( λ t₂' → dec-elim ( decide-⊢< l w i s s' t₁ t₁' )
+            ( λ l< → yes ( t₁' , t₂' , l< ) )
+            ( λ ¬l< → no ( λ { ( _ , _ , l< ) → ¬l< l< } ) ) )
+          ( λ ¬t₂' → no ( λ { ( _ , t₂' , _ ) → ¬t₂' t₂' } ) ) )
+        ( λ ¬t₁' → no ( λ { ( t₁' , _ , _ ) → ¬t₁' t₁' } ) ) )
+  ... | yes ( s' , i≤s' , s'≤j , t₁' , t₂' , l< ) =
+    find-<-Min●-descend l r loc w i j s' i≤s' s'≤j t₁' t₂'
+  ... | no ¬bh =
+    ⊨● l r loc i j w s i≤s s≤j t₁ t₂ ,
+    <-min-● l r loc w i s j i≤s s≤j t₁ t₂
+      ( λ { ( s' , t₁' , t₂' , l< ) →
+        ¬bh ( s' , rij⊨w→i≤j t₁' , rij⊨w→i≤j t₂' , t₁' , t₂' , l< ) } )
 
   -- Purpose : compute, for any evidence T of l ● r on ( i , j ), a minimal ●
-  --           evidence ( <-Min● ) : the maximal working split a in [ i , j ].
+  --           evidence ( <-Min● ) : the working split whose left evidence is
+  --           minimal in the l-order ( Mamouras : no strictly smaller
+  --           working split ).
   -- Used in : the seq constructor ( premise indexed by the canonical minimal
   --           evidence ), trichotomy-●, decide-⊢< ( ● case ) and
   --           find-<-Min●-canon.
-  -- Idea    : run dec-∃-range-Max over [ i , j ] with dec predicate Min●-val,
-  --           then hand the result to find-<-Min●-go. The result does not
-  --           depend on the starting evidence T, which is exactly what makes
-  --           find-<-Min●-canon ( refl ) and the subst₂ transports work.
+  -- Idea    : run dec-∃-range over [ i , j ] with dec predicate Min●-val to
+  --           get some working split, then descend to the order-minimal one
+  --           ( find-<-Min●-go ). The search is closed and the result does
+  --           not depend on the starting evidence T, which is exactly what
+  --           makes find-<-Min●-canon ( refl ) and the subst₂ transports
+  --           work.
   {-# TERMINATING #-}
   find-<-Min● l r loc w i j T =
     find-<-Min●-go l r loc w i j
-      ( dec-∃-range-Max
+      ( dec-∃-range i j
           (λ a → ( l , i , a ⊨ w ) × ( r , a , j ⊨ w ))
           (λ a (i≤a : i ≤ a) (a≤j : a ≤ j) → Min●-val l r loc w i j a) )
       T
@@ -995,20 +1029,21 @@ mutual
   -- Used in : decide-⊢< ( ● case, both no-branches ), to transport arbitrary
   --           ⊢● evidence onto the canonical minimal evidence.
   -- Idea    : both sides reduce to the evidence built from the same closed
-  --           dec-∃-range-Max computation, hence refl.
+  --           dec-∃-range search and descent ( independent of T ), hence
+  --           refl.
   {-# TERMINATING #-}
   find-<-Min●-canon : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i k : ℕ )
     → ( T T' : l ● r ` loc , i , k ⊨ w )
     → proj₁ ( find-<-Min● l r loc w i k T ) ≡ proj₁ ( find-<-Min● l r loc w i k T' )
   find-<-Min●-canon l r loc w i k T T'
-    with dec-∃-range-Max
+    with dec-∃-range i k
            (λ a → ( l , i , a ⊨ w ) × ( r , a , k ⊨ w ))
            (λ a (i≤a : i ≤ a) (a≤k : a ≤ k) → Min●-val l r loc w i k a )
-  ... | inj₂ ¬ex = ⊥-elim ( ¬ex ( witness T ) )
+  ... | no ¬ex = ⊥-elim ( ¬ex ( witness T ) )
     where
       witness : ( t : l ● r ` loc , i , k ⊨ w ) → ∃[ a ] i ≤ a × a ≤ k × ( l , i , a ⊨ w ) × ( r , a , k ⊨ w )
       witness ( ⊨● _ _ _ _ _ _ j₀ _ _ t₁ t₂ ) = j₀ , rij⊨w→i≤j t₁ , rij⊨w→i≤j t₂ , t₁ , t₂
-  ... | inj₁ ( a , _ ) = refl
+  ... | yes ( a , _ ) = refl
 
   -- Purpose : no ⊢● evidence can relate two canonical minimal ● evidence
   --           when the left splits are not ordered ( ¬ l₁-order ) and, at

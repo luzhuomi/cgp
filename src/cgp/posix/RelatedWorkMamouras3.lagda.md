@@ -77,7 +77,9 @@ import Data.Nat.Properties as NatProperties
 open import Data.Nat using (_<_ ; _≤_ ; _≟_ ; _≤?_ ; zero ; suc ; _+_ ; _∸_ ; s<s ; z<s ; z≤n ; s≤s)
 open import Data.Empty using (⊥ ; ⊥-elim)
 open NatProperties using ( ≤-reflexive ;  <⇒≤ ; ≤-trans ; <-trans ; +-monoʳ-≤ ; ≤-refl ; <-irrefl ; suc-injective ; +-cancelˡ-< ; <⇒≯ ; <⇒≱ ; <-cmp ; +-suc ; +-identityʳ ;
-  ≤-antisym ; m∸n≡0⇒m≤n ; n≤1+n ; ≤-step ; m≤n⇒m<n∨m≡n ; ≤-pred )
+  ≤-antisym ; m∸n≡0⇒m≤n ; n≤1+n ; ≤-step ; m≤n⇒m<n∨m≡n ; ≤-pred ;
+  m+[n∸m]≡n ; n∸n≡0 ; +-∸-comm ; ∸-+-assoc ; +-monoʳ-< ; +-monoˡ-≤ ; m≤m+n ;
+  ∸-monoˡ-≤ )
 
 import Data.Maybe as Maybe
 open Maybe using (Maybe ; just ; nothing )
@@ -87,7 +89,8 @@ open List using (List ; _∷_ ; [] ; _++_ ; [_]; map; head; tail; concatMap ; _�
 
 import Data.List.Properties
 open Data.List.Properties using (  ++-identityʳ ; ++-identityˡ ; ∷ʳ-++ ; ++-cancelˡ ; ++-cancelʳ ; ++-conicalʳ ; ++-conicalˡ ;
-  length-++ ; ++-assoc ; ∷-injective
+  length-++ ; ++-assoc ; ∷-injective ; take-[] ; drop-[] ; drop-drop ; take++drop≡id ;
+  length-drop
   -- ; length-++-sucʳ -- this is only available after v2.3
   )
 
@@ -1273,7 +1276,2130 @@ mutual
   --          → r ⊢ u >ᵍ v ) )
   -- <-greedy-sound = {!!}
 
- ```
+
+  -- ---------------------------------------------------------------------
+  -- <-greedy-sound : the Mamouras base order is sound for the greedy
+  -- parse-tree order >ᵍ .
+  --
+  -- The sub-premises of the seq₂ / *-tail constructors live at the split
+  -- position ( ≠ 0 ) , so the proof runs on the generalized statement
+  -- ( arbitrary start i , word drop i w ) ; the stated <-greedy-sound is
+  -- its i = 0 instance ( drop 0 w ≡ w , j ∸ 0 ≡ j ) .
+  --
+  --   r ∣ w ∣ i ⊢ j < k
+  --     ⇒ ∃ u w₁ w₂ . flat u ≡ w₁ × w₁ ++ w₂ ≡ drop i w × length w₁ ≡ j ∸ i
+  --         × ∀ v . ( flat v a prefix of drop i w of length k ∸ i )
+  --             ⇒ r ⊢ u >ᵍ v
+  --
+  -- Key invariant : in every case the side conditions of
+  -- <-Min⁺ / <-Min● / <-Min* of the RIGHT ( larger ) match rule out
+  -- exactly the parse shapes the >ᵍ constructors cannot relate : a mixed
+  -- RightU / LeftU shape would witness a working split ( head ) strictly
+  -- smaller in the base order than the canonical one .
+  -- ---------------------------------------------------------------------
+
+  -- small list / nat helpers ------------------------------------------------
+
+  -- Purpose : take m after i , then take n after i + m , is take m + n
+  --           after i .
+  -- Used in : greedyU-flat ( ● and * cases ) .
+  -- Idea    : induction on w .
+  take-split : ( w : List Char ) ( i m n : ℕ )
+    → take m ( drop i w ) ++ take n ( drop ( i + m ) w ) ≡ take ( m + n ) ( drop i w )
+  take-split [] i m n =
+    begin
+      take m ( drop i [] ) ++ take n ( drop ( i + m ) [] )
+    ≡⟨ cong₂ _++_ ( cong ( take m ) ( drop-[] i ) ) ( cong ( take n ) ( drop-[] ( i + m ) ) ) ⟩
+      take m [] ++ take n []
+    ≡⟨ cong₂ _++_ ( take-[] m ) ( take-[] n ) ⟩
+      [] ++ []
+    ≡⟨⟩
+      []
+    ≡⟨ sym ( take-[] ( m + n ) ) ⟩
+      take ( m + n ) []
+    ≡⟨ sym ( cong ( take ( m + n ) ) ( drop-[] i ) ) ⟩
+      take ( m + n ) ( drop i [] )
+    ∎
+  take-split ( x ∷ ws ) zero zero n = refl
+  take-split ( x ∷ ws ) zero ( suc m' ) n = cong ( x ∷_ ) ( take-split ws zero m' n )
+  take-split ( x ∷ ws ) ( suc i' ) m n = take-split ws i' m n
+
+  -- Purpose : from w !! i ≡ just c extract drop i w ≡ c ∷ drop ( suc i ) w .
+  -- Used in : greedyU-flat ( $ case ) .
+  -- Idea    : induction on w ( the empty case is impossible : [] !! i is
+  --           nothing ) .
+  lookup-just→drop : ( w : List Char ) ( i : ℕ ) ( c : Char )
+    → w !! i ≡ just c → drop i w ≡ c ∷ drop ( suc i ) w
+  lookup-just→drop [] i c p with p
+  ... | ()
+  lookup-just→drop ( x ∷ ws ) zero c p with p
+  ... | refl = refl
+  lookup-just→drop ( x ∷ ws ) ( suc i' ) c p = lookup-just→drop ws i' c p
+
+  -- Purpose : ( j ∸ i ) + ( k ∸ j ) ≡ k ∸ i , for i ≤ j ≤ k .
+  -- Used in : greedyU-flat ( ● and * cases ) .
+  -- Idea    : induction on the triple ( peeling one position off each end ) .
+  ∸-+∸ : ( i j k : ℕ ) → i ≤ j → j ≤ k → ( j ∸ i ) + ( k ∸ j ) ≡ k ∸ i
+  ∸-+∸ zero zero k _ _ = refl
+  ∸-+∸ zero ( suc j ) k _ j≤k = m+[n∸m]≡n j≤k
+  ∸-+∸ ( suc i ) ( suc j ) ( suc k ) ( s≤s i≤j ) ( s≤s j≤k ) = ∸-+∸ i j k i≤j j≤k
+
+  -- Purpose : suc n ∸ n ≡ 1 .
+  -- Used in : greedyU-flat ( $ case ) .
+  -- Idea    : induction on n .
+  suc-n∸n≡1 : ( n : ℕ ) → suc n ∸ n ≡ 1
+  suc-n∸n≡1 zero = refl
+  suc-n∸n≡1 ( suc n ) = suc-n∸n≡1 n
+
+  -- Purpose : the greedy witness : the canonical parse of ( i , j ) ,
+  --           re-canonicalizing the sub-evidence at every node : + is
+  --           decided by the closed ⊨? , ● by find-<-Min● , * by
+  --           find-<-Min* ( including the tail of each ⊨∷ , since
+  --           find-<-Min* does not reduce to the identity on a canonical
+  --           match ) .
+  -- Used in : <-greedy-sound-go ( the witness u ) , go , greedy-max .
+  -- Idea    : structural on the regex ; evidence independent ( see
+  --           greedyU-indep / greedyList-indep ) .
+  greedyU : ( l : RE ) → ( i j : ℕ ) → ( w : List Char )
+    → ( l , i , j ⊨ w ) → U l
+  greedyU ε i j w ( ⊨ε _ _ ) = EmptyU
+  greedyU ( $ c ` loc ) i j w ( ⊨$ _ _ _ _ _ ) = LetterU c
+  greedyU ( l₁ + l₂ ` loc ) i j w t with ⊨? l₁ i j w
+  ... | yes a = LeftU ( greedyU l₁ i j w a )
+  ... | no ¬a with t
+  ...   | ( ⊨inr _ _ _ _ _ _ b₀ ) = RightU ( greedyU l₂ i j w b₀ )
+  ...   | ( ⊨inl _ _ _ _ _ _ a₀ ) = ⊥-elim ( ¬a a₀ )
+  greedyU ( l₁ ● l₂ ` loc ) i j w t with find-<-Min● l₁ l₂ loc w i j t
+  ... | ( ⊨● _ _ _ _ _ _ s₁ _ _ a₁ b₁ , _ ) =
+    PairU ( greedyU l₁ i s₁ w a₁ ) ( greedyU l₂ s₁ j w b₁ )
+  greedyU ( r * nε ` loc ) i j w t =
+    ListU ( greedyList r nε loc i j w ( proj₁ ( find-<-Min* r nε loc w i j t ) ) )
+
+  -- Purpose : the greedy head list of a star match ( one U r per ⊨∷
+  --           head , each head re-canonicalized by find-<-Min* , and the
+  --           tail re-canonicalized at every step ) .
+  -- Used in : greedyU ( * case ) .
+  -- Idea    : structural on the match evidence .
+  {-# TERMINATING #-}
+  greedyList : ( r : RE ) → ( nε : ε∉ r ) → ( loc : ℕ )
+    → ( i j : ℕ ) → ( w : List Char )
+    → ( r * nε ` loc , i , j ⊨ w ) → List ( U r )
+  greedyList r _ _ _ _ _ ( ⊨[] _ _ _ _ _ ) = []
+  greedyList r nε loc i j w ( ⊨∷ _ _ _ _ _ _ ( j₁ , _ , _ , t₁ , t₂ ) ) =
+    ( greedyU r i j₁ w t₁ ) ∷
+    ( greedyList r nε loc j₁ j w ( proj₁ ( find-<-Min* r nε loc w j₁ j t₂ ) ) )
+
+  -- Purpose : flat soundness of greedyU : the parse of ( i , j ) flattens
+  --           to the substring w [ i , j ) .
+  -- Used in : <-greedy-sound-go ( the flat / length side conditions ) .
+  -- Idea    : induction on the regex ; ● / * via the canonical
+  --           sub-evidence and take-split .
+  greedyU-flat : ( l : RE ) ( i j : ℕ ) ( w : List Char )
+    → ( t : l , i , j ⊨ w )
+    → proj₁ ( flat { l } ( greedyU l i j w t ) ) ≡ take ( j ∸ i ) ( drop i w )
+  greedyU-flat ε i j w ( ⊨ε _ _ )
+    rewrite n∸n≡0 i = refl
+  greedyU-flat ( $ c ` loc ) i j w ( ⊨$ _ _ _ _ p )
+    rewrite suc-n∸n≡1 i =
+    begin
+      c ∷ []
+    ≡⟨⟩
+      take 1 ( c ∷ drop ( suc i ) w )
+    ≡⟨ cong ( take 1 ) ( sym ( lookup-just→drop w i c p ) ) ⟩
+      take 1 ( drop i w )
+    ∎
+  greedyU-flat ( l₁ + l₂ ` loc ) i j w t with ⊨? l₁ i j w
+  ... | yes a = greedyU-flat l₁ i j w a
+  ... | no ¬a with t
+  ...   | ( ⊨inr _ _ _ _ _ _ b₀ ) = greedyU-flat l₂ i j w b₀
+  ...   | ( ⊨inl _ _ _ _ _ _ a₀ ) = ⊥-elim ( ¬a a₀ )
+  greedyU-flat ( l₁ ● l₂ ` loc ) i j w t with find-<-Min● l₁ l₂ loc w i j t
+  ... | ( ⊨● _ _ _ _ _ _ s₁ _ _ a₁ b₁ , _ )
+    rewrite greedyU-flat l₁ i s₁ w a₁ | greedyU-flat l₂ s₁ j w b₁ =
+    begin
+      take ( s₁ ∸ i ) ( drop i w ) ++ take ( j ∸ s₁ ) ( drop s₁ w )
+    ≡⟨ cong₂ _++_ refl ( cong ( λ n → take ( j ∸ s₁ ) ( drop n w ) ) ( sym ( m+[n∸m]≡n ( rij⊨w→i≤j a₁ ) ) ) ) ⟩
+      take ( s₁ ∸ i ) ( drop i w ) ++ take ( j ∸ s₁ ) ( drop ( i + ( s₁ ∸ i ) ) w )
+    ≡⟨ take-split w i ( s₁ ∸ i ) ( j ∸ s₁ ) ⟩
+      take ( ( s₁ ∸ i ) + ( j ∸ s₁ ) ) ( drop i w )
+    ≡⟨ cong ( λ n → take n ( drop i w ) ) ( ∸-+∸ i s₁ j ( rij⊨w→i≤j a₁ ) ( rij⊨w→i≤j b₁ ) ) ⟩
+      take ( j ∸ i ) ( drop i w )
+    ∎
+  greedyU-flat ( r * nε ` loc ) i j w t =
+    begin
+      proj₁ ( flat ( greedyU ( r * nε ` loc ) i j w t ) )
+    ≡⟨⟩
+      proj₁ ( flat ( ListU ( greedyList r nε loc i j w ( proj₁ ( find-<-Min* r nε loc w i j t ) ) ) ) )
+    ≡⟨ greedyList-flat r nε loc i j w ( proj₁ ( find-<-Min* r nε loc w i j t ) ) ⟩
+      take ( j ∸ i ) ( drop i w )
+    ∎
+
+  -- Purpose : flat soundness of greedyList : the head list of ( i , j )
+  --           flattens to the substring w [ i , j ) .
+  -- Used in : greedyU-flat ( * case ) .
+  -- Idea    : induction on the match evidence ( * case via take-split ) .
+  {-# TERMINATING #-}
+  greedyList-flat : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( i j : ℕ ) ( w : List Char )
+    → ( t : r * nε ` loc , i , j ⊨ w )
+    → proj₁ ( flat ( ListU { r } { nε } { loc } ( greedyList r nε loc i j w t ) ) )
+      ≡ take ( j ∸ i ) ( drop i w )
+  greedyList-flat r _ _ i j w ( ⊨[] _ _ _ _ _ )
+    rewrite n∸n≡0 i = refl
+  greedyList-flat r nε loc i j w ( ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤j , t₁ , t₂ ) )
+    rewrite greedyU-flat r i j₁ w t₁
+          | greedyList-flat r nε loc j₁ j w ( proj₁ ( find-<-Min* r nε loc w j₁ j t₂ ) ) =
+    begin
+      take ( j₁ ∸ i ) ( drop i w ) ++ take ( j ∸ j₁ ) ( drop j₁ w )
+    ≡⟨ cong₂ _++_ refl ( cong ( λ n → take ( j ∸ j₁ ) ( drop n w ) ) ( sym ( m+[n∸m]≡n ( <⇒≤ i<j₁ ) ) ) ) ⟩
+      take ( j₁ ∸ i ) ( drop i w ) ++ take ( j ∸ j₁ ) ( drop ( i + ( j₁ ∸ i ) ) w )
+    ≡⟨ take-split w i ( j₁ ∸ i ) ( j ∸ j₁ ) ⟩
+      take ( ( j₁ ∸ i ) + ( j ∸ j₁ ) ) ( drop i w )
+    ≡⟨ cong ( λ n → take n ( drop i w ) ) ( ∸-+∸ i j₁ j ( <⇒≤ i<j₁ ) j₁≤j ) ⟩
+      take ( j ∸ i ) ( drop i w )
+    ∎
+
+  -- more helpers for U⊨ -----------------------------------------------
+
+  -- Purpose : drop i w ≡ c ∷ w₂' → w !! i ≡ just c .
+  -- Used in : U⊨ ( $ case ) .
+  -- Idea    : induction on i .
+  drop≡∷→lookup : ( w : List Char ) ( i : ℕ ) ( c : Char ) ( w₂' : List Char )
+    → drop i w ≡ c ∷ w₂' → w !! i ≡ just c
+  drop≡∷→lookup [] zero c w₂' p with p
+  ... | ()
+  drop≡∷→lookup [] ( suc _ ) c w₂' p with p
+  ... | ()
+  drop≡∷→lookup ( x ∷ ws ) zero c w₂' p with p
+  ... | refl = refl
+  drop≡∷→lookup ( x ∷ ws ) ( suc i' ) c w₂' p = drop≡∷→lookup ws i' c w₂' p
+
+  -- Purpose : take ( length xs ) ( xs ++ ys ) ≡ xs .
+  -- Used in : prefix→take .
+  -- Idea    : induction on xs .
+  take-length-++ : ( xs ys : List Char )
+    → take ( length xs ) ( xs ++ ys ) ≡ xs
+  take-length-++ [] ys = refl
+  take-length-++ ( x ∷ xs ) ys = cong ( x ∷_ ) ( take-length-++ xs ys )
+
+  -- Purpose : drop ( length xs ) ( xs ++ ys ) ≡ ys .
+  -- Used in : split-helper .
+  -- Idea    : induction on xs .
+  drop-length-++ : ( xs ys : List Char )
+    → drop ( length xs ) ( xs ++ ys ) ≡ ys
+  drop-length-++ [] ys = refl
+  drop-length-++ ( x ∷ xs ) ys = drop-length-++ xs ys
+
+  -- Purpose : a prefix xs of length n of ( xs ++ ys ≡ zs ) is take n zs .
+  -- Used in : split-helper .
+  -- Idea    : take ( length xs ) ( xs ++ ys ) ≡ xs , then rewrite .
+  prefix→take : ( xs ys zs : List Char ) ( n : ℕ )
+    → xs ++ ys ≡ zs → length xs ≡ n → xs ≡ take n zs
+  prefix→take xs ys zs n p l =
+    begin
+      xs
+    ≡⟨ sym ( take-length-++ xs ys ) ⟩
+      take ( length xs ) ( xs ++ ys )
+    ≡⟨ cong ( take ( length xs ) ) p ⟩
+      take ( length xs ) zs
+    ≡⟨ cong ( λ m → take m zs ) l ⟩
+      take n zs
+    ∎
+
+  -- Purpose : flat decomposes over PairU and over the head of a ListU .
+  -- Used in : ε∉r→0<flat ( ● and * cases ) .
+  -- Idea    : the with-block in the definition of flat fires on the branch .
+  flat-PairU : ∀ { l r : RE } { loc : ℕ }
+    → ( u₁ : U l ) ( u₂ : U r )
+    → proj₁ ( flat ( PairU { l } { r } { loc } u₁ u₂ ) )
+      ≡ proj₁ ( flat u₁ ) ++ proj₁ ( flat u₂ )
+  flat-PairU u₁ u₂ with flat u₁ | flat u₂
+  ... | ( xs₁ , _ ) | ( xs₂ , _ ) = refl
+
+  flat-ListU-cons : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ }
+    → ( u : U r ) ( us : List ( U r ) )
+    → proj₁ ( flat ( ListU { r } { nε } { loc } ( u ∷ us ) ) )
+      ≡ proj₁ ( flat u ) ++ proj₁ ( flat ( ListU { r } { nε } { loc } us ) )
+  flat-ListU-cons { r } { nε } { loc } u us with flat u | flat ( ListU { r } { nε } { loc } us )
+  ... | ( xs₁ , _ ) | ( xs₂ , _ ) = refl
+
+  -- Purpose : 0 < a → 0 < a + b , and 0 < b → 0 < a + b .
+  -- Used in : ε∉r→0<flat ( ● and * cases ) .
+  -- Idea    : case split on the other summand ( suc _ is positive ) .
+  0<a→0<a+b : ( a b : ℕ ) → 0 < a → 0 < a + b
+  0<a→0<a+b a zero 0<a rewrite +-identityʳ a = 0<a
+  0<a→0<a+b a ( suc n' ) _ rewrite +-suc a n' = z<s
+
+  0<b→0<a+b : ( a b : ℕ ) → 0 < b → 0 < a + b
+  0<b→0<a+b zero b 0<b = 0<b
+  0<b→0<a+b ( suc _ ) b _ = z<s
+
+  -- Purpose : ε ∉ r → every parse of r flattens to a non-empty word .
+  -- Used in : U⊨ ( * case : i < s₀ ) .
+  -- Idea    : induction on u ( ε∉ is a reason : ● branches on fst / snd ) .
+  ε∉r→0<flat : ( r : RE ) ( nε : ε∉ r ) → ( u : U r ) → 0 < length ( proj₁ ( flat u ) )
+  ε∉r→0<flat ε nε EmptyU = ⊥-elim ( ( ε∉r→¬ε∈r nε ) ε∈ε )
+  ε∉r→0<flat _ _ ( LetterU _ ) = z<s
+  ε∉r→0<flat ( l + r' ` loc ) ( ε∉ ε∉l + _ ) ( LeftU u₁ ) =
+    ε∉r→0<flat l ε∉l u₁
+  ε∉r→0<flat ( l + r' ` loc ) ( ε∉ _ + ε∉r' ) ( RightU u₂ ) =
+    ε∉r→0<flat r' ε∉r' u₂
+  ε∉r→0<flat ( l ● r' ` loc ) ( ε∉fst ε∉l ) ( PairU u₁ u₂ )
+    rewrite flat-PairU { l } { r' } { loc } u₁ u₂ =
+    subst ( λ n → 0 < n ) ( sym ( length-++ ( proj₁ ( flat u₁ ) ) ) )
+      ( 0<a→0<a+b _ _ ( ε∉r→0<flat l ε∉l u₁ ) )
+  ε∉r→0<flat ( l ● r' ` loc ) ( ε∉snd ε∉r' ) ( PairU u₁ u₂ )
+    rewrite flat-PairU { l } { r' } { loc } u₁ u₂ =
+    subst ( λ n → 0 < n ) ( sym ( length-++ ( proj₁ ( flat u₁ ) ) ) )
+      ( 0<b→0<a+b _ _ ( ε∉r→0<flat r' ε∉r' u₂ ) )
+  ε∉r→0<flat ( r' * n₀ ` loc ) nε₀ ( ListU [] ) =
+    ⊥-elim ( ( ε∉r→¬ε∈r { r' * n₀ ` loc } nε₀ ) ε∈* )
+  ε∉r→0<flat ( r' * nε ` loc ) _ ( ListU ( u ∷ us ) )
+    rewrite flat-ListU-cons { r' } { nε } { loc } u us =
+    subst ( λ n → 0 < n ) ( sym ( length-++ ( proj₁ ( flat u ) ) ) )
+      ( 0<a→0<a+b _ _ ( ε∉r→0<flat r' nε u ) )
+
+  -- Purpose : the head / tail split lemmas at s₀ = i + length a for a
+  --           parse whose flat is a ++ b with side conditions for ( i , j ) .
+  -- Used in : U⊨ ( ● and * cases ) .
+  -- Idea    : prefix / rest rewrites of the side conditions .
+  record SplitLemmas ( w : List Char ) ( i j : ℕ ) ( a b : List Char ) : Set where
+    field
+      i≤s₀ : i ≤ i + length a
+      fl₁ : length a ≡ ( i + length a ) ∸ i
+      fw₁ : a ++ drop ( i + length a ) w ≡ drop i w
+      s₀≤j : ( i + length a ) ≤ j
+      fl₂ : length b ≡ j ∸ ( i + length a )
+      fw₂ : b ++ drop j w ≡ drop ( i + length a ) w
+
+  split-helper : ( w : List Char ) ( i j : ℕ ) ( i≤j : i Nat.≤ j )
+    → ( w₂' a b : List Char )
+    → ( length ( a ++ b ) ≡ j ∸ i )
+    → ( ( a ++ b ) ++ w₂' ≡ drop i w )
+    → SplitLemmas w i j a b
+  split-helper w i j i≤j w₂' a b fl fw =
+    record { i≤s₀ = i≤s₀ ; fl₁ = fl₁ ; fw₁ = fw₁
+           ; s₀≤j = s₀≤j ; fl₂ = fl₂ ; fw₂ = fw₂ }
+    where
+      s₀ = i + length a
+
+      -- i ≤ s₀ .
+      i≤s₀ : i ≤ s₀
+      i≤s₀ = m≤m+n i ( length a )
+
+      -- length a ≡ s₀ ∸ i .
+      fl₁ : length a ≡ s₀ ∸ i
+      fl₁ =
+        begin
+          length a
+        ≡⟨ sym ( cong ( λ n → n + length a ) ( n∸n≡0 i ) ) ⟩
+          ( i ∸ i ) + length a
+        ≡⟨ sym ( +-∸-comm { i } ( length a ) { i } ( ≤-refl ) ) ⟩
+          s₀ ∸ i
+        ∎
+
+      -- drop s₀ w ≡ drop ( s₀ ∸ i ) ( drop i w ) .
+      drop-s₀ : drop s₀ w ≡ drop ( s₀ ∸ i ) ( drop i w )
+      drop-s₀ =
+        sym ( trans ( drop-drop i ( s₀ ∸ i ) w )
+                 ( cong ( λ n → drop n w ) ( m+[n∸m]≡n i≤s₀ ) ) )
+
+      -- a ++ ( b ++ w₂' ) ≡ drop i w .
+      ps₁ : a ++ ( b ++ w₂' ) ≡ drop i w
+      ps₁ = trans ( sym ( ++-assoc a b w₂' ) ) fw
+
+      -- a ≡ take ( s₀ ∸ i ) ( drop i w ) .
+      a≡take : a ≡ take ( s₀ ∸ i ) ( drop i w )
+      a≡take = prefix→take a ( b ++ w₂' ) ( drop i w ) ( s₀ ∸ i ) ps₁ fl₁
+
+      -- a ++ drop s₀ w ≡ drop i w .
+      fw₁ : a ++ drop s₀ w ≡ drop i w
+      fw₁ =
+        begin
+          a ++ drop s₀ w
+        ≡⟨ cong ( λ xs → xs ++ drop s₀ w ) a≡take ⟩
+          take ( s₀ ∸ i ) ( drop i w ) ++ drop s₀ w
+        ≡⟨ cong ( λ ys → take ( s₀ ∸ i ) ( drop i w ) ++ ys ) drop-s₀ ⟩
+          take ( s₀ ∸ i ) ( drop i w ) ++ drop ( s₀ ∸ i ) ( drop i w )
+        ≡⟨ take++drop≡id ( s₀ ∸ i ) ( drop i w ) ⟩
+          drop i w
+        ∎
+
+      -- i + ( length a + length b ) ≡ j .
+      i+ab≡j : i + ( length a + length b ) ≡ j
+      i+ab≡j =
+        begin
+          i + ( length a + length b )
+        ≡⟨ cong ( i +_ ) ( sym ( length-++ a ) ) ⟩
+          i + length ( a ++ b )
+        ≡⟨ cong ( i +_ ) fl ⟩
+          i + ( j ∸ i )
+        ≡⟨ m+[n∸m]≡n i≤j ⟩
+          j
+        ∎
+
+      -- s₀ ≤ j .
+      s₀≤j : s₀ ≤ j
+      s₀≤j =
+        subst ( λ k → s₀ ≤ k ) i+ab≡j
+          ( +-monoʳ-≤ i ( m≤m+n ( length a ) ( length b ) ) )
+
+      -- length b ≡ j ∸ s₀ .
+      fl₂ : length b ≡ j ∸ s₀
+      fl₂ =
+        begin
+          length b
+        ≡⟨ sym ( cong ( λ n → n + length b ) ( n∸n≡0 ( length a ) ) ) ⟩
+           ( length a ∸ length a ) + length b
+         ≡⟨ sym ( +-∸-comm { length a } ( length b ) { length a } ( ≤-refl ) ) ⟩
+          ( length a + length b ) ∸ length a
+        ≡⟨ cong ( λ x → x ∸ length a ) ( trans ( sym ( length-++ a ) ) fl ) ⟩
+          ( j ∸ i ) ∸ length a
+        ≡⟨ cong ( λ x → ( j ∸ i ) ∸ x ) fl₁ ⟩
+          ( j ∸ i ) ∸ ( s₀ ∸ i )
+        ≡⟨ ∸-+-assoc j i ( s₀ ∸ i ) ⟩
+          j ∸ ( i + ( s₀ ∸ i ) )
+        ≡⟨ cong ( j ∸_ ) ( m+[n∸m]≡n i≤s₀ ) ⟩
+          j ∸ s₀
+        ∎
+
+      -- b ++ w₂' ≡ drop s₀ w .
+      b++w₂' : b ++ w₂' ≡ drop s₀ w
+      b++w₂' =
+        sym
+          ( begin
+              drop s₀ w
+            ≡⟨ drop-s₀ ⟩
+              drop ( s₀ ∸ i ) ( drop i w )
+            ≡⟨ cong ( λ xs → drop ( s₀ ∸ i ) xs ) ( sym fw ) ⟩
+              drop ( s₀ ∸ i ) ( ( a ++ b ) ++ w₂' )
+            ≡⟨ cong ( λ xs → drop ( s₀ ∸ i ) xs ) ( ++-assoc a b w₂' ) ⟩
+              drop ( s₀ ∸ i ) ( a ++ ( b ++ w₂' ) )
+            ≡⟨ cong ( λ n → drop n ( a ++ ( b ++ w₂' ) ) ) ( sym fl₁ ) ⟩
+              drop ( length a ) ( a ++ ( b ++ w₂' ) )
+            ≡⟨ drop-length-++ a ( b ++ w₂' ) ⟩
+              b ++ w₂'
+            ∎ )
+
+      -- drop ( j ∸ s₀ ) ( drop s₀ w ) ≡ drop j w .
+      E1 : drop ( j ∸ s₀ ) ( drop s₀ w ) ≡ drop j w
+      E1 =
+        trans ( drop-drop s₀ ( j ∸ s₀ ) w )
+              ( cong ( λ n → drop n w ) ( m+[n∸m]≡n s₀≤j ) )
+
+      -- b ≡ take ( j ∸ s₀ ) ( drop s₀ w ) .
+      b≡take : b ≡ take ( j ∸ s₀ ) ( drop s₀ w )
+      b≡take = prefix→take b w₂' ( drop s₀ w ) ( j ∸ s₀ ) b++w₂' fl₂
+
+      -- b ++ drop j w ≡ drop s₀ w .
+      fw₂ : b ++ drop j w ≡ drop s₀ w
+      fw₂ =
+        begin
+          b ++ drop j w
+        ≡⟨ cong ( λ xs → xs ++ drop j w ) b≡take ⟩
+          take ( j ∸ s₀ ) ( drop s₀ w ) ++ drop j w
+        ≡⟨ cong ( λ ys → take ( j ∸ s₀ ) ( drop s₀ w ) ++ ys ) ( sym E1 ) ⟩
+          take ( j ∸ s₀ ) ( drop s₀ w ) ++ drop ( j ∸ s₀ ) ( drop s₀ w )
+        ≡⟨ take++drop≡id ( j ∸ s₀ ) ( drop s₀ w ) ⟩
+          drop s₀ w
+        ∎
+
+  -- Purpose : a parse tree whose flat is the substring w [ i , j )
+  --           witnesses ( r , i , j ⊨ w ) .
+  -- Used in : <-greedy-sound-go ( the minimality side conditions of the
+  --           right match , applied to the arbitrary v ) .
+  -- Idea    : induction on v ( which determines the shape of r ) ; the
+  --           ● / * cases split at s₀ = i + length ( flat of the head )
+  --           via split-helper .
+  U⊨ : ( r : RE ) ( i j : ℕ ) ( w : List Char )
+    → ( i Nat.≤ j )
+    → ( v : U r ) ( w₁' w₂' : List Char )
+    → proj₁ ( flat v ) ≡ w₁'
+    → length w₁' ≡ j ∸ i
+    → w₁' ++ w₂' ≡ drop i w
+    → ( r , i , j ⊨ w )
+
+  -- ε : the span collapses to i .
+  U⊨ ε i j w i≤j EmptyU w₁' w₂' fp fl fw
+    rewrite sym fp =
+    subst ( λ k → ε , i , k ⊨ w )
+      ( ≤-antisym i≤j ( m∸n≡0⇒m≤n ( sym fl ) ) )
+      ( ⊨ε i w )
+
+  -- $ : the span is one character .
+  U⊨ ( $ c ` loc ) i j w i≤j ( LetterU c ) w₁' w₂' fp fl fw
+    rewrite sym fp =
+    subst ( λ k → ( $ c ` loc ) , i , k ⊨ w ) ( sym ( j≡suci ) )
+      ( ⊨$ c loc i w ( drop≡∷→lookup w i c w₂' ( sym fw ) ) )
+    where
+      -- j ≡ suc i ( written as suc i , not i + 1 , which is stuck ) .
+      j≡suci : j ≡ suc i
+      j≡suci =
+        begin
+          j
+        ≡⟨ sym ( m+[n∸m]≡n i≤j ) ⟩
+          i + ( j ∸ i )
+        ≡⟨ cong ( i +_ ) ( sym fl ) ⟩
+          i + 1
+        ≡⟨ trans ( +-suc i zero ) ( cong suc ( +-identityʳ i ) ) ⟩
+          suc i
+        ∎
+
+  -- + ( left )
+  U⊨ ( l₁ + l₂ ` loc ) i j w i≤j ( LeftU v₁ ) w₁' w₂' fp fl fw =
+    ⊨inl l₁ l₂ loc i j w
+      ( U⊨ l₁ i j w i≤j v₁ w₁' w₂' fp fl fw )
+
+  -- + ( right )
+  U⊨ ( l₁ + l₂ ` loc ) i j w i≤j ( RightU v₂ ) w₁' w₂' fp fl fw =
+    ⊨inr l₁ l₂ loc i j w
+      ( U⊨ l₂ i j w i≤j v₂ w₁' w₂' fp fl fw )
+
+  -- ● : split at s₀ = i + length ( flat v₁ ) .
+  U⊨ ( l₁ ● l₂ ` loc ) i j w i≤j ( PairU v₁ v₂ ) w₁' w₂' fp fl fw
+    rewrite fp =
+    ( ⊨● l₁ l₂ loc i j w s₀ i≤s₀ s₀≤j
+        ( U⊨ l₁ i s₀ w i≤s₀ v₁ ( proj₁ ( flat v₁ ) ) ( drop s₀ w ) refl fl₁ fw₁ )
+        ( U⊨ l₂ s₀ j w s₀≤j v₂ ( proj₁ ( flat v₂ ) ) ( drop j w ) refl fl₂ fw₂ ) )
+    where
+      s₀ = i + length ( proj₁ ( flat v₁ ) )
+      -- Transport the side conditions from w₁' to
+      -- proj₁ ( flat v₁ ) ++ proj₁ ( flat v₂ ) .
+      w₁'≡ab : w₁' ≡ proj₁ ( flat v₁ ) ++ proj₁ ( flat v₂ )
+      w₁'≡ab = trans ( sym fp ) ( flat-PairU { l₁ } { l₂ } { loc } v₁ v₂ )
+      fl' : length ( proj₁ ( flat v₁ ) ++ proj₁ ( flat v₂ ) ) ≡ j ∸ i
+      fl' = subst ( λ xs → length xs ≡ j ∸ i ) w₁'≡ab fl
+      fw' : ( proj₁ ( flat v₁ ) ++ proj₁ ( flat v₂ ) ) ++ w₂' ≡ drop i w
+      fw' = subst ( λ xs → xs ++ w₂' ≡ drop i w ) w₁'≡ab fw
+      split = split-helper w i j i≤j w₂'
+        ( proj₁ ( flat v₁ ) ) ( proj₁ ( flat v₂ ) ) fl' fw'
+      i≤s₀ = SplitLemmas.i≤s₀ split
+      fl₁ = SplitLemmas.fl₁ split
+      fw₁ = SplitLemmas.fw₁ split
+      s₀≤j = SplitLemmas.s₀≤j split
+      fl₂ = SplitLemmas.fl₂ split
+      fw₂ = SplitLemmas.fw₂ split
+
+  -- * ( empty list ) : the span collapses to i .
+  U⊨ ( r * n₀ ` loc ) i j w i≤j ( ListU [] ) w₁' w₂' fp fl fw
+    rewrite sym fp =
+    subst ( λ k → ( r * n₀ ` loc ) , i , k ⊨ w )
+      ( ≤-antisym i≤j ( m∸n≡0⇒m≤n ( sym fl ) ) )
+      ( ⊨[] r n₀ loc w i )
+
+  -- * ( non-empty list ) : split at s₀ = i + length ( flat u ) .
+  U⊨ ( r * n₀ ` loc ) i j w i≤j ( ListU ( u ∷ us ) ) w₁' w₂' fp fl fw
+    rewrite fp =
+    ( ⊨∷ r n₀ loc w i j
+        ( s₀ , subst ( λ x → x < s₀ ) ( +-identityʳ i )
+                  ( +-monoʳ-< i ( ε∉r→0<flat r n₀ u ) ) , s₀≤j
+          , ( U⊨ r i s₀ w i≤s₀ u ( proj₁ ( flat u ) ) ( drop s₀ w ) refl fl₁ fw₁ )
+          , ( U⊨ ( r * n₀ ` loc ) s₀ j w s₀≤j ( ListU { r } { n₀ } { loc } us )
+                ( proj₁ ( flat ( ListU { r } { n₀ } { loc } us ) ) ) ( drop j w ) refl fl₂ fw₂ ) ) )
+    where
+      s₀ = i + length ( proj₁ ( flat u ) )
+      -- Transport the side conditions from w₁' to
+      -- proj₁ ( flat u ) ++ proj₁ ( flat ( ListU us ) ) .
+      w₁'≡ab : w₁' ≡ proj₁ ( flat u ) ++ proj₁ ( flat ( ListU { r } { n₀ } { loc } us ) )
+      w₁'≡ab = trans ( sym fp ) ( flat-ListU-cons { r } { n₀ } { loc } u us )
+      fl' : length ( proj₁ ( flat u ) ++ proj₁ ( flat ( ListU { r } { n₀ } { loc } us ) ) ) ≡ j ∸ i
+      fl' = subst ( λ xs → length xs ≡ j ∸ i ) w₁'≡ab fl
+      fw' : ( proj₁ ( flat u ) ++ proj₁ ( flat ( ListU { r } { n₀ } { loc } us ) ) ) ++ w₂' ≡ drop i w
+      fw' = subst ( λ xs → xs ++ w₂' ≡ drop i w ) w₁'≡ab fw
+      split = split-helper w i j i≤j w₂'
+        ( proj₁ ( flat u ) ) ( proj₁ ( flat ( ListU { r } { n₀ } { loc } us ) ) ) fl' fw'
+      i≤s₀ = SplitLemmas.i≤s₀ split
+      fl₁ = SplitLemmas.fl₁ split
+      fw₁ = SplitLemmas.fw₁ split
+      s₀≤j = SplitLemmas.s₀≤j split
+      fl₂ = SplitLemmas.fl₂ split
+      fw₂ = SplitLemmas.fw₂ split
+
+  -- ---------------------------------------------------------------------
+  -- ⊢<-trans : transitivity of the Mamouras base order .
+  --
+  -- Purpose : q ∣ w ∣ i ⊢ j < k × q ∣ w ∣ i ⊢ k < k'
+  --           ⇒ q ∣ w ∣ i ⊢ j < k' .
+  -- Used in : ←greedy-sound-go ( the seq₂ / *-tail sub-premises live at
+  --           the split position ≠ 0 ) and in ⊢<-trans-+/-●/-⋆ below .
+  -- Idea    : case split on q : ε / $ have no constructors ; + compares
+  --           the four minimal shapes ( inlinr needs no premise ; inlinl /
+  --           inrinr extract the sub-order premises and recurse on the
+  --           branch ; the rest is refuted by <-Min⁺-inr¬ / inr≮inl ) ;
+  --           ● / * compare the canonical splits / heads .
+  -- ---------------------------------------------------------------------
+
+  -- Purpose : a ⊢⁺ proof relating a minimal ⊨inr shape at j to a minimal
+  --           ⊨inl shape at k is impossible .
+  -- Used in : ⊢<-trans-+ ( the inr<inl refutations ) .
+  -- Idea    : no ⊢⁺ constructor has an ⊨inr left side and an ⊨inl right
+  --           side : the proof argument type is empty .  The helper is
+  --           defined at the top level so the empty-pattern check is
+  --           performed in a clean context , avoiding the unifier leak
+  --           that occurs when the check is done inside a with-branch
+  --           with multiple active find-<-Min⁺ inspect constraints .
+  inr<inl-+ : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k : ℕ )
+    ( a : r , i , j ⊨ w ) ( b : l , i , k ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( ⊨inr l r loc i j w a ) < ( ⊨inl l r loc i k w b ) )
+    → ⊥
+  inr<inl-+ l r loc w i j k a b P with P
+  ... | ()
+
+  -- Purpose : extract the l-order premise of an already-transported
+  --           ⊢⁺ proof whose two ends are concrete ⊨inl shapes .
+  -- Used in : ⊢<-trans-+ ( inl/inl good branch ) via ⊢⁺-inlinl-prem .
+  -- Idea    : the pattern match happens inside this top-level helper ,
+  --           so the caller's find-<-Min⁺ inspect constraints do not
+  --           interfere with constructor unification .
+  ⊢⁺-inlinl-go : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k : ℕ )
+    → ( a : l , i , j ⊨ w ) ( b : l , i , k ⊨ w )
+    → ( P' : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( ⊨inl l r loc i j w a ) < ( ⊨inl l r loc i k w b ) )
+    → l ∣ w ∣ i ⊢ j < k
+  -- the inlinr / inrinr cases are impossible ( their ⊨inr side cannot
+  -- unify with the ⊨inl side ) : no clause needed .
+  ⊢⁺-inlinl-go l r loc w i j k a b ( inlinl .i .j .k .a .b ord ) = ord
+
+  -- Purpose : transport a ⊢⁺ proof from the computed Min⁺ shapes to
+  --           concrete ⊨inl shapes and extract the l-order premise .
+  -- Used in : ⊢<-trans-+ ( inl/inl good branch ) .
+  -- Idea    : the transport and pattern match happen inside this
+  --           top-level helper ; the caller only supplies the equalities
+  --           from Min⁺-inl , keeping the with-branch context simple .
+  ⊢⁺-inlinl-prem : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k : ℕ )
+    ( t₁ : ( l + r ` loc ) , i , j ⊨ w ) ( t₂ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i k t₂ ) )
+    → ( a : l , i , j ⊨ w ) ( b : l , i , k ⊨ w )
+    → ( e₁ : Min⁺ l r loc w i j t₁ ≡ ⊨inl l r loc i j w a )
+    → ( e₂ : Min⁺ l r loc w i k t₂ ≡ ⊨inl l r loc i k w b )
+    → l ∣ w ∣ i ⊢ j < k
+  ⊢⁺-inlinl-prem l r loc w i j k t₁ t₂ P a b e₁ e₂ =
+    ⊢⁺-inlinl-go l r loc w i j k a b
+      ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺ x < y ) e₁ e₂ P )
+
+  -- Purpose : dual of ⊢⁺-inlinl-go : both ends concrete ⊨inr .
+  ⊢⁺-inrinr-go : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k : ℕ )
+    → ( a : r , i , j ⊨ w ) ( b : r , i , k ⊨ w )
+    → ( P' : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( ⊨inr l r loc i j w a ) < ( ⊨inr l r loc i k w b ) )
+    → r ∣ w ∣ i ⊢ j < k
+  -- the inlinr / inlinl cases are impossible ( their ⊨inl side cannot
+  -- unify with the ⊨inr side ) : no clause needed .
+  ⊢⁺-inrinr-go l r loc w i j k a b ( inrinr .i .j .k .a .b ord ) = ord
+
+  -- Purpose : dual of ⊢⁺-inlinl-prem : transport to concrete ⊨inr
+  --           shapes and extract the r-order premise .
+  ⊢⁺-inrinr-prem : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k : ℕ )
+    ( t₁ : ( l + r ` loc ) , i , j ⊨ w ) ( t₂ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i k t₂ ) )
+    → ( a : r , i , j ⊨ w ) ( b : r , i , k ⊨ w )
+    → ( e₁ : Min⁺ l r loc w i j t₁ ≡ ⊨inr l r loc i j w a )
+    → ( e₂ : Min⁺ l r loc w i k t₂ ≡ ⊨inr l r loc i k w b )
+    → r ∣ w ∣ i ⊢ j < k
+  ⊢⁺-inrinr-prem l r loc w i j k t₁ t₂ P a b e₁ e₂ =
+    ⊢⁺-inrinr-go l r loc w i j k a b
+      ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺ x < y ) e₁ e₂ P )
+
+  -- Purpose : the + case of ⊢<-trans with outer minimal shapes inl@j and
+  --           inr@k' : the result is inlinr , no inner inspect needed .
+  {-# TERMINATING #-}
+  ⊢<-trans-+-inl-inr : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l + r ` loc ) , i , j ⊨ w )
+    → ( s₂ : ( l + r ` loc ) , i , k' ⊨ w )
+    → ( a : l , i , j ⊨ w ) ( b : r , i , k' ⊨ w )
+    → ( e₁ : Min⁺ l r loc w i j t₁ ≡ ⊨inl l r loc i j w a )
+    → ( e₂' : Min⁺ l r loc w i k' s₂ ≡ ⊨inr l r loc i k' w b )
+    → ( l + r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-+-inl-inr l r loc w i j k k' t₁ s₂ a b e₁ e₂' =
+    choice i j k' t₁ s₂
+      ( subst₂ ( λ u v → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⁺ u < v )
+          ( sym e₁ ) ( sym e₂' ) ( inlinr i j k' a b ) )
+
+  -- Purpose : the + case of ⊢<-trans with outer minimal shapes inl@j and
+  --           inl@k' : compare the inner minimal shapes at k .
+  -- Used in : ⊢<-trans-+ .
+  -- Idea    : isolate the inner inspect-with and its empty-proof refutation
+  --           in a separate function so the unifier leak is confined here .
+  {-# TERMINATING #-}
+  ⊢<-trans-+-inl-inl : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l + r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l + r ` loc ) , i , k' ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i k t₂ ) )
+    → ( P' : l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⁺
+           ( Min⁺ l r loc w i k s₁ ) < ( Min⁺ l r loc w i k' s₂ ) )
+    → ( a : l , i , j ⊨ w ) ( b : l , i , k' ⊨ w )
+    → ( e₁ : Min⁺ l r loc w i j t₁ ≡ ⊨inl l r loc i j w a )
+    → ( e₂' : Min⁺ l r loc w i k' s₂ ≡ ⊨inl l r loc i k' w b )
+    → ( l + r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-+-inl-inl l r loc w i j k k' t₁ t₂ s₁ s₂ P P' a b e₁ e₂'
+    with ⊨? l i k w
+  -- l matches at k : both inner shapes are inl : good , inlinl :
+  ... | yes x =
+    let ( x' , e₂ ) = Min⁺-inl l r loc w i k x t₂
+        ( y' , e₁' ) = Min⁺-inl l r loc w i k x s₁
+    in  choice i j k' t₁ s₂
+          ( subst₂ ( λ u v → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⁺ u < v )
+              ( sym e₁ ) ( sym e₂' )
+              ( inlinl i j k' a b
+                  ( ⊢<-trans l w i j k k'
+                      ( ⊢⁺-inlinl-prem l r loc w i j k t₁ t₂ P a x' e₁ e₂ )
+                      ( ⊢⁺-inlinl-prem l r loc w i k k' s₁ s₂ P' y' b e₁' e₂' ) ) ) )
+  -- l does not match at k : both inner shapes are inr ;
+  --     P' is inr<inl ( empty ) , refute via top-level helper :
+  ... | no ¬x =
+    let ( y' , e₁' ) = Min⁺-inr l r loc w i k ¬x s₁
+    in  ⊥-elim ( inr<inl-+ l r loc w i k k' y' b
+                  ( subst₂ ( λ u v → l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⁺ u < v )
+                      e₁' e₂' P' ) )
+
+  -- Purpose : the + case of ⊢<-trans with outer minimal shapes inr@j and
+  --           inr@k' : compare the inner minimal shapes at k .
+  {-# TERMINATING #-}
+  ⊢<-trans-+-inr-inr : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l + r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l + r ` loc ) , i , k' ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i k t₂ ) )
+    → ( P' : l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⁺
+           ( Min⁺ l r loc w i k s₁ ) < ( Min⁺ l r loc w i k' s₂ ) )
+    → ( a : r , i , j ⊨ w ) ( b : r , i , k' ⊨ w )
+    → ( e₁ : Min⁺ l r loc w i j t₁ ≡ ⊨inr l r loc i j w a )
+    → ( e₂' : Min⁺ l r loc w i k' s₂ ≡ ⊨inr l r loc i k' w b )
+    → ( l + r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-+-inr-inr l r loc w i j k k' t₁ t₂ s₁ s₂ P P' a b e₁ e₂'
+    with ⊨? l i k w
+  -- l matches at k : both inner shapes are inl ;
+  --     P is inr<inl ( empty ) , refute via top-level helper :
+  ... | yes x =
+    let ( x' , e₂ ) = Min⁺-inl l r loc w i k x t₂
+    in  ⊥-elim ( inr<inl-+ l r loc w i j k a x'
+                  ( subst₂ ( λ u v → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺ u < v )
+                      e₁ e₂ P ) )
+  -- l does not match at k : both inner shapes are inr : good , inrinr :
+  ... | no ¬x =
+    let ( x' , e₂ ) = Min⁺-inr l r loc w i k ¬x t₂
+        ( y' , e₁' ) = Min⁺-inr l r loc w i k ¬x s₁
+    in  choice i j k' t₁ s₂
+          ( subst₂ ( λ u v → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⁺ u < v )
+              ( sym e₁ ) ( sym e₂' )
+              ( inrinr i j k' a b
+                  ( ⊢<-trans r w i j k k'
+                      ( ⊢⁺-inrinr-prem l r loc w i j k t₁ t₂ P a x' e₁ e₂ )
+                      ( ⊢⁺-inrinr-prem l r loc w i k k' s₁ s₂ P' y' b e₁' e₂' ) ) ) )
+
+  -- Purpose : the + case of ⊢<-trans with outer minimal shapes inr@j and
+  --           inl@k' : the goal is empty ; refute via ⊨? at k .
+  -- Used in : ⊢<-trans-+ .
+  -- Idea    : use ⊨? ( instead of find-<-Min⁺ inspect ) so each branch has at
+  --           most one empty-proof refutation and the unifier leak is confined .
+  {-# TERMINATING #-}
+  ⊢<-trans-+-inr-inl : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l + r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l + r ` loc ) , i , k' ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i k t₂ ) )
+    → ( P' : l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⁺
+           ( Min⁺ l r loc w i k s₁ ) < ( Min⁺ l r loc w i k' s₂ ) )
+    → ( a : r , i , j ⊨ w ) ( b : l , i , k' ⊨ w )
+    → ( e₁ : Min⁺ l r loc w i j t₁ ≡ ⊨inr l r loc i j w a )
+    → ( e₂' : Min⁺ l r loc w i k' s₂ ≡ ⊨inl l r loc i k' w b )
+    → ( l + r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-+-inr-inl l r loc w i j k k' t₁ t₂ s₁ s₂ P P' a b e₁ e₂'
+    with ⊨? l i k w
+  -- l matches at k : min-t₂ = inl , min-s₁ = inl ; P is inr<inl ( empty ) :
+  ... | yes lk =
+    let ( x , e₂ ) = Min⁺-inl l r loc w i k lk t₂
+    in  ⊥-elim ( inr<inl-+ l r loc w i j k a x
+                  ( subst₂ ( λ u v → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺ u < v )
+                      e₁ e₂ P ) )
+  -- l does not match at k : min-t₂ = inr , min-s₁ = inr ; P' is inr<inl ( empty ) :
+  ... | no ¬lk =
+    let ( y , e₁' ) = Min⁺-inr l r loc w i k ¬lk s₁
+    in  ⊥-elim ( inr<inl-+ l r loc w i k k' y b
+                  ( subst₂ ( λ u v → l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⁺ u < v )
+                      e₁' e₂' P' ) )
+
+  {-# TERMINATING #-}
+  ⊢<-trans-+ : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l + r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l + r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l + r ` loc ) , i , k' ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⁺
+           ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i k t₂ ) )
+    → ( P' : l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⁺
+           ( Min⁺ l r loc w i k s₁ ) < ( Min⁺ l r loc w i k' s₂ ) )
+    → ( l + r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-+ l r loc w i j k k' t₁ t₂ s₁ s₂ P P'
+    with ⊨? l i j w | ⊨? l i k' w
+  -- l matches at j and at k' : both minimal shapes are inl :
+  ... | yes a | yes b =
+    let ( a' , e₁ ) = Min⁺-inl l r loc w i j a t₁
+        ( b' , e₂' ) = Min⁺-inl l r loc w i k' b s₂
+    in ⊢<-trans-+-inl-inl l r loc w i j k k' t₁ t₂ s₁ s₂ P P' a' b' e₁ e₂'
+  -- l matches at j , not at k' : inlinr ( no inner inspect needed ) :
+  ... | yes a | no ¬b =
+    let ( a' , e₁ ) = Min⁺-inl l r loc w i j a t₁
+        ( b' , e₂' ) = Min⁺-inr l r loc w i k' ¬b s₂
+    in ⊢<-trans-+-inl-inr l r loc w i j k k' t₁ s₂ a' b' e₁ e₂'
+  -- l matches at k' , not at j : empty goal ; refute via ⊨? at k :
+  ... | no ¬a | yes b =
+    let ( a' , e₁ ) = Min⁺-inr l r loc w i j ¬a t₁
+        ( b' , e₂' ) = Min⁺-inl l r loc w i k' b s₂
+    in ⊢<-trans-+-inr-inl l r loc w i j k k' t₁ t₂ s₁ s₂ P P' a' b' e₁ e₂'
+  -- l matches at neither j nor k' : both minimal shapes are inr :
+  ... | no ¬a | no ¬b =
+    let ( a' , e₁ ) = Min⁺-inr l r loc w i j ¬a t₁
+        ( b' , e₂' ) = Min⁺-inr l r loc w i k' ¬b s₂
+    in ⊢<-trans-+-inr-inr l r loc w i j k k' t₁ t₂ s₁ s₂ P P' a' b' e₁ e₂'
+
+  -- Purpose : the split position of a ● match ( the j in ⊨● ... j ... ) .
+  -- Used in : ⊢<-trans-● ( comparing the middle splits via canon ) .
+  ⊨●-split : ∀ { l r : RE } { loc : ℕ } { w : List Char } { i k : ℕ }
+    → ( ( l ● r ` loc ) , i , k ⊨ w ) → ℕ
+  ⊨●-split ( ⊨● _ _ _ _ _ _ j _ _ _ _ ) = j
+
+  -- Purpose : the head of a * match ; ⊨[] has no head ( returns 0 , only
+  --           used via cong when both sides are known to be ⊨∷ ) .
+  -- Used in : ⊢<-trans-⋆ ( comparing the middle heads via canon ) .
+  ⊨*-head : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { w : List Char } { i k : ℕ }
+    → ( ( r * nε ` loc ) , i , k ⊨ w ) → ℕ
+  ⊨*-head ( ⊨∷ _ _ _ _ _ _ ( j , _ , _ , _ , _ ) ) = j
+  ⊨*-head ( ⊨[] _ _ _ _ _ ) = 0
+
+  -- Purpose : the ● case of ⊢<-trans : glue two ⊢● steps at the middle
+  --           position k .
+  -- Used in : ⊢<-trans ( ● case ) .
+  -- Idea    : deconstruct the two ⊢● steps ( seq₁ / seq₂ ) ; the two middle
+  --           minimal splits ( of t₂ and s₁ at ( i , k ) ) coincide by
+  --           find-<-Min●-canon , so the four combinations reduce to
+  --           transitivity of the l- or r-order :
+  --             seq₁ / seq₁ : j₁ < j₂ = j₃ < j₄ ⇒ j₁ < j₄ ( l-trans ) ;
+  --             seq₁ / seq₂ : j₁ < j₂ = j₃ = j₄   ⇒ j₁ < j₄ ( l , direct ) ;
+  --             seq₂ / seq₁ : j₁ = j₂ = j₃ < j₄   ⇒ j₁ < j₄ ( l , direct ) ;
+  --             seq₂ / seq₂ : j₁ = j₂ = j₃ = j₄   ⇒ r-tail-trans .
+  --           No find-<-Min● inspect : the with-branches deconstruct the
+  --           ⊢● proofs themselves , so no inspect equation is active while
+  --           P / P' are used ( unifier-leak confinement , cf. ⊢<-trans-+ ) .
+  {-# TERMINATING #-}
+  ⊢<-trans-● : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l ● r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l ● r ` loc ) , i , k' ⊨ w )
+    → ( P : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢●
+           ( proj₁ ( find-<-Min● l r loc w i j t₁ ) ) < ( proj₁ ( find-<-Min● l r loc w i k t₂ ) ) )
+    → ( P' : l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢●
+           ( proj₁ ( find-<-Min● l r loc w i k s₁ ) ) < ( proj₁ ( find-<-Min● l r loc w i k' s₂ ) ) )
+    → ( l ● r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-● l r loc w i j k k' t₁ t₂ s₁ s₂ P P'
+    with find-<-Min● l r loc w i j t₁ | inspect ( find-<-Min● l r loc w i j ) t₁
+       | find-<-Min● l r loc w i k t₂ | inspect ( find-<-Min● l r loc w i k ) t₂
+       | find-<-Min● l r loc w i k s₁ | inspect ( find-<-Min● l r loc w i k ) s₁
+       | find-<-Min● l r loc w i k' s₂ | inspect ( find-<-Min● l r loc w i k' ) s₂
+  ... | ( min-t₁ , _ ) | [ eq₁ ] | ( min-t₂ , _ ) | [ eq₂ ]
+      | ( min-s₁ , _ ) | [ eq₃ ] | ( min-s₂ , _ ) | [ eq₄ ]
+      with min-t₁ | min-t₂ | min-s₁ | min-s₂
+  ... | ⊨● _ _ _ _ _ _ j₁ _ _ u₁ v₁ | ⊨● _ _ _ _ _ _ j₂ _ _ u₂ v₂
+      | ⊨● _ _ _ _ _ _ j₃ _ _ u₃ v₃ | ⊨● _ _ _ _ _ _ j₄ _ _ u₄ v₄
+      with P | P'
+  -- seq₁ / seq₁ : j₁ < j₂ = j₃ < j₄ ⇒ j₁ < j₄ by l-transitivity :
+  ... | seq₁ .i .j₁ .j .j₂ .k .u₁ .v₁ .u₂ .v₂ l<j₂
+      | seq₁ .i .j₃ .k .j₄ .k' .u₃ .v₃ .u₄ .v₄ l3<j₄ =
+    let j₂≡j₃ = cong ⊨●-split
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min●-canon l r loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-●-11 l r loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ u₁ v₁ j₂ j₃ j₄ u₄ v₄ l<j₂ l3<j₄ j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+  -- seq₁ / seq₂ : j₁ < j₂ = j₃ = j₄ ⇒ j₁ < j₄ directly :
+  ... | seq₁ .i .j₁ .j .j₂ .k .u₁ .v₁ .u₂ .v₂ l<j₂
+      | seq₂ .i .j₃ .j₄ .k .k' .u₃ .v₃ .u₄ .v₄ j₃≡j₄ r<j₃<k' =
+    let j₂≡j₃ = cong ⊨●-split
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min●-canon l r loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-●-12 l r loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ u₁ v₁ j₂ j₃ j₄ u₄ v₄ l<j₂ j₃≡j₄ r<j₃<k' j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+  -- seq₂ / seq₁ : j₁ = j₂ = j₃ < j₄ ⇒ j₁ < j₄ directly :
+  ... | seq₂ .i .j₁ .j₂ .j .k .u₁ .v₁ .u₂ .v₂ j₁≡j₂ r<j₁<k
+      | seq₁ .i .j₃ .k .j₄ .k' .u₃ .v₃ .u₄ .v₄ l3<j₄ =
+    let j₂≡j₃ = cong ⊨●-split
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min●-canon l r loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-●-21 l r loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ j₂ j₃ j₄ u₁ v₁ u₄ v₄ j₁≡j₂ r<j₁<k l3<j₄ j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+  -- seq₂ / seq₂ : j₁ = j₂ = j₃ = j₄ ⇒ r-tail-transitivity :
+  ... | seq₂ .i .j₁ .j₂ .j .k .u₁ .v₁ .u₂ .v₂ j₁≡j₂ r<j₁<k
+      | seq₂ .i .j₃ .j₄ .k .k' .u₃ .v₃ .u₄ .v₄ j₃≡j₄ r<j₃<k' =
+    let j₂≡j₃ = cong ⊨●-split
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min●-canon l r loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-●-22 l r loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ j₂ j₃ j₄ u₁ v₁ u₄ v₄ j₁≡j₂ r<j₁<k j₃≡j₄ r<j₃<k' j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+
+  -- Purpose : the four ( seq₁ / seq₂ ) × ( seq₁ / seq₂ ) combinations of
+  --           ⊢<-trans-● ; each takes all shape data explicitly ( no with ,
+  --           no inspect ) so that the caller's with-branches stay trivial .
+  -- Used in : ⊢<-trans-● .
+  -- Idea    : the two middle minimal splits ( of t₂ and s₁ at ( i , k ) )
+  --           coincide by find-<-Min●-canon ; the split equality is extracted
+  --           via cong ⊨●-split on the transported canon equation , and the
+  --           conclusion is a fresh seq₁ / seq₂ transported back onto the
+  --           minimal evidence with subst₂ ( cf. decide-⊢< , ● case ) .
+  {-# TERMINATING #-}
+  ⊢<-trans-●-11 : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l ● r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l ● r ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( u₁ : l , i , j₁ ⊨ w ) ( v₁ : r , j₁ , j ⊨ w )
+    → ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( u₄ : l , i , j₄ ⊨ w ) ( v₄ : r , j₄ , k' ⊨ w )
+    → ( l ∣ w ∣ i ⊢ j₁ < j₂ )
+    → ( l ∣ w ∣ i ⊢ j₃ < j₄ )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min● l r loc w i j t₁ )
+              ≡ ⊨● l r loc i j w j₁ ( rij⊨w→i≤j u₁ ) ( rij⊨w→i≤j v₁ ) u₁ v₁ )
+    → ( e₄ : proj₁ ( find-<-Min● l r loc w i k' s₂ )
+              ≡ ⊨● l r loc i k' w j₄ ( rij⊨w→i≤j u₄ ) ( rij⊨w→i≤j v₄ ) u₄ v₄ )
+    → ( l ● r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-●-11 l r loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ u₁ v₁ j₂ j₃ j₄ u₄ v₄ l<j₂ l3<j₄ j₂≡j₃ e₁ e₄ =
+    let l1 = subst ( λ m → l ∣ w ∣ i ⊢ j₁ < m ) j₂≡j₃ l<j₂
+    in  seq i j k' t₁ s₂
+          ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢● x < y )
+              ( sym e₁ ) ( sym e₄ )
+              ( seq₁ i j₁ j j₄ k' u₁ v₁ u₄ v₄
+                  ( ⊢<-trans l w i j₁ j₃ j₄ l1 l3<j₄ ) ) )
+
+  {-# TERMINATING #-}
+  ⊢<-trans-●-12 : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l ● r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l ● r ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( u₁ : l , i , j₁ ⊨ w ) ( v₁ : r , j₁ , j ⊨ w )
+    → ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( u₄ : l , i , j₄ ⊨ w ) ( v₄ : r , j₄ , k' ⊨ w )
+    → ( l ∣ w ∣ i ⊢ j₁ < j₂ )
+    → ( j₃ ≡ j₄ )
+    → ( r ∣ w ∣ j₃ ⊢ k < k' )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min● l r loc w i j t₁ )
+              ≡ ⊨● l r loc i j w j₁ ( rij⊨w→i≤j u₁ ) ( rij⊨w→i≤j v₁ ) u₁ v₁ )
+    → ( e₄ : proj₁ ( find-<-Min● l r loc w i k' s₂ )
+              ≡ ⊨● l r loc i k' w j₄ ( rij⊨w→i≤j u₄ ) ( rij⊨w→i≤j v₄ ) u₄ v₄ )
+    → ( l ● r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-●-12 l r loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ u₁ v₁ j₂ j₃ j₄ u₄ v₄ l<j₂ j₃≡j₄ r<j₃<k' j₂≡j₃ e₁ e₄ =
+    seq i j k' t₁ s₂
+      ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢● x < y )
+          ( sym e₁ ) ( sym e₄ )
+          ( seq₁ i j₁ j j₄ k' u₁ v₁ u₄ v₄
+              ( subst ( λ m → l ∣ w ∣ i ⊢ j₁ < m )
+                  ( trans j₂≡j₃ j₃≡j₄ ) l<j₂ ) ) )
+
+  {-# TERMINATING #-}
+  ⊢<-trans-●-21 : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l ● r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l ● r ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( u₁ : l , i , j₁ ⊨ w ) ( v₁ : r , j₁ , j ⊨ w )
+    → ( u₄ : l , i , j₄ ⊨ w ) ( v₄ : r , j₄ , k' ⊨ w )
+    → ( j₁ ≡ j₂ )
+    → ( r ∣ w ∣ j₁ ⊢ j < k )
+    → ( l ∣ w ∣ i ⊢ j₃ < j₄ )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min● l r loc w i j t₁ )
+              ≡ ⊨● l r loc i j w j₁ ( rij⊨w→i≤j u₁ ) ( rij⊨w→i≤j v₁ ) u₁ v₁ )
+    → ( e₄ : proj₁ ( find-<-Min● l r loc w i k' s₂ )
+              ≡ ⊨● l r loc i k' w j₄ ( rij⊨w→i≤j u₄ ) ( rij⊨w→i≤j v₄ ) u₄ v₄ )
+    → ( l ● r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-●-21 l r loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ j₂ j₃ j₄ u₁ v₁ u₄ v₄ j₁≡j₂ r<j₁<k l3<j₄ j₂≡j₃ e₁ e₄ =
+    seq i j k' t₁ s₂
+      ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢● x < y )
+          ( sym e₁ ) ( sym e₄ )
+          ( seq₁ i j₁ j j₄ k' u₁ v₁ u₄ v₄
+              ( subst ( λ m → l ∣ w ∣ i ⊢ m < j₄ )
+                  ( sym ( trans j₁≡j₂ j₂≡j₃ ) ) l3<j₄ ) ) )
+
+  {-# TERMINATING #-}
+  ⊢<-trans-●-22 : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( l ● r ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( l ● r ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( l ● r ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( u₁ : l , i , j₁ ⊨ w ) ( v₁ : r , j₁ , j ⊨ w )
+    → ( u₄ : l , i , j₄ ⊨ w ) ( v₄ : r , j₄ , k' ⊨ w )
+    → ( j₁ ≡ j₂ )
+    → ( r ∣ w ∣ j₁ ⊢ j < k )
+    → ( j₃ ≡ j₄ )
+    → ( r ∣ w ∣ j₃ ⊢ k < k' )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min● l r loc w i j t₁ )
+              ≡ ⊨● l r loc i j w j₁ ( rij⊨w→i≤j u₁ ) ( rij⊨w→i≤j v₁ ) u₁ v₁ )
+    → ( e₄ : proj₁ ( find-<-Min● l r loc w i k' s₂ )
+              ≡ ⊨● l r loc i k' w j₄ ( rij⊨w→i≤j u₄ ) ( rij⊨w→i≤j v₄ ) u₄ v₄ )
+    → ( l ● r ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-●-22 l r loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ j₂ j₃ j₄ u₁ v₁ u₄ v₄ j₁≡j₂ r<j₁<k j₃≡j₄ r<j₃<k' j₂≡j₃ e₁ e₄ =
+    let j₁≡j₃ = trans j₁≡j₂ j₂≡j₃
+        j₁≡j₄ = trans j₁≡j₃ j₃≡j₄
+        tail = ⊢<-trans r w j₁ j k k' r<j₁<k
+                 ( subst ( λ m → r ∣ w ∣ m ⊢ k < k' ) ( sym j₁≡j₃ ) r<j₃<k' )
+    in  seq i j k' t₁ s₂
+          ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢● x < y )
+              ( sym e₁ ) ( sym e₄ )
+              ( seq₂ i j₁ j₄ j k' u₁ v₁ u₄ v₄ j₁≡j₄ tail ) )
+
+  -- Purpose : the ( *-head / *-head ) and ( *-head / *-tail ) combinations
+  --           of ⊢<-trans-⋆ ; the middle heads coincide by canon :
+  --           j₁ < j₂ = j₃ < j₄ ⇒ j₁ < j₄ ;  j₁ < j₂ = j₃ = j₄ ⇒ j₁ < j₄ .
+  -- Used in : ⊢<-trans-⋆ ( all-⊨∷ shape branch ) .
+  -- Idea    : as in ⊢<-trans-●-11 / -12 : the middle head equality j₂ ≡ j₃
+  --           is computed by the caller ( on with-bound concrete shapes )
+  --           and passed in ; the conclusion is a fresh *-head transported
+  --           back onto the minimal evidence with subst₂ .
+  {-# TERMINATING #-}
+  ⊢<-trans-⋆-11 : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( r * nε ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( r * nε ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( i<j₁ : i Nat.< j₁ ) ( j₁≤j : j₁ Nat.≤ j )
+    → ( u₁ : r , i , j₁ ⊨ w ) ( v₁ : r * nε ` loc , j₁ , j ⊨ w )
+    → ( i<j₄ : i Nat.< j₄ ) ( j₄≤k' : j₄ Nat.≤ k' )
+    → ( u₄ : r , i , j₄ ⊨ w ) ( v₄ : r * nε ` loc , j₄ , k' ⊨ w )
+    → ( r ∣ w ∣ i ⊢ j₁ < j₂ )
+    → ( r ∣ w ∣ i ⊢ j₃ < j₄ )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min* r nε loc w i j t₁ )
+              ≡ ⊨∷ r nε loc w i j ( j₁ , i<j₁ , j₁≤j , u₁ , v₁ ) )
+    → ( e₄ : proj₁ ( find-<-Min* r nε loc w i k' s₂ )
+              ≡ ⊨∷ r nε loc w i k' ( j₄ , i<j₄ , j₄≤k' , u₄ , v₄ ) )
+    → ( r * nε ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-⋆-11 r nε loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄
+    r<j₁<j₂ r<j₃<j₄ j₂≡j₃ e₁ e₄ =
+    let r1 = subst ( λ m → r ∣ w ∣ i ⊢ j₁ < m ) j₂≡j₃ r<j₁<j₂
+    in  star i j k' t₁ s₂
+          ( subst₂ ( λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⋆ x < y )
+              ( sym e₁ ) ( sym e₄ )
+              ( *-head i j₁ j₄ j k' i<j₁ j₁≤j i<j₄ j₄≤k' u₁ v₁ u₄ v₄
+                  ( ⊢<-trans r w i j₁ j₃ j₄ r1 r<j₃<j₄ ) ) )
+
+  {-# TERMINATING #-}
+  ⊢<-trans-⋆-12 : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( r * nε ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( r * nε ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( i<j₁ : i Nat.< j₁ ) ( j₁≤j : j₁ Nat.≤ j )
+    → ( u₁ : r , i , j₁ ⊨ w ) ( v₁ : r * nε ` loc , j₁ , j ⊨ w )
+    → ( i<j₄ : i Nat.< j₄ ) ( j₄≤k' : j₄ Nat.≤ k' )
+    → ( u₄ : r , i , j₄ ⊨ w ) ( v₄ : r * nε ` loc , j₄ , k' ⊨ w )
+    → ( r ∣ w ∣ i ⊢ j₁ < j₂ )
+    → ( j₃ ≡ j₄ )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min* r nε loc w i j t₁ )
+              ≡ ⊨∷ r nε loc w i j ( j₁ , i<j₁ , j₁≤j , u₁ , v₁ ) )
+    → ( e₄ : proj₁ ( find-<-Min* r nε loc w i k' s₂ )
+              ≡ ⊨∷ r nε loc w i k' ( j₄ , i<j₄ , j₄≤k' , u₄ , v₄ ) )
+    → ( r * nε ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-⋆-12 r nε loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄
+    r<j₁<j₂ j₃≡j₄ j₂≡j₃ e₁ e₄ =
+    star i j k' t₁ s₂
+      ( subst₂ ( λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⋆ x < y )
+          ( sym e₁ ) ( sym e₄ )
+          ( *-head i j₁ j₄ j k' i<j₁ j₁≤j i<j₄ j₄≤k' u₁ v₁ u₄ v₄
+              ( subst ( λ m → r ∣ w ∣ i ⊢ j₁ < m )
+                  ( trans j₂≡j₃ j₃≡j₄ ) r<j₁<j₂ ) ) )
+
+  -- Purpose : the ( *-tail / *-head ) and ( *-tail / *-tail ) combinations
+  --           of ⊢<-trans-⋆ ; the middle heads coincide by canon :
+  --           j₁ = j₂ = j₃ < j₄ ⇒ j₁ < j₄ ;
+  --           j₁ = j₂ = j₃ = j₄ ⇒ tail-transitivity on r * nε .
+  -- Used in : ⊢<-trans-⋆ ( all-⊨∷ shape branch ) .
+  {-# TERMINATING #-}
+  ⊢<-trans-⋆-21 : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( r * nε ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( r * nε ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( i<j₁ : i Nat.< j₁ ) ( j₁≤j : j₁ Nat.≤ j )
+    → ( u₁ : r , i , j₁ ⊨ w ) ( v₁ : r * nε ` loc , j₁ , j ⊨ w )
+    → ( i<j₄ : i Nat.< j₄ ) ( j₄≤k' : j₄ Nat.≤ k' )
+    → ( u₄ : r , i , j₄ ⊨ w ) ( v₄ : r * nε ` loc , j₄ , k' ⊨ w )
+    → ( j₁ ≡ j₂ )
+    → ( r ∣ w ∣ i ⊢ j₃ < j₄ )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min* r nε loc w i j t₁ )
+              ≡ ⊨∷ r nε loc w i j ( j₁ , i<j₁ , j₁≤j , u₁ , v₁ ) )
+    → ( e₄ : proj₁ ( find-<-Min* r nε loc w i k' s₂ )
+              ≡ ⊨∷ r nε loc w i k' ( j₄ , i<j₄ , j₄≤k' , u₄ , v₄ ) )
+    → ( r * nε ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-⋆-21 r nε loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄
+    j₁≡j₂ r<j₃<j₄ j₂≡j₃ e₁ e₄ =
+    star i j k' t₁ s₂
+      ( subst₂ ( λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⋆ x < y )
+          ( sym e₁ ) ( sym e₄ )
+          ( *-head i j₁ j₄ j k' i<j₁ j₁≤j i<j₄ j₄≤k' u₁ v₁ u₄ v₄
+              ( subst ( λ m → r ∣ w ∣ i ⊢ m < j₄ )
+                  ( sym ( trans j₁≡j₂ j₂≡j₃ ) ) r<j₃<j₄ ) ) )
+
+  {-# TERMINATING #-}
+  ⊢<-trans-⋆-22 : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( r * nε ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( r * nε ` loc ) , i , k' ⊨ w )
+    → ( j₁ : ℕ ) ( j₂ : ℕ ) ( j₃ : ℕ ) ( j₄ : ℕ )
+    → ( i<j₁ : i Nat.< j₁ ) ( j₁≤j : j₁ Nat.≤ j )
+    → ( u₁ : r , i , j₁ ⊨ w ) ( v₁ : r * nε ` loc , j₁ , j ⊨ w )
+    → ( i<j₄ : i Nat.< j₄ ) ( j₄≤k' : j₄ Nat.≤ k' )
+    → ( u₄ : r , i , j₄ ⊨ w ) ( v₄ : r * nε ` loc , j₄ , k' ⊨ w )
+    → ( j₁ ≡ j₂ )
+    → ( r * nε ` loc ∣ w ∣ j₁ ⊢ j < k )
+    → ( j₃ ≡ j₄ )
+    → ( r * nε ` loc ∣ w ∣ j₃ ⊢ k < k' )
+    → ( j₂ ≡ j₃ )
+    → ( e₁ : proj₁ ( find-<-Min* r nε loc w i j t₁ )
+              ≡ ⊨∷ r nε loc w i j ( j₁ , i<j₁ , j₁≤j , u₁ , v₁ ) )
+    → ( e₄ : proj₁ ( find-<-Min* r nε loc w i k' s₂ )
+              ≡ ⊨∷ r nε loc w i k' ( j₄ , i<j₄ , j₄≤k' , u₄ , v₄ ) )
+    → ( r * nε ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-⋆-22 r nε loc w i j k k' t₁ t₂ s₁ s₂
+    j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄
+    j₁≡j₂ tail₁ j₃≡j₄ tail₂ j₂≡j₃ e₁ e₄ =
+    let j₁≡j₃ = trans j₁≡j₂ j₂≡j₃
+        j₁≡j₄ = trans j₁≡j₃ j₃≡j₄
+        tail = ⊢<-trans ( r * nε ` loc ) w j₁ j k k' tail₁
+                 ( subst ( λ m → ( r * nε ` loc ) ∣ w ∣ m ⊢ k < k' )
+                     ( sym j₁≡j₃ ) tail₂ )
+    in  star i j k' t₁ s₂
+          ( subst₂ ( λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⋆ x < y )
+              ( sym e₁ ) ( sym e₄ )
+              ( *-tail i j₁ j₄ j k' i<j₁ j₁≤j i<j₄ j₄≤k' u₁ v₁ u₄ v₄
+                  j₁≡j₄ tail ) )
+
+  -- Purpose : the ⊨[] LHS case of ⊢<-trans-⋆ ( a-branch ) : P is
+  --           impossible , since every ⊢⋆ constructor has an ⊨∷ LHS .
+  -- Used in : ⊢<-trans-⋆ ( a-branch , min-t₁ = ⊨[] r nε loc w i ) .
+  -- Idea    : the shape constraint min-t₁ = ⊨[] r nε loc w i lets the
+  --           caller's P unify with the concrete-⊨[]-LHS premise ( the
+  --           stuck find on the RHS is absorbed by the implicit meta ) ,
+  --           then ¬⊢⋆-[]-∷ finishes .  A nested `with P` in the branch
+  --           itself is not an option : it would break Agda's with-clause
+  --           grouping ( the following shape branch gets swallowed into
+  --           the nested with : "Unexpected with patterns" ) .
+  ¬⊢⋆-min-[]-a : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i k : ℕ )
+    → { min-t₂ : ( r * nε ` loc ) , i , k ⊨ w }
+    → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r nε loc w i i k ( ⊨[] r nε loc w i ) min-t₂ → ⊥
+  ¬⊢⋆-min-[]-a r nε loc w i k { min-t₂ } P = ¬⊢⋆-[]-∷ min-t₂ P
+
+  -- Purpose : the ⊨[] LHS case of ⊢<-trans-⋆ ( b-branch ) : P' is
+  --           impossible , ditto .
+  -- Used in : ⊢<-trans-⋆ ( b-branch , min-s₁ = ⊨[] r nε loc w i ) .
+  -- Idea    : as ¬⊢⋆-min-[]-a .
+  ¬⊢⋆-min-[]-b : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i k' : ℕ )
+    → { min-s₂ : ( r * nε ` loc ) , i , k' ⊨ w }
+    → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r nε loc w i i k' ( ⊨[] r nε loc w i ) min-s₂ → ⊥
+  ¬⊢⋆-min-[]-b r nε loc w i k' { min-s₂ } P' = ¬⊢⋆-[]-∷ min-s₂ P'
+
+  -- Purpose : the * case of ⊢<-trans : glue two ⊢⋆ steps at the middle
+  --           position k .
+  -- Used in : ⊢<-trans ( * case ) .
+  -- Idea    : inspect the four minimal matches ( find-<-Min* + inspect ) and
+  --           match their shapes ; the two middle minimal matches ( of t₂
+  --           and s₁ at ( i , k ) ) coincide by find-<-Min*-canon :
+  --             min-t₁ = ⊨[]          : P impossible ( ⊢⋆ LHS is ⊨∷ ) ;
+  --             min-s₁ = ⊨[]          : P' impossible ( ditto ) ;
+  --             min-t₂ = ⊨[] , min-s₁ = ⊨∷ : i < j₃ ≤ k with k ≡ i ( ⊥ ) ;
+  --             otherwise             : one merged branch over P | P' with
+  --                                     P ∈ { *-head , *-tail } and
+  --                                     P' ∈ { *-head , *-tail ,
+  --                                             *-cons-nil } ; the
+  --                                     *-cons-nil cases ( min-s₂ = ⊨[] ,
+  --                                     k' ≡ i ) build *-cons-nil directly ;
+  --                                     the rest glue the heads via the
+  --                                     middle canon ( helpers
+  --                                     ⊢<-trans-⋆-11 .. -22 ) .
+  --           The with-branches stay trivial ( top-level helper calls ) so
+  --           that unifier state does not leak between pattern checks
+  --           ( cf. ⊢<-trans-● ) .
+  {-# TERMINATING #-}
+  ⊢<-trans-⋆ : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i j k k' : ℕ )
+    → ( t₁ : ( r * nε ` loc ) , i , j ⊨ w )
+    → ( t₂ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₁ : ( r * nε ` loc ) , i , k ⊨ w )
+    → ( s₂ : ( r * nε ` loc ) , i , k' ⊨ w )
+    → ( P : r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ k ⊢⋆
+           ( proj₁ ( find-<-Min* r nε loc w i j t₁ ) ) < ( proj₁ ( find-<-Min* r nε loc w i k t₂ ) ) )
+    → ( P' : r ∣ nε ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⋆
+           ( proj₁ ( find-<-Min* r nε loc w i k s₁ ) ) < ( proj₁ ( find-<-Min* r nε loc w i k' s₂ ) ) )
+    → ( r * nε ` loc ) ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans-⋆ r nε loc w i j k k' t₁ t₂ s₁ s₂ P P'
+    with find-<-Min* r nε loc w i j t₁ | inspect ( find-<-Min* r nε loc w i j ) t₁
+       | find-<-Min* r nε loc w i k t₂ | inspect ( find-<-Min* r nε loc w i k ) t₂
+       | find-<-Min* r nε loc w i k s₁ | inspect ( find-<-Min* r nε loc w i k ) s₁
+       | find-<-Min* r nε loc w i k' s₂ | inspect ( find-<-Min* r nε loc w i k' ) s₂
+  ... | ( min-t₁ , _ ) | [ eq₁ ] | ( min-t₂ , _ ) | [ eq₂ ]
+      | ( min-s₁ , _ ) | [ eq₃ ] | ( min-s₂ , _ ) | [ eq₄ ]
+      with min-t₁ | min-t₂ | min-s₁ | min-s₂
+  -- min-t₁ = ⊨[] : P impossible ( every ⊢⋆ constructor has an ⊨∷ LHS ) ;
+  --   the helper absorbs the stuck find on P's RHS via an implicit meta :
+  ... | ⊨[] r nε loc w i | _ | _ | _ =
+    ⊥-elim ( ¬⊢⋆-min-[]-a r nε loc w i k P )
+  -- min-s₁ = ⊨[] : P' impossible ( ditto ) :
+  ... | ⊨∷ _ _ _ _ _ _ _ | _ | ⊨[] r nε loc w i | _ =
+    ⊥-elim ( ¬⊢⋆-min-[]-b r nε loc w i k' P' )
+  -- min-t₂ = ⊨[] but min-s₁ = ⊨∷ : the shape constraint min-t₂ =
+  --   ⊨[] r nε loc w i forces k ≡ i , while the ⊨∷ payload of min-s₁
+  --   requires i < j₃ ≤ k , hence i < i :
+  ... | ⊨∷ _ _ _ _ _ _ _ | ⊨[] r nε loc w i | ⊨∷ r nε loc w i k ( j₃ , i<j₃ , j₃≤k , u₃ , v₃ ) | _ =
+    ⊥-elim ( <-irrefl refl ( ≤-trans i<j₃ j₃≤k ) )
+  -- min-s₂ = ⊨[] or ⊨∷ : one merged shape branch ( the last one ) whose
+  --     body is `with P | P'` ; P ∈ { *-head , *-tail } and
+  --     P' ∈ { *-head , *-tail , *-cons-nil } .  In the *-cons-nil cases
+  --     ( min-s₂ = ⊨[] , k' ≡ i ) the pattern check leaves k' ≟ i pending
+  --     and the body builds *-cons-nil directly ; in the *-head / *-tail
+  --     cases j₄ , i<j₄ , j₄≤k' , u₄ , v₄ are bound by the P' pattern and
+  --     the constraint min-s₂ ≡ ⊨∷ ... that the helpers need for e₄ is
+  --     carried by the pattern context .
+  ... | ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤j , u₁ , v₁ )
+      | ⊨∷ _ _ _ _ _ _ ( j₂ , i<j₂ , j₂≤k , u₂ , v₂ )
+      | ⊨∷ _ _ _ _ _ _ ( j₃ , i<j₃ , j₃≤k , u₃ , v₃ )
+      | _
+      with P | P'
+  -- *-head / *-head : j₁ < j₂ = j₃ < j₄ ⇒ j₁ < j₄ by l-transitivity :
+  ... | *-head .i .j₁ .j₂ .j .k .i<j₁ .j₁≤j .i<j₂ .j₂≤k .u₁ .v₁ .u₂ .v₂ r<j₁<j₂
+      | *-head .i .j₃ j₄ .k .k' .i<j₃ .j₃≤k i<j₄ j₄≤k' .u₃ .v₃ u₄ v₄ r<j₃<j₄ =
+    let j₂≡j₃ = cong ⊨*-head
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min*-canon r nε loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-⋆-11 r nε loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄ r<j₁<j₂ r<j₃<j₄ j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+  -- *-head / *-tail : j₁ < j₂ = j₃ = j₄ ⇒ j₁ < j₄ directly :
+  ... | *-head .i .j₁ .j₂ .j .k .i<j₁ .j₁≤j .i<j₂ .j₂≤k .u₁ .v₁ .u₂ .v₂ r<j₁<j₂
+      | *-tail .i .j₃ j₄ .k .k' .i<j₃ .j₃≤k i<j₄ j₄≤k' .u₃ .v₃ u₄ v₄ j₃≡j₄ tail₂ =
+    let j₂≡j₃ = cong ⊨*-head
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min*-canon r nε loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-⋆-12 r nε loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄ r<j₁<j₂ j₃≡j₄ j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+  -- *-head / *-cons-nil : min-s₂ = ⊨[] ( k' ≡ i ) ⇒ *-cons-nil :
+  ... | *-head .i .j₁ .j₂ .j .k .i<j₁ .j₁≤j .i<j₂ .j₂≤k .u₁ .v₁ .u₂ .v₂ r<j₁<j₂
+      | *-cons-nil .i .j₃ .k .i<j₃ .j₃≤k .u₃ .v₃ =
+    star i j k' t₁ s₂
+      ( subst₂ ( λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⋆ x < y )
+          ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₄ ) )
+          ( *-cons-nil i j₁ j i<j₁ j₁≤j u₁ v₁ ) )
+  -- *-tail / *-head : j₁ = j₂ = j₃ < j₄ ⇒ j₁ < j₄ :
+  ... | *-tail .i .j₁ .j₂ .j .k .i<j₁ .j₁≤j .i<j₂ .j₂≤k .u₁ .v₁ .u₂ .v₂ j₁≡j₂ tail₁
+      | *-head .i .j₃ j₄ .k .k' .i<j₃ .j₃≤k i<j₄ j₄≤k' .u₃ .v₃ u₄ v₄ r<j₃<j₄ =
+    let j₂≡j₃ = cong ⊨*-head
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min*-canon r nε loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-⋆-21 r nε loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄ j₁≡j₂ r<j₃<j₄ j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+  -- *-tail / *-tail : j₁ = j₂ = j₃ = j₄ ⇒ tail-transitivity on r * nε :
+  ... | *-tail .i .j₁ .j₂ .j .k .i<j₁ .j₁≤j .i<j₂ .j₂≤k .u₁ .v₁ .u₂ .v₂ j₁≡j₂ tail₁
+      | *-tail .i .j₃ j₄ .k .k' .i<j₃ .j₃≤k i<j₄ j₄≤k' .u₃ .v₃ u₄ v₄ j₃≡j₄ tail₂ =
+    let j₂≡j₃ = cong ⊨*-head
+                ( trans ( sym ( cong proj₁ eq₂ ) )
+                    ( trans ( find-<-Min*-canon r nε loc w i k t₂ s₁ )
+                            ( cong proj₁ eq₃ ) ) )
+    in  ⊢<-trans-⋆-22 r nε loc w i j k k' t₁ t₂ s₁ s₂
+          j₁ j₂ j₃ j₄ i<j₁ j₁≤j u₁ v₁ i<j₄ j₄≤k' u₄ v₄ j₁≡j₂ tail₁ j₃≡j₄ tail₂ j₂≡j₃
+          ( cong proj₁ eq₁ ) ( cong proj₁ eq₄ )
+  -- *-tail / *-cons-nil : min-s₂ = ⊨[] ( k' ≡ i ) ⇒ *-cons-nil :
+  ... | *-tail .i .j₁ .j₂ .j .k .i<j₁ .j₁≤j .i<j₂ .j₂≤k .u₁ .v₁ .u₂ .v₂ j₁≡j₂ tail₁
+      | *-cons-nil .i .j₃ .k .i<j₃ .j₃≤k .u₃ .v₃ =
+    star i j k' t₁ s₂
+      ( subst₂ ( λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ k' ⊢⋆ x < y )
+          ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₄ ) )
+          ( *-cons-nil i j₁ j i<j₁ j₁≤j u₁ v₁ ) )
+
+  {-# TERMINATING #-}
+  ⊢<-trans : ( q : RE ) ( w : List Char ) ( i j k k' : ℕ )
+    → q ∣ w ∣ i ⊢ j < k
+    → q ∣ w ∣ i ⊢ k < k'
+    → q ∣ w ∣ i ⊢ j < k'
+  ⊢<-trans ε w i j k k' () ()
+  ⊢<-trans ( $ c ` loc ) w i j k k' () ()
+  ⊢<-trans ( l + r ` loc ) w i j k k'
+    ( choice i j k t₁ t₂ ev ) ( choice i k k' s₁ s₂ ev' ) =
+    ⊢<-trans-+ l r loc w i j k k' t₁ t₂ s₁ s₂ ev ev'
+  ⊢<-trans ( l ● r ` loc ) w i j k k'
+    ( seq _ _ _ t₁ t₂ P ) ( seq _ _ _ s₁ s₂ P' ) =
+    ⊢<-trans-● l r loc w i j k k' t₁ t₂ s₁ s₂ P P'
+  ⊢<-trans ( r * nε ` loc ) w i j k k'
+    ( star _ _ _ t₁ t₂ P ) ( star _ _ _ s₁ s₂ P' ) =
+    ⊢<-trans-⋆ r nε loc w i j k k' t₁ t₂ s₁ s₂ P P'
+
+
+
+  -- Purpose : the greedy witness does not depend on the match evidence :
+  --           + is decided by the closed ⊨? , ● / * by find-<-Min● /
+  --           find-<-Min* ( evidence independent by canonicity ) .
+  -- Used in : go ( + / ● / * cases : bridging the ⊨? or ⊢-t₁ match to the
+  --           canonical payload ) .
+  -- Idea    : structural on the regex ( the + / no branch only ) ;
+  --           ● / * by find-<-Min●-canon / find-<-Min*-canon .
+  greedyU-indep : ( l : RE ) ( i j : ℕ ) ( w : List Char )
+    → ( t t' : l , i , j ⊨ w )
+    → greedyU l i j w t ≡ greedyU l i j w t'
+  greedyU-indep ε i j w t t' with t | t'
+  ... | ( ⊨ε _ _ ) | ( ⊨ε _ _ ) = refl
+  greedyU-indep ( $ c ` loc ) i j w t t' with t | t'
+  ... | ( ⊨$ _ _ _ _ _ ) | ( ⊨$ _ _ _ _ _ ) = refl
+  greedyU-indep ( l₁ + l₂ ` loc ) i j w t t' with ⊨? l₁ i j w
+  ... | yes a = refl
+  ... | no ¬a with t | t'
+  ... | ( ⊨inr _ _ _ _ _ _ b₀ ) | ( ⊨inr _ _ _ _ _ _ b₀' ) = cong RightU ( greedyU-indep l₂ i j w b₀ b₀' )
+  ... | ( ⊨inr _ _ _ _ _ _ _ ) | ( ⊨inl _ _ _ _ _ _ a₀' ) = ⊥-elim ( ¬a a₀' )
+  ... | ( ⊨inl _ _ _ _ _ _ a₀ ) | _ = ⊥-elim ( ¬a a₀ )
+  greedyU-indep ( l₁ ● l₂ ` loc ) i j w t t'
+    with find-<-Min● l₁ l₂ loc w i j t
+       | find-<-Min● l₁ l₂ loc w i j t'
+  ... | ( ⊨● _ _ _ _ .j w s₁ _ _ a₁ b₁ , ev₁₀ )
+     | ( ⊨● _ _ _ _ .j w s₁' _ _ a₁' b₁' , ev₂₀ )
+    with trichotomy l₁ w i s₁ s₁' a₁ a₁'
+  ... | inj₂ ( inj₁ s₁≡s₁' )
+    rewrite s₁≡s₁' | sym s₁≡s₁' =
+    cong₂ PairU ( greedyU-indep l₁ i s₁ w a₁ a₁' )
+               ( greedyU-indep l₂ s₁ j w b₁ b₁' )
+  ... | inj₁ s₁'<s₁ =
+    ⊥-elim ( <-Min●-¬ex ev₁₀ ( s₁' , a₁' , b₁' , s₁'<s₁ ) )
+  ... | inj₂ ( inj₂ s₁<s₁' ) =
+    ⊥-elim ( <-Min●-¬ex ev₂₀ ( s₁ , a₁ , b₁ , s₁<s₁' ) )
+  greedyU-indep ( r * nε ` loc ) i j w t t'
+    = cong ( ListU { r } { nε } { loc } )
+        ( cong ( greedyList r nε loc i j w )
+              ( find-<-Min*-canon r nε loc w i j t t' ) )
+
+  -- Purpose : the <-Min● evidence of a ⊨● canonical form carries its
+  --           ¬ex side condition ( no smaller l-split matches ) .
+  -- Used in : greedyU-indep ( ● case : uniqueness of the canonical split ) ,
+  --           ⊢-strict ( ● case : the seq₁ refutation ) .
+  -- Idea    : read the ¬ex field of <-min-● .
+  <-Min●-¬ex : ∀ { l r : RE } { loc : ℕ } { w : List Char }
+    { i j s : ℕ } { a : l , i , s ⊨ w } { b : r , s , j ⊨ w }
+    → ( e : <-Min● l r loc w i j ( ⊨● l r loc i j w s (rij⊨w→i≤j a) (rij⊨w→i≤j b) a b ) )
+    → ¬ ( ∃[ s' ] ( l , i , s' ⊨ w ) × ( r , s' , j ⊨ w ) × ( l ∣ w ∣ i ⊢ s' < s ) )
+  <-Min●-¬ex ( <-min-● _ _ _ _ _ _ _ _ _ _ _ ¬ex ) = ¬ex
+
+
+  -- Purpose : for a parse at span ( i , k ) whose flat is the prefix w₁ of
+  --           drop i w , the tail w₂ is drop k w ; returns the length /
+  --           tail side conditions re-stated for the parse flat a .
+  -- Used in : go ( + case ) , greedy-max ( + case ) .
+  -- Idea    : prefix→take + take++drop≡id + ++-cancelˡ + drop-drop .
+  w₂→dropk : ( w : List Char ) ( i k : ℕ )
+    → ( w₁ w₂ a : List Char )
+    → ( fa : a ≡ w₁ )
+    → ( fl : length w₁ ≡ k ∸ i )
+    → ( fw : w₁ ++ w₂ ≡ drop i w )
+    → ( i≤k : i Nat.≤ k )
+    → ( length a ≡ k ∸ i ) × ( a ++ drop k w ≡ drop i w )
+  w₂→dropk w i k w₁ w₂ a fa fl fw i≤k = fl-a , fw-a
+    where
+      -- w₁ ≡ take ( k ∸ i ) ( drop i w ) .
+      w₁≡take : w₁ ≡ take ( k ∸ i ) ( drop i w )
+      w₁≡take = prefix→take w₁ w₂ ( drop i w ) ( k ∸ i ) fw fl
+
+      -- take ( k ∸ i ) ( drop i w ) ++ drop ( k ∸ i ) ( drop i w )
+      -- ≡ take ( k ∸ i ) ( drop i w ) ++ w₂ .
+      cancel-prem : take ( k ∸ i ) ( drop i w ) ++ drop ( k ∸ i ) ( drop i w )
+                  ≡
+                  take ( k ∸ i ) ( drop i w ) ++ w₂
+      cancel-prem =
+        begin
+          take ( k ∸ i ) ( drop i w ) ++ drop ( k ∸ i ) ( drop i w )
+        ≡⟨ take++drop≡id ( k ∸ i ) ( drop i w ) ⟩
+          drop i w
+        ≡⟨ sym fw ⟩
+          w₁ ++ w₂
+        ≡⟨ sym ( cong ( λ xs → xs ++ w₂ ) ( sym w₁≡take ) ) ⟩
+          take ( k ∸ i ) ( drop i w ) ++ w₂
+        ∎
+
+      -- w₂ ≡ drop ( k ∸ i ) ( drop i w ) .
+      w₂≡drop : w₂ ≡ drop ( k ∸ i ) ( drop i w )
+      w₂≡drop =
+        ++-cancelˡ ( take ( k ∸ i ) ( drop i w ) )
+                   w₂
+                   ( drop ( k ∸ i ) ( drop i w ) )
+                   ( sym cancel-prem )
+
+      -- w₂ ≡ drop k w .
+      -- drop-drop : drop ( k ∸ i ) ( drop i w ) ≡ drop ( i + ( k ∸ i ) ) w .
+      w₂≡dropk : w₂ ≡ drop k w
+      w₂≡dropk =
+        trans w₂≡drop
+          ( trans ( drop-drop i ( k ∸ i ) w )
+                ( cong ( λ n → drop n w ) ( m+[n∸m]≡n i≤k ) ) )
+
+      -- length a ≡ k ∸ i .
+      fl-a : length a ≡ k ∸ i
+      fl-a = trans ( cong length fa ) fl
+
+      -- a ++ drop k w ≡ drop i w .
+      fw-a : a ++ drop k w ≡ drop i w
+      fw-a =
+        begin
+          a ++ drop k w
+        ≡⟨ cong ( λ xs → xs ++ drop k w ) fa ⟩
+          w₁ ++ drop k w
+        ≡⟨ cong ( w₁ ++_ ) ( sym w₂≡dropk ) ⟩
+          w₁ ++ w₂
+        ≡⟨ fw ⟩
+          drop i w
+        ∎
+
+
+  -- Purpose : a positive number is not ≤ 0 .
+  -- Used in : take-inj ( the empty-list clauses ) .
+  -- Idea    : no constructor of ≤ builds suc n ≤ 0 .
+  ¬suc≤0 : ( n : ℕ ) → ¬ ( suc n ≤ zero )
+  ¬suc≤0 _ ()
+
+
+  -- Purpose : take 0 is [] , but a positive take of a non-empty list is
+  --           non-empty : the two are unequal .
+  -- Used in : take-inj ( the non-empty zero clauses ) .
+  -- Idea    : with on p : both sides reduce to clashing list constructors .
+  ¬take0-takepos : ( x : Char ) ( xs : List Char ) ( n : ℕ )
+    → ( p : take 0 ( x ∷ xs ) ≡ take ( suc n ) ( x ∷ xs ) ) → ⊥
+  ¬take0-takepos x xs n p with p
+  ... | ()
+
+
+  -- Purpose : two prefixes of the same word of length ≤ |word| are equal
+  --           only if their lengths agree .
+  -- Used in : go ( * case : the *-head equal-head refutation ) .
+  -- Idea    : induction on the word .
+  take-inj : ( xs : List Char ) ( a b : ℕ )
+    → a ≤ length xs → b ≤ length xs
+    → take a xs ≡ take b xs → a ≡ b
+  take-inj [] zero zero _ _ _ = refl
+  take-inj [] zero ( suc _ ) _ b≤ _ = ⊥-elim ( ¬suc≤0 _ b≤ )
+  take-inj [] ( suc _ ) _ a≤ _ _ = ⊥-elim ( ¬suc≤0 _ a≤ )
+  take-inj ( _ ∷ xs ) zero zero _ _ _ = refl
+  take-inj ( _ ∷ xs ) zero ( suc b' ) _ b≤ p = ⊥-elim ( ¬take0-takepos _ xs b' p )
+  take-inj ( _ ∷ xs ) ( suc a' ) zero a≤ _ p = ⊥-elim ( ¬take0-takepos _ xs a' ( sym p ) )
+  take-inj ( _ ∷ xs ) ( suc a' ) ( suc b' ) a≤ b≤ p
+    = cong suc ( take-inj xs a' b' ( ≤-pred a≤ ) ( ≤-pred b≤ )
+                 ( proj₂ ( ∷-injective p ) ) )
+
+
+  -- Purpose : a take within the word length keeps its full length .
+  -- Used in : <-greedy-sound-go ( the length side condition of the witness ) .
+  -- Idea    : induction on n .
+  take≤length : ( xs : List Char ) ( n : ℕ )
+    → n ≤ length xs → length (take n xs) ≡ n
+  take≤length _ zero _ = refl
+  take≤length [] ( suc n ) ()
+  take≤length ( _ ∷ xs ) ( suc n ) ( s≤s n≤len ) =
+    cong suc ( take≤length xs n n≤len )
+
+
+  -- Purpose : the end of a non-degenerate match span lies within the word
+  --           ( the degenerate ⊨[] span ( i , i ) carries no bound ) .
+  -- Used in : go ( * case : the take-inj bounds of the *-head refutation ) ,
+  --           <-greedy-sound-go ( the length side condition ) .
+  -- Idea    : induction on the match evidence ; the $ case on the start .
+  {-# TERMINATING #-}
+  match→end≤len : ( r : RE ) ( i j : ℕ ) ( w : List Char )
+    → ( i Nat.< j ) → ( r , i , j ⊨ w ) → j ≤ length w
+  match→end≤len ε i j w i<j ( ⊨ε _ _ ) = ⊥-elim ( <-irrefl refl i<j )
+  match→end≤len ( $ c ` loc ) i ( suc i ) [] i<sucI ( ⊨$ _ _ .i [] p ) with p
+  ... | ()
+  match→end≤len ( $ c ` loc ) i ( suc i ) ( x ∷ ws ) i<sucI ( ⊨$ _ _ .i ( x ∷ ws ) p ) with i
+  ... | zero = +-monoʳ-≤ 1 z≤n
+  ... | ( suc i' ) with i<sucI
+  ... | ( s≤s i'<sucI' ) = +-monoʳ-≤ 1 ( match→end≤len ( $ c ` loc ) i' ( suc i' ) ws i'<sucI' ( ⊨$ c loc i' ws p ) )
+  match→end≤len ( l₁ + l₂ ` loc ) i j w i<j ( ⊨inl _ _ _ _ _ _ t₁ ) =
+    match→end≤len l₁ i j w i<j t₁
+  match→end≤len ( l₁ + l₂ ` loc ) i j w i<j ( ⊨inr _ _ _ _ _ _ t₁ ) =
+    match→end≤len l₂ i j w i<j t₁
+  match→end≤len ( l₁ ● l₂ ` loc ) i j w i<j ( ⊨● _ _ _ _ .j w s _ _ t₁ t₂ )
+    with m≤n⇒m<n∨m≡n ( rij⊨w→i≤j t₂ )
+  ... | inj₁ s<j = match→end≤len l₂ s j w s<j t₂
+  ... | inj₂ s≡j = match→end≤len l₁ i j w i<j
+                   ( subst ( λ x → l₁ , i , x ⊨ w ) s≡j t₁ )
+  match→end≤len ( r * nε ` loc ) i j w i<j ( ⊨[] _ _ _ _ _ ) =
+    ⊥-elim ( <-irrefl refl i<j )
+  match→end≤len ( r * nε ` loc ) i j w i<j ( ⊨∷ _ _ _ _ _ _ ( s , i<s , s≤j , t₁ , t₂ ) )
+    with m≤n⇒m<n∨m≡n s≤j
+  ... | inj₁ s<j = match→end≤len ( r * nε ` loc ) s j w s<j t₂
+  ... | inj₂ s≡j = subst ( λ x → x ≤ length w ) s≡j
+                   ( match→end≤len r i s w i<s t₁ )
+
+
+  -- Purpose : the base order is strict : no match is below itself .
+  -- Used in : go ( * case : the *-head / *-tail equal-head refutations ) .
+  -- Idea    : structural on the regex ; the * case descends on the span
+  --           ( the tail start strictly increases along *-tail ) .
+  {-# TERMINATING #-}
+  ⊢-strict : ( q : RE ) ( w : List Char ) ( i j : ℕ )
+    → ( q ∣ w ∣ i ⊢ j < j ) → ⊥
+  ⊢-strict ε w i j ()
+  ⊢-strict ( $ c ` loc ) w i j ()
+  ⊢-strict ( l + r ` loc ) w i j p with p
+  ... | ( choice i .j .j t₁ t₂ ev ) = ⊢-strict⁺ l r loc w i j t₁ t₂ ev
+  ⊢-strict ( l ● r ` loc ) w i j p with p
+  ... | ( seq i .j .j t₁ t₂ P )
+    with find-<-Min● l r loc w i j t₁
+       | find-<-Min● l r loc w i j t₂
+  ... | ( ⊨● _ _ _ _ .j w s₁ _ _ a₁ b₁ , ev₁₀ )
+     | ( ⊨● _ _ _ _ .j w s₂ _ _ a₂ b₂ , ev₂₀ )
+    with P
+  ... | ( seq₂ _ s₁ s₂ .j .j a₁ b₁ a₂ b₂ _ ord' ) = ⊢-strict r w s₁ j ord'
+  ... | ( seq₁ _ s₁ .j s₂ .j a₁ b₁ a₂ b₂ ord ) =
+    ⊥-elim ( <-Min●-¬ex ev₂₀ ( s₁ , a₁ , b₁ , ord ) )
+  ⊢-strict ( r * nε ` loc ) w i j p with p
+  ... | ( star i j j t₁ t₂ P )
+    with m≤n⇒m<n∨m≡n ( rij⊨w→i≤j t₁ )
+  ... | inj₁ _ = ⊢-strict⋆-suc r nε loc w i j t₁ t₂ P
+  ... | inj₂ i≡j = ⊢-strict⋆-zero r nε loc w i j t₁ t₂ P i≡j
+
+  -- Purpose : the degenerate span of ⊢-strict ( * case ) : with i ≡ j the
+  --           head split s of ⊨∷ ( i , j , … ) would satisfy i < s ≤ i .
+  -- Used in : ⊢-strict ( * case ) .
+  -- Idea    : ⊨[] head : no ⊢⋆ constructor has a ⊨[] left-hand side ;
+  --           ⊨∷ head : i < s ≤ i .
+  ⊢-strict⋆-zero : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char )
+    ( i j : ℕ ) → ( t₁ t₂ : r * nε ` loc , i , j ⊨ w )
+    → ( P : r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⋆
+           ( proj₁ ( find-<-Min* r nε loc w i j t₁ ) )
+           < ( proj₁ ( find-<-Min* r nε loc w i j t₂ ) ) )
+    → ( i≡j : i ≡ j ) → ⊥
+  ⊢-strict⋆-zero r nε loc w i j ( ⊨[] _ _ _ _ _ ) t₂ P i≡j with P
+  ... | ()
+  ⊢-strict⋆-zero r nε loc w i j ( ⊨∷ _ _ _ _ _ _ ( s , i<s , s≤j , _ , _ ) ) t₂ P i≡j =
+    ⊥-elim ( <-irrefl i≡j ( ≤-trans i<s s≤j ) )
+
+  -- Purpose : the non-degenerate span of ⊢-strict ( * case ) : the
+  --           canonical head of ( i , j ) is unique ( *-head ) and the tail
+  --           start strictly increases ( *-tail ) .
+  -- Used in : ⊢-strict ( * case ) .
+  -- Idea    : ⊨[] head : no ⊢⋆ constructor has a ⊨[] left-hand side ;
+  --           *-head contradicts the ¬ex side condition of the minimal
+  --           ⊨∷ ( <-min-∷ ) ; *-tail by the strict span .
+  ⊢-strict⋆-suc : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char )
+    ( i j : ℕ ) → ( t₁ t₂ : r * nε ` loc , i , j ⊨ w )
+    → ( P : r ∣ nε ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⋆
+           ( proj₁ ( find-<-Min* r nε loc w i j t₁ ) )
+           < ( proj₁ ( find-<-Min* r nε loc w i j t₂ ) ) )
+    → ⊥
+  ⊢-strict⋆-suc r nε loc w i j t₁ t₂ P
+    with find-<-Min* r nε loc w i j t₁
+       | find-<-Min* r nε loc w i j t₂
+  ... | ( min-t₁ , _ ) | ( min-t₂ , ev₂₀ )
+    with min-t₁
+  ... | ( ⊨[] _ _ _ _ _ )
+    = ⊥-elim ( ¬⊢⋆-[]-∷ min-t₂ P )
+  ... | ( ⊨∷ _ _ _ _ _ _ ( s₁ , i<s₁ , s₁≤j , h₁ , t₁t ) ) with min-t₂
+  ... | ( ⊨[] _ _ _ _ _ ) = ⊥-elim ( <-irrefl refl ( ≤-trans i<s₁ s₁≤j ) )
+  ... | ( ⊨∷ _ _ _ _ _ _ ( s₂ , i<s₂ , s₂≤j , h₂ , t₂t ) ) with P
+  ... | ( *-tail i s₁ s₂ j j i<s₁ s₁≤j i<s₂ s₂≤j h₁ t₁t h₂ t₂t _ ord' )
+    = ⊢-strict ( r * nε ` loc ) w s₁ j ord'
+  ... | ( *-head i s₁ s₂ j j i<s₁ s₁≤j i<s₂ s₂≤j h₁ t₁t h₂ t₂t ord )
+    with ev₂₀
+  ... | ( <-min-∷ _ _ _ _ _ _ _ _ _ _ _ _ ¬ex₂ ) =
+    ⊥-elim ( ¬ex₂ ( s₁ , i<s₁ , s₁≤j , h₁ , t₁t , ord ) )
+
+  -- Purpose : the + case of ⊢-strict : ⊨? decides the canonical shape of
+  --           Min⁺ ( Min⁺-inl / Min⁺-inr ) ; ev is transported onto that
+  --           shape , where only inlinl / inrinr remain , each carrying the
+  --           strict l / r base order .
+  -- Used in : ⊢-strict ( + case ) .
+  -- Idea    : ⊨? = yes : both canonical forms are ⊨inl ( Min⁺-inl ) ;
+  --           ⊨? = no : both canonical forms are ⊨inr ( Min⁺-inr ) .
+  ⊢-strict⁺ : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+    → ( t₁ t₂ : l + r ` loc , i , j ⊨ w )
+    → ( ev : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⁺
+           ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i j t₂ ) )
+    → ⊥
+  ⊢-strict⁺ l r loc w i j t₁ t₂ ev with ⊨? l i j w
+  ... | yes a = ⊢-strict⁺-yes l r loc w i j a t₁ t₂ ev
+  ... | no ¬a
+    = let e₁ = Min⁺-inr l r loc w i j ¬a t₁
+          e₂ = Min⁺-inr l r loc w i j ¬a t₂
+      in
+      ⊢-strict⁺-inrinrinr l r loc w i j ( proj₁ e₁ ) ( proj₁ e₂ )
+        ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⁺ x < y )
+                 ( proj₂ e₁ ) ( proj₂ e₂ ) ev )
+
+  -- ⊨? = yes : transport ev onto the canonical ⊨inl shape ( Min⁺-inl ) .
+  ⊢-strict⁺-yes : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+    ( a : l , i , j ⊨ w )
+    ( t₁ t₂ : l + r ` loc , i , j ⊨ w )
+    ( ev : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⁺
+            ( Min⁺ l r loc w i j t₁ ) < ( Min⁺ l r loc w i j t₂ ) )
+    → ⊥
+  ⊢-strict⁺-yes l r loc w i j a t₁ t₂ ev =
+    let e₁ = Min⁺-inl l r loc w i j a t₁
+        e₂ = Min⁺-inl l r loc w i j a t₂
+    in
+    ⊢-strict⁺-inlinlinl l r loc w i j ( proj₁ e₁ ) ( proj₁ e₂ )
+      ( subst₂ ( λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⁺ x < y )
+               ( proj₂ e₁ )
+               ( proj₂ e₂ )
+               ev )
+
+  -- canonical shape inl / inl : only inlinl , with the strict l order .
+  ⊢-strict⁺-inlinlinl : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+    ( a₁ a₂ : l , i , j ⊨ w )
+    ( ev : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⁺
+            ( ⊨inl l r loc i j w a₁ ) < ( ⊨inl l r loc i j w a₂ ) )
+    → ⊥
+  ⊢-strict⁺-inlinlinl l r loc w i j a₁ a₂ ev with ev
+  ... | ( inlinl _ _ _ _ _ ord ) = ⊢-strict l w i j ord
+
+  -- canonical shape inr / inr : only inrinr , with the strict r order .
+  ⊢-strict⁺-inrinrinr : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i j : ℕ )
+    ( b₁ b₂ : r , i , j ⊨ w )
+    → ( ev : l ∣ r ∣ loc ∣ w ∣ i ∣ j ∣ j ⊢⁺
+           ( ⊨inr l r loc i j w b₁ ) < ( ⊨inr l r loc i j w b₂ ) )
+    → ⊥
+  ⊢-strict⁺-inrinrinr l r loc w i j b₁ b₂ ev with ev
+  ... | ( inrinr _ _ _ _ _ ord ) = ⊢-strict r w i j ord
+
+
+  -- Purpose : the left ( smaller-span ) match carried by a base-order proof .
+  -- Used in : go , greedy-max , <-greedy-sound-go ( the witness span ) .
+  -- Idea    : every ⊢ constructor carries the raw matches .
+  ⊢-t₁ : ( r : RE ) ( w : List Char ) ( i j k : ℕ )
+    → ( r ∣ w ∣ i ⊢ j < k ) → ( r , i , j ⊨ w )
+  ⊢-t₁ _ _ _ _ _ ( choice i j k t₁ _ _ ) = t₁
+  ⊢-t₁ _ _ _ _ _ ( seq i j k t₁ _ _ ) = t₁
+  ⊢-t₁ _ _ _ _ _ ( star i j k t₁ _ _ ) = t₁
+
+
+  -- Purpose : when l₁ matches the span ( a ) , the greedy parse of the
+  --           + regex is a LeftU carrying the greedy parse of a ,
+  --           independent of the evidence of t .
+  -- Used in : go ( + case : the LeftU bridge ) .
+  -- Idea    : greedyU-indep to the Min⁺ shape , Min⁺-inl to the ⊨inl
+  --           shape , then the + clause of greedyU ( the ⊨? = yes branch )
+  --           with greedyU-indep on the payload .
+  greedyU-+inl : ( l₁ l₂ : RE ) ( loc : ℕ ) ( i j : ℕ ) ( w : List Char )
+    → ( t : ( l₁ + l₂ ` loc ) , i , j ⊨ w )
+    → ( a : l₁ , i , j ⊨ w )
+    → greedyU ( l₁ + l₂ ` loc ) i j w t ≡ LeftU ( greedyU l₁ i j w a )
+  greedyU-+inl l₁ l₂ loc i j w t a
+    = trans ( greedyU-indep ( l₁ + l₂ ` loc ) i j w
+                        t ( Min⁺ l₁ l₂ loc w i j t ) )
+            ( trans ( cong ( greedyU ( l₁ + l₂ ` loc ) i j w )
+                          ( proj₂ ( Min⁺-inl l₁ l₂ loc w i j a t ) ) )
+                    ( inlU ( proj₁ ( Min⁺-inl l₁ l₂ loc w i j a t ) )
+                            a ) )
+    where
+      inlU : ( a' a'' : l₁ , i , j ⊨ w )
+        → greedyU ( l₁ + l₂ ` loc ) i j w
+                   ( ⊨inl l₁ l₂ loc i j w a' )
+          ≡ LeftU ( greedyU l₁ i j w a'' )
+      inlU a' a'' with ⊨? l₁ i j w
+      ... | yes a₀ = cong LeftU ( greedyU-indep l₁ i j w a₀ a'' )
+      ... | no ¬a₀ = ⊥-elim ( ¬a₀ a' )
+
+
+  -- Purpose : the dual of greedyU-+inl : when l₁ does not match the span
+  --           ( ¬a ) , the greedy parse of the + regex is a RightU
+  --           carrying the greedy parse of the l₂ match b .
+  -- Used in : go ( + case : the RightU bridge ) .
+  -- Idea    : greedyU-indep to the Min⁺ shape , Min⁺-inr to the ⊨inr
+  --           shape , then the + clause of greedyU ( the ⊨? = no branch )
+  --           with greedyU-indep on the payload .
+  greedyU-+inr : ( l₁ l₂ : RE ) ( loc : ℕ ) ( i j : ℕ ) ( w : List Char )
+    → ( t : ( l₁ + l₂ ` loc ) , i , j ⊨ w )
+    → ( b : l₂ , i , j ⊨ w )
+    → ( ¬a : ¬ ( l₁ , i , j ⊨ w ) )
+    → greedyU ( l₁ + l₂ ` loc ) i j w t ≡ RightU ( greedyU l₂ i j w b )
+  greedyU-+inr l₁ l₂ loc i j w t b ¬a
+    = trans ( greedyU-indep ( l₁ + l₂ ` loc ) i j w
+                        t ( Min⁺ l₁ l₂ loc w i j t ) )
+            ( trans ( cong ( greedyU ( l₁ + l₂ ` loc ) i j w )
+                          ( proj₂ ( Min⁺-inr l₁ l₂ loc w i j ¬a t ) ) )
+                    ( inrU ( proj₁ ( Min⁺-inr l₁ l₂ loc w i j ¬a t ) )
+                            b ) )
+    where
+      inrU : ( b' b'' : l₂ , i , j ⊨ w )
+        → greedyU ( l₁ + l₂ ` loc ) i j w
+                   ( ⊨inr l₁ l₂ loc i j w b' )
+          ≡ RightU ( greedyU l₂ i j w b'' )
+      inrU b' b'' with ⊨? l₁ i j w
+      ... | yes a₀ = ⊥-elim ( ¬a a₀ )
+      ... | no ¬a₀ = cong RightU ( greedyU-indep l₂ i j w b' b'' )
+
+
+  -- Purpose : the greedy head list of a * match : greedyList on the
+  --           find-<-Min* canonical evidence .
+  -- Used in : go ( * case : the *-tail branch ) .
+  -- Idea    : one line ; the canonical evidence re-canonicalizes the tail
+  --           at every step ( see greedyList ) .
+  greedyList-max : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char )
+    → ( i k : ℕ )
+    → ( t : r * nε ` loc , i , k ⊨ w )
+    → List ( U r )
+  greedyList-max r nε loc w i k t
+    = greedyList r nε loc i k w
+        ( proj₁ ( find-<-Min* r nε loc w i k t ) )
+
+
+  -- Purpose : the greedy witness of the span ( i , k ) : the greedy parse
+  --           of the match evidence .
+  -- Used in : <-greedy-sound-go ( the right-hand greedy witness ) .
+  -- Idea    : a name for clarity ; greedyU is evidence independent
+  --           ( greedyU-indep ) .
+  greedy-max : ( r : RE ) ( w : List Char ) ( i k : ℕ )
+    → ( t : r , i , k ⊨ w ) → U r
+  greedy-max r w i k t = greedyU r i k w t
+
+
+  -- Purpose : transport the LEFT sub-witness of a ● split across an
+  --           equality of the split position , carrying the sub-evidence
+  --           via subst ( fixes the left endpoint i ) .
+  -- Used in : greedyU-●-pair-transport , go ( * case : *-tail branch ,
+  --           head≡ ) .
+  -- Idea    : single refl clause ( path induction on the split equality ) ;
+  --           in the refl case the subst is the identity , so refl .
+  greedyU-●-L-transport : ( l₁ : RE ) ( i : ℕ ) ( w : List Char )
+    → ( s s' : ℕ ) → ( s≡s' : s ≡ s' )
+    → ( a : l₁ , i , s ⊨ w )
+    → greedyU l₁ i s w a
+        ≡ greedyU l₁ i s' w ( subst ( λ m → l₁ , i , m ⊨ w ) s≡s' a )
+  greedyU-●-L-transport l₁ i w s s' s≡s' a with s≡s'
+  ... | refl = refl
+
+
+  -- Purpose : transport the RIGHT sub-witness of a ● split across an
+  --           equality of the split position , carrying the sub-evidence
+  --           via subst ( fixes the right endpoint k ) .
+  -- Used in : greedyU-●-pair-transport .
+  -- Idea    : single refl clause ( path induction on the split equality ) ;
+  --           in the refl case the subst is the identity , so refl .
+  greedyU-●-R-transport : ( l₂ : RE ) ( k : ℕ ) ( w : List Char )
+    → ( s s' : ℕ ) → ( s≡s' : s ≡ s' )
+    → ( b : l₂ , s , k ⊨ w )
+    → greedyU l₂ s k w b
+        ≡ greedyU l₂ s' k w ( subst ( λ m → l₂ , m , k ⊨ w ) s≡s' b )
+  greedyU-●-R-transport l₂ k w s s' s≡s' b with s≡s'
+  ... | refl = refl
+
+
+  -- Purpose : transport the whole ● pair-witness across an equality of
+  --           the split position ( s₂ ≡ s₂c ) , from the ( s₂ , a₂ , b₂ )
+  --           decomposition to the ( s₂c , a₂c , b₂c ) decomposition .
+  -- Used in : go ( ● case , both the seq₁ / seq₂ branches ) .
+  -- Idea    : first transport each sub-witness across the split ( carrying
+  --           the sub-evidence via subst ) , then swap the carried
+  --           sub-evidence to the target one ( greedyU-indep ) ; the body
+  --           is entirely literal ( no with , no rewrite , no
+  --           with-equation reliance ) .
+  greedyU-●-pair-transport : ( l₁ l₂ : RE ) ( loc : ℕ ) ( i k : ℕ ) ( w : List Char )
+    → ( s₂ s₂c : ℕ )
+    → ( a₂ : l₁ , i , s₂ ⊨ w ) ( b₂ : l₂ , s₂ , k ⊨ w )
+    → ( a₂c : l₁ , i , s₂c ⊨ w ) ( b₂c : l₂ , s₂c , k ⊨ w )
+    → ( bridge : s₂ ≡ s₂c )
+    → PairU ( greedyU l₁ i s₂ w a₂ ) ( greedyU l₂ s₂ k w b₂ )
+        ≡ PairU ( greedyU l₁ i s₂c w a₂c ) ( greedyU l₂ s₂c k w b₂c )
+  greedyU-●-pair-transport l₁ l₂ loc i k w s₂ s₂c a₂ b₂ a₂c b₂c bridge
+    = trans ( cong₂ ( λ x y → PairU x y )
+              ( greedyU-●-L-transport l₁ i w s₂ s₂c bridge a₂ )
+              ( greedyU-●-R-transport l₂ k w s₂ s₂c bridge b₂ ) )
+            ( cong₂ ( λ x y → PairU x y )
+              ( greedyU-indep l₁ i s₂c w a₂t a₂c )
+              ( greedyU-indep l₂ s₂c k w b₂t b₂c ) )
+    where
+      a₂t : l₁ , i , s₂c ⊨ w
+      a₂t = subst ( λ m → l₁ , i , m ⊨ w ) bridge a₂
+      b₂t : l₂ , s₂c , k ⊨ w
+      b₂t = subst ( λ m → l₂ , m , k ⊨ w ) bridge b₂
+
+
+  -- Purpose : the greedy witness of a * match on the degenerate span
+  --           ( i , i ) is the empty list ( only ⊨[] inhabits that span ;
+  --           ⊨∷ would force i < j ≤ i ) .
+  -- Used in : go ( * case : the ⊨∷ / ⊨[] branch , the RHS transport ) .
+  -- Idea    : the ⊨[] clauses of greedyU / find-<-Min* / greedyList all
+  --           compute , so refl ; the ⊨∷ case is empty ( <-irrefl ) .
+  greedyU-⋆-[] : ( r₀ : RE ) ( nε : ε∉ r₀ ) ( loc : ℕ ) ( w : List Char )
+    → ( i : ℕ ) → ( t : ( r₀ * nε ` loc ) , i , i ⊨ w )
+    → greedyU ( r₀ * nε ` loc ) i i w t ≡ ListU []
+  greedyU-⋆-[] r₀ nε loc w i t with t
+  ... | ( ⊨[] _ _ _ _ _ ) = refl
+  ... | ( ⊨∷ _ _ _ _ _ _ ( j , i<j , j≤i , _ , _ ) )
+    = ⊥-elim ( <-irrefl refl ( ≤-trans i<j j≤i ) )
+
+
+  -- Purpose : the greedy head list of a * match whose canonical evidence
+  --           decomposes as the ⊨∷ head ( j₂ , h₂ , tl₂ ) , stated in the
+  --           raw t₂₀ projection form : the cons of the greedy head parse
+  --           and the re-canonicalized tail equals greedyList on the
+  --           find-<-Min* canonical evidence of t₂₀ .
+  -- Used in : go ( * case : the ⊨∷ / ⊨∷ branches ( *-head / *-tail ) ,
+  --           RHS transport , first step ) .
+  -- Idea    : greedyList's ⊨∷ clause computes on the explicit ⊨∷ shape ;
+  --           min₂₀ rewrites the canonical evidence back to t₂₀'s
+  --           projection ( greedyList-max unfolds ) .
+  greedyU-⋆-∷-rhs : ( r₀ : RE ) ( nε : ε∉ r₀ ) ( loc : ℕ ) ( w : List Char )
+    → ( i k : ℕ ) → ( t₂₀ : ( r₀ * nε ` loc ) , i , k ⊨ w )
+    → ( j₂ : ℕ ) → ( i<j₂ : i Nat.< j₂ ) → ( j₂≤k : j₂ Nat.≤ k )
+    → ( h₂ : r₀ , i , j₂ ⊨ w ) → ( tl₂ : r₀ * nε ` loc , j₂ , k ⊨ w )
+    → ( min₂₀ : proj₁ ( find-<-Min* r₀ nε loc w i k t₂₀ )
+             ≡ ⊨∷ r₀ nε loc w i k ( j₂ , i<j₂ , j₂≤k , h₂ , tl₂ ) )
+    → ListU ( greedyU r₀ i j₂ w h₂
+         ∷ greedyList-max r₀ nε loc w j₂ k tl₂ )
+      ≡ ListU ( greedyList r₀ nε loc i k w
+                    ( proj₁ ( find-<-Min* r₀ nε loc w i k t₂₀ ) ) )
+  greedyU-⋆-∷-rhs r₀ nε loc w i k t₂₀ j₂ i<j₂ j₂≤k h₂ tl₂ min₂₀
+    = begin
+      ListU ( greedyU r₀ i j₂ w h₂
+           ∷ greedyList-max r₀ nε loc w j₂ k tl₂ )
+    ≡⟨⟩
+      ListU ( greedyU r₀ i j₂ w h₂
+           ∷ greedyList r₀ nε loc j₂ k w
+                 ( proj₁ ( find-<-Min* r₀ nε loc w j₂ k tl₂ ) ) )
+    ≡⟨⟩
+      ListU ( greedyList r₀ nε loc i k w
+                   ( ⊨∷ r₀ nε loc w i k ( j₂ , i<j₂ , j₂≤k , h₂ , tl₂ ) ) )
+    ≡⟨ cong ( ListU { r₀ } { nε } { loc } )
+            ( cong ( greedyList r₀ nε loc i k w ) ( sym min₂₀ ) ) ⟩
+      ListU ( greedyList r₀ nε loc i k w
+                   ( proj₁ ( find-<-Min* r₀ nε loc w i k t₂₀ ) ) )
+    ∎
+
+
+  -- Purpose : transport the greedy head list of a * match across an
+  --           equality of the left span endpoint , carrying the evidence
+  --           via subst ( fixes the right endpoint k ) .
+  -- Used in : go ( * case : the *-tail branch , tail> ) .
+  -- Idea    : single refl clause ( path induction on the span equality ) ;
+  --           in the refl case the subst is the identity , so refl .
+  greedyList-max-transport : ( r₀ : RE ) ( nε : ε∉ r₀ ) ( loc : ℕ )
+    → ( w : List Char ) → ( k : ℕ )
+    → ( s s' : ℕ ) → ( s≡s' : s ≡ s' )
+    → ( t' : r₀ * nε ` loc , s' , k ⊨ w )
+    → greedyList-max r₀ nε loc w s k
+          ( subst ( λ m → r₀ * nε ` loc , m , k ⊨ w ) ( sym s≡s' ) t' )
+      ≡ greedyList-max r₀ nε loc w s' k t'
+  greedyList-max-transport r₀ nε loc w k s s' s≡s' t' with s≡s'
+  ... | refl = refl
+
+
+  -- Purpose : the core comparison of <-greedy-sound-go : the greedy
+  --           witness of the smaller span ( i , j ) is above the greedy
+  --           witness of the larger span ( i , k ) in the greedy order .
+  -- Used in : <-greedy-sound-go ( the ∀ part ) .
+  -- Idea    : structural on the regex and on the ⊢⁺ / ⊢● / ⊢⋆ evidence :
+  --           the sub-premise of each base-order constructor is exactly
+  --           the sub-premise of the matching >ᵍ constructor ( choice-ll /
+  --           choice-lr / choice-rr , seq₁ / seq₂ , star-cons-nil /
+  --           star-head / star-tail ) ; the mixed shapes are empty by the
+  --           shapes of the base-order constructors ( inr<inl-+ ,
+  --           ¬⊢⋆-[]-[] , ¬⊢⋆-[]-∷ ) .
+  go : ( r : RE ) ( w : List Char ) ( i j k : ℕ )
+    → ( p : r ∣ w ∣ i ⊢ j < k )
+    → ( t₂ : r , i , k ⊨ w )
+    → r ⊢ ( greedyU r i j w ( ⊢-t₁ r w i j k p ) )
+        >ᵍ ( greedyU r i k w t₂ )
+  go ε w i j k () t₂
+  go ( $ c ` loc ) w i j k () t₂
+  go ( l₁ + l₂ ` loc ) w i j k ( choice i j k t₁ t₂₀ ev⁺ ) t₂
+    with find-<-Min⁺ l₁ l₂ loc w i j t₁
+       | find-<-Min⁺ l₁ l₂ loc w i k t₂₀
+  ... | ( min-t₁ , ev₁₀ ) | ( min-t₂₀ , ev₂₀ )
+    with min-t₁ | min-t₂₀
+  ... | ( ⊨inl _ _ _ _ _ _ a₁ ) | ( ⊨inl _ _ _ _ _ _ a₂ )
+    = subst₂ ( λ u v → ( l₁ + l₂ ` loc ) ⊢ u >ᵍ v )
+        ( sym ( greedyU-+inl l₁ l₂ loc i j w t₁ a₁ ) )
+        ( sym ( greedyU-+inl l₁ l₂ loc i k w t₂ a₂ ) )
+        ( GreedyOrder.sub
+            ( GreedyOrder.choice-ll ll-prem ) )
+    where
+      p₁' : l₁ ∣ w ∣ i ⊢ j < k
+      p₁' = ⊢⁺-inlinl-go l₁ l₂ loc w i j k a₁ a₂ ev⁺
+      ll-prem : l₁ ⊢ ( greedyU l₁ i j w a₁ )
+                >ᵍ ( greedyU l₁ i k w a₂ )
+      ll-prem rewrite sym ( greedyU-indep l₁ i j w
+                                ( ⊢-t₁ l₁ w i j k p₁' ) a₁ )
+        = go l₁ w i j k p₁' a₂
+  ... | ( ⊨inl _ _ _ _ _ _ a₁ ) | ( ⊨inr _ _ _ _ _ _ b₂ )
+    = subst₂ ( λ u v → ( l₁ + l₂ ` loc ) ⊢ u >ᵍ v )
+        ( sym ( greedyU-+inl l₁ l₂ loc i j w t₁ a₁ ) )
+        ( sym ( greedyU-+inr l₁ l₂ loc i k w t₂ b₂
+                           ( <-Min⁺-inr¬ ev₂₀ ) ) )
+        ( GreedyOrder.sub ( GreedyOrder.choice-lr ) )
+  ... | ( ⊨inr _ _ _ _ _ _ b₁ ) | ( ⊨inl _ _ _ _ _ _ a₂ )
+    = ⊥-elim ( inr<inl-+ l₁ l₂ loc w i j k b₁ a₂ ev⁺ )
+  ... | ( ⊨inr _ _ _ _ _ _ b₁ ) | ( ⊨inr _ _ _ _ _ _ b₂ )
+    = subst₂ ( λ u v → ( l₁ + l₂ ` loc ) ⊢ u >ᵍ v )
+        ( sym ( greedyU-+inr l₁ l₂ loc i j w t₁ b₁
+                           ( <-Min⁺-inr¬ ev₁₀ ) ) )
+        ( sym ( greedyU-+inr l₁ l₂ loc i k w t₂ b₂
+                           ( <-Min⁺-inr¬ ev₂₀ ) ) )
+        ( GreedyOrder.sub
+            ( GreedyOrder.choice-rr rr-prem ) )
+    where
+      p₂ : l₂ ∣ w ∣ i ⊢ j < k
+      p₂ = ⊢⁺-inrinr-go l₁ l₂ loc w i j k b₁ b₂ ev⁺
+      rr-prem : l₂ ⊢ ( greedyU l₂ i j w b₁ )
+                >ᵍ ( greedyU l₂ i k w b₂ )
+      rr-prem rewrite sym ( greedyU-indep l₂ i j w
+                                ( ⊢-t₁ l₂ w i j k p₂ ) b₁ )
+        = go l₂ w i j k p₂ b₂
+  go ( l₁ ● l₂ ` loc ) w i j k ( seq i j k t₁ t₂₀ ev● ) t₂
+    with find-<-Min● l₁ l₂ loc w i j t₁
+       | find-<-Min● l₁ l₂ loc w i k t₂₀ | inspect ( find-<-Min● l₁ l₂ loc w i k ) t₂₀
+       | find-<-Min● l₁ l₂ loc w i k t₂ | inspect ( find-<-Min● l₁ l₂ loc w i k ) t₂
+  ... | ( min-t₁ , _ ) | ( min-t₂₀ , _ ) | [ eq₂₀ ]
+      | ( min-t₂c , _ ) | [ eq₂ ]
+    with min-t₁ | min-t₂₀ | min-t₂c
+  ... | ( ⊨● _ _ _ _ _ _ s₁ _ _ a₁ b₁ )
+      | ( ⊨● _ _ _ _ _ _ s₂ _ _ a₂ b₂ )
+      | ( ⊨● _ _ _ _ _ _ s₂c _ _ a₂c b₂c )
+    with ev●
+  ... | ( seq₁ .i .s₁ .j .s₂ .k .a₁ .b₁ .a₂ .b₂ prem₁ )
+    = let s₂≡s₂c = cong ⊨●-split
+                ( trans ( sym ( cong proj₁ eq₂₀ ) )
+                    ( trans ( find-<-Min●-canon l₁ l₂ loc w i k t₂₀ t₂ )
+                            ( cong proj₁ eq₂ ) ) )
+      in  subst ( λ v → ( l₁ ● l₂ ` loc ) ⊢
+                  PairU ( greedyU l₁ i s₁ w a₁ ) ( greedyU l₂ s₁ j w b₁ ) >ᵍ v )
+            ( greedyU-●-pair-transport l₁ l₂ loc i k w s₂ s₂c a₂ b₂
+                a₂c b₂c s₂≡s₂c )
+            ( GreedyOrder.sub
+                ( GreedyOrder.seq₁ seq₁-prem ) )
+    where
+      seq₁-prem : l₁ ⊢ ( greedyU l₁ i s₁ w a₁ )
+                  >ᵍ ( greedyU l₁ i s₂ w a₂ )
+      seq₁-prem rewrite sym ( greedyU-indep l₁ i s₁ w
+                                  ( ⊢-t₁ l₁ w i s₁ s₂ prem₁ ) a₁ )
+        = go l₁ w i s₁ s₂ prem₁ a₂
+  ... | ( seq₂ .i .s₁ .s₂ .j .k .a₁ .b₁ .a₂ .b₂ s₁≡s₂ p₂ )
+    = let s₂≡s₂c = cong ⊨●-split
+                ( trans ( sym ( cong proj₁ eq₂₀ ) )
+                    ( trans ( find-<-Min●-canon l₁ l₂ loc w i k t₂₀ t₂ )
+                            ( cong proj₁ eq₂ ) ) )
+      in  subst ( λ v → ( l₁ ● l₂ ` loc ) ⊢
+                  PairU ( greedyU l₁ i s₁ w a₁ ) ( greedyU l₂ s₁ j w b₁ ) >ᵍ v )
+            ( greedyU-●-pair-transport l₁ l₂ loc i k w s₂ s₂c a₂ b₂
+                a₂c b₂c s₂≡s₂c )
+            ( GreedyOrder.sub
+                ( GreedyOrder.seq₂ head≡ seq₂-prem ) )
+    where
+      a₁t : l₁ , i , s₂ ⊨ w
+      a₁t = subst ( λ m → l₁ , i , m ⊨ w ) s₁≡s₂ a₁
+      b₂t : l₂ , s₁ , k ⊨ w
+      b₂t = subst ( λ m → l₂ , m , k ⊨ w ) ( sym s₁≡s₂ ) b₂
+      head≡ : greedyU l₁ i s₁ w a₁ ≡ greedyU l₁ i s₂ w a₂
+      head≡
+        = trans ( greedyU-●-L-transport l₁ i w s₁ s₂ s₁≡s₂ a₁ )
+                ( greedyU-indep l₁ i s₂ w a₁t a₂ )
+      go-rewrite : l₂ ⊢ ( greedyU l₂ s₁ j w b₁ )
+                   >ᵍ ( greedyU l₂ s₁ k w b₂t )
+      go-rewrite rewrite sym ( greedyU-indep l₂ s₁ j w
+                                   ( ⊢-t₁ l₂ w s₁ j k p₂ ) b₁ )
+        = go l₂ w s₁ j k p₂ b₂t
+      seq₂-prem : l₂ ⊢ ( greedyU l₂ s₁ j w b₁ )
+                   >ᵍ ( greedyU l₂ s₂ k w b₂ )
+      seq₂-prem
+        = subst ( λ v → l₂ ⊢ ( greedyU l₂ s₁ j w b₁ ) >ᵍ v )
+            ( sym ( greedyU-●-R-transport l₂ k w s₂ s₁
+                    ( sym s₁≡s₂ ) b₂ ) )
+            go-rewrite
+  go ( r₀ * nε ` loc ) w i j k ( star i j k t₁ t₂₀ ev⋆ ) t₂
+    with find-<-Min* r₀ nε loc w i j t₁ | inspect ( find-<-Min* r₀ nε loc w i j ) t₁
+       | find-<-Min* r₀ nε loc w i k t₂₀ | inspect ( find-<-Min* r₀ nε loc w i k ) t₂₀
+       | find-<-Min* r₀ nε loc w i k t₂ | inspect ( find-<-Min* r₀ nε loc w i k ) t₂
+  ... | ( min-t₁ , _ ) | [ eq₁₀ ]
+      | ( min-t₂₀ , _ ) | [ eq₂₀ ]
+      | ( min-t₂c , _ ) | [ eq₂ ]
+    with min-t₁ | min-t₂₀
+  ... | ( ⊨[] _ _ _ _ _ ) | ( ⊨[] _ _ _ _ _ )
+    = ⊥-elim ( ¬⊢⋆-[]-[] ev⋆ )
+  ... | ( ⊨[] _ _ _ _ _ ) | ( ⊨∷ _ _ _ _ _ _ m₂₀ )
+    = ⊥-elim ( ¬⊢⋆-[]-∷ ( ⊨∷ r₀ nε loc w i k m₂₀ ) ev⋆ )
+  ... | ( ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤j , h₁ , tl₁ ) )
+    | ( ⊨[] _ _ _ _ _ )
+    = let bridge = trans ( sym ( cong proj₁ eq₂₀ ) )
+                       ( trans ( find-<-Min*-canon r₀ nε loc w i k
+                                      t₂₀ t₂ )
+                               ( cong proj₁ eq₂ ) )
+      in  subst ( λ v → ( r₀ * nε ` loc ) ⊢
+               ListU ( greedyU r₀ i j₁ w h₁
+                    ∷ greedyList-max r₀ nε loc w j₁ j tl₁ )
+               >ᵍ v )
+          ( trans ( sym ( greedyU-⋆-[] r₀ nε loc w i t₂₀ ) )
+                  ( cong ( ListU { r₀ } { nε } { loc } )
+                         ( cong ( greedyList r₀ nε loc i k w )
+                                ( trans ( cong proj₁ eq₂₀ ) bridge ) ) ) )
+          ( GreedyOrder.sub ( GreedyOrder.star-cons-nil ) )
+  ... | ( ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤j , h₁ , tl₁ ) )
+    | ( ⊨∷ _ _ _ _ _ _ ( j₂ , i<j₂ , j₂≤k , h₂ , tl₂ ) )
+    with ev⋆
+  ... | ( *-head .i .j₁ .j₂ .j .k _ _ _ _ _ _ _ _ prem₁ )
+    = let bridge = trans ( sym ( cong proj₁ eq₂₀ ) )
+                       ( trans ( find-<-Min*-canon r₀ nε loc w i k
+                                      t₂₀ t₂ )
+                               ( cong proj₁ eq₂ ) )
+      in  subst ( λ v → ( r₀ * nε ` loc ) ⊢
+               ListU ( greedyU r₀ i j₁ w h₁
+                    ∷ greedyList-max r₀ nε loc w j₁ j tl₁ )
+               >ᵍ v )
+          ( trans ( greedyU-⋆-∷-rhs r₀ nε loc w i k t₂₀ j₂ i<j₂
+                         j₂≤k h₂ tl₂ ( cong proj₁ eq₂₀ ) )
+                  ( cong ( ListU { r₀ } { nε } { loc } )
+                         ( cong ( greedyList r₀ nε loc i k w )
+                                ( trans ( cong proj₁ eq₂₀ ) bridge ) ) ) )
+          ( GreedyOrder.sub
+              ( GreedyOrder.star-head head-prem ) )
+    where
+      head-prem : r₀ ⊢ ( greedyU r₀ i j₁ w h₁ )
+                   >ᵍ ( greedyU r₀ i j₂ w h₂ )
+      head-prem rewrite sym ( greedyU-indep r₀ i j₁ w
+                                  ( ⊢-t₁ r₀ w i j₁ j₂ prem₁ ) h₁ )
+        = go r₀ w i j₁ j₂ prem₁ h₂
+  ... | ( *-tail .i .j₁ .j₂ .j .k _ _ _ _ _ _ _ _ j₁≡j₂ p₂ )
+    = let bridge = trans ( sym ( cong proj₁ eq₂₀ ) )
+                       ( trans ( find-<-Min*-canon r₀ nε loc w i k
+                                      t₂₀ t₂ )
+                               ( cong proj₁ eq₂ ) )
+      in  subst ( λ v → ( r₀ * nε ` loc ) ⊢
+               ListU ( greedyU r₀ i j₁ w h₁
+                    ∷ greedyList-max r₀ nε loc w j₁ j tl₁ )
+               >ᵍ v )
+          ( trans ( greedyU-⋆-∷-rhs r₀ nε loc w i k t₂₀ j₂ i<j₂
+                         j₂≤k h₂ tl₂ ( cong proj₁ eq₂₀ ) )
+                  ( cong ( ListU { r₀ } { nε } { loc } )
+                         ( cong ( greedyList r₀ nε loc i k w )
+                                ( trans ( cong proj₁ eq₂₀ ) bridge ) ) ) )
+          ( GreedyOrder.sub
+              ( GreedyOrder.star-tail head≡ tail> ) )
+    where
+      h₁t : r₀ , i , j₂ ⊨ w
+      h₁t = subst ( λ m → r₀ , i , m ⊨ w ) j₁≡j₂ h₁
+      tl₂t : ( r₀ * nε ` loc ) , j₁ , k ⊨ w
+      tl₂t = subst ( λ m → r₀ * nε ` loc , m , k ⊨ w )
+                   ( sym j₁≡j₂ ) tl₂
+      head≡ : greedyU r₀ i j₁ w h₁ ≡ greedyU r₀ i j₂ w h₂
+      head≡
+        = trans ( greedyU-●-L-transport r₀ i w j₁ j₂ j₁≡j₂ h₁ )
+                ( greedyU-indep r₀ i j₂ w h₁t h₂ )
+      go-tail : ( r₀ * nε ` loc ) ⊢
+                ListU ( greedyList-max r₀ nε loc w j₁ j tl₁ )
+                >ᵍ ListU ( greedyList-max r₀ nε loc w j₁ k tl₂t )
+      go-tail
+        = subst ( λ v → ( r₀ * nε ` loc ) ⊢
+                         v >ᵍ ListU ( greedyList-max
+                                          r₀ nε loc w j₁ k tl₂t ) )
+            ( cong ( ListU { r₀ } { nε } { loc } )
+                   ( cong ( greedyList r₀ nε loc j₁ j w )
+                          ( find-<-Min*-canon
+                             r₀ nε loc w j₁ j
+                             ( ⊢-t₁ ( r₀ * nε ` loc ) w j₁ j k p₂ )
+                             tl₁ ) ) )
+            ( go ( r₀ * nε ` loc ) w j₁ j k p₂ tl₂t )
+      tail> : ( r₀ * nε ` loc ) ⊢
+              ListU ( greedyList-max r₀ nε loc w j₁ j tl₁ )
+              >ᵍ ListU ( greedyList-max r₀ nε loc w j₂ k tl₂ )
+      tail>
+        = subst ( λ v → ( r₀ * nε ` loc ) ⊢
+                         ListU ( greedyList-max r₀ nε loc w j₁ j tl₁ )
+                         >ᵍ v )
+            ( cong ( ListU { r₀ } { nε } { loc } )
+                   ( greedyList-max-transport r₀ nε loc w k
+                                              j₁ j₂ j₁≡j₂ tl₂ ) )
+            go-tail
+
+
+  -- Purpose : the Mamouras base order is sound for the greedy parse-tree
+  --           order >ᵍ ( the greedy-witness form of <-greedy-sound ) :
+  --           if the base order relates the spans ( i , j ) and ( i , k ) ,
+  --           the greedy witness of the smaller span is above the greedy
+  --           witness of the larger span .
+  -- Used in : — ( top-level goal of this file ) .
+  -- Idea    : u is the greedy witness of ( i , j ) ( greedyU on the match
+  --           carried by the base-order proof , ⊢-t₁ ) ; the flat /
+  --           concatenation / length side conditions follow from
+  --           greedyU-flat / take++drop≡id / take≤length ( the bound
+  --           j ∸ i ≤ length ( drop i w ) from match→end≤len + ∸-monoˡ-≤ ,
+  --           the degenerate i ≡ j case trivial ) ; the ∀ part is go
+  --           ( the right-hand witness is the greedy parse of the
+  --           evidence t₂ , greedy-max ) .
+  ←greedy-sound-go : ( r : RE ) ( w : List Char ) ( i j k : ℕ )
+    → ( p : r ∣ w ∣ i ⊢ j < k )
+    → ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
+         ( proj₁ ( flat { r } u ) ≡ w₁
+         × w₁ ++ w₂ ≡ drop i w
+         × length w₁ ≡ j ∸ i
+         × ∀ ( t₂ : r , i , k ⊨ w )
+             → r ⊢ u >ᵍ ( greedy-max r w i k t₂ ) )
+  ←greedy-sound-go r w i j k p
+    = ( greedyU r i j w t₁
+      , w₁
+      , w₂
+      , ( flat-ev , concat-ev , len-ev , ∀-ev ) )
+    where
+      t₁ : r , i , j ⊨ w
+      t₁ = ⊢-t₁ r w i j k p
+      w₁ : List Char
+      w₁ = take ( j ∸ i ) ( drop i w )
+      w₂ : List Char
+      w₂ = drop ( j ∸ i ) ( drop i w )
+      j∸i≤len : j ∸ i ≤ length ( drop i w )
+      j∸i≤len with m≤n⇒m<n∨m≡n ( rij⊨w→i≤j t₁ )
+      ... | inj₁ i<j =
+        subst ( λ n → j ∸ i ≤ n )
+          ( sym ( length-drop i w ) )
+          ( ∸-monoˡ-≤ i ( match→end≤len r i j w i<j t₁ ) )
+      ... | inj₂ i≡j rewrite i≡j | n∸n≡0 j = z≤n
+      flat-ev : proj₁ ( flat { r } ( greedyU r i j w t₁ ) ) ≡ w₁
+      flat-ev = greedyU-flat r i j w t₁
+      concat-ev : w₁ ++ w₂ ≡ drop i w
+      concat-ev = take++drop≡id ( j ∸ i ) ( drop i w )
+      len-ev : length w₁ ≡ j ∸ i
+      len-ev = take≤length ( drop i w ) ( j ∸ i ) j∸i≤len
+      ∀-ev : ∀ ( t₂ : r , i , k ⊨ w )
+        → r ⊢ ( greedyU r i j w t₁ )
+             >ᵍ ( greedy-max r w i k t₂ )
+      ∀-ev t₂ = go r w i j k p t₂
+
+  ```
 
 
 

@@ -3399,7 +3399,15 @@ mutual
              >ᵍ ( greedy-max r w i k t₂ )
       ∀-ev t₂ = go r w i j k p t₂
 
-  ```
+  greedyU-prop : ∀ ( l : RE ) → ( i j : ℕ ) → ( w : List Char )
+    → ( t : l , i , j ⊨ w )
+    → ( v : U l ) 
+    → ( proj₁ (flat v) ) ≡ (take ( j ∸ i ) ( drop i w ) ) 
+    → (l ⊢ (greedyU l i j w t) >ᵍ v ) ⊎ ( (greedyU l i j w t) ≡ v )
+  greedyU-prop = {!!} 
+
+
+```
 
 
 

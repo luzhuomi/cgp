@@ -3399,12 +3399,328 @@ mutual
              >ᵍ ( greedy-max r w i k t₂ )
       ∀-ev t₂ = go r w i j k p t₂
 
+  -- more helpers for greedyU-prop -------------------------------------
+
+  -- Purpose : the substring w [ i , j ) of a match span has exactly the
+  --           length j ∸ i of that span .
+  -- Used in : greedyU-prop ( the U⊨ / PairSplit / ListSplit length side
+  --           conditions ) .
+  -- Idea    : match→end≤len + ∸-monoˡ-≤ + take≤length ( as in
+  --           ←greedy-sound-go ) .
+  match-span-len : ( r : RE ) ( i j : ℕ ) ( w : List Char )
+    → ( t : r , i , j ⊨ w )
+    → length ( take ( j ∸ i ) ( drop i w ) ) ≡ j ∸ i
+  match-span-len r i j w t = take≤length ( drop i w ) ( j ∸ i ) j∸i≤len
+    where
+      j∸i≤len : j ∸ i ≤ length ( drop i w )
+      j∸i≤len with m≤n⇒m<n∨m≡n ( rij⊨w→i≤j t )
+      ... | inj₁ i<j =
+        subst ( λ n → j ∸ i ≤ n )
+          ( sym ( length-drop i w ) )
+          ( ∸-monoˡ-≤ i ( match→end≤len r i j w i<j t ) )
+      ... | inj₂ i≡j rewrite i≡j | n∸n≡0 j = z≤n
+
+  -- Purpose : flat decomposes over LeftU / RightU ( the projection of a
+  --           + parse is the projection of its payload ) .
+  -- Used in : greedyU-prop ( + cases : transporting the flat condition ) .
+  -- Idea    : the with-block in the definition of flat fires on the branch .
+  flat-LeftU : ∀ { l r : RE } { loc : ℕ }
+    → ( u : U l )
+    → proj₁ ( flat ( LeftU { l } { r } { loc } u ) ) ≡ proj₁ ( flat u )
+  flat-LeftU u with flat u
+  ... | _ , _ = refl
+
+  flat-RightU : ∀ { l r : RE } { loc : ℕ }
+    → ( u : U r )
+    → proj₁ ( flat ( RightU { l } { r } { loc } u ) ) ≡ proj₁ ( flat u )
+  flat-RightU u with flat u
+  ... | _ , _ = refl
+
+  -- Purpose : U⊨ instantiated at the canonical take / drop split ( the
+  --           match witness of a parse over the substring w [ i , j ) ) .
+  -- Used in : greedyU-prop ( + cases ) .
+  -- Idea    : one-line instance of U⊨ .
+  v⊨ : ( r : RE ) ( i j : ℕ ) ( w : List Char )
+    → ( i≤j : i Nat.≤ j )
+    → ( v : U r )
+    → proj₁ ( flat v ) ≡ take ( j ∸ i ) ( drop i w )
+    → length ( take ( j ∸ i ) ( drop i w ) ) ≡ j ∸ i
+    → r , i , j ⊨ w
+  v⊨ r i j w i≤j v flatv len =
+    U⊨ r i j w i≤j v ( take ( j ∸ i ) ( drop i w ) )
+      ( drop ( j ∸ i ) ( drop i w ) ) flatv len
+      ( take++drop≡id ( j ∸ i ) ( drop i w ) )
+
+  -- Purpose : a PairU parse over the substring w [ i , j ) splits at
+  --           s = i + length ( flat u₁ ) into sub-matches and sub-flat
+  --           conditions for both halves .
+  -- Used in : greedyU-prop ( ● case ) .
+  -- Idea    : split-helper + the U⊨ sub-instances of U⊨ ( ● case ) +
+  --           prefix→take for the two flat conditions .
+  PairSplit : ( l₁ l₂ : RE ) ( loc : ℕ ) ( i j : ℕ ) ( w : List Char )
+    → ( i≤j : i Nat.≤ j )
+    → ( u₁ : U l₁ ) ( u₂ : U l₂ )
+    → proj₁ ( flat ( PairU { l₁ } { l₂ } { loc } u₁ u₂ ) )
+        ≡ take ( j ∸ i ) ( drop i w )
+    → length ( take ( j ∸ i ) ( drop i w ) ) ≡ j ∸ i
+    → ∃[ s ] ( l₁ , i , s ⊨ w ) × ( l₂ , s , j ⊨ w )
+             × ( proj₁ ( flat u₁ ) ≡ take ( s ∸ i ) ( drop i w ) )
+             × ( proj₁ ( flat u₂ ) ≡ take ( j ∸ s ) ( drop s w ) )
+  PairSplit l₁ l₂ loc i j w i≤j u₁ u₂ flatv len =
+    s₀ , m₁ , m₂ , fl₁c , fl₂c
+    where
+      a = proj₁ ( flat u₁ )
+      b = proj₁ ( flat u₂ )
+      s₀ = i + length a
+      ab≡ : a ++ b ≡ take ( j ∸ i ) ( drop i w )
+      ab≡ = trans ( flat-PairU { l₁ } { l₂ } { loc } u₁ u₂ ) flatv
+      fl' : length ( a ++ b ) ≡ j ∸ i
+      fl' = subst ( λ xs → length xs ≡ j ∸ i ) ( sym ab≡ ) len
+      fw' : ( a ++ b ) ++ drop ( j ∸ i ) ( drop i w ) ≡ drop i w
+      fw' = subst ( λ xs → xs ++ drop ( j ∸ i ) ( drop i w ) ≡ drop i w )
+              ( sym ab≡ ) ( take++drop≡id ( j ∸ i ) ( drop i w ) )
+      split = split-helper w i j i≤j ( drop ( j ∸ i ) ( drop i w ) ) a b fl' fw'
+      i≤s₀ = SplitLemmas.i≤s₀ split
+      fl₁ = SplitLemmas.fl₁ split
+      fw₁ = SplitLemmas.fw₁ split
+      s₀≤j = SplitLemmas.s₀≤j split
+      fl₂ = SplitLemmas.fl₂ split
+      fw₂ = SplitLemmas.fw₂ split
+      m₁ = U⊨ l₁ i s₀ w i≤s₀ u₁ a ( drop s₀ w ) refl fl₁ fw₁
+      m₂ = U⊨ l₂ s₀ j w s₀≤j u₂ b ( drop j w ) refl fl₂ fw₂
+      fl₁c : a ≡ take ( s₀ ∸ i ) ( drop i w )
+      fl₁c = prefix→take a ( drop s₀ w ) ( drop i w ) ( s₀ ∸ i ) fw₁ fl₁
+      fl₂c : b ≡ take ( j ∸ s₀ ) ( drop s₀ w )
+      fl₂c = trans ( prefix→take b ( drop j w ) ( drop s₀ w ) ( length b ) fw₂ refl )
+               ( cong ( λ n → take n ( drop s₀ w ) ) fl₂ )
+
+  -- Purpose : a ListU ( u ∷ us ) parse over the substring w [ i , j )
+  --           splits at a head span ( i , s ) with i < s ≤ j into the
+  --           head / tail sub-matches and the head / tail flat conditions .
+  -- Used in : greedyU-prop ( * case ) .
+  -- Idea    : split-helper + the U⊨ sub-instances of U⊨ ( * case ) +
+  --           ε∉r→0<flat for i < s + prefix→take for the flat conditions .
+  ListSplit : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( i j : ℕ ) ( w : List Char )
+    → ( i≤j : i Nat.≤ j )
+    → ( u : U r ) ( us : List ( U r ) )
+    → proj₁ ( flat ( ListU { r } { nε } { loc } ( u ∷ us ) ) )
+        ≡ take ( j ∸ i ) ( drop i w )
+    → length ( take ( j ∸ i ) ( drop i w ) ) ≡ j ∸ i
+    → ∃[ s ] ( i Nat.< s ) × ( s Nat.≤ j ) × ( r , i , s ⊨ w )
+             × ( ( r * nε ` loc ) , s , j ⊨ w )
+             × ( proj₁ ( flat u ) ≡ take ( s ∸ i ) ( drop i w ) )
+             × ( proj₁ ( flat ( ListU { r } { nε } { loc } us ) )
+                 ≡ take ( j ∸ s ) ( drop s w ) )
+  ListSplit r nε loc i j w i≤j u us flatv len =
+    s₀ , i<s₀ , s₀≤j , m₁ , m₂ , fu , fus
+    where
+      a = proj₁ ( flat u )
+      b = proj₁ ( flat ( ListU { r } { nε } { loc } us ) )
+      s₀ = i + length a
+      ab≡ : a ++ b ≡ take ( j ∸ i ) ( drop i w )
+      ab≡ = trans ( flat-ListU-cons { r } { nε } { loc } u us ) flatv
+      fl' : length ( a ++ b ) ≡ j ∸ i
+      fl' = subst ( λ xs → length xs ≡ j ∸ i ) ( sym ab≡ ) len
+      fw' : ( a ++ b ) ++ drop ( j ∸ i ) ( drop i w ) ≡ drop i w
+      fw' = subst ( λ xs → xs ++ drop ( j ∸ i ) ( drop i w ) ≡ drop i w )
+              ( sym ab≡ ) ( take++drop≡id ( j ∸ i ) ( drop i w ) )
+      split = split-helper w i j i≤j ( drop ( j ∸ i ) ( drop i w ) ) a b fl' fw'
+      i≤s₀-lem = SplitLemmas.i≤s₀ split
+      fl₁ = SplitLemmas.fl₁ split
+      fw₁ = SplitLemmas.fw₁ split
+      s₀≤j = SplitLemmas.s₀≤j split
+      fl₂ = SplitLemmas.fl₂ split
+      fw₂ = SplitLemmas.fw₂ split
+      i<s₀ = subst ( λ x → x < s₀ ) ( +-identityʳ i )
+               ( +-monoʳ-< i ( ε∉r→0<flat r nε u ) )
+      m₁ = U⊨ r i s₀ w i≤s₀-lem u a ( drop s₀ w ) refl fl₁ fw₁
+      m₂ = U⊨ ( r * nε ` loc ) s₀ j w s₀≤j
+             ( ListU { r } { nε } { loc } us ) b ( drop j w ) refl fl₂ fw₂
+      fu : a ≡ take ( s₀ ∸ i ) ( drop i w )
+      fu = prefix→take a ( drop s₀ w ) ( drop i w ) ( s₀ ∸ i ) fw₁ fl₁
+      fus : b ≡ take ( j ∸ s₀ ) ( drop s₀ w )
+      fus = trans ( prefix→take b ( drop j w ) ( drop s₀ w ) ( length b ) fw₂ refl )
+              ( cong ( λ n → take n ( drop s₀ w ) ) fl₂ )
+
+  -- Purpose : chain a strict comparison of two greedy parses with the
+  --           induction hypothesis for the smaller one : the greedy parse
+  --           of any evidence of the same span stays above the target .
+  -- Used in : greedyU-prop ( ● / * cases : the strict-order branches ) .
+  -- Idea    : greedyU-indep transports the left side across the evidence
+  --           change ; >-trans chains the strict steps ; an equality IH
+  --           is substed into the strict target instead of returned .
+  prop-chain : ( l : RE ) ( i j : ℕ ) ( w : List Char )
+    → ( t tᵛ : l , i , j ⊨ w ) ( u v : U l )
+    → l ⊢ ( greedyU l i j w tᵛ ) >ᵍ u
+    → ( l ⊢ u >ᵍ v ) ⊎ ( u ≡ v )
+    → l ⊢ greedyU l i j w t >ᵍ v
+  prop-chain l i j w t tᵛ u v mid ih = case-⊎
+    ( λ h →
+        GreedyOrder.>-trans
+          ( subst ( λ x → l ⊢ x >ᵍ u ) ( sym g≡ ) mid ) h )
+    ( λ h →
+        subst ( λ x → l ⊢ greedyU l i j w t >ᵍ x ) h
+          ( subst ( λ x → l ⊢ x >ᵍ u ) ( sym g≡ ) mid ) )
+    ih
+    where
+      g≡ : greedyU l i j w t ≡ greedyU l i j w tᵛ
+      g≡ = greedyU-indep l i j w t tᵛ
+
+  -- Purpose : ListU is injective on its list payload .
+  -- Used in : greedyU-prop ( * case : the all-equal branch ) .
+  -- Idea    : matching the equation with refl performs the constructor
+  --           index injection .
+  ListU-inj : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ }
+    → { xs ys : List ( U r ) }
+    → ListU { r } { nε } { loc } xs ≡ ListU { r } { nε } { loc } ys
+    → xs ≡ ys
+  ListU-inj e with e
+  ... | refl = refl
+
   greedyU-prop : ∀ ( l : RE ) → ( i j : ℕ ) → ( w : List Char )
     → ( t : l , i , j ⊨ w )
     → ( v : U l ) 
     → ( proj₁ (flat v) ) ≡ (take ( j ∸ i ) ( drop i w ) ) 
     → (l ⊢ (greedyU l i j w t) >ᵍ v ) ⊎ ( (greedyU l i j w t) ≡ v )
-  greedyU-prop = {!!} 
+  greedyU-prop ε i j w t EmptyU flatv with t
+  ... | ( ⊨ε _ _ ) = inj₂ refl
+  greedyU-prop ( $ c ` loc ) i j w t ( LetterU c ) flatv with t
+  ... | ( ⊨$ _ _ _ _ _ ) = inj₂ refl
+  greedyU-prop ( l₁ + l₂ ` loc ) i j w t ( LeftU u ) flatv =
+    case-⊎
+      ( λ h →
+          inj₁ ( subst ( λ x → ( l₁ + l₂ ` loc ) ⊢ x >ᵍ LeftU u ) ( sym eq)
+                   ( GreedyOrder.sub ( GreedyOrder.choice-ll h ) ) ) )
+      ( λ h → inj₂ ( trans eq ( cong LeftU h ) ) )
+      ( greedyU-prop l₁ i j w a u flat-u )
+    where
+      flat-u : proj₁ ( flat u ) ≡ take ( j ∸ i ) ( drop i w )
+      flat-u = trans ( sym ( flat-LeftU { l₁ } { l₂ } { loc } u ) ) flatv
+      a : l₁ , i , j ⊨ w
+      a = v⊨ l₁ i j w ( rij⊨w→i≤j t ) u flat-u
+            ( match-span-len ( l₁ + l₂ ` loc ) i j w t )
+      eq : greedyU ( l₁ + l₂ ` loc ) i j w t ≡ LeftU ( greedyU l₁ i j w a )
+      eq = greedyU-+inl l₁ l₂ loc i j w t a
+  greedyU-prop ( l₁ + l₂ ` loc ) i j w t ( RightU u ) flatv
+    with ⊨? l₁ i j w
+  ... | yes a = inj₁ ( GreedyOrder.sub GreedyOrder.choice-lr )
+  ... | no ¬a with t
+  ...   | ( ⊨inr _ _ _ _ _ _ b₀ ) =
+        case-⊎
+          ( λ h →
+              inj₁ ( subst ( λ x → ( l₁ + l₂ ` loc ) ⊢ x >ᵍ RightU u ) ( sym eq)
+                       ( GreedyOrder.sub ( GreedyOrder.choice-rr h ) ) ) )
+          ( λ h → inj₂ ( trans eq ( cong RightU h ) ) )
+          ( greedyU-prop l₂ i j w b u flat-u )
+        where
+          flat-u : proj₁ ( flat u ) ≡ take ( j ∸ i ) ( drop i w )
+          flat-u = trans ( sym ( flat-RightU { l₁ } { l₂ } { loc } u ) ) flatv
+          b : l₂ , i , j ⊨ w
+          b = v⊨ l₂ i j w ( rij⊨w→i≤j t ) u flat-u
+                ( match-span-len ( l₁ + l₂ ` loc ) i j w t )
+          eq : RightU ( greedyU l₂ i j w b₀ ) ≡ RightU ( greedyU l₂ i j w b )
+          eq = cong RightU ( greedyU-indep l₂ i j w b₀ b )
+  ...   | ( ⊨inl _ _ _ _ _ _ a₀ ) = ⊥-elim ( ¬a a₀ )
+  greedyU-prop ( l₁ ● l₂ ` loc ) i j w t ( PairU u₁ u₂ ) flatv
+    with find-<-Min● l₁ l₂ loc w i j t
+       | PairSplit l₁ l₂ loc i j w ( rij⊨w→i≤j t ) u₁ u₂ flatv
+           ( match-span-len ( l₁ ● l₂ ` loc ) i j w t )
+  ... | ( ⊨● _ _ _ _ .j w s₁ _ _ a₁ b₁ , ev₁₀ )
+      | ( s₂ , m₁ , m₂ , fl₁c , fl₂c )
+    with trichotomy l₁ w i s₁ s₂ a₁ m₁
+  ... | inj₁ s₂<s₁ = ⊥-elim ( <-Min●-¬ex ev₁₀ ( s₂ , m₁ , m₂ , s₂<s₁ ) )
+  ... | inj₂ ( inj₂ s₁<s₂ ) =
+    inj₁ ( GreedyOrder.sub
+             ( GreedyOrder.seq₁
+                 ( prop-chain l₁ i s₁ w a₁ ( ⊢-t₁ l₁ w i s₁ s₂ s₁<s₂ )
+                     ( greedyU l₁ i s₂ w m₁ ) u₁
+                     ( go l₁ w i s₁ s₂ s₁<s₂ m₁ )
+                     ( greedyU-prop l₁ i s₂ w m₁ u₁ fl₁c ) ) ) )
+  ... | inj₂ ( inj₁ s₁≡s₂ ) =
+    let a₁s : l₁ , i , s₂ ⊨ w
+        a₁s = subst ( λ m → l₁ , i , m ⊨ w ) s₁≡s₂ a₁
+        b₁s : l₂ , s₂ , j ⊨ w
+        b₁s = subst ( λ m → l₂ , m , j ⊨ w ) s₁≡s₂ b₁
+        head-tp : greedyU l₁ i s₁ w a₁ ≡ greedyU l₁ i s₂ w a₁s
+        head-tp = greedyU-●-L-transport l₁ i w s₁ s₂ s₁≡s₂ a₁
+        tail-tp : greedyU l₂ s₁ j w b₁ ≡ greedyU l₂ s₂ j w b₁s
+        tail-tp = greedyU-●-R-transport l₂ j w s₁ s₂ s₁≡s₂ b₁
+    in case-⊎
+         ( λ h₁ →
+             inj₁ ( GreedyOrder.sub
+                      ( GreedyOrder.seq₁
+                          ( subst ( λ x → l₁ ⊢ x >ᵍ u₁ ) ( sym head-tp ) h₁ ) ) ) )
+         ( λ h₁ →
+             let head≡ : greedyU l₁ i s₁ w a₁ ≡ u₁
+                 head≡ = trans head-tp h₁
+             in case-⊎
+                  ( λ h₂ →
+                      inj₁ ( GreedyOrder.sub
+                               ( GreedyOrder.seq₂ head≡
+                                   ( subst ( λ x → l₂ ⊢ x >ᵍ u₂ )
+                                           ( sym tail-tp ) h₂ ) ) ) )
+                  ( λ h₂ →
+                      inj₂ ( cong₂ PairU head≡ ( trans tail-tp h₂ ) ) )
+                  ( greedyU-prop l₂ s₂ j w b₁s u₂ fl₂c ) )
+         ( greedyU-prop l₁ i s₂ w a₁s u₁ fl₁c )
+  greedyU-prop ( r₀ * nε ` loc ) i j w t ( ListU [] ) flatv with t
+  ... | ( ⊨[] _ _ _ _ _ ) = inj₂ refl
+  ... | ( ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤j , _ , _ ) ) =
+    ⊥-elim ( <-irrefl refl
+               ( ≤-trans
+                   ( ≤-trans i<j₁ j₁≤j )
+                   ( m∸n≡0⇒m≤n
+                       ( trans ( sym ( match-span-len ( r₀ * nε ` loc ) i j w t ) )
+                               ( cong length ( sym flatv ) ) ) ) ) )
+  greedyU-prop ( r₀ * nε ` loc ) i j w t ( ListU ( u ∷ us ) ) flatv
+    with find-<-Min* r₀ nε loc w i j t
+       | ListSplit r₀ nε loc i j w ( rij⊨w→i≤j t ) u us flatv
+           ( match-span-len ( r₀ * nε ` loc ) i j w t )
+  ... | ( ⊨[] _ _ _ _ _ , _ )
+      | ( s₂ , i<s₂ , s₂≤j , _ , _ , _ , _ ) =
+        ⊥-elim ( <-irrefl refl ( ≤-trans i<s₂ s₂≤j ) )
+  ... | ( ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤j , h₁ , tl₁ )
+        , <-min-∷ _ _ _ _ _ _ _ _ _ _ _ _ ¬ex )
+      | ( s₂ , i<s₂ , s₂≤j , m₁ , m₂ , fu , fus )
+    with trichotomy r₀ w i j₁ s₂ h₁ m₁
+  ... | inj₁ s₂<j₁ =
+    ⊥-elim ( ¬ex ( s₂ , i<s₂ , s₂≤j , m₁ , m₂ , s₂<j₁ ) )
+  ... | inj₂ ( inj₂ j₁<s₂ ) =
+    inj₁ ( GreedyOrder.sub
+             ( GreedyOrder.star-head
+                 ( prop-chain r₀ i j₁ w h₁ ( ⊢-t₁ r₀ w i j₁ s₂ j₁<s₂ )
+                     ( greedyU r₀ i s₂ w m₁ ) u
+                     ( go r₀ w i j₁ s₂ j₁<s₂ m₁ )
+                     ( greedyU-prop r₀ i s₂ w m₁ u fu ) ) ) )
+  ... | inj₂ ( inj₁ j₁≡s₂ ) =
+    let h₁s : r₀ , i , s₂ ⊨ w
+        h₁s = subst ( λ m → r₀ , i , m ⊨ w ) j₁≡s₂ h₁
+        tl₁s : ( r₀ * nε ` loc ) , s₂ , j ⊨ w
+        tl₁s = subst ( λ m → ( r₀ * nε ` loc ) , m , j ⊨ w ) j₁≡s₂ tl₁
+        head-tp : greedyU r₀ i j₁ w h₁ ≡ greedyU r₀ i s₂ w h₁s
+        head-tp = greedyU-●-L-transport r₀ i w j₁ s₂ j₁≡s₂ h₁
+        tail-tp : greedyU ( r₀ * nε ` loc ) j₁ j w tl₁
+                    ≡ greedyU ( r₀ * nε ` loc ) s₂ j w tl₁s
+        tail-tp = greedyU-●-R-transport ( r₀ * nε ` loc ) j w j₁ s₂ j₁≡s₂ tl₁
+    in case-⊎
+         ( λ h →
+             inj₁ ( GreedyOrder.sub
+                      ( GreedyOrder.star-head
+                          ( subst ( λ x → r₀ ⊢ x >ᵍ u ) ( sym head-tp ) h ) ) ) )
+         ( λ h →
+             let head≡ : greedyU r₀ i j₁ w h₁ ≡ u
+                 head≡ = trans head-tp h
+             in case-⊎
+                  ( λ h₂ →
+                      inj₁ ( GreedyOrder.sub
+                               ( GreedyOrder.star-tail head≡
+                                   ( subst ( λ x → ( r₀ * nε ` loc ) ⊢ x >ᵍ ListU us )
+                                           ( sym tail-tp ) h₂ ) ) ) )
+                  ( λ h₂ →
+                      inj₂ ( cong ( ListU { r₀ } { nε } { loc } )
+                             ( cong₂ _∷_ head≡ ( ListU-inj ( trans tail-tp h₂ ) ) ) ) )
+                  ( greedyU-prop ( r₀ * nε ` loc ) s₂ j w tl₁s ( ListU us ) fus ) )
+         ( greedyU-prop r₀ i s₂ w h₁s u fu )
 
 
 ```

@@ -3722,6 +3722,26 @@ mutual
                   ( greedyU-prop ( r₀ * nε ` loc ) s₂ j w tl₁s ( ListU us ) fus ) )
          ( greedyU-prop r₀ i s₂ w h₁s u fu )
 
+  greedy-max-prop : ∀ ( l : RE ) → ( i j : ℕ ) → ( w : List Char )
+    → ( t : l , i , j ⊨ w )
+    → ( v : U l ) 
+    → ( proj₁ (flat v) ) ≡ (take ( j ∸ i ) ( drop i w ) ) 
+    → (l ⊢ (greedy-max l w i j t) >ᵍ v ) ⊎ ( (greedy-max l w i j t) ≡ v )
+  greedy-max-prop = {!!}   
+
+
+
+  ←greedy-sound : ( r : RE ) ( w : List Char ) ( i j k : ℕ )
+    → ( p : r ∣ w ∣ i ⊢ j < k )
+    → ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
+         ( proj₁ ( flat { r } u ) ≡ w₁
+         × w₁ ++ w₂ ≡ drop i w
+         × length w₁ ≡ j ∸ i
+         × ∀ ( v : U r ) 
+           → ( proj₁ (flat v) ) ≡ (take ( k ∸ i ) ( drop i w ) ) 
+           → r ⊢ u >ᵍ v )
+  ←greedy-sound = {!!} 
+
 
 ```
 

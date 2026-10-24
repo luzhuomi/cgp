@@ -525,13 +525,100 @@ mutual
         ( greedy-max-prop r i k w t₂ v flatv )
 
 
-  ←greedy-complete : ( r : RE ) ( u v : U r )
-    → ( r ⊢ u >ᵍ v )
-    -----------------------------------------
-    → ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
-      ( ( proj₁ (flat u) ) ≡ (take ( j ∸ i ) ( drop i w ) )
-      × ( proj₁ (flat v) ) ≡ (take ( k ∸ i ) ( drop i w ) )
-      × ( r ∣ w ∣ i ⊢ j < k ) )
-  ←greedy-complete = {!!} 
+  -- ←greedy-complete : ( r : RE ) ( u v : U r )
+  --   → ( r ⊢ u >ᵍ v )
+  --   -----------------------------------------
+  --   → ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+  --     ( ( proj₁ (flat u) ) ≡ (take ( j ∸ i ) ( drop i w ) )
+  --     × ( proj₁ (flat v) ) ≡ (take ( k ∸ i ) ( drop i w ) )
+  --     × ( r ∣ w ∣ i ⊢ j < k ) )
+  -- ←greedy-complete = {!!}
       
+
+```
+
+UNPROVABLE : the goal of ←greedy-complete is refuted by the counterexample
+below ( for r-ce = ( 'a' + 'b' ) , u-ce = LeftU ( LetterU 'a' ) ,
+v-ce = RightU ( LetterU 'b' ) the premise is inhabited but the ∃ conclusion
+fails ; see ¬←greedy-complete-ce ) . The greedy order compares parse trees ,
+the base order compares match spans : the conjecture asks every greedy pair
+( u >ᵍ v ) to come from one word w and one start index i , which would make
+flat u and flat v prefix-comparable ( both are prefixes of drop i w ) . The
+greedy order has no such requirement : on a + regex , choice-lr relates ANY
+LeftU parse above ANY RightU parse .
+
+
+```agda
+-- the two letters are matched by a + regex , so its two parses are related
+-- by the greedy order without any condition on their words .
+r-ce : RE
+r-ce = ( $ 'a' ` 0 ) + ( $ 'b' ` 1 ) ` 2
+
+u-ce : U r-ce
+u-ce = LeftU ( LetterU 'a' )
+
+v-ce : U r-ce
+v-ce = RightU ( LetterU 'b' )
+
+-- the premise of ←greedy-complete is inhabited for this pair .
+u-ce>ᵍv-ce : r-ce ⊢ u-ce >ᵍ v-ce
+u-ce>ᵍv-ce = sub GreedyOrder.choice-lr
+
+flat-u-ce : proj₁ ( flat { r-ce } u-ce ) ≡ 'a' ∷ []
+flat-u-ce = refl
+
+flat-v-ce : proj₁ ( flat { r-ce } v-ce ) ≡ 'b' ∷ []
+flat-v-ce = refl
+
+-- Purpose : the ∃ conclusion of ←greedy-complete fails for ( r-ce , u-ce , v-ce ) .
+-- Used in : ¬←greedy-complete , ←greedy-complete-counterexample .
+-- Idea    : take n ws ≡ 'a' ∷ [] fixes the head of ws ( take++drop≡id ) , so
+--           the two spans would fix it to 'a' and to 'b' ; ∷-inj turns the two
+--           equalities into 'a' ≡ 'b' .
+¬←greedy-complete-ce : ¬ ( ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+      ( ( proj₁ ( flat { r-ce } u-ce ) ) ≡ ( take ( j ∸ i ) ( drop i w ) )
+      × ( proj₁ ( flat { r-ce } v-ce ) ) ≡ ( take ( k ∸ i ) ( drop i w ) )
+      × ( r-ce ∣ w ∣ i ⊢ j < k ) ) )
+¬←greedy-complete-ce ( w , i , j , k , ( fu , fv , j<k) ) =
+  ⊥-elim ( ¬'a'≡'b'
+    ( proj₁ ( ∷-inj { 'a' } { 'b' } { drop ( j ∸ i ) ws } { drop ( k ∸ i ) ws }
+                  ( trans p-u (sym p-v) ) ) ) )
+  where
+    ws : List Char
+    ws = drop i w
+    -- the u -span fixes the head of ws to 'a' …
+    p-u : 'a' ∷ drop ( j ∸ i ) ws ≡ ws
+    p-u = trans ( sym ( cong ( λ t → t ++ drop ( j ∸ i ) ws )
+                             ( trans ( sym fu ) flat-u-ce ) ) )
+                ( take++drop≡id ( j ∸ i ) ws )
+    -- … and the v -span fixes it to 'b' .
+    p-v : 'b' ∷ drop ( k ∸ i ) ws ≡ ws
+    p-v = trans ( sym ( cong ( λ t → t ++ drop ( k ∸ i ) ws )
+                             ( trans ( sym fv ) flat-v-ce ) ) )
+                ( take++drop≡id ( k ∸ i ) ws )
+    ¬'a'≡'b' : ¬ ( 'a' ≡ 'b' )
+    ¬'a'≡'b' ()
+
+-- Purpose : ←greedy-complete ( the conjecture , for every r / u / v ) is false .
+-- Used in : ←greedy-complete-counterexample .
+-- Idea    : instantiate the conjecture at ( r-ce , u-ce , v-ce ) , whose
+--           premise is inhabited , and refute its ∃ part .
+¬←greedy-complete : ¬ ( ( r : RE ) ( u v : U r )
+    → ( r ⊢ u >ᵍ v )
+    → ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+        ( ( proj₁ ( flat u ) ) ≡ ( take ( j ∸ i ) ( drop i w ) )
+        × ( proj₁ ( flat v ) ) ≡ ( take ( k ∸ i ) ( drop i w ) )
+        × ( r ∣ w ∣ i ⊢ j < k ) ) )
+¬←greedy-complete H with ( H r-ce u-ce v-ce u-ce>ᵍv-ce )
+... | ( w , i , j , k , ( fu , fv , j<k) )
+  = ¬←greedy-complete-ce ( w , i , j , k , ( fu , fv , j<k) )
+
+-- the counterexample assembled : the premise holds while the conclusion
+-- fails ( cf. the counterexample of ←greedy-sound in RelatedWorkMamouras2 ) .
+←greedy-complete-counterexample : ( r-ce ⊢ u-ce >ᵍ v-ce )
+  × ¬ ( ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+        ( ( proj₁ ( flat { r-ce } u-ce ) ) ≡ ( take ( j ∸ i ) ( drop i w ) )
+        × ( proj₁ ( flat { r-ce } v-ce ) ) ≡ ( take ( k ∸ i ) ( drop i w ) )
+        × ( r-ce ∣ w ∣ i ⊢ j < k ) ) )
+←greedy-complete-counterexample = u-ce>ᵍv-ce , ¬←greedy-complete-ce
 ```

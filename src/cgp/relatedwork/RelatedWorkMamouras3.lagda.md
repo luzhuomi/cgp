@@ -622,3 +622,26 @@ flat-v-ce = refl
         × ( r-ce ∣ w ∣ i ⊢ j < k ) ) )
 ←greedy-complete-counterexample = u-ce>ᵍv-ce , ¬←greedy-complete-ce
 ```
+
+
+
+```agda
+
+import cgp.posix.Order as POSIXOrder
+open POSIXOrder renaming ( _⊢_>_ to  _⊢_>ᵖ_ )
+open POSIXOrder renaming ( _⊢_>ⁱ_ to _⊢_>ᵖⁱ_ )
+
+
+←posix-sound : ( r : RE ) ( w : List Char ) ( i j k : ℕ )
+  → ( p : r ∣ w ∣ i ⊢ j < k )
+  → ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
+         ( proj₁ ( flat { r } u ) ≡ w₁
+         × w₁ ++ w₂ ≡ drop i w
+         × length w₁ ≡ j ∸ i
+         × ∀ ( v : U r ) 
+           → ( proj₁ (flat v) ) ≡ (take ( k ∸ i ) ( drop i w ) ) 
+           → r ⊢ u >ᵖ v )
+
+←posix-sound = ? 
+
+```

@@ -472,15 +472,24 @@ Min⁺-inr l r loc w i j ¬u ( ⊨inr _ _ _ _ _ _ b ) with ⊨? l i j w
   → <-Min⁺ l r loc w i j ( ⊨inr l r loc i j w b ) → ¬ ( l , i , j ⊨ w )
 <-Min⁺-inr¬ ( <-min-r _ _ _ _ _ _ ¬l _ ) = ¬l
 
+```
 
+
+Definitions from Mamrous's section 2.1
+
+```agda
 
 mutual
 
+  infix 4 _∣_⊢_,_<_,_
   infix 4 _∣_∣_⊢_<_
   infix 4 _∣_∣_∣_∣_∣_∣_⊢⁺_<_
   infix 4 _∣_∣_∣_∣_∣_∣_⊢●_<_
   infix 4 _∣_∣_∣_∣_∣_∣_⊢⋆_<_
 
+  
+
+  -- Mamoura's greedy order
 
   data _∣_∣_⊢_<_ : ∀ ( q :  RE ) → ( w : List Char ) → ( i : ℕ ) → ( j : ℕ ) → ( j' : ℕ )  → Set
   data _∣_∣_∣_∣_∣_∣_⊢⁺_<_ : ∀ ( l r : RE ) → ( loc : ℕ ) → ( w : List Char ) → ( i j j' : ℕ ) →  ( l + r ` loc , i , j ⊨ w ) → ( l + r ` loc , i , j' ⊨ w ) → Set
@@ -528,7 +537,8 @@ mutual
         --------------------------------------------------------------------
         → <-Min* r nε loc w i k ( ⊨∷ r nε loc w i k ( j , i<j , j≤k , t₁ , t₂ ) )
 
-  -- is this well-founded, wellfounded is depending on <-Min hahah.. circular definition
+
+
   data _∣_∣_⊢_<_ where
     choice : ∀ { l r : RE } { loc : ℕ } { w : List Char }
       → ( i j j' : ℕ )
@@ -551,6 +561,23 @@ mutual
       → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r nε loc w i k k' ( proj₁ ( find-<-Min* r nε loc w i k t₁ ) ) ( proj₁ ( find-<-Min* r nε loc w i k' t₂ ) )
       --------------------------------------------------
       → ( r * nε ` loc ) ∣ w ∣ i ⊢ k < k'
+
+
+
+  data _∣_⊢_,_<_,_ : ∀ ( q :  RE ) → ( w : List Char ) → ( i j : ℕ ) → ( i' j' : ℕ )  → Set where
+    ⊢fst :  ∀ ( r :  RE ) → ( w : List Char ) → ( i j : ℕ ) → ( i' j' : ℕ )
+      → ( t₁ : r , i , j  ⊨ w ) 
+      → ( t₂ : r , i' , j' ⊨ w ) 
+      → i Nat.< i'
+      ----------------------------------------------------
+      →  r ∣ w ⊢ i , j < i' , j'
+      
+    ⊢snd :  ∀ ( r :  RE ) → ( w : List Char ) → ( i : ℕ ) → ( j j' : ℕ )
+      → ( t₁ : r , i , j  ⊨ w ) 
+      → ( t₂ : r , i , j' ⊨ w ) 
+      → r ∣ w ∣ i  ⊢ j <  j' 
+      ----------------------------------------------------
+      → r ∣ w ⊢ i , j < i , j'
 
 
   data _∣_∣_∣_∣_∣_∣_⊢⁺_<_ where
@@ -3411,4 +3438,46 @@ mutual
         → r ⊢ ( greedyU r i j w t₁ )
              >ᵍ ( greedy-max r w i k t₂ )
       ∀-ev t₂ = go r w i j k p t₂
+```
+
+
+```agda
+
+-- Mamoura's posix order
+infix 4 _∣_⊩_,_<_,_
+
+infix 4 _∣_∣_⊩_<_
+
+
+data _∣_∣_⊩_<_ : ∀ ( q :  RE ) → ( w : List Char ) → ( i : ℕ ) → ( j : ℕ ) → ( j' : ℕ )  → Set where
+  leftlong : ∀ { r : RE } { w : List Char }
+    → ( i j j' : ℕ )
+    → ( t₁ : (r , i , j  ⊨ w) )  
+    → ( t₂ : (r , i , j' ⊨ w) )
+    → j Nat.> j' 
+    ---------------------------------------
+    → r ∣ w ∣ i ⊩ j < j'
+  
+
+
+data _∣_⊩_,_<_,_ : ∀ ( q :  RE ) → ( w : List Char ) → ( i j : ℕ ) → ( i' j' : ℕ )  → Set where
+  ⊩fst :  ∀ ( r :  RE ) → ( w : List Char ) → ( i j : ℕ ) → ( i' j' : ℕ )
+    → ( t₁ : r , i , j  ⊨ w ) 
+    → ( t₂ : r , i' , j' ⊨ w ) 
+    → i Nat.< i'
+    ----------------------------------------------------
+    →  r ∣ w ⊩ i , j < i' , j'
+      
+  ⊩snd :  ∀ ( r :  RE ) → ( w : List Char ) → ( i : ℕ ) → ( j j' : ℕ )
+    → ( t₁ : r , i , j  ⊨ w ) 
+    → ( t₂ : r , i , j' ⊨ w ) 
+    → r ∣ w ∣ i ⊩ j <  j' 
+    ----------------------------------------------------
+    → r ∣ w ⊩ i , j < i , j'
+
+
+
+
+
+
 ```

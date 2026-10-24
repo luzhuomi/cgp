@@ -1113,7 +1113,7 @@ parseAllU r [a] = app buildU pdU[ r . a ]
 ## Update on 24 July 2026
 
 1. Completed proving Okui and Suzuki's formation is correspondent to our POSIX ordering.
-   1. refer to `src/cgp/posix/RelatedWorkOkuiSuzuki.lagda.md` lemma `¬v≺u→r⇒u` .
+   1. refer to `src/cgp/relatedwork/RelatedWorkOkuiSuzuki.lagda.md` lemma `¬v≺u→r⇒u` .
    
    
 

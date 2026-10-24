@@ -1,6 +1,6 @@
 ```agda
 {-# OPTIONS --rewriting #-}
-module cgp.posix.RelatedWorkMamouras where
+module cgp.relatedwork.RelatedWorkMamouras where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
@@ -62,7 +62,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   >→¬≡
   )
 
-import cgp.posix.RelatedWorkCUrban as RelatedWorkCUrban
+import cgp.relatedwork.RelatedWorkCUrban as RelatedWorkCUrban
 open RelatedWorkCUrban  using ( _,_⇒_ ; p₁ ; pc ; p+l ; p+r ; ps ; p[] ; p* ; ∈⟦→⇒ ; ∈⟦→⇒*-go ; ∈⟦→⇒●-go ; *-fb ; ∈⟦-+-elim ; ∈⟦-●-elim ; ∈⟦-ε-elim ; ∈⟦-decides ; elim-star ; list≡-decides ; ∈⟦-*-empty-r* ; find-longest-split ; NoShorter ; ∈⟦→⇒-ε ; ∈⟦→⇒-$ ; plus-right-member ; plus-right-∈⟦→⇒ ; ⇒-member ; ⇒→>-max ; >-anti-sym ; >-max→⇒ ; intersect-memberʳ ; >→¬< )
 
 import Data.Char as Char

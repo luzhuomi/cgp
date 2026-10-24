@@ -707,3 +707,113 @@ open POSIXOrder renaming ( _⊢_>ⁱ_ to _⊢_>ᵖⁱ_ )
             ( ∸-<-< i j k i≤k j>k ) )
 
 ```
+
+UNPROVABLE : the completeness direction for the POSIX order , ←posix-complete ,
+is refuted by the counterexample below ( for r-pc = `a* ● a*` , u-pc and v-pc
+the two splits of "a" , the premise is inhabited but the ∃ conclusion fails ;
+see ¬←posix-complete-pc ) .
+
+The span order `_∣_∣_⊩_<_` compares only the END points of two spans that share
+a start ( leftlong : j > k ) , so it cannot say anything about two parses that
+span the SAME interval — and that is exactly what the POSIX parse-tree order
+does through len-≡ + seq₁ : it compares the SPLIT POINTS of a sequence . For
+`a* ● a*` on the word "a" , u-pc gives the letter to the LEFT star ( the
+POSIX -maximal split ) and v-pc gives it to the RIGHT star , so r-pc ⊢ u-pc >ᵖ
+v-pc holds ; but both parses span the interval ( 0 , 1 ) , while the ∃
+conclusion asks for spans ( i , j ) and ( i , k ) of the same word with j > k ,
+and match-span-len pins j ∸ i and k ∸ i to the two word lengths , both 1 .
+
+( The other top-level POSIX rule , len-> , is much closer to completeness : if
+flat u extends flat v as a proper prefix the conclusion is satisfiable by
+i ≡ 0 , w ≡ flat u . It still fails whenever the two words are not
+prefix-comparable , for the same head-conflict reason as the ←greedy-complete
+counterexample . )
+
+
+```agda
+-- ←posix-complete : ( r : RE ) ( u v : U r )
+--   → ( r ⊢ u >ᵖ v )
+--   -----------------------------------------
+--   → ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+--       ( ( proj₁ (flat u) ) ≡ (take ( j ∸ i ) ( drop i w ) )
+--       × ( proj₁ (flat v) ) ≡ (take ( k ∸ i ) ( drop i w ) )
+--       × ( r ∣ w ∣ i ⊩ j < k ) )
+
+-- the POSIX -maximal split and a non -maximal one , for `a* ● a*` on "a" .
+a₁ : RE
+a₁ = $ 'a' ` 1
+
+a*₁ : RE
+a*₁ = a₁ * ε∉$ ` 2
+
+a*₂ : RE
+a*₂ = ( $ 'a' ` 3 ) * ε∉$ ` 4
+
+r-pc : RE
+r-pc = a*₁ ● a*₂ ` 5
+
+u-pc : U r-pc
+u-pc = PairU ( ListU ( LetterU 'a' ∷ [] ) ) ( ListU [] )
+
+v-pc : U r-pc
+v-pc = PairU ( ListU [] ) ( ListU ( LetterU 'a' ∷ [] ) )
+
+flat-u-pc : proj₁ ( flat { r-pc } u-pc ) ≡ 'a' ∷ []
+flat-u-pc = refl
+
+flat-v-pc : proj₁ ( flat { r-pc } v-pc ) ≡ 'a' ∷ []
+flat-v-pc = refl
+
+-- the premise : the two total lengths are EQUAL ( len-≡ ) and the left
+-- component of the sequence is strictly longer ( seq₁ + len-> ) .
+u-pc>ᵖv-pc : r-pc ⊢ u-pc >ᵖ v-pc
+u-pc>ᵖv-pc = POSIXOrder.len-≡ refl
+               ( POSIXOrder.seq₁ ( POSIXOrder.len-> { a*₁ } ( s<s z≤n) ) )
+
+-- Purpose : the ∃ conclusion of ←posix-complete fails for ( r-pc , u-pc , v-pc ) .
+-- Used in : ¬←posix-complete , ←posix-complete-counterexample .
+-- Idea    : the ⊩ evidence can only be leftlong , so j > k , and ∸-<-< turns
+--           that into k ∸ i < j ∸ i ; but both truncated lengths are 1 ( the
+--           two word lengths , by match-span-len and the flat equalities ) ,
+--           which is the irreflexive 1 < 1 .
+¬←posix-complete-pc : ¬ ( ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+      ( ( proj₁ ( flat { r-pc } u-pc ) ) ≡ ( take ( j ∸ i ) ( drop i w ) )
+      × ( proj₁ ( flat { r-pc } v-pc ) ) ≡ ( take ( k ∸ i ) ( drop i w ) )
+      × ( r-pc ∣ w ∣ i ⊩ j < k ) ) )
+¬←posix-complete-pc ( w , i , j , k , ( fu , fv , leftlong .i .j .k t₁ t₂ j>k ) ) =
+  ⊥-elim ( <-irrefl refl
+    ( subst₂ _<_ k≡1 j≡1 ( ∸-<-< i j k i≤k j>k ) ) )
+  where
+    i≤k : i Nat.≤ k
+    i≤k = rij⊨w→i≤j t₂
+    -- the truncated lengths are the word lengths , and both words are "a" .
+    j≡1 : j ∸ i ≡ 1
+    j≡1 = trans ( sym ( match-span-len r-pc i j w t₁ ) )
+                ( sym ( cong length fu ) )
+    k≡1 : k ∸ i ≡ 1
+    k≡1 = trans ( sym ( match-span-len r-pc i k w t₂ ) )
+                ( sym ( cong length fv ) )
+
+-- Purpose : ←posix-complete ( the conjecture , for every r / u / v ) is false .
+-- Used in : ←posix-complete-counterexample .
+-- Idea    : instantiate the conjecture at ( r-pc , u-pc , v-pc ) , whose
+--           premise is inhabited , and refute its ∃ part .
+¬←posix-complete : ¬ ( ( r : RE ) ( u v : U r )
+    → ( r ⊢ u >ᵖ v )
+    → ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+        ( ( proj₁ ( flat u ) ) ≡ ( take ( j ∸ i ) ( drop i w ) )
+        × ( proj₁ ( flat v ) ) ≡ ( take ( k ∸ i ) ( drop i w ) )
+        × ( r ∣ w ∣ i ⊩ j < k ) ) )
+¬←posix-complete H with ( H r-pc u-pc v-pc u-pc>ᵖv-pc )
+... | ( w , i , j , k , ( fu , fv , p< ) )
+  = ¬←posix-complete-pc ( w , i , j , k , ( fu , fv , p< ) )
+
+-- the counterexample assembled : the premise holds while the conclusion
+-- fails ( cf. ←greedy-complete-counterexample above ) .
+←posix-complete-counterexample : ( r-pc ⊢ u-pc >ᵖ v-pc )
+  × ¬ ( ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+        ( ( proj₁ ( flat { r-pc } u-pc ) ) ≡ ( take ( j ∸ i ) ( drop i w ) )
+        × ( proj₁ ( flat { r-pc } v-pc ) ) ≡ ( take ( k ∸ i ) ( drop i w ) )
+        × ( r-pc ∣ w ∣ i ⊩ j < k ) ) )
+←posix-complete-counterexample = u-pc>ᵖv-pc , ¬←posix-complete-pc
+```

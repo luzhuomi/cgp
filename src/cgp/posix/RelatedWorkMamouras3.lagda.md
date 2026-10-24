@@ -522,5 +522,16 @@ mutual
       ∀-ev₂ v flatv = case-⊎
         ( λ g>v → GreedyOrder.>-trans ( ∀-ev t₂ ) g>v )
         ( λ g≡v → subst ( λ x → r ⊢ u >ᵍ x ) g≡v ( ∀-ev t₂ ) )
-        ( greedy-max-prop r i k w t₂ v flatv ) 
+        ( greedy-max-prop r i k w t₂ v flatv )
+
+
+  ←greedy-complete : ( r : RE ) ( u v : U r )
+    → ( r ⊢ u >ᵍ v )
+    -----------------------------------------
+    → ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
+      ( ( proj₁ (flat u) ) ≡ (take ( j ∸ i ) ( drop i w ) )
+      × ( proj₁ (flat v) ) ≡ (take ( k ∸ i ) ( drop i w ) )
+      × ( r ∣ w ∣ i ⊢ j < k ) )
+  ←greedy-complete = {!!} 
+      
 ```

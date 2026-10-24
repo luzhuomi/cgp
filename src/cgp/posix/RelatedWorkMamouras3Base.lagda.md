@@ -601,16 +601,12 @@ mutual
       → l ∣ r ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢● ( ⊨● l r loc i k w j (rij⊨w→i≤j t₁) (rij⊨w→i≤j t₂) t₁ t₂ ) < ( ⊨● l r loc i k' w j' (rij⊨w→i≤j t₁') (rij⊨w→i≤j t₂') t₁' t₂' )
 
   data _∣_∣_∣_∣_∣_∣_⊢⋆_<_ where
-    -- a non-empty iteration is strictly better (smaller) than the empty match
     *-cons-nil : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { w : List Char }
       → ( i j k : ℕ )
       → ( i<j : i Nat.< j ) ( j≤k : j Nat.≤ k )
       → ( t₁ : ( r , i , j ⊨ w ) )
       → ( t₂ : ( r * nε ` loc , j , k ⊨ w ) )
-      -----------------------------------------------------------------------
       → r ∣ nε ∣ loc ∣ w ∣ i ∣ k ∣ i ⊢⋆ ( ⊨∷ r nε loc w i k ( j , i<j , j≤k , t₁ , t₂ ) ) < ( ⊨[] r nε loc w i )
-
-    -- compare the heads
     *-head : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { w : List Char }
       → ( i j j' k k' : ℕ )
       → ( i<j : i Nat.< j ) ( j≤k : j Nat.≤ k )
@@ -620,10 +616,7 @@ mutual
       → ( t₁' : ( r , i , j' ⊨ w ) )
       → ( t₂' : ( r * nε ` loc , j' , k' ⊨ w ) )
       → r ∣ w ∣ i ⊢ j < j'
-      -----------------------------------------------------------------------
       → r ∣ nε ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⋆ ( ⊨∷ r nε loc w i k ( j , i<j , j≤k , t₁ , t₂ ) ) < ( ⊨∷ r nε loc w i k' ( j' , i<j' , j'≤k' , t₁' , t₂' ) )
-
-    -- same head, compare the tails
     *-tail : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { w : List Char }
       → ( i j j' k k' : ℕ )
       → ( i<j : i Nat.< j ) ( j≤k : j Nat.≤ k ) ( i<j' : i Nat.< j' ) ( j'≤k' : j' Nat.≤ k' )
@@ -633,17 +626,7 @@ mutual
       → ( t₂' : ( r * nε ` loc , j' , k' ⊨ w ) )
       → ( j ≡ j' )
       → ( r * nε ` loc ) ∣ w ∣ j ⊢ k < k'
-      -----------------------------------------------------------------------
       → r ∣ nε ∣ loc ∣ w ∣ i ∣ k ∣ k' ⊢⋆ ( ⊨∷ r nε loc w i k ( j , i<j , j≤k , t₁ , t₂ ) ) < ( ⊨∷ r nε loc w i k' ( j' , i<j' , j'≤k' , t₁' , t₂' ) )
-
-  -- the order is empty when the head of the left match is the empty iteration
-  -- Purpose : ⊨[] is not below itself in ⊢⋆.
-  -- Used in : no call sites yet ( kept for the irreflexivity of ⊢⋆ ).
-  -- Idea    : ( ) — every ⊢⋆ constructor has a ⊨∷ left-hand side, so a ⊨[]
-  --           left-hand side cannot be produced.
-  ¬⊢⋆-[]-[] : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { w : List Char } { i : ℕ }
-    → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r nε loc w i i i ( ⊨[] r nε loc w i ) ( ⊨[] r nε loc w i ) → ⊥
-  ¬⊢⋆-[]-[] ()
 
   -- Purpose : ⊨[] is not below any other match t in ⊢⋆ : combined with
   --           *-cons-nil ( every ⊨∷ is below ⊨[] ), this makes ⊨[] the
@@ -683,98 +666,6 @@ mutual
     → ¬ ( l₂ ∣ w ∣ i ⊢ j' < j )
     → l₁ ∣ l₂ ∣ loc ∣ w ∣ i ∣ j' ∣ j ⊢⁺ ⊨inr l₁ l₂ loc i j' w v < ⊨inr l₁ l₂ loc i j w u → ⊥
   ¬inr<inr⁺ ¬ord ( inrinr _ _ _ _ _ ord ) = ¬ord ord
-
-  -- trichotomy of the order on matches with a common start
-  -- Purpose : for two matches t₁, t₂ of the same regex l from the same start
-  --           i, the base order is total : exactly one of
-  --           ( l ∣ w ∣ i ⊢ s₂ < s₁ ) / ( s₁ ≡ s₂ ) / ( l ∣ w ∣ i ⊢ s₁ < s₂ )
-  --           holds.
-  -- Used in : no external call sites yet ; recurses into itself through the
-  --           * / + / ● branches.
-  -- Idea    : structural on l. ε / $ : the evidence is unique, so equality.
-  --           + : compare the minimal shapes ( inlinr : inl < inr ; same
-  --           shape : recurse on the branch ). * : via trichotomy-* — compare
-  --           the minimal heads by the base order on r ( *-head / *-tail ),
-  --           equal heads → recurse on r*. ● : via trichotomy-● — compare the
-  --           minimal splits by the base order on l₁ ( seq₁ ), equal splits →
-  --           recurse on l₂ ( seq₂ ).
-  trichotomy : ∀ ( l : RE ) ( w : List Char ) ( i s₁ s₂ : ℕ )
-    → ( t₁ : l , i , s₁ ⊨ w ) → ( t₂ : l , i , s₂ ⊨ w )
-    → ( l ∣ w ∣ i ⊢ s₂ < s₁ ) ⊎ ( s₁ ≡ s₂ ) ⊎ ( l ∣ w ∣ i ⊢ s₁ < s₂ )
-  trichotomy ε w i s₁ s₂ ( ⊨ε _ _ ) ( ⊨ε _ _ ) = inj₂ ( inj₁ refl )
-  trichotomy ( $ c ` loc ) w i s₁ s₂ ( ⊨$ _ _ _ _ _ ) ( ⊨$ _ _ _ _ _ ) = inj₂ ( inj₁ refl )
-  trichotomy ( l₃ * nε ` loc ) w i s₁ s₂ t₁ t₂ = trichotomy-* l₃ nε loc w i s₁ s₂ t₁ t₂
-    where
-      trichotomy-* : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i s₁ s₂ : ℕ )
-        → ( t₁ : ( r * nε ` loc ) , i , s₁ ⊨ w )
-        → ( t₂ : ( r * nε ` loc ) , i , s₂ ⊨ w )
-        → ( r * nε ` loc ) ∣ w ∣ i ⊢ s₂ < s₁ ⊎ s₁ ≡ s₂ ⊎ ( r * nε ` loc ) ∣ w ∣ i ⊢ s₁ < s₂
-      trichotomy-* r nε loc w i s₁ s₂ t₁ t₂
-        with find-<-Min* r nε loc w i s₁ t₁ | inspect ( find-<-Min* r nε loc w i s₁ ) t₁
-           | find-<-Min* r nε loc w i s₂ t₂ | inspect ( find-<-Min* r nε loc w i s₂ ) t₂
-      ... | ( min-t₁ , _ ) | [ eq₁ ] | ( min-t₂ , _ ) | [ eq₂ ]
-        with min-t₁ | min-t₂
-      ... | ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤s₁ , u₁ , v₁ ) | ⊨∷ _ _ _ _ _ _ ( j₂ , i<j₂ , j₂≤s₂ , u₂ , v₂ ) =
-        case-⊎ (λ j₁<j₂ →
-          inj₂ ( inj₂ ( star i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⋆ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( *-head i j₁ j₂ s₁ s₂ i<j₁ j₁≤s₁ i<j₂ j₂≤s₂ u₁ v₁ u₂ v₂ j₁<j₂ ) ) ) ))
-               (case-⊎ (λ { refl →
-                 case-⊎ (λ s₁<s₂ →
-                   inj₂ ( inj₂ ( star i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⋆ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( *-tail i j₁ j₂ s₁ s₂ i<j₁ j₁≤s₁ i<j₂ j₂≤s₂ u₁ v₁ u₂ v₂ refl s₁<s₂ ) ) ) ))
-                        (case-⊎ (λ s₂≡s₁ → inj₂ ( inj₁ ( sym s₂≡s₁ ) ))
-                                 (λ s₂<s₁ →
-                                   inj₁ ( star i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⋆ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( *-tail i j₂ j₁ s₂ s₁ i<j₂ j₂≤s₂ i<j₁ j₁≤s₁ u₂ v₂ u₁ v₁ refl s₂<s₁ ) ) ) ))
-                        ( trichotomy ( r * nε ` loc ) w j₁ s₂ s₁ v₂ v₁ ) })
-                       (λ j₂<j₁ →
-                         inj₁ ( star i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⋆ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( *-head i j₂ j₁ s₂ s₁ i<j₂ j₂≤s₂ i<j₁ j₁≤s₁ u₂ v₂ u₁ v₁ j₂<j₁ ) ) ) ))
-               ( trichotomy r w i j₂ j₁ u₂ u₁ )
-      ... | ⊨[] _ _ _ _ _ | ⊨∷ _ _ _ _ _ _ ( j₂ , i<j₂ , j₂≤s₂ , u₂ , v₂ ) =
-        inj₁ ( star i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⋆ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( *-cons-nil i j₂ s₂ i<j₂ j₂≤s₂ u₂ v₂ ) ) )
-      ... | ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤s₁ , u₁ , v₁ ) | ⊨[] _ _ _ _ _ =
-        inj₂ ( inj₂ ( star i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⋆ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( *-cons-nil i j₁ s₁ i<j₁ j₁≤s₁ u₁ v₁ ) ) ) )
-      ... | ⊨[] _ _ _ _ _ | ⊨[] _ _ _ _ _ = inj₂ ( inj₁ refl )
-  trichotomy ( l₃ + l₄ ` loc ) w i s₁ s₂ t₁ t₂
-    with find-<-Min⁺ l₃ l₄ loc w i s₂ t₂ | inspect ( find-<-Min⁺ l₃ l₄ loc w i s₂ ) t₂
-       | find-<-Min⁺ l₃ l₄ loc w i s₁ t₁ | inspect ( find-<-Min⁺ l₃ l₄ loc w i s₁ ) t₁
-  ... | ( min-t₂ , _ ) | [ eq₂ ] | ( min-t₁ , _ ) | [ eq₁ ]
-    with min-t₁ | min-t₂
-  ... | ⊨inl _ _ _ _ _ _ v₁' | ⊨inl _ _ _ _ _ _ v₂' =
-    case-⊎ (λ ord → inj₁ ( choice i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⁺ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( inlinl i s₂ s₁ v₂' v₁' ord ) ) ))
-           (case-⊎ (λ eq → inj₂ ( inj₁ eq ))
-                    (λ ord → inj₂ ( inj₂ ( choice i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⁺ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( inlinl i s₁ s₂ v₁' v₂' ord ) ) )) ))
-           ( trichotomy l₃ w i s₁ s₂ v₁' v₂' )
-  ... | ⊨inl _ _ _ _ _ _ v₁' | ⊨inr _ _ _ _ _ _ v₂' = inj₂ ( inj₂ ( choice i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⁺ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( inlinr i s₁ s₂ v₁' v₂' ) ) ) )
-  ... | ⊨inr _ _ _ _ _ _ v₁' | ⊨inl _ _ _ _ _ _ v₂' = inj₁ ( choice i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⁺ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( inlinr i s₂ s₁ v₂' v₁' ) ) )
-  ... | ⊨inr _ _ _ _ _ _ v₁' | ⊨inr _ _ _ _ _ _ v₂' =
-    case-⊎ (λ ord → inj₁ ( choice i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⁺ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( inrinr i s₂ s₁ v₂' v₁' ord ) ) ))
-           (case-⊎ (λ eq → inj₂ ( inj₁ eq ))
-                    (λ ord → inj₂ ( inj₂ ( choice i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⁺ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( inrinr i s₁ s₂ v₁' v₂' ord ) ) )) ))
-           ( trichotomy l₄ w i s₁ s₂ v₁' v₂' )
-  trichotomy ( l₃ ● l₄ ` loc ) w i s₁ s₂ t₁ t₂ = trichotomy-● l₃ l₄ loc w i s₁ s₂ t₁ t₂
-    where
-      trichotomy-● : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i s₁ s₂ : ℕ )
-        → ( t₁ : ( l ● r ` loc ) , i , s₁ ⊨ w )
-        → ( t₂ : ( l ● r ` loc ) , i , s₂ ⊨ w )
-        → ( l ● r ` loc ) ∣ w ∣ i ⊢ s₂ < s₁ ⊎ s₁ ≡ s₂ ⊎ ( l ● r ` loc ) ∣ w ∣ i ⊢ s₁ < s₂
-      trichotomy-● l r loc w i s₁ s₂ t₁ t₂
-        with find-<-Min● l r loc w i s₁ t₁ | inspect ( find-<-Min● l r loc w i s₁ ) t₁
-           | find-<-Min● l r loc w i s₂ t₂ | inspect ( find-<-Min● l r loc w i s₂ ) t₂
-      ... | ( min-t₁ , _ ) | [ eq₁ ] | ( min-t₂ , _ ) | [ eq₂ ]
-        with min-t₁ | min-t₂
-      ... | ⊨● _ _ _ _ _ _ j₁ _ _ u₁ v₁ | ⊨● _ _ _ _ _ _ j₂ _ _ u₂ v₂
-        with trichotomy l w i j₂ j₁ u₂ u₁
-      ... | inj₁ j₁<j₂ =
-        inj₂ ( inj₂ ( seq i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢● x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( seq₁ i j₁ s₁ j₂ s₂ u₁ v₁ u₂ v₂ j₁<j₂ ) ) ) )
-      ... | inj₂ ( inj₂ j₂<j₁ ) =
-        inj₁ ( seq i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢● x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( seq₁ i j₂ s₂ j₁ s₁ u₂ v₂ u₁ v₁ j₂<j₁ ) ) )
-      ... | inj₂ ( inj₁ j₂≡j₁ )
-        with j₂≡j₁
-      ... | refl =
-        case-⊎ (λ s₁<s₂ →
-          inj₂ ( inj₂ ( seq i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢● x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( seq₂ i j₁ j₁ s₁ s₂ u₁ v₁ u₂ v₂ refl s₁<s₂ ) ) ) ))
-               (case-⊎ (λ s₂≡s₁ → inj₂ ( inj₁ ( sym s₂≡s₁ ) ))
-                        (λ s₂<s₁ →
-                          inj₁ ( seq i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢● x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( seq₂ i j₁ j₁ s₂ s₁ u₂ v₂ u₁ v₁ refl s₂<s₁ ) ) ) ))
-               ( trichotomy r w j₁ s₂ s₁ v₂ v₁ )
 
   -- Purpose : decision procedure for the base ( Mamouras ) order
   --           l ∣ w ∣ i ⊢ j' < j on two matches of the same regex l from the
@@ -1259,11 +1150,138 @@ mutual
   ... | yes v = refl
   ... | no ¬ex = ⊥-elim ( ¬ex ( j , i<j , j≤k , t₁ , t₂ ) )
 
+  -- Purpose : the head / tail split lemmas at s₀ = i + length a for a
+  --           parse whose flat is a ++ b with side conditions for ( i , j ) .
+  -- Used in : U⊨ ( ● and * cases ) .
+  -- Idea    : prefix / rest rewrites of the side conditions .
+  record SplitLemmas ( w : List Char ) ( i j : ℕ ) ( a b : List Char ) : Set where
+    field
+      i≤s₀ : i ≤ i + length a
+      fl₁ : length a ≡ ( i + length a ) ∸ i
+      fw₁ : a ++ drop ( i + length a ) w ≡ drop i w
+      s₀≤j : ( i + length a ) ≤ j
+      fl₂ : length b ≡ j ∸ ( i + length a )
+      fw₂ : b ++ drop j w ≡ drop ( i + length a ) w
+
+import cgp.greedy.Order as GreedyOrder
+open GreedyOrder renaming ( _⊢_>_ to  _⊢_>ᵍ_ )
+open GreedyOrder renaming ( _⊢_>ⁱ_ to _⊢_>ᵍⁱ_ )
+
+{-# TERMINATING #-}
+mutual
+
+    -- a non-empty iteration is strictly better (smaller) than the empty match
+      -----------------------------------------------------------------------
+
+    -- compare the heads
+      -----------------------------------------------------------------------
+
+    -- same head, compare the tails
+      -----------------------------------------------------------------------
+
+  -- the order is empty when the head of the left match is the empty iteration
+  -- Purpose : ⊨[] is not below itself in ⊢⋆.
+  -- Used in : no call sites yet ( kept for the irreflexivity of ⊢⋆ ).
+  -- Idea    : ( ) — every ⊢⋆ constructor has a ⊨∷ left-hand side, so a ⊨[]
+  --           left-hand side cannot be produced.
+  ¬⊢⋆-[]-[] : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ } { w : List Char } { i : ℕ }
+    → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r nε loc w i i i ( ⊨[] r nε loc w i ) ( ⊨[] r nε loc w i ) → ⊥
+  ¬⊢⋆-[]-[] ()
+
+  -- trichotomy of the order on matches with a common start
+  -- Purpose : for two matches t₁, t₂ of the same regex l from the same start
+  --           i, the base order is total : exactly one of
+  --           ( l ∣ w ∣ i ⊢ s₂ < s₁ ) / ( s₁ ≡ s₂ ) / ( l ∣ w ∣ i ⊢ s₁ < s₂ )
+  --           holds.
+  -- Used in : no external call sites yet ; recurses into itself through the
+  --           * / + / ● branches.
+  -- Idea    : structural on l. ε / $ : the evidence is unique, so equality.
+  --           + : compare the minimal shapes ( inlinr : inl < inr ; same
+  --           shape : recurse on the branch ). * : via trichotomy-* — compare
+  --           the minimal heads by the base order on r ( *-head / *-tail ),
+  --           equal heads → recurse on r*. ● : via trichotomy-● — compare the
+  --           minimal splits by the base order on l₁ ( seq₁ ), equal splits →
+  --           recurse on l₂ ( seq₂ ).
+  trichotomy : ∀ ( l : RE ) ( w : List Char ) ( i s₁ s₂ : ℕ )
+    → ( t₁ : l , i , s₁ ⊨ w ) → ( t₂ : l , i , s₂ ⊨ w )
+    → ( l ∣ w ∣ i ⊢ s₂ < s₁ ) ⊎ ( s₁ ≡ s₂ ) ⊎ ( l ∣ w ∣ i ⊢ s₁ < s₂ )
+  trichotomy ε w i s₁ s₂ ( ⊨ε _ _ ) ( ⊨ε _ _ ) = inj₂ ( inj₁ refl )
+  trichotomy ( $ c ` loc ) w i s₁ s₂ ( ⊨$ _ _ _ _ _ ) ( ⊨$ _ _ _ _ _ ) = inj₂ ( inj₁ refl )
+  trichotomy ( l₃ * nε ` loc ) w i s₁ s₂ t₁ t₂ = trichotomy-* l₃ nε loc w i s₁ s₂ t₁ t₂
+    where
+      trichotomy-* : ( r : RE ) ( nε : ε∉ r ) ( loc : ℕ ) ( w : List Char ) ( i s₁ s₂ : ℕ )
+        → ( t₁ : ( r * nε ` loc ) , i , s₁ ⊨ w )
+        → ( t₂ : ( r * nε ` loc ) , i , s₂ ⊨ w )
+        → ( r * nε ` loc ) ∣ w ∣ i ⊢ s₂ < s₁ ⊎ s₁ ≡ s₂ ⊎ ( r * nε ` loc ) ∣ w ∣ i ⊢ s₁ < s₂
+      trichotomy-* r nε loc w i s₁ s₂ t₁ t₂
+        with find-<-Min* r nε loc w i s₁ t₁ | inspect ( find-<-Min* r nε loc w i s₁ ) t₁
+           | find-<-Min* r nε loc w i s₂ t₂ | inspect ( find-<-Min* r nε loc w i s₂ ) t₂
+      ... | ( min-t₁ , _ ) | [ eq₁ ] | ( min-t₂ , _ ) | [ eq₂ ]
+        with min-t₁ | min-t₂
+      ... | ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤s₁ , u₁ , v₁ ) | ⊨∷ _ _ _ _ _ _ ( j₂ , i<j₂ , j₂≤s₂ , u₂ , v₂ ) =
+        case-⊎ (λ j₁<j₂ →
+          inj₂ ( inj₂ ( star i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⋆ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( *-head i j₁ j₂ s₁ s₂ i<j₁ j₁≤s₁ i<j₂ j₂≤s₂ u₁ v₁ u₂ v₂ j₁<j₂ ) ) ) ))
+               (case-⊎ (λ { refl →
+                 case-⊎ (λ s₁<s₂ →
+                   inj₂ ( inj₂ ( star i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⋆ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( *-tail i j₁ j₂ s₁ s₂ i<j₁ j₁≤s₁ i<j₂ j₂≤s₂ u₁ v₁ u₂ v₂ refl s₁<s₂ ) ) ) ))
+                        (case-⊎ (λ s₂≡s₁ → inj₂ ( inj₁ ( sym s₂≡s₁ ) ))
+                                 (λ s₂<s₁ →
+                                   inj₁ ( star i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⋆ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( *-tail i j₂ j₁ s₂ s₁ i<j₂ j₂≤s₂ i<j₁ j₁≤s₁ u₂ v₂ u₁ v₁ refl s₂<s₁ ) ) ) ))
+                        ( trichotomy ( r * nε ` loc ) w j₁ s₂ s₁ v₂ v₁ ) })
+                       (λ j₂<j₁ →
+                         inj₁ ( star i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⋆ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( *-head i j₂ j₁ s₂ s₁ i<j₂ j₂≤s₂ i<j₁ j₁≤s₁ u₂ v₂ u₁ v₁ j₂<j₁ ) ) ) ))
+               ( trichotomy r w i j₂ j₁ u₂ u₁ )
+      ... | ⊨[] _ _ _ _ _ | ⊨∷ _ _ _ _ _ _ ( j₂ , i<j₂ , j₂≤s₂ , u₂ , v₂ ) =
+        inj₁ ( star i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⋆ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( *-cons-nil i j₂ s₂ i<j₂ j₂≤s₂ u₂ v₂ ) ) )
+      ... | ⊨∷ _ _ _ _ _ _ ( j₁ , i<j₁ , j₁≤s₁ , u₁ , v₁ ) | ⊨[] _ _ _ _ _ =
+        inj₂ ( inj₂ ( star i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → r ∣ nε ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⋆ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( *-cons-nil i j₁ s₁ i<j₁ j₁≤s₁ u₁ v₁ ) ) ) )
+      ... | ⊨[] _ _ _ _ _ | ⊨[] _ _ _ _ _ = inj₂ ( inj₁ refl )
+  trichotomy ( l₃ + l₄ ` loc ) w i s₁ s₂ t₁ t₂
+    with find-<-Min⁺ l₃ l₄ loc w i s₂ t₂ | inspect ( find-<-Min⁺ l₃ l₄ loc w i s₂ ) t₂
+       | find-<-Min⁺ l₃ l₄ loc w i s₁ t₁ | inspect ( find-<-Min⁺ l₃ l₄ loc w i s₁ ) t₁
+  ... | ( min-t₂ , _ ) | [ eq₂ ] | ( min-t₁ , _ ) | [ eq₁ ]
+    with min-t₁ | min-t₂
+  ... | ⊨inl _ _ _ _ _ _ v₁' | ⊨inl _ _ _ _ _ _ v₂' =
+    case-⊎ (λ ord → inj₁ ( choice i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⁺ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( inlinl i s₂ s₁ v₂' v₁' ord ) ) ))
+           (case-⊎ (λ eq → inj₂ ( inj₁ eq ))
+                    (λ ord → inj₂ ( inj₂ ( choice i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⁺ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( inlinl i s₁ s₂ v₁' v₂' ord ) ) )) ))
+           ( trichotomy l₃ w i s₁ s₂ v₁' v₂' )
+  ... | ⊨inl _ _ _ _ _ _ v₁' | ⊨inr _ _ _ _ _ _ v₂' = inj₂ ( inj₂ ( choice i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⁺ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( inlinr i s₁ s₂ v₁' v₂' ) ) ) )
+  ... | ⊨inr _ _ _ _ _ _ v₁' | ⊨inl _ _ _ _ _ _ v₂' = inj₁ ( choice i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⁺ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( inlinr i s₂ s₁ v₂' v₁' ) ) )
+  ... | ⊨inr _ _ _ _ _ _ v₁' | ⊨inr _ _ _ _ _ _ v₂' =
+    case-⊎ (λ ord → inj₁ ( choice i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢⁺ x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( inrinr i s₂ s₁ v₂' v₁' ord ) ) ))
+           (case-⊎ (λ eq → inj₂ ( inj₁ eq ))
+                    (λ ord → inj₂ ( inj₂ ( choice i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l₃ ∣ l₄ ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢⁺ x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( inrinr i s₁ s₂ v₁' v₂' ord ) ) )) ))
+           ( trichotomy l₄ w i s₁ s₂ v₁' v₂' )
+  trichotomy ( l₃ ● l₄ ` loc ) w i s₁ s₂ t₁ t₂ = trichotomy-● l₃ l₄ loc w i s₁ s₂ t₁ t₂
+    where
+      trichotomy-● : ( l r : RE ) ( loc : ℕ ) ( w : List Char ) ( i s₁ s₂ : ℕ )
+        → ( t₁ : ( l ● r ` loc ) , i , s₁ ⊨ w )
+        → ( t₂ : ( l ● r ` loc ) , i , s₂ ⊨ w )
+        → ( l ● r ` loc ) ∣ w ∣ i ⊢ s₂ < s₁ ⊎ s₁ ≡ s₂ ⊎ ( l ● r ` loc ) ∣ w ∣ i ⊢ s₁ < s₂
+      trichotomy-● l r loc w i s₁ s₂ t₁ t₂
+        with find-<-Min● l r loc w i s₁ t₁ | inspect ( find-<-Min● l r loc w i s₁ ) t₁
+           | find-<-Min● l r loc w i s₂ t₂ | inspect ( find-<-Min● l r loc w i s₂ ) t₂
+      ... | ( min-t₁ , _ ) | [ eq₁ ] | ( min-t₂ , _ ) | [ eq₂ ]
+        with min-t₁ | min-t₂
+      ... | ⊨● _ _ _ _ _ _ j₁ _ _ u₁ v₁ | ⊨● _ _ _ _ _ _ j₂ _ _ u₂ v₂
+        with trichotomy l w i j₂ j₁ u₂ u₁
+      ... | inj₁ j₁<j₂ =
+        inj₂ ( inj₂ ( seq i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢● x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( seq₁ i j₁ s₁ j₂ s₂ u₁ v₁ u₂ v₂ j₁<j₂ ) ) ) )
+      ... | inj₂ ( inj₂ j₂<j₁ ) =
+        inj₁ ( seq i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢● x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( seq₁ i j₂ s₂ j₁ s₁ u₂ v₂ u₁ v₁ j₂<j₁ ) ) )
+      ... | inj₂ ( inj₁ j₂≡j₁ )
+        with j₂≡j₁
+      ... | refl =
+        case-⊎ (λ s₁<s₂ →
+          inj₂ ( inj₂ ( seq i s₁ s₂ t₁ t₂ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₁ ∣ s₂ ⊢● x < y) ( sym ( cong proj₁ eq₁ ) ) ( sym ( cong proj₁ eq₂ ) ) ( seq₂ i j₁ j₁ s₁ s₂ u₁ v₁ u₂ v₂ refl s₁<s₂ ) ) ) ))
+               (case-⊎ (λ s₂≡s₁ → inj₂ ( inj₁ ( sym s₂≡s₁ ) ))
+                        (λ s₂<s₁ →
+                          inj₁ ( seq i s₂ s₁ t₂ t₁ ( subst₂ (λ x y → l ∣ r ∣ loc ∣ w ∣ i ∣ s₂ ∣ s₁ ⊢● x < y) ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) ) ( seq₂ i j₁ j₁ s₂ s₁ u₂ v₂ u₁ v₁ refl s₂<s₁ ) ) ) ))
+               ( trichotomy r w j₁ s₂ s₁ v₂ v₁ )
 
 
-  import cgp.greedy.Order as GreedyOrder
-  open GreedyOrder renaming ( _⊢_>_ to  _⊢_>ᵍ_ )
-  open GreedyOrder renaming ( _⊢_>ⁱ_ to _⊢_>ᵍⁱ_ )
+
 
   -- UNPROVABLE : the goal of <-greedy-sound is refuted by the counterexample
   -- below ( for r , w , j = 1 , k = 3 the premise is inhabited but the
@@ -1565,19 +1583,6 @@ mutual
     rewrite flat-ListU-cons { r' } { nε } { loc } u us =
     subst ( λ n → 0 < n ) ( sym ( length-++ ( proj₁ ( flat u ) ) ) )
       ( 0<a→0<a+b _ _ ( ε∉r→0<flat r' nε u ) )
-
-  -- Purpose : the head / tail split lemmas at s₀ = i + length a for a
-  --           parse whose flat is a ++ b with side conditions for ( i , j ) .
-  -- Used in : U⊨ ( ● and * cases ) .
-  -- Idea    : prefix / rest rewrites of the side conditions .
-  record SplitLemmas ( w : List Char ) ( i j : ℕ ) ( a b : List Char ) : Set where
-    field
-      i≤s₀ : i ≤ i + length a
-      fl₁ : length a ≡ ( i + length a ) ∸ i
-      fw₁ : a ++ drop ( i + length a ) w ≡ drop i w
-      s₀≤j : ( i + length a ) ≤ j
-      fl₂ : length b ≡ j ∸ ( i + length a )
-      fw₂ : b ++ drop j w ≡ drop ( i + length a ) w
 
   split-helper : ( w : List Char ) ( i j : ℕ ) ( i≤j : i Nat.≤ j )
     → ( w₂' a b : List Char )

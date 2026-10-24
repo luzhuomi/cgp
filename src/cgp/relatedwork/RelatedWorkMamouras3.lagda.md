@@ -632,6 +632,22 @@ open POSIXOrder renaming ( _⊢_>_ to  _⊢_>ᵖ_ )
 open POSIXOrder renaming ( _⊢_>ⁱ_ to _⊢_>ᵖⁱ_ )
 
 
+-- Purpose : strictness of truncated subtraction under a span hypothesis :
+--           for a start index inside the span ( i ≤ k ) , k < j implies
+--           k ∸ i < j ∸ i .
+-- Used in : ←posix-sound .
+-- Idea    : i ≤ k ≤ j rewrites both sides as i + ( _ ∸ i ) ( m+[n∸m]≡n ) ,
+--           and +-cancelˡ-< cancels the common left summand .
+∸-<-< : ( i j k : ℕ )
+  → ( i≤k : i Nat.≤ k )
+  → ( k<j : k Nat.< j )
+  → k ∸ i Nat.< j ∸ i
+∸-<-< i j k i≤k k<j =
+  +-cancelˡ-< i ( k ∸ i ) ( j ∸ i )
+    ( subst₂ _<_ ( sym ( m+[n∸m]≡n i≤k ) )
+                 ( sym ( m+[n∸m]≡n ( ≤-trans i≤k (<⇒≤ k<j) ) ) )
+                 k<j )
+
 ←posix-sound : ( r : RE ) ( w : List Char ) ( i j k : ℕ )
   → ( p : r ∣ w ∣ i ⊩ j < k )
   → ∃[ u ] ∃[ w₁ ] ∃[ w₂ ]
@@ -642,6 +658,52 @@ open POSIXOrder renaming ( _⊢_>ⁱ_ to _⊢_>ᵖⁱ_ )
            → ( proj₁ (flat v) ) ≡ (take ( k ∸ i ) ( drop i w ) ) 
            → r ⊢ u >ᵖ v )
 
-←posix-sound = {!!} 
+
+-- Purpose : soundness of Mamouras 's POSIX span order ( _∣_∣_⊩_<_ , the
+--           leftmost-longest order of section 2.1 ) for the POSIX parse-tree
+--           order >ᵖ : when the span ( i , j ) is below the span ( i , k ) ,
+--           a witness of the ( i , j ) span is POSIX-above EVERY parse of
+--           the ( i , k ) substring .
+-- Used in : — ( top-level goal of this file ) .
+-- Idea    : the only ⊩ constructor , leftlong , asks j > k : the span order
+--           prefers the LONGER span , so the top-level POSIX rule len->
+--           ( longer word ⇒ greater ) settles the ∀ part outright , no
+--           comparison of the two parse trees is needed . Both lengths are
+--           read off by match-span-len : the witness 's via greedyU-flat ,
+--           v 's via its own flat equality ; ∸-<-< turns j > k into the
+--           strict inequality of the truncated lengths . The witness is
+--           greedyU , the same parse ←greedy-sound-go uses , and its three
+--           side conditions are greedyU-flat / take++drop≡id /
+--           match-span-len .
+←posix-sound r w i j k ( leftlong {r} {w} .i .j .k t₁ t₂ j>k )
+  = ( greedyU r i j w t₁ , w₁ , w₂ , ( flat-ev , concat-ev , len-ev , ∀-ev ) )
+  where
+    w₁ : List Char
+    w₁ = take ( j ∸ i ) ( drop i w )
+    w₂ : List Char
+    w₂ = drop ( j ∸ i ) ( drop i w )
+    -- the k -span starts at i , so i ≤ k .
+    i≤k : i Nat.≤ k
+    i≤k = rij⊨w→i≤j t₂
+    flat-ev : proj₁ ( flat { r } ( greedyU r i j w t₁ ) ) ≡ w₁
+    flat-ev = greedyU-flat r i j w t₁
+    concat-ev : w₁ ++ w₂ ≡ drop i w
+    concat-ev = take++drop≡id ( j ∸ i ) ( drop i w )
+    len-ev : length w₁ ≡ j ∸ i
+    len-ev = match-span-len r i j w t₁
+    -- the witness 's word length , and the length of any v that matches the
+    -- k -span substring .
+    len-gu : length ( proj₁ ( flat ( greedyU r i j w t₁ ) ) ) ≡ j ∸ i
+    len-gu = trans ( cong length flat-ev ) len-ev
+    ∀-ev : ∀ ( v : U r )
+      → ( proj₁ ( flat v ) ) ≡ take ( k ∸ i ) ( drop i w )
+      → r ⊢ greedyU r i j w t₁ >ᵖ v
+    ∀-ev v flatv =
+      len-> { r } { greedyU r i j w t₁ } { v }
+        ( subst₂ _<_
+            ( sym ( trans ( cong length flatv )
+                           ( match-span-len r i k w t₂ ) ) )
+            ( sym len-gu )
+            ( ∸-<-< i j k i≤k j>k ) )
 
 ```

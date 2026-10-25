@@ -6,7 +6,7 @@ greedy-max-prop and ←greedy-sound .
 
 ```agda
 {-# OPTIONS --rewriting --no-positivity-check #-}
-module cgp.relatedwork.RelatedWorkMamouras3 where
+module cgp.relatedwork.RelatedWorkMamouras where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )
@@ -130,13 +130,11 @@ open Decidable using
 
 
 
-Mamouras's Definition 1
-
 
 ```agda
 
 
-open import cgp.relatedwork.RelatedWorkMamouras3Base public
+open import cgp.relatedwork.RelatedWorkMamourasBase public
 
 import cgp.greedy.Order as GreedyOrder
 open GreedyOrder renaming ( _⊢_>_ to  _⊢_>ᵍ_ )

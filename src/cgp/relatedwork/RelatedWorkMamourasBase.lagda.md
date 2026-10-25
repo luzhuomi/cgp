@@ -1,4 +1,4 @@
-# RelatedWorkMamouras3 ( base )
+# RelatedWorkMamouras ( base )
 
 Split out of RelatedWorkMamouras3.lagda.md to shorten build times : this
 file holds the stable development ( matching relation , base order , greedy
@@ -8,7 +8,7 @@ and re-exports everything below with ` public ` .
 
 ```agda
 {-# OPTIONS --rewriting --no-positivity-check #-}
-module cgp.relatedwork.RelatedWorkMamouras3Base where
+module cgp.relatedwork.RelatedWorkMamourasBase where
 
 import cgp.RE as RE
 open RE using (RE; ε ; $_`_ ; _●_`_ ; _+_`_ ; _*_`_ ; ε∉ ; ε∈  ; ε∈_+_  ; ε∈_<+_ ; ε∈_+>_ ; ε∈_●_ ; ε∈*  ; ε∈ε ; ε∉r→¬ε∈r ; ¬ε∈r→ε∉r ;  ε∉fst ; ε∉snd ; ε∉$ ; ε∉_+_ ; ε∉? ; ε∈? )

@@ -639,9 +639,10 @@ dec-∃-range i ( suc k' ) P dec with i ≤? suc k'
 -- Purpose : like dec-∃-range, but the yes branch returns a MAXIMAL witness
 --           a of P in [ i , k ] together with the proof that every other
 --           witness in the range is ≤ a.
--- Used in : cgp.relatedwork.RelatedWorkMamouras2 ( find-<-Min● and
---           find-<-Min●-canon ), where the maximal working split point of
---           l ● r is needed for the minimality side condition of <-Min●.
+-- Used in : — ( its only user was cgp.relatedwork.RelatedWorkMamouras2 ,
+--           find-<-Min● and find-<-Min●-canon , which has since been
+--           removed ; the maximal working split point of l ● r was needed for
+--           the minimality side condition of <-Min● ) .
 -- Idea    : structural on k. Test the top endpoint suc k' first : if P holds
 --           there it is maximal. Otherwise recurse on [ i , k' ] and lift the
 --           bound with n≤1+n ; maximality is preserved by splitting any

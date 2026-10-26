@@ -1,6 +1,6 @@
 # RelatedWorkMamouras ( properties )
 
-The base development lives in RelatedWorkMamouras3Base.lagda.md ( checked
+The base development lives in RelatedWorkMamourasBase.lagda.md ( checked
 once and cached ) . This module contains only the properties : greedyU-prop ,
 greedy-max-prop and ←greedy-sound .
 
@@ -323,7 +323,7 @@ mutual
   -- Recursion is on the parse tree v , but the recursive calls receive their
   -- match argument through the PairSplit / ListSplit with-abstractions , so
   -- the termination checker cannot see the decrease ( same situation as the
-  -- base order 's decision procedures in RelatedWorkMamouras3Base ) .
+  -- base order 's decision procedures in RelatedWorkMamourasBase ) .
   {-# TERMINATING #-}
   greedyU-prop : ∀ ( l : RE ) → ( i j : ℕ ) → ( w : List Char )
     → ( t : l , i , j ⊨ w )
@@ -611,8 +611,7 @@ flat-v-ce = refl
 ... | ( w , i , j , k , ( fu , fv , j<k) )
   = ¬←greedy-complete-ce ( w , i , j , k , ( fu , fv , j<k) )
 
--- the counterexample assembled : the premise holds while the conclusion
--- fails ( cf. the counterexample of ←greedy-sound in RelatedWorkMamouras2 ) .
+-- the counterexample assembled : the premise holds while the conclusion fails .
 ←greedy-complete-counterexample : ( r-ce ⊢ u-ce >ᵍ v-ce )
   × ¬ ( ∃[ w ] ∃[ i ] ∃[ j ] ∃[ k ]
         ( ( proj₁ ( flat { r-ce } u-ce ) ) ≡ ( take ( j ∸ i ) ( drop i w ) )

@@ -1,9 +1,9 @@
 # RelatedWorkMamouras ( base )
 
-Split out of RelatedWorkMamouras3.lagda.md to shorten build times : this
+Split out of RelatedWorkMamouras.lagda.md to shorten build times : this
 file holds the stable development ( matching relation , base order , greedy
 parser and its decision procedure ) and is type-checked once and cached ;
-RelatedWorkMamouras3.lagda.md holds only the properties stated on top of it
+RelatedWorkMamouras.lagda.md holds only the properties stated on top of it
 and re-exports everything below with ` public ` .
 
 ```agda

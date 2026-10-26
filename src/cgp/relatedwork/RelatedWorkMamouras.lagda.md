@@ -1,4 +1,4 @@
-# RelatedWorkMamouras3 ( properties )
+# RelatedWorkMamouras ( properties )
 
 The base development lives in RelatedWorkMamouras3Base.lagda.md ( checked
 once and cached ) . This module contains only the properties : greedyU-prop ,

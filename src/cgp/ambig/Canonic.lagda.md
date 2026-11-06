@@ -339,12 +339,17 @@ A partial derivative instance `PDInstance r c` carries
 
 Since Brzozowski's derivative distributes over `+`, the union of the
 continuations of `pdU[ r , x ]` (summed) denotes `deriv r x`; the
-`posix` variant even *merges* equal-position continuations during `pd`
-(`pdinstance-oplus`/`fuse`) — that merging is the computational content of
-"the `Idemp` rule is applied when building `canonic(deriv s x)`".
-So the A3 test becomes: *after flattening the `+` spines of all
-continuations, do two `≈₀`-equal members exist?*  The non-emptiness
-condition `lang(canonic(deriv s x)) ≠ {}` holds automatically (`r-∃u`).
+`posix` variant even *merges* two instances into one with a sum
+continuation (`pdinstance-oplus`/`fuse`, needed for POSIX order).
+Note `fuse` itself is the actualization of the *distributivity of the
+derivative*, not of `Idemp` — it merges continuations without an
+equality test.  `Idemp` fires exactly when the continuations combined
+by `fuse` happen to be `≈₀`-equal, i.e. when the fused continuation
+contains a duplicated alternative; detecting that is the job of
+`pd-Idemp?` below.  So the A3 test becomes: *after flattening the `+`
+spines of all continuations, do two `≈₀`-equal members exist?*  The
+non-emptiness condition `lang(canonic(deriv s x)) ≠ {}` holds
+automatically (`r-∃u`).
 
 ```agda
 -- the continuation expression of one pd path

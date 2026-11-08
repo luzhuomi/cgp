@@ -40,6 +40,11 @@ needed for criterion **A3** of the Ambiguity Criteria proposition (paper section
    word `w` (a `PDInstance*` from `pdUMany`) and the empty-tree pair
    survives the path injection, then `r` is ambiguous
    (`AmbigCheck.A1→Ambig` is the `w = []` special case).
+6. Section 8: the paper's `Desc(r)` via the `oplus` trick — `derivᵖ r w`
+   re-glues the partial-derivative continuations of `pdUMany[ r , w ]`
+   into a single state expression, `_∈Desc_` states the paper's
+   quantification over realizable states, and `A3?` is the paper's A3
+   test as a computable boolean (verified `true` on the §6.2 example).
 
 ## Why the full A3 condition is not stated
 
@@ -103,14 +108,17 @@ import Data.Char as Char
 open Char using (Char)
 
 import Data.Nat as Nat
-open Nat using ( ℕ )
+open Nat using ( ℕ ; zero )
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; cong; sym; cong₂)
 
 import Data.Product as Product
-open Product using ( Σ ; _,_ ; _×_ )
+open Product using ( Σ ; Σ-syntax ; _,_ ; _×_ )
 open Σ using (proj₁ ; proj₂)
+
+import Data.Maybe as Maybe
+open Maybe using ( Maybe ; just ; nothing )
 
 import Relation.Nullary as Nullary
 open Nullary using (¬_)
@@ -556,4 +564,96 @@ Notes:
   `mkfuseInj`), and the converse direction
   ("`r` ambiguous ⇒ some realizable state fires A1/A2/A3"), which needs
   the FST / `Desc(r)` construction.
+
+## 8. `Desc(r)` — the paper's states, built from partial derivatives
+
+The paper's `Desc(r) = { s | r Descendant s }` is defined by the
+Brzozowski derivative, which `cgp` lacks.  The `posix` `pdU` already
+contains the trick that repairs this: `pdinstance-oplus`/`fuse` merges
+sibling alternatives *inside* every pd step, so one fused `pdinstance`
+carries one continuation expression — and iterating single-character
+steps with `advance-pdi*-with-c`/`pdUMany` composes those continuations
+along a word (this is the "encode the derivative via partial
+derivatives" construction of the old `cgp.posix.Related` /
+`cgp.relatedwork.RelatedWorkOkuiSuzuki`).
+
+Only a residual multi-instance list can remain (from nullable-`●`
+products and under stars).  Its sum is the derivative: by Antimirov,
+`deriv r w` is denoted by the *sum of all partial derivative
+continuations*, so re-gluing them with `sum-build` produces a single
+expression (`derivᵖ r w` below) that plays the role of `deriv r w`
+(denotes the same language — the project formalizes exactly this
+correspondence, `pdUMany` soundness / reconstructability, Lemmas 21–22).
+`nothing` is the `∅`-case.  With it the paper's quantification "there
+exists a realizable `s ∈ Desc(r)`" becomes the concrete type `_∈Desc_`
+below — realizability is automatic (every reachable `RE` is inhabited,
+`r-∃u`; the `∅` cases are filtered out by `just`).
+
+```agda
+-- alternatives of the (distributed) derivative of a word
+pd*-alts : ∀ { r : RE } { w : List Char } → List (PDInstance* r w) → List RE
+pd*-alts pdis = concatMap ( λ pdi → sum-spine (pd*-expr pdi) ) pdis
+
+-- the derivative of r w.r.t. w, encoded via partial derivatives
+-- (sum-build re-glues the residual instances; the loc zero of the
+-- artificial top '+' is irrelevant, ≈₀ and the theorems are loc-agnostic)
+derivᵖ : ( r : RE ) → ( w : List Char ) → Maybe RE
+derivᵖ r w with PosixPD.pdUMany[ r , w ]
+...   | [] = nothing
+...   | pdis = just (sum-build (pd*-alts pdis) zero)
+
+-- s ∈Desc r  ⟺  s is a (realizable) descendant state of r
+-- (paper: s ∈ Desc(r); the realizable side condition is automatic here)
+infix 4 _∈Desc_
+_∈Desc_ : RE → RE → Set
+s ∈Desc r = Σ[ w ∈ List Char ] ( derivᵖ r w ≡ just s )
+
+```
+
+### 8.1. A3 stated verbatim for the initial state
+
+With `derivᵖ`, the paper's A3 condition for the initial state,
+"`lang(canonic(deriv r x)) ≠ {}` and `Idemp` applied", becomes a
+computable boolean:
+
+```agda
+A3? : ( r : RE ) → ( c : Char ) → Bool
+A3? r c with derivᵖ r (c ∷ [])
+...   | nothing = false
+...   | just s = proj₂ (canonic s)
+
+-- the paper's A3 test fires on the §6.2 example:
+-- after consuming 'a' the descendant state
+--   (ε ● ($ 'c' ` 4) ` 5) + (ε ● ($ 'c' ` 7) ` 8) ` 0
+-- is reached, and its canonical representative applies Idemp:
+pd-a3-state : RE
+pd-a3-state = (ε ● ($ 'c' ` 4) ` 5) + ((ε ● ($ 'c' ` 7) ` 8)) ` zero
+
+pd-a3-Desc : pd-a3-state ∈Desc pd-a3-target
+pd-a3-Desc = ( 'a' ∷ [] , refl )
+
+pd-a3-A3?-fires : A3? pd-a3-target 'a' ≡ true
+pd-a3-A3?-fires = refl
+
+-- sanity check: a single letter reaches the state ε, no Idemp fires:
+letter-A3?-silent : A3? ($ 'a' ` 1) 'a' ≡ false
+letter-A3?-silent = refl
+
+```
+
+Caveats (consistent with §6/§7):
+
+* `derivᵖ r w` is a *witness term* for the derivative (same language),
+  not a syntactic replica of Brzozowski's — stars unfold positionally
+  (`pdinstance-star` appends `r * ε∉r ` loc`) and `sum-build`
+  introduces artificial `+` locations.  The paper's own FST quotients by
+  similarity anyway, and `≈₀`/`canonic` are location-insensitive, so
+  the A3 *test* is unaffected.
+* Soundness of a fired `A3?` still runs through `pd-pairs→Ambig` /
+  `pd*-pairs→Ambig` (whose hypotheses need the duplicate pair in
+  different sum branches).  To make `A3? r x ≡ true → Ambig r` itself a
+  theorem, `canonic`'s rewrite trace would have to be reflected into a
+  concrete `Ctx`/`plug` + pair witness — that reflection lemma is the
+  missing piece, not the machinery around it.
+
 

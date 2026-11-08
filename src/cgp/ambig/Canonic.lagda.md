@@ -35,6 +35,11 @@ needed for criterion **A3** of the Ambiguity Criteria proposition (paper section
    Together with `cgp.ambig.AmbigCheck` (`ambiguousSum`, `notA1Sum`,
    `notA2Sum`) this shows the A3 criterion genuinely adds detection power:
    `a + a` is missed by A1 and A2 but caught here.
+5. Section 7: the *general* form of the paper's A1 — `lift-A1→Ambig` /
+   `pd*-A1→Ambig`: if A1 fires at a descendant state reached after a
+   word `w` (a `PDInstance*` from `pdUMany`) and the empty-tree pair
+   survives the path injection, then `r` is ambiguous
+   (`AmbigCheck.A1→Ambig` is the `w = []` special case).
 
 ## Why the full A3 condition is not stated
 
@@ -75,7 +80,10 @@ import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU; LetterU; LeftU; RightU; PairU; ListU ; flat ; r-∃u ; LeftU≢RightU )
 
 import cgp.ambig.AmbigCheck as AmbigCheck
-open AmbigCheck using ( Ambig ; AmbigA1 ; AmbigA2 ; Ctx ; 𝟘 ; Ctx●R ; L●Ctx ; Ctx+R ; L+Ctx ; plug ; CtxT ; CtxT-pres-flat ; CtxT-injective )
+open AmbigCheck using ( Ambig ; AmbigA1 ; AmbigA2 ; Ctx ; 𝟘 ; Ctx●R ; L●Ctx ; Ctx+R ; L+Ctx ; plug ; CtxT ; CtxT-pres-flat ; CtxT-injective ; A1→∃two ; lookup-All )
+
+import cgp.empty.AllEmptyParseTree as AllEmpty
+open AllEmpty using ( mkAllEmptyU-sound ; Flat-[] ; flat-[] )
 
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; pdinstance-left ; pdinstance-right ; pdinstance-fst ; PDInstance* ; pdinstance* )
@@ -84,6 +92,9 @@ import cgp.posix.PartialDerivative as PosixPD
 
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; map ; concatMap)
+
+import Data.List.Properties as ListProperties
+open ListProperties using ( ++-identityʳ )
 
 import Data.Bool.Base as Bool
 open Bool using (Bool; true; false; _∨_)
@@ -475,3 +486,74 @@ pd-a3-ambiguous = pd-pairs→Ambig left-pdi right-pdi
                     (≈₀-● (≈₀-ε) (≈₀-$ 'c' 4 7))
 
 ```
+
+## 7. A1 at a reachable descendant state (the full form of the paper's A1)
+
+`A1→Ambig` in `cgp.ambig.AmbigCheck` covers only the top-level instance
+(the initial state `s = r`, path of length 0).  The Ambiguity Criteria
+proposition of the paper quantifies over *realizable* `s ∈ Desc(r)`:
+if `| allEps s | > 1` for a state `s` reached after consuming a word `w`,
+then `r` is ambiguous — the two empty trees of `s` are lifted to parse
+trees of `r` along the path, and both read the word `w ++ [] = w`.
+
+In this formalism "state `p` reached after `w` with its path tree map"
+is exactly a `PDInstance* r w` (`pdUMany[ r , w ]` produces them): the
+continuation is the state `p`, `inj : U p → U r` is the composed
+transition map and `ev` states `| inj u | = w ++ | u |`.  The paper hides
+one side condition in its construction — distinct trees must stay
+distinct under the lift; here it becomes the explicit hypothesis
+`inj-inj` (the transition maps of the paper's `AllParseFST` are
+injective by construction; in this project the pd builders
+`pdinstance-left/right/fst/snd/star` are injective given an injective
+input — the `posix` `mkfuseInj` is the exception, it can identify trees
+coming from different branches).
+
+```agda
+-- accessors for the data carried by a PDInstance*
+pd*-inj : ∀ { r : RE } { pref : List Char } ( pdi : PDInstance* r pref )
+  → U (pd*-expr pdi) → U r
+pd*-inj (pdinstance* {p} inj ev) = inj
+
+pd*-ev : ∀ { r : RE } { pref : List Char } ( pdi : PDInstance* r pref )
+  → ∀ ( u : U (pd*-expr pdi) ) → proj₁ (flat (pd*-inj pdi u)) ≡ pref ++ proj₁ (flat u)
+pd*-ev (pdinstance* {p} inj ev) = ev
+
+-- generic lift: A1 fires at the state p and the pair of empty trees
+-- survives the lift ⇒ r ambiguous
+lift-A1→Ambig : ∀ { r p : RE } { w : List Char }
+  → ( inj : U p → U r )
+  → ( ev : ∀ ( u : U p ) → proj₁ (flat {r} (inj u)) ≡ w ++ proj₁ (flat {p} u) )
+  → ( inj-inj : ∀ ( u v : U p ) → inj u ≡ inj v → u ≡ v )
+  → AmbigA1 p
+  → Ambig r
+lift-A1→Ambig {r} {p} {w} inj ev inj-inj (ε∈p , len≥2) with A1→∃two ε∈p len≥2
+...   | t₁ , t₂ , t₁∈ , t₂∈ , t₁≢t₂ with lookup-All (mkAllEmptyU-sound ε∈p) t₁∈ | lookup-All (mkAllEmptyU-sound ε∈p) t₂∈
+...   | flat-[] .t₁ eq₁ | flat-[] .t₂ eq₂ =
+    ( inj t₁
+    , inj t₂
+    , trans (trans (trans (ev t₁) (cong ( λ z → w ++ z) eq₁)) (++-identityʳ w))
+            (trans (sym (++-identityʳ w)) (trans (cong ( λ z → w ++ z) (sym eq₂)) (sym (ev t₂))))
+    , λ inj≡ → t₁≢t₂ (inj-inj t₁ t₂ inj≡) )
+
+-- corollary: A1 at a state reachable via a pd path (pdUMany witnesses)
+pd*-A1→Ambig : ∀ { r : RE } { pref : List Char }
+  → ( pdi : PDInstance* r pref )
+  → ( ∀ ( u v : U (pd*-expr pdi) ) → pd*-inj pdi u ≡ pd*-inj pdi v → u ≡ v )
+  → AmbigA1 (pd*-expr pdi)
+  → Ambig r
+pd*-A1→Ambig {r} pdi inj-inj a1 = lift-A1→Ambig (pd*-inj pdi) (pd*-ev pdi) inj-inj a1
+
+```
+
+Notes:
+
+* `A1→Ambig` of `cgp.ambig.AmbigCheck` is the special case `w = []`,
+  `inj = id` (realizability in the paper's sense is automatic here:
+  every project `RE` has a parse tree, `r-∃u`).
+* The remaining gap towards the paper's full proposition is unchanged:
+  proving that `inj-inj` holds for the concrete injections produced by
+  `pdUMany` (routine for the `lne`/`greedy` builders, false for
+  `mkfuseInj`), and the converse direction
+  ("`r` ambiguous ⇒ some realizable state fires A1/A2/A3"), which needs
+  the FST / `Desc(r)` construction.
+

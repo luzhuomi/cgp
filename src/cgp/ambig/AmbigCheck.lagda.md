@@ -111,11 +111,6 @@ open Decidable using (Dec; yes; no)
 Paper Definition "Ambiguous Regular Expressions": r is ambiguous iff there exist two
 distinct parse trees `v₁` and `v₂` for r with `| v₁ | = | v₂ |`.
 
-> Note: the original stub in `cgp/ambig/Ambig.lagda.md` (since removed) defined
-> `UnAmbig` with the parse tree equality `u ≡ v` as a *hypothesis*, which makes
-> `UnAmbig r` inhabited for every `r`. The corrected (implicational) definition
-> is below.
-
 ```agda
 Ambig : RE → Set
 Ambig r = Σ[ u ∈ U r ] Σ[ v ∈ U r ]

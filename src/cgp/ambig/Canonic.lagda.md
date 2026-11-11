@@ -621,7 +621,9 @@ Notes:
   `pdUMany` (routine for the `lne`/`greedy` builders, false for
   `mkfuseInj`), and the converse direction
   ("`r` ambiguous ⇒ some realizable state fires A1/A2/A3"), which needs
-  the FST / `Desc(r)` construction.
+  the FST / `Desc(r)` construction.  The converse does *not* hold without
+  the quantification over `Desc(r)`: `cgp.ambig.Converse` computes an
+  ambiguous `r` at which none of the three criteria fires.
 
 ## 8. `Desc(r)` — the paper's states, built from partial derivatives
 

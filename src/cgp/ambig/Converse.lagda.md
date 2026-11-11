@@ -31,7 +31,15 @@ Short answer: **not as stated**, and the two readings have to be separated.
    `pd*-A1→Ambig` turns it into an ambiguity of `r` as soon as the injectivity
    of the transition map of that path is supplied (§4).  Finding such a state
    out of an arbitrary ambiguity witness is the paper's `AllParseFST` /
-   `Desc(r)` construction; §5 lists what is missing here.
+   `Desc(r)` construction; §6 lists what is missing here.
+3. *The duplicate one would expect here* — the Antimirov state
+   `[ ε · r⋆ , ε · a · r⋆ , ε · r⋆ ]`, whose third element repeats the first —
+   is a real property of Antimirov's construction, but it is not what this
+   project computes and it is invisible to every `Idemp`/duplicate test we have:
+   `pdUMany` (the posix variant) fuses the two branches into the *single*
+   instance `sd-s2`, whose two sum-spine alternatives `ε · r⋆` and
+   `(ε + ε · a) · r⋆` are not `≈₀`-congruent.  What the duplicate *does* buy us
+   is the multiplicity that makes A1 fire.  §5.
 
 ```agda
 {-# OPTIONS --rewriting #-}
@@ -53,10 +61,12 @@ import cgp.ambig.AmbigCheck as AmbigCheck
 open AmbigCheck using ( Ambig; AmbigA1; AmbigA2; Ctx; 𝟘; Ctx●R; L●Ctx; Ctx+R; L+Ctx; plug; A1→Ambig; not-2-le-1 )
 
 import cgp.ambig.Canonic as Canonic
-open Canonic using ( _≈₀_ ; _≟₀_ ; pd*-Desc ; pd*-expr ; pd*-inj ; pd*-A1→Ambig ; _∈Descᵖ_ )
+open Canonic using ( _≈₀_ ; _≟₀_ ; pd*-Desc ; pd*-expr ; pd*-inj ; pd*-A1→Ambig ; _∈Descᵖ_
+                   ; dups-≈₀ ; sum-spine ; sum-build ; canonic ; ≈₀-● ; ≈₀-ε ; ≈₀-refl )
 
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_] ; map ; length ; any)
+
 
 import Data.Char as Char
 open Char using (Char)
@@ -313,7 +323,114 @@ really does produce exactly one instance for `a a` and its continuation is
 `sd-s2`; what is missing is a proof that the injection of that instance
 (built with `PosixPD.mkfuseInj`) is injective.
 
-## 5. What a completeness proof would need
+## 5. The duplicate that *is* there, and why no `Idemp` test sees it
+
+One might expect the state after `a a` to be the Antimirov triple
+
+    [ ε · r⋆ ]  [ ε · a · r⋆ ]  [ ε · r⋆ ]
+
+(the `a` branch of the body and the `a · a` branch each contribute a
+continuation, and the first and third are the same `r⋆`), and to read the third
+element as a duplicate of the first, i.e. as criterion A3/`Idemp`.  With
+`aa = 'a' ∷ 'a' ∷ []`, the computed facts (`sd-s2-state`, `no-pd-dup`,
+`all-dups`, …) say what actually happens:
+
+* this project's `pdU` is the **posix** one: `pdinstance-oplus`/`PosixPD.fuse`
+  merge the two branches into *one* instance, so `pd*-Desc sd aa` is the
+  singleton list `[ sd-s2 ]` (`sd-s2-state`), and `sum-spine sd-s2` has exactly
+  the two alternatives `sd-x = ε · r⋆` and `sd-s1 = (ε + ε · a) · r⋆`
+  (`sd-s2-alts`).  There is no second copy of `ε · r⋆` to compare with;
+* the two alternatives are *not* congruent: `¬ ( sd-x ≈₀ sd-s1 )` (`≈₀` is
+  structural and needs left components `ε ≈₀ ε + ε · a`, which is empty);
+* so the list-level A3 test of `Canonic` §9 stays `false`
+  (`dups-≈₀ (pd*-Desc sd aa) ≡ false`), and so does the syntactic one, for the
+  same reason as at `sd`: `CtxDup? sd-s2 ≡ false` — there is no *sum subterm*
+  with congruent branches anywhere in `sd-s2`;
+* `canonic sd-s2` performs no rewrite (`proj₂ ≡ false`); it removes duplicates
+  only *inside* a `+` node, and the only `+` node here has the two
+  non-congruent alternatives;
+* if one duplicates the Antimirov list by hand, the duplicate *is* found —
+  `dups-≈₀ ( sd-x ∷ sd-s1 ∷ sd-x ∷ [] ) ≡ true` — so the reading is right for
+  the Antimirov construction, it just is not what `pdUMany` computes;
+* even distributing the concatenation, `(ε · r⋆) + (ε · a · r⋆)`, does not
+  create the duplicate: its two summands are `≈₀`-different.  Only the sum of
+  *all three* alternatives makes `Idemp` fire (`canonic` of
+  `ε · r⋆ + ε · a · r⋆ + ε · r⋆` reports the flag `true` and drops the last
+  alternative).  The paper's `deriv` is exactly that distributed form
+  (`deriv (r₁ · r₂) x = deriv r₁ x · r₂ + deriv r₂ x` when `r₁` is nullable),
+  and its similarity rules are only `Idemp`/`Comm`/`Assoc` — no distributivity
+  — so whether A3 fires for this `r` depends on the *position/AST marking* of
+  its `deriv`.  In the marking computed here, `A1` is what fires (the duplicate
+  alternative is precisely what makes `mkAllEmptyU ε∈sd-s2` have length 2).
+
+```agda
+aa : List Char
+aa = 'a' ∷ 'a' ∷ []
+
+-- the state list has exactly one element (this is `sd-Desc₂` read as a
+-- computation: one fused instance, not three Antimirov ones)
+sd-s2-state : pd*-Desc sd aa ≡ ( sd-s2 ∷ [] )
+sd-s2-state = refl
+
+-- the two alternatives of the state after `a a`
+sd-s2-alts : sum-spine sd-s2 ≡ ( sd-x ∷ sd-s1 ∷ [] )
+sd-s2-alts = refl
+
+-- and they are not congruent
+sd-x≉sd-s1 : ¬ ( sd-x ≈₀ sd-s1 )
+sd-x≉sd-s1 (≈₀-● () _)
+
+sd-x≉sd-s1-bool : ¬ ( ⌊ sd-x ≟₀ sd-s1 ⌋ ≡ true )
+sd-x≉sd-s1-bool ()
+
+-- A2 and Idemp/Ctx-dup stay false at sd-s2 as well
+sd-s2-A2?≢true : A2? sd-s2 ≡ false
+sd-s2-A2?≢true = refl
+
+sd-s2-CtxDup?≢true : CtxDup? sd-s2 ≡ false
+sd-s2-CtxDup?≢true = refl
+
+-- list level A3 of Canonic §9 on the pd state: no duplicate
+no-pd-dup : dups-≈₀ ( pd*-Desc sd aa ) ≡ false
+no-pd-dup = refl
+
+-- canonic on the state performs no rewrite
+sd-s2-canonic : ( proj₁ (canonic sd-s2) ≡ sd-s2 ) × ( proj₂ (canonic sd-s2) ≡ false )
+sd-s2-canonic = ( refl , refl )
+```
+
+```agda
+-- the Antimirov triple, written by hand: the duplicate is in *that* form
+ant-tri : List RE
+ant-tri = sd-x ∷ sd-s1 ∷ sd-x ∷ []
+
+all-dups : dups-≈₀ ant-tri ≡ true
+all-dups = refl
+
+-- distributing the concatenation of sd-s1 instead (one copy per summand of
+-- res-a, i.e. what the paper's deriv does): still no duplicate among them
+distrib : RE
+distrib = ( ( ε ● sd ` 7 ) + ( ( ε ● ($ 'a' ` 3) ` 4 ) ● sd ` 8 ) ` 9 )
+
+distrib-no-dup : dups-≈₀ ( sum-spine distrib ) ≡ false
+distrib-no-dup = refl
+
+-- the sum of all three alternatives is where Idemp fires
+distrib₃ : RE
+distrib₃ = sum-build ( sd-x ∷ ( ( ε ● ($ 'a' ` 3) ` 4 ) ● sd ` 8 ) ∷ sd-x ∷ [] ) 9
+
+distrib₃-dup : dups-≈₀ ( sum-spine distrib₃ ) ≡ true
+distrib₃-dup = refl
+
+distrib₃-Idemp : proj₂ (canonic distrib₃) ≡ true
+distrib₃-Idemp = refl
+
+distrib₃-removed : sum-spine (proj₁ (canonic distrib₃))
+  ≡ ( sd-x ∷ ( ( ε ● ($ 'a' ` 3) ` 4 ) ● sd ` 8 ) ∷ [] )
+distrib₃-removed = refl
+```
+
+## 6. What a completeness proof would need
 
 * A witness search over `Desc(r)`: from `Ambig r` (two parse trees of `r` for a
   word `w`) produce the state of `pd*-Desc r u` (for a prefix `u` of `w`) at
@@ -326,5 +443,6 @@ really does produce exactly one instance for `a a` and its continuation is
 * `inj-inj` for the concrete injections built by `pdUMany` — the `lne`/`greedy`
   builders are injective, `PosixPD.mkfuseInj` is not in general, and a state
   reached through a fused instance cannot be lifted without recovering the
-  multiplicity, which is where the paper's `canonic`/similarity construction
-  (and its `Idemp` rule) enters.
+  multiplicity.  §5 shows the fusion is exactly where the Antimirov duplicate
+  disappears: for this `r` the multiplicity survives only as the second empty
+  parse tree of the state, i.e. as A1, not as an `Idemp` rewrite.

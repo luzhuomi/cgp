@@ -33,9 +33,11 @@ the finite list of all lists over `L` of the appropriate length.
    list `listsOf (length …) L`.  The remaining hypothesis (that the word is
    over the alphabet) is decidable too (`All-in?-char`).
 5. §6 computes supplies and *certifies* them: `Closed? L cs ≡ true` for the
-   paper's A3 example `((a + b) · c) + (a · c)` (found by saturation) and for
-   `a ⋆`, so `Desc⊆` applies to every word; it also shows by computation that
-   the supply of subexpressions of `a ⋆` is **not** closed.
+   paper's A3 example `((a + b) · c) + (a · c)` (found by saturation), for
+   `a ⋆` (one round of saturation) and for `(a · b*) ⋆` (two rounds), so
+   `Desc⊆` applies to every word.  It also shows by computation that the
+   supplies of subexpressions of `a ⋆` and of `(a · b*) ⋆` are **not** closed,
+   and it computes the states of `a ⋆` and of `(a · b*) ⋆`.
 6. §7 shows by computation that the *lengths* of the states of
    `((ε + ε) · a) ⋆` are 2, 4, 8 for `a`, `aa`, `aaa`: the number of distinct
    expressions stays bounded while the state lists keep growing.
@@ -45,11 +47,18 @@ the finite list of all lists over `L` of the appropriate length.
 * A general proof that a closed supply exists for every `r` (Antimirov's
   bound).  A naive "subterm of `r`" supply is **false** here: the Kleene rule
   of `pdU` (`pdinstance-star`, `cgp.PDInstance`) glues a partial derivative of
-  the star body in front of the star, so descendants have `p ● r*` shapes —
-  `star-a-subterms-not-closed` of §6 checks that for `a ⋆`.  For
-  `r = (a · b*) ⋆` the states are `ε · b* · (a · b*)⋆` after `a` and
-  `(ε · b* · b*) · (a · b*)⋆` after `ab`.  A general bound needs a rank
-  argument over such gluings.
+  the star body in front of the star, at the star's own location, so
+  descendants have `( p · s ) · r*` shapes that are not subterms of `r` —
+  `star-a-subterms-not-closed` and `star-ab-subterms-not-closed` of §6 check
+  that for `a ⋆` and `(a · b*) ⋆`.  §6 also computes the states of
+  `r = (a · b*) ⋆`: `( ε · b* ) · (a · b*)⋆` after `a`, the same shape again
+  after `a b` with the inner factor hanging at the *inner star's* location
+  instead of the concatenation's, and those two states alternate thereafter
+  (`star-ab-cycle-a`, `star-ab-cycle-ab`) — no copy of `b*` is ever added,
+  because `mk-snd-pdi`, the rule for a nullable left factor, reuses the
+  continuation of the right factor instead of gluing the left factor in front
+  of it.  Whether such gluings are bounded for every `r` (a rank/nesting
+  argument) is not proved here.
 * A bound on the *length* of a state list that is independent of the word —
   §7 measures the doubling.  `pdU` returns one instance per empty parse tree of
   a nullable left factor, so multiplicities are kept and each pass through a
@@ -646,7 +655,84 @@ star-a-state-in-supply : Dec-bool (Desc⊆! star-a star-a-supply ( 'a' ∷ 'a' �
   ≡ true
 star-a-state-in-supply = refl
 
+-- ( a · b* ) ⋆ : this is what the gluing of the star rule really does
+star-ab-b : RE
+star-ab-b = ($ 'b' ` 2) * ε∉$ ` 3
+
+star-ab : RE
+star-ab = ( ($ 'a' ` 1) ● star-ab-b ` 4 ) * (ε∉fst ε∉$) ` 5
+
+star-ab-al : List Char
+star-ab-al = charsOf star-ab
+
+star-ab-subterms : List RE
+star-ab-subterms =
+  star-ab ∷ ( ( $ 'a' ` 1 ) ● star-ab-b ` 4 ) ∷ ($ 'a' ` 1) ∷ star-ab-b
+    ∷ ($ 'b' ` 2) ∷ ε ∷ []
+
+star-ab-subterms-not-closed : Closed? star-ab-subterms star-ab-al ≡ false
+star-ab-subterms-not-closed = refl
+
+star-ab-supply : List RE
+star-ab-supply = Sat-iter ( star-ab ∷ [] ) star-ab-al 2
+
+star-ab-supply-closed-flag : Closed? star-ab-supply star-ab-al ≡ true
+star-ab-supply-closed-flag = refl
+
+star-ab-supply-closed : Closed star-ab-supply star-ab-al
+star-ab-supply-closed = force (Closed! star-ab-supply star-ab-al) tt
+
+star-ab-word : All ( λ c → c ∈L star-ab-al ) ( 'a' ∷ 'b' ∷ 'a' ∷ 'b' ∷ 'a' ∷ [] )
+star-ab-word =
+  force (All-in?-char star-ab-al ( 'a' ∷ 'b' ∷ 'a' ∷ 'b' ∷ 'a' ∷ [] )) tt
+
+star-ab-state-enumerated : pd*-Desc star-ab ( 'a' ∷ 'b' ∷ 'a' ∷ 'b' ∷ 'a' ∷ [] )
+  ∈L listsOf (length (pd*-Desc star-ab ( 'a' ∷ 'b' ∷ 'a' ∷ 'b' ∷ 'a' ∷ [] )))
+       star-ab-supply
+star-ab-state-enumerated =
+  Desc-finite star-ab star-ab-supply star-ab-al
+    ( 'a' ∷ 'b' ∷ 'a' ∷ 'b' ∷ 'a' ∷ []) (here refl) star-ab-supply-closed
+    star-ab-word
+
+-- after `a`: pdinstance-fst glues the residual of `a` (which is ε) in front of
+-- the right factor at the *concatenation's* location 4, and pdinstance-star
+-- glues that whole thing in front of the star at the *star's* location 5
+star-ab-state-a : pd*-Desc star-ab ( 'a' ∷ [] )
+  ≡ ( ( ε ● star-ab-b ` 4 ) ● star-ab ` 5 ) ∷ []
+star-ab-state-a = refl
+
+-- after `a b`: the `b` is consumed inside `b ⋆`, whose star rule puts its
+-- continuation ε · (b ⋆) at the *inner star's* location 3.  The rule for a
+-- nullable left factor (mk-snd-pdi of cgp.PDInstance) keeps that continuation
+-- *unchanged* instead of gluing the left factor in front of it, so the
+-- residual of `ε · b*` is the residual of `b*`; nothing is duplicated and the
+-- outer continuation (the star at 5) is not touched
+star-ab-state-ab : pd*-Desc star-ab ( 'a' ∷ 'b' ∷ [] )
+  ≡ ( ( ε ● star-ab-b ` 3 ) ● star-ab ` 5 ) ∷ []
+star-ab-state-ab = refl
+
+-- the states therefore cycle between these two, they do not nest
+star-ab-cycle-a : pd*-Desc star-ab ( 'a' ∷ 'b' ∷ 'a' ∷ [] )
+  ≡ pd*-Desc star-ab ( 'a' ∷ [] )
+star-ab-cycle-a = refl
+
+star-ab-cycle-ab : pd*-Desc star-ab ( 'a' ∷ 'b' ∷ 'a' ∷ 'b' ∷ [] )
+  ≡ pd*-Desc star-ab ( 'a' ∷ 'b' ∷ [] )
+star-ab-cycle-ab = refl
+
+star-ab-state-in-supply : Dec-bool (Desc⊆! star-ab star-ab-supply
+    ( 'a' ∷ 'b' ∷ 'a' ∷ 'b' ∷ 'a' ∷ [] ))
+  ≡ true
+star-ab-state-in-supply = refl
+
 ```
+
+For `( a · b* ) ⋆` the reachable states are the initial one and two
+continuations, which alternate with the parity of the word (`star-ab-cycle-a`,
+`star-ab-cycle-ab`): what moves from one to the other is only **where** the
+glued continuation hangs (location 4 of the concatenation, location 3 of the
+inner star), not how many copies of `b*` there are.  The supply of §6 closes
+after two rounds of saturation for exactly that reason.
 
 ## 7. Duplicate instances: state *lengths* are not bounded
 

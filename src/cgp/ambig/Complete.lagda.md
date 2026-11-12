@@ -47,10 +47,16 @@ This module develops the two ingredients of that argument.
   branch images (an instance of §4.1 proved by inspection, not by the
   general lemma).
 * §7 assembles `Converse.sd-Ambig-from-descendant`, `sd-s2-A1` and §6 into a
-  checked `Ambig sd`: the completeness direction for this example.
+  checked `Ambig sd`: a criterion at the reached state, lifted along an
+  injective transition map, is a genuine ambiguity of `r`.
+* §8 states the goal of the whole arc — the *completeness* direction proper
+  (given an ambiguity witness, a pd-descendant state where a criterion
+  fires) — with unchecked bodies: the general statement, and its reading
+  tied to the ambiguity pair of `sd`.  These two holes are the only
+  unsolved metas in the module (`--allow-unsolved-metas`).
 
 ```agda
-{-# OPTIONS --rewriting #-}
+{-# OPTIONS --rewriting --allow-unsolved-metas #-}
 module cgp.ambig.Complete where
 
 import cgp.RE as RE
@@ -92,6 +98,7 @@ open import Data.List using (List; _∷_; []; _++_; map; [_])
 open import Data.List.Properties using (++-cancelˡ)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Empty using (⊥ ; ⊥-elim)
+open import Data.Sum using (_⊎_ ; inj₁ ; inj₂)
 open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
 open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
@@ -537,10 +544,78 @@ sd-Ambig-from-A1-at-state : Ambig sd
 sd-Ambig-from-A1-at-state = Converse.sd-Ambig-from-descendant pdi₂ pd-pdi₂ pdi₂-inj
 ```
 
-This is the completeness direction *for this example*, in the form the paper
-proves in general: the ambiguity witness is the pair of distinct trees of the
-state `sd-s2` that `Canonic.pd*-A1→Ambig` extracts from A1 there (§1's
-`Collapsed` witness is what `lift-Ambig` inside it consumes), transported back
-along the *injective* map of the unique instance of `pdUMany[ sd , a a ]`.
-What the general statement would still need is §4.1 — that every word
-reaches *some* injective-instance state — which stays open.
+This is one direction of the paper's proposition, for this example: a
+criterion that fires at a reached state is a *genuine* ambiguity of `r`.  The
+witness is the pair of distinct trees of `sd-s2` that `A1→Ambig` extracts
+from A1 there (§1's `Collapsed` witness is what the `lift-Ambig` inside
+`pd*-A1→Ambig` consumes); `pdi₂-inj` (§6) is what makes their images in
+`U sd` distinct — without injectivity the state witness could collapse to one
+tree of `r`.  *Which ambiguity pairs arise this way* — the reverse direction,
+the completeness direction proper — is the goal stated in §8.
+
+## 8. The goal: the completeness direction, stated
+
+Both readings separated at the top of `cgp.ambig.Converse` —
+
+> `Ambig r` ⇒ there is a state at which A1, A2 or the `Idemp` duplicate fires
+
+— stated once, here, with an unchecked body, before going further.  Two
+levels, since the general one needs machinery this project does not have.
+
+**The general statement** (the paper's proposition, section 6): given an
+ambiguity of `r` — two distinct parse trees for one word — the word has a
+prefix whose pd-states include one at which a criterion fires.  The third
+disjunct is the `Idemp`/A3 *pattern* (a sum with `≈₀`-equal members under a
+hole context — the shape `Canonic.Ctx-dup→Ambig` consumes); A3 proper is not
+formalized (`AmbigCheck` §4).
+
+```agda
+completeness : ∀ { r : RE }
+  → ( u v : U r )
+  → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
+  → ∃[ w′ ] ∃[ w″ ]
+      ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
+      × ∃[ p ]
+          ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
+          × ( AmbigCheck.AmbigA1 p
+            ⊎ AmbigCheck.AmbigA2 p
+            ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+                  ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
+                  × ( Canonic._≈₀_ l s ) ) ) ) )
+completeness u v w≡ u≢v = _
+```
+
+To fill this for an *arbitrary* pair `( u , v )` one has to *find* the
+prefix `w′` — the paper's `AllParseFST` argument over parse trees of the
+word.  It is not formalized here (like the realizable-states / FST side of
+the paper), and this is the actual research gap of the program, beyond §4.1.
+
+**The reading tied to a given pair, for this `r`** (what §5–§6 built the
+machinery for): every ambiguity pair of `sd` for the word `aa` is the image,
+under the transition map of the single instance of `pdUMany[ sd , aa ]`, of a
+pair of distinct trees of the state that word reaches — and A1 fires there
+(`sd-s2-A1`, with `pdUMany-sd-aa≡` naming the instance and `pd-pdi₂` its
+continuation, §5).  Given `u ≢ v` the pair `( u′ , v′ )` is automatically
+distinct (a function sends distinct outputs to distinct inputs); §6's
+`pdi₂-inj` gives the converse, and both together say the ambiguity *is* the
+state's A1 witness, not an artifact of the map.
+
+```agda
+sd-completeness-at-the-state :
+    ( u v : U sd )
+  → proj₁ (flat {sd} u) ≡ aa → proj₁ (flat {sd} v) ≡ aa → ¬ ( u ≡ v )
+  → ∃[ u′ ] ∃[ v′ ]
+      ( ( Canonic.pd*-inj pdi₂ u′ ≡ u ) × ( Canonic.pd*-inj pdi₂ v′ ≡ v )
+      × ¬ ( u′ ≡ v′ ) )
+sd-completeness-at-the-state u v w≡ w′≡ u≢v = _
+```
+
+Its input pieces all exist: `pdU-complete`/`pdUMany-complete`
+(`cgp.posix.PartialDerivative`) put every tree with word `aa` in the image of
+*some* instance of `pdUMany[ sd , aa ]`; `pdUMany-sd-aa≡` says that instance
+is `pdi₂`; extracting the field of `Recons*` gives `u′ , v′`
+(`cgp.Recons`: `recons*` is literally an equation `inj (unflat w∈⟦p⟧) ≡ u`).
+Deriving `flat u′ ≡ []` and `flat v′ ≡ []` from the soundness evidence makes
+them the empty trees A1 counts.  So unlike the general statement, this one is
+a proof exercise, not a research gap — left as a hole until the statement is
+agreed.

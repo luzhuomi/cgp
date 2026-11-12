@@ -86,7 +86,11 @@ This module develops the two ingredients of that argument.
   hole; `ε∈→emptyU` and `A1-⊕` fire A1 at any sum of two nullable
   expressions, which closes the first clauses of the pair recursion:
   pairs with an empty tree on one side (`crit-ε+`, `crit-+ε`) and pairs
-  of literal trees (`crit-$$`, the duplicate pattern with `ctx = 𝟘`).
+  of literal trees (`crit-$$`, the duplicate pattern with `ctx = 𝟘`);
+  criteria also lift through the concatenation contexts (`A1-●<`,
+  `A1-●>`, `crit-●<`, `crit-●>`), via a length-counting toolkit
+  (`len-++≥`/`len-++≥ˡ`/`len-++≥₁`, `len∈concatMap`, `length-concatMap≥`,
+  `mkAllEmptyU-nonempty`).
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -128,7 +132,7 @@ open Recons using ( Recons ; Recons* )
 open import Data.Char using (Char)
 open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; _+_ ; s≤s ; z≤n)
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive ; ≤-trans ; m≤m+n ; m≤n+m )
+open NatProperties using ( ≤-refl ; ≤-reflexive ; ≤-trans ; m≤m+n ; m≤n+m ; n≤1+n )
 open import Data.List using (List; _∷_; _∷ʳ_; []; _++_; map; concatMap; [_]; length)
 open import Data.List.Properties using (++-cancelˡ ; ++-identityʳ ; ++-assoc ; length-map ; length-++ )
 {-# REWRITE ++-identityʳ #-}
@@ -1239,6 +1243,134 @@ crit-+> : ( l s : RE ) ( loc : ℕ ) → crit s → crit ( l + s ` loc )
 crit-+> l s loc (inj₁ a1)        = inj₁ (A1-+> l s loc a1)
 crit-+> l s loc (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) a2))
 crit-+> l s loc (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) d))
+```
+
+A criterion found at a *concatenation* position must be liftable the same
+way — A2 and the duplicate pattern again travel by context composition
+(`Ctx●R`/`L●Ctx`).  A1 has no decision to branch on here: an
+concatenation is nullable only when *both* factors are, so the sibling's
+`ε∈` is taken as a hypothesis (the pair recursion always has one — the
+reached trees restrict to it).  `mkAllEmptyU` at `ε∈_●_` enumerates the
+full product: `concatMap (map PairU) ` of the two factors' lists.  The
+counting never needs the product's *value*, only lower bounds, and those
+are proved by induction on the list whose `_++_`/`length` *do* unfold —
+never by transporting along `length-++`, which cannot work here: this
+stdlib's `length` is a `foldr`, stuck on a neutral `_++_`, so
+`length u + length v` is not a reduct of `length (u ++ v)`.
+
+```agda
+-- Counting toolkit.  Concatenation is length-monotone in both factors,
+-- and strictly so in the right factor when the left is non-empty: proved
+-- by induction on the left factor, where `_++_` and `length` *do* unfold.
+-- (Transport along `length-++` is used nowhere and could not work: this
+-- stdlib's `length` is a `foldr`, stuck on a neutral `_++_`, so
+-- `length u + length v` is not a reduct of `length (u ++ v)`.  In
+-- `len-++≥` the step goes through `n≤1+n` because `length v` for a
+-- neutral `v` does not reduce to a successor, so `s≤s` cannot match it.)
+len-++≥ : ∀ {B : Set} ( u v : List B ) → length v ≤ length (u ++ v)
+len-++≥ []       v = ≤-refl
+len-++≥ (u ∷ us) v = ≤-trans (len-++≥ us v) (n≤1+n (length (us ++ v)))
+
+len-++≥ˡ : ∀ {B : Set} ( u v : List B ) → length u ≤ length (u ++ v)
+len-++≥ˡ []       v = z≤n
+len-++≥ˡ (u ∷ us) v = s≤s (len-++≥ˡ us v)
+
+len-++≥₁ : ∀ {B : Set} {u v : List B}
+  → suc zero ≤ length u → suc (length v) ≤ length (u ++ v)
+len-++≥₁ {u = u ∷ us} {v = v} _ = s≤s (len-++≥ us v)
+
+-- a non-empty list has a member, and each block is bounded by its concatMap
+1≤len→∈ : ∀ {A : Set} ( xs : List A ) → suc zero ≤ length xs → Σ[ x ∈ A ] ( x ∈ xs )
+1≤len→∈ []       ()
+1≤len→∈ (x ∷ xs) _ = ( x , here refl )
+
+len∈concatMap : ∀ {A B : Set} ( g : A → List B ) {x : A} {xs : List A}
+  → x ∈ xs → length (g x) ≤ length (concatMap g xs)
+len∈concatMap g (here refl)  = len-++≥ˡ _ _
+len∈concatMap g (there ∈xs)  = ≤-trans (len∈concatMap g ∈xs) (len-++≥ _ _)
+
+-- so a concatMap whose blocks all have ≥ 1 element has at least as many
+-- elements as there are blocks
+length-concatMap≥ : ∀ {A B : Set} ( g : A → List B ) ( xs : List A )
+  → ( ∀ x → suc zero ≤ length (g x) ) → length xs ≤ length (concatMap g xs)
+length-concatMap≥ g []       _       = z≤n
+length-concatMap≥ g (x ∷ xs) g≥1 =
+  ≤-trans (s≤s (length-concatMap≥ g xs g≥1)) (len-++≥₁ (g≥1 x))
+
+-- `mkAllEmptyU` enumerates at least one empty tree for every `ε∈` proof
+mkAllEmptyU-nonempty : ∀ { r : RE } ( ε∈r : RE.ε∈ r )
+  → suc zero ≤ length (mkAllEmptyU {r} ε∈r)
+mkAllEmptyU-nonempty RE.ε∈ε = s≤s z≤n
+mkAllEmptyU-nonempty {l ● r ` loc} (RE.ε∈_●_ ε∈l ε∈r)
+  with 1≤len→∈ (mkAllEmptyU {l} ε∈l) (mkAllEmptyU-nonempty ε∈l)
+... | ( u , u∈ ) =
+    ≤-trans (subst ( λ n → suc zero ≤ n )
+                   (sym (length-map (λ v → PairU {l = l} {r} {loc} u v)
+                                    (mkAllEmptyU {r} ε∈r)))
+                   (mkAllEmptyU-nonempty ε∈r))
+            (len∈concatMap (λ u → map (λ v → PairU {l = l} {r} {loc} u v)
+                                      (mkAllEmptyU {r} ε∈r)) u∈)
+mkAllEmptyU-nonempty {l + r ` loc} (RE.ε∈_+_ ε∈l ε∈r) =
+  ≤-trans (subst ( λ n → suc zero ≤ n )
+                 (sym (length-map (λ v → RightU {l = l} {r} {loc} v)
+                                  (mkAllEmptyU {r} ε∈r)))
+                 (mkAllEmptyU-nonempty ε∈r))
+          (len-++≥ (map (λ v → LeftU {l = l} {r} {loc} v) (mkAllEmptyU {l} ε∈l))
+                   (map (λ v → RightU {l = l} {r} {loc} v) (mkAllEmptyU {r} ε∈r)))
+mkAllEmptyU-nonempty {l + r ` loc} (RE.ε∈_<+_ ε∈l ε∉r) =
+  subst ( λ n → suc zero ≤ n )
+        (sym (length-map (λ v → LeftU {l = l} {r} {loc} v) (mkAllEmptyU {l} ε∈l)))
+        (mkAllEmptyU-nonempty ε∈l)
+mkAllEmptyU-nonempty {l + r ` loc} (RE.ε∈_+>_ ε∉l ε∈r) =
+  subst ( λ n → suc zero ≤ n )
+        (sym (length-map (λ v → RightU {l = l} {r} {loc} v) (mkAllEmptyU {r} ε∈r)))
+        (mkAllEmptyU-nonempty ε∈r)
+mkAllEmptyU-nonempty RE.ε∈* = s≤s z≤n
+
+-- A1 through the concatenation contexts: the ambiguous factor's trees are
+-- paired with every empty tree of the sibling (a nullable expression has
+-- at least one), which is exactly the shape `mkAllEmptyU` enumerates at
+-- `ε∈_●_`
+A1-●< : ( l s : RE ) ( loc : ℕ ) ( ε∈s : RE.ε∈ s )
+  → AmbigCheck.AmbigA1 l → AmbigCheck.AmbigA1 ( l ● s ` loc )
+A1-●< l s loc ε∈s ( ε∈l , len ) =
+  ( RE.ε∈_●_ ε∈l ε∈s
+  , ≤-trans len (length-concatMap≥ f (mkAllEmptyU {l} ε∈l) block) )
+  where
+    f : U l → List (U ( l ● s ` loc ))
+    f u = map (λ v → PairU {l = l} {s} {loc} u v) (mkAllEmptyU {s} ε∈s)
+    block : ∀ u → suc zero ≤ length (f u)
+    block u = subst ( λ n → suc zero ≤ n )
+                    (sym (length-map (λ v → PairU {l = l} {s} {loc} u v)
+                                     (mkAllEmptyU {s} ε∈s)))
+                    (mkAllEmptyU-nonempty ε∈s)
+
+A1-●> : ( l s : RE ) ( loc : ℕ ) ( ε∈l : RE.ε∈ l )
+  → AmbigCheck.AmbigA1 s → AmbigCheck.AmbigA1 ( l ● s ` loc )
+A1-●> l s loc ε∈l ( ε∈s , len )
+  with 1≤len→∈ (mkAllEmptyU {l} ε∈l) (mkAllEmptyU-nonempty ε∈l)
+... | ( u , u∈ ) =
+  ( RE.ε∈_●_ ε∈l ε∈s
+  , ≤-trans (subst ( λ n → suc (suc zero) ≤ n )
+                   (sym (length-map (λ v → PairU {l = l} {s} {loc} u v)
+                                    (mkAllEmptyU {s} ε∈s)))
+                   len)
+            (len∈concatMap f u∈) )
+  where
+    f : U l → List (U ( l ● s ` loc ))
+    f u = map (λ v → PairU {l = l} {s} {loc} u v) (mkAllEmptyU {s} ε∈s)
+
+-- a criterion found at a concatenation position is a criterion at the
+-- enclosing concatenation (the sibling's nullability is carried along)
+crit-●< : ( l s : RE ) ( loc : ℕ ) ( ε∈s : RE.ε∈ s ) → crit l → crit ( l ● s ` loc )
+crit-●< l s loc ε∈s (inj₁ a1)        = inj₁ (A1-●< l s loc ε∈s a1)
+crit-●< l s loc ε∈s (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.Ctx●R AmbigCheck.𝟘 s loc) a2))
+crit-●< l s loc ε∈s (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.Ctx●R AmbigCheck.𝟘 s loc) d))
+
+crit-●> : ( l s : RE ) ( loc : ℕ ) ( ε∈l : RE.ε∈ l ) → crit s → crit ( l ● s ` loc )
+crit-●> l s loc ε∈l (inj₁ a1)        = inj₁ (A1-●> l s loc ε∈l a1)
+crit-●> l s loc ε∈l (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.L●Ctx l AmbigCheck.𝟘 loc) a2))
+crit-●> l s loc ε∈l (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.L●Ctx l AmbigCheck.𝟘 loc) d))
 ```
 
 What the recursion must hand back from below a pair step is not a bare

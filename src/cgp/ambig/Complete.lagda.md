@@ -128,8 +128,19 @@ This module develops the two ingredients of that argument.
   (`Recons-residual-2`).  `completeness-from-desc` then derives §8's statement
   from `Desc-complete` through `pdesc`, so the whole completeness direction is
   reduced to one case split — the case where `pdU-complete` yields *different*
-  instances for the two trees, which is the paper's "three situations" and the
-  classification §12's counting toolkit only half of.
+  instances for the two trees.
+* §17 examines that case on a checked example: a sum whose left branch
+  re-appears inside its right branch.  A literal's derivative is its own
+  singleton (`pdU-$a1≡`), a sum of two literals has the one fused member
+  (`pdU-⊕-lit≡`), and the duplicated sum reaches *two* members for one letter —
+  the branch instance and `dup-pdi`, its fusion with the right branch's member,
+  membership from `pdU∈-⊕` with no emptiness decision; the same tree
+  reconstructs through the branch instance (`dup-u-recon`), i.e. it is derived
+  twice.  The expression is ambiguous but has no concatenation and no nullable
+  state, so no A1/A2 fires: it is an `Idemp`/A3 (duplicate-pattern) case.
+  Hence the classification §16 needs is a statement about *canonical*
+  expressions (`≈₀`), not about `pdU` multiplicity — the paper's third situation
+  is genuinely one of the three.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -144,7 +155,7 @@ open ParseTree using ( U ; EmptyU ; LetterU ; LeftU ; RightU ; PairU ; ListU ; f
                      ; LeftU≢RightU ; RightU≢LeftU )
 
 import cgp.Word as Word
-open Word using (_∈⟦_⟧)
+open Word using (_∈⟦_⟧ ; _+L_ ; $_)
 
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance*
@@ -1907,18 +1918,20 @@ instance for `u` and *an* instance for `v`: when those coincide,
 When they do not, the residuals live at different states and need not be
 distinct at all, so the step cannot continue by recursion; what closes that
 case is a diagnosis *at the state* — the paper's enumeration of the only
-situations in which the transition-tree construction branches.  In counting
-form: `pdU[ r , c ]` having two members that reconstruct one tree each happens
-only where `pdU` duplicates instances, i.e. below a nullable concatenation,
-through `concatmap-pdinstance-snd`, which enumerates one instance per empty
-tree of the left factor — so the two instances differ exactly when that factor
-has two distinct empty trees, which is A1 at the factor, or A2 at the
-concatenation whose left factor it is, or the `Idemp` duplicate if the two
-alternatives they sit under are `≈₀`-similar.  The counting half of that
-argument is §12's toolkit (`mkAllEmptyU-nonempty`, `length-concatMap≥`); the
-classification itself — *duplicate members of a `pdU` list come only from
-`concatmap-pdinstance-snd`* — is not proved here, and it is the content of the
-completeness direction.
+situations in which the transition-tree construction branches.  A first guess
+would be the counting form: two members of `pdU[ r , c ]` arise only where `pdU`
+duplicates instances, below a nullable concatenation through
+`concatmap-pdinstance-snd`, one instance per empty tree of the left factor.
+§17 shows that guess is wrong as stated — a *sum* whose left branch reappears in
+its right branch has two `pdU` members for one letter, both reconstructing the
+same tree, with no concatenation in the expression at all — and it also shows
+what saves the argument: the two trees differ by an injection through a sum of
+`≈₀`-similar alternatives, which is exactly the `Idemp`/A3 situation, the
+duplicate pattern this project states (`crit`'s third disjunct) and proves sound
+but does not test.  So the classification has to be made on the *canonical*
+expression, where such alternatives have been merged, and that is the content of
+the completeness direction; §12's counting toolkit (`mkAllEmptyU-nonempty`,
+`length-concatMap≥`) is the half of it that is here.
 
 What is proved is the reduction: the §8 goal is a corollary of `Desc-complete`,
 because a path is a `pd*-Desc` membership (`pdesc`) and the state itself is the
@@ -1942,3 +1955,134 @@ completeness-from-desc dc r u v w≡ u≢v with dc r (proj₁ (flat {r} u)) u v 
 ... | inj₂ ( w′ , w″ , w≡w′++w″ , ( path , cr ) )
     = ( w′ , w″ , w≡w′++w″ , ( pdend path , pdesc path , cr ) )
 ```
+
+## 17. The cross-instance case, and what it really needs
+
+§16's missing case is the one where `pdU-complete` hands the two trees *different*
+instances.  A concrete example, checked here, says what that case is — and it is
+not what a first reading of the paper suggests.
+
+```agda
+ca : Char
+ca = 'a'
+
+dup-l1 : RE
+dup-l1 = ( $ 'a' ` 1)
+
+dup-l2 : RE
+dup-l2 = ( $ 'a' ` 2)
+
+-- the instances of the two literals, in the exact shape `pdU` writes into its
+-- list (the soundness evidence is `pdU`'s own reasoning block, so these *are*
+-- the members `pdU` computes)
+dup-id1 : PDInstance dup-l1 ca
+dup-id1 = ( pdinstance {ε} {dup-l1} {ca}
+                      (λ u → LetterU {loc = 1} ca)
+                      (λ EmptyU →
+                         begin
+                           [ ca ]
+                         ≡⟨⟩
+                           ca ∷ []
+                         ≡⟨ cong ( λ x → ( ca ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                           ca ∷ (proj₁ (flat EmptyU))
+                         ∎) )
+
+dup-id2 : PDInstance dup-l2 ca
+dup-id2 = ( pdinstance {ε} {dup-l2} {ca}
+                      (λ u → LetterU {loc = 2} ca)
+                      (λ EmptyU →
+                         begin
+                           [ ca ]
+                         ≡⟨⟩
+                           ca ∷ []
+                         ≡⟨ cong ( λ x → ( ca ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                           ca ∷ (proj₁ (flat EmptyU))
+                         ∎) )
+
+-- a literal derives to exactly its own singleton instance, and a sum of two
+-- literals that both derive has exactly *one* member: the fusion
+pdU-$a1≡ : PosixPD.pdU[ dup-l1 , ca ] ≡ ( dup-id1 ∷ [] )
+pdU-$a1≡ = refl
+
+dup-s1 : RE
+dup-s1 = ( dup-l1 + dup-l2 ` 3 )
+
+pdU-⊕-lit≡ : PosixPD.pdU[ dup-s1 , ca ]
+  ≡ ( fuse {dup-s1} {3} {ca}
+           (pdinstance-left {dup-l1} {dup-l2} {3} {ca} dup-id1)
+           (pdinstance-right {dup-l1} {dup-l2} {3} {ca} dup-id2) ∷ [] )
+pdU-⊕-lit≡ = refl
+
+-- now the duplicated sum ( ($a`1) + dup-s1 ` 0 ): one letter `a` reaches a
+-- member built from the branch instance *and* a member fusing it with the right
+-- branch's instance — membership needs no emptiness decision, it is §13's
+-- `pdU∈-⊕`
+dup-s1-ca : PDInstance dup-s1 ca
+dup-s1-ca = fuse {dup-s1} {3} {ca}
+                 (pdinstance-left {dup-l1} {dup-l2} {3} {ca} dup-id1)
+                 (pdinstance-right {dup-l1} {dup-l2} {3} {ca} dup-id2)
+
+dup-s1-ca∈ : dup-s1-ca ∈ PosixPD.pdU[ dup-s1 , ca ]
+dup-s1-ca∈ = here refl
+
+dup-r-lit : RE
+dup-r-lit = ( ($ 'a' ` 1) + dup-s1 ` 0 )
+
+dup-pdi : PDInstance dup-r-lit ca
+dup-pdi = fuse-⊕ {($ 'a' ` 1)} {dup-s1} {0} {ca} dup-id1 dup-s1-ca
+
+dup-pdi∈ : dup-pdi ∈ PosixPD.pdU[ dup-r-lit , ca ]
+dup-pdi∈ = pdU∈-⊕ {($ 'a' ` 1)} {dup-s1} {0} {ca} dup-id1 dup-s1-ca
+                 (here refl) dup-s1-ca∈
+
+-- and the *same* tree reconstructs through the plain branch instance: it is
+-- derived twice, once directly and once inside the fusion
+dup-u : U dup-r-lit
+dup-u = LeftU (LetterU {loc = 1} ca)
+
+dup-u-pdi : PDInstance dup-r-lit ca
+dup-u-pdi = (pdinstance-left {dup-l1} {dup-s1} {0} {ca})
+              ( pdinstance {ε} {dup-l1} {ca}
+                     (λ u → LetterU {loc = 1} ca)
+                     (λ EmptyU →
+                        begin
+                          [ ca ]
+                        ≡⟨⟩
+                          ca ∷ []
+                        ≡⟨ cong ( λ x → ( ca ∷  x) ) (sym (flat-Uε≡[] EmptyU)) ⟩
+                          ca ∷ (proj₁ (flat EmptyU))
+                        ∎) )
+
+dup-u-recon : Recons { dup-r-lit } { ca } dup-u dup-u-pdi
+dup-u-recon = recons dup-u ( Word.ε , refl )
+
+-- The reconstruction *through the fused member* is not statable here: its word
+-- evidence would have to live in the language of that member's continuation,
+-- and `pd-expr` of an instance built by `pdinstance-left`/`-right`/`fuse` does
+-- not reduce — the index of those instances mentions the defined expressions
+-- `dup-l1`/`dup-s1`, so the match inside `pd-expr` is stuck (§4's obstacle, in
+-- a completely concrete example).
+```
+
+The example carries its own diagnosis.  `dup-r-lit` is ambiguous — `[ a ]` has
+the two trees `LeftU (LetterU a)` and `LeftU (RightU (LetterU a))` — but it
+contains *no concatenation at all*, so the "nullable left factor" mechanism
+cannot produce the multiplicity; `⊕` at a sum does.  The members are the plain
+branch instance and the fusion `dup-pdi` of that instance with the right branch's
+member; by `pd-expr-fuse-⊕` their continuations are `ε` and
+`ε + dup-s1 \` 0`, and none of those expressions is nullable, because every
+branch of the expression is a literal.  So no A1 and no A2 holds at the states
+this word reaches.  What separates the two trees is that the sum
+`( ($a`1) + ($a`1) \` 3 )` inside the right branch is the `Idemp` merge of two
+`≈₀`-similar alternatives — the paper's third situation, criterion A3, which this
+project states as the duplicate *pattern* and proves sound for
+(`Canonic.pd*-Ctx-dup→Ambig`) but does not implement as a test (`AmbigCheck` §4).
+
+That is the correction §16 needed: a `pdU` list with two members reconstructing
+the *same* tree is not by itself one of the two first criteria — the
+classification has to be made on the canonical expression, where `≈₀`-similar
+alternatives have been merged.  In the descent the case is recognised the way
+this example shows it: the two instances are a branch instance and a fusion of
+that branch instance with the sibling's, so the two trees differ exactly by an
+injection through a sum whose two branches are similar, which is the duplicate
+pattern under the context the descent has been walking in.

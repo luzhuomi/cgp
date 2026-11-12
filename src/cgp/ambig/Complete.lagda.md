@@ -51,10 +51,11 @@ This module develops the two ingredients of that argument.
   injective transition map, is a genuine ambiguity of `r`.
 * §8 states the goal of the whole arc — the *completeness* direction proper
   (given an ambiguity witness, a pd-descendant state where a criterion
-  fires) — with unchecked bodies: the general statement, and its reading
-  tied to the ambiguity pair of `sd`.  Those two holes are the only
-  unsolved metas left in the module (`--allow-unsolved-metas`); §12–§13
-  are the machinery they are made of.
+  fires) — with the general statement left as the one unsolved meta of the
+  module (`--allow-unsolved-metas`), and its reading tied to the ambiguity
+  pair of `sd` proved (`Recons*-at-singleton`, `sd-recons*-at-pdi₂`,
+  `sd-completeness-at-the-state`: every tree of `aa` is the image under
+  `pd*-inj pdi₂` of a tree of `sd-s2`, and distinctness reflects).
 * §9 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
   expression — via `flat`'s language component, `Word.[]∈⟦r⟧→ε∈r` and
@@ -101,6 +102,13 @@ This module develops the two ingredients of that argument.
   (`pd-expr-fuse-⊕`: `fuse`'s continuation *is* the sum of the two
   continuations, which is where the recursive call stands), with
   `Path-rescue` carrying a found path across that equation.
+* §14 composes the two: `split-completeness` is §8's conclusion for the pair
+  that splits at a sum — `pair-complete` read through `pdesc`, the path
+  disjunct being exactly a `pd*-Desc` membership and the sum itself the
+  pd-descendant of the empty prefix.  This is the one shape of the general
+  `completeness` that is closed; the rest of that statement needs the descent
+  through `●` and `⋆` and the split-word pairs (A2's shape), §14's last
+  paragraph.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -126,7 +134,7 @@ import cgp.empty.AllEmptyParseTree as AllEmpty
 open AllEmpty using ( flat-[] ; mkAllEmptyU ; mkAllEmptyU-complete )
 
 import cgp.posix.PartialDerivative as PosixPD
-open PosixPD using ( mkfuseInj ; fuse ; pdinstance-oplus ; injId ; injId-sound ; pdU-complete )
+open PosixPD using ( mkfuseInj ; fuse ; pdinstance-oplus ; injId ; injId-sound ; pdU-complete ; pdUMany-complete )
 
 import cgp.Utils as Utils
 open Utils using ( ∷-inj )
@@ -140,7 +148,7 @@ import cgp.ambig.Converse as Converse
 open Converse using ( sd ; sd-body ; sd-ε∉ ; sd-s1 ; sd-s2 ; sd-x ; aa ; res-a ; sd-s2-A1 ; sd-Desc₂ )
 
 import cgp.Recons as Recons
-open Recons using ( Recons ; recons ; Recons* )
+open Recons using ( Recons ; recons ; Recons* ; recons* )
 
 open import Data.Char using (Char)
 open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; _+_ ; s≤s ; z≤n)
@@ -644,6 +652,8 @@ To fill this for an *arbitrary* pair `( u , v )` one has to *find* the
 prefix `w′` — the paper's `AllParseFST` argument over parse trees of the
 word.  It is not formalized here (like the realizable-states / FST side of
 the paper), and this is the actual research gap of the program, beyond §4.1.
+One shape of it is discharged in §14 (`split-completeness`): the pair that
+splits at a sum, which is `pair-complete` (§13) read through `pdesc`.
 
 **The reading tied to a given pair, for this `r`** (what §5–§6 built the
 machinery for): every ambiguity pair of `sd` for the word `aa` is the image,
@@ -655,25 +665,53 @@ distinct (a function sends distinct outputs to distinct inputs); §6's
 `pdi₂-inj` gives the converse, and both together say the ambiguity *is* the
 state's A1 witness, not an artifact of the map.
 
+Two lemmas do the extraction.  At a *singleton* run list the instance and its
+membership can only be matched *inside* the lemma — at the call site the list
+is the computed `pdUMany[ sd , aa ]`, the stuck form of §4 — and §5's
+`pdUMany-sd-aa≡` is what makes the singleton equation apply.
+
 ```agda
+-- at a singleton run list, every tree of the word is in the image of that
+-- instance's transition map
+Recons*-at-singleton : ∀ { r : RE } { w : List Char } ( u : U r )
+  ( pdi : PDInstance* r w )
+  → Any (Recons* {r} {w} u) (pdi ∷ [])
+  → Σ[ x ∈ U (Canonic.pd*-expr pdi) ] ( Canonic.pd*-inj pdi x ≡ u )
+Recons*-at-singleton u (pdinstance* {p} inj ev) (here (recons* _ ( w∈ , eq ))) = ( unflat w∈ , eq )
+Recons*-at-singleton u pdi (there ())
+
+-- for `sd` and the word `aa` the run list *is* `[ pdi₂ ]` (§5)
+sd-recons*-at-pdi₂ : ( u : U sd ) → ( proj₁ (flat {sd} u) ≡ aa )
+  → Σ[ x ∈ U (Canonic.pd*-expr pdi₂) ] ( Canonic.pd*-inj pdi₂ x ≡ u )
+sd-recons*-at-pdi₂ u w≡ =
+  Recons*-at-singleton u pdi₂
+    ( subst ( λ L → Any (Recons* {sd} {aa} u) L ) pdUMany-sd-aa≡
+      ( subst ( λ w → Any (Recons* {sd} {w} u) (PosixPD.pdUMany[ sd , w ]) ) w≡
+          (PosixPD.pdUMany-complete {sd} u) ) )
+
 sd-completeness-at-the-state :
     ( u v : U sd )
   → proj₁ (flat {sd} u) ≡ aa → proj₁ (flat {sd} v) ≡ aa → ¬ ( u ≡ v )
   → ∃[ u′ ] ∃[ v′ ]
       ( ( Canonic.pd*-inj pdi₂ u′ ≡ u ) × ( Canonic.pd*-inj pdi₂ v′ ≡ v )
       × ¬ ( u′ ≡ v′ ) )
-sd-completeness-at-the-state u v w≡ w′≡ u≢v = _
+sd-completeness-at-the-state u v w≡ w′≡ u≢v
+  with sd-recons*-at-pdi₂ u w≡ | sd-recons*-at-pdi₂ v w′≡
+... | ( u′ , u′≡ ) | ( v′ , v′≡ ) =
+  ( u′ , v′ , u′≡ , v′≡
+  , λ u′≡v′ → u≢v (trans (sym u′≡) (trans (cong (Canonic.pd*-inj pdi₂) u′≡v′) v′≡)) )
 ```
 
-Its input pieces all exist: `pdU-complete`/`pdUMany-complete`
-(`cgp.posix.PartialDerivative`) put every tree with word `aa` in the image of
-*some* instance of `pdUMany[ sd , aa ]`; `pdUMany-sd-aa≡` says that instance
-is `pdi₂`; extracting the field of `Recons*` gives `u′ , v′`
-(`cgp.Recons`: `recons*` is literally an equation `inj (unflat w∈⟦p⟧) ≡ u`).
-Deriving `flat u′ ≡ []` and `flat v′ ≡ []` from the soundness evidence makes
-them the empty trees A1 counts.  So unlike the general statement, this one is
-a proof exercise, not a research gap — left as a hole until the statement is
-agreed.
+The residuals are read off the two `Recons*` witnesses, and their
+distinctness is `u ≢ v` read back through the very same equations — no
+injectivity is needed in this direction.  §6's `pdi₂-inj` is the converse
+direction, that distinct trees of the state have distinct images in `U sd`;
+together the two say the ambiguity of `sd` *is* the A1 witness of the state
+`sd-s2` and not an artifact of the transition map (`sd-Ambig-from-A1-at-state`,
+§7, does the lifting).  That `flat u′ ≡ []` and `flat v′ ≡ []` — the two
+empty trees A1 counts — follows from `Canonic.pd*-ev` and the word equation
+`aa ≡ aa ++ proj₁ (flat u′)`.  Unlike the general statement, this one was a
+proof exercise rather than a research gap.
 
 ## 9. Toward the general proof: the base case of the descent
 
@@ -1313,7 +1351,8 @@ length-concatMap≥ : ∀ {A B : Set} ( g : A → List B ) ( xs : List A )
   → ( ∀ x → suc zero ≤ length (g x) ) → length xs ≤ length (concatMap g xs)
 length-concatMap≥ g []       _       = z≤n
 length-concatMap≥ g (x ∷ xs) g≥1 =
-  ≤-trans (s≤s (length-concatMap≥ g xs g≥1)) (len-++≥₁ (g≥1 x))
+  ≤-trans (s≤s (length-concatMap≥ g xs g≥1))
+          (len-++≥₁ {u = g x} {v = concatMap g xs} (g≥1 x))
 
 -- `mkAllEmptyU` enumerates at least one empty tree for every `ε∈` proof
 mkAllEmptyU-nonempty : ∀ { r : RE } ( ε∈r : RE.ε∈ r )
@@ -1649,11 +1688,37 @@ one member only below a nullable concatenation, where
 left factor — the paper's "these are the only situations" in counting
 form.)
 
-From `pair-complete`, the split case of the §8 descent composes directly:
-the pair reaches the sum state `l + s \` loc` through the chain instance
-for `w′` (§10–§11); the pair theorem either fires `crit` at the sum —
-then `chain-in-pd*-Desc` (§10) puts the sum in `pd*-Desc r (w′)` — or
-hands back a path `π` at the sum with `crit (pdend π)`; `pdesc` turns
-`π` into a `pd*-Desc ( l + s \` loc ) w′` membership and §10's
-composition lemma extends it through the chain to a pd-descendant of `r`
-for the whole prefix.
+## 14. The split case of `completeness`
+
+With the path form of the descent (§12) and the pair theorem (§13), the split
+case of the §8 statement needs no further machinery: a path *is* a
+pd-descendant membership (`pdesc`), and the sum itself is the pd-descendant of
+the empty prefix (`pdesc pnil`).
+
+```agda
+-- §8's conclusion for a pair that splits at a sum: the left-injection tree
+-- and the right-injection tree of `l + s \` loc` have one word, and the
+-- criterion the pair theorem finds sits at a pd-descendant state of the sum.
+split-completeness : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
+  ( u : U l ) ( v : U s )
+  → proj₁ (flat {l} u) ≡ w → proj₁ (flat {s} v) ≡ w
+  → ∃[ w′ ] ∃[ w″ ]
+      ( ( w ≡ w′ ++ w″ )
+      × ∃[ p ]
+          ( Any ( λ t → t ≡ p ) (Canonic.pd*-Desc ( l + s ` loc ) w′)
+          × crit p ) )
+split-completeness {l} {s} loc w u v u≡ v≡ with pair-complete loc w u v u≡ v≡
+... | inj₁ cr = ( [] , w , refl , ( l + s ` loc , pdesc pnil , cr ) )
+... | inj₂ ( w′ , w″ , w≡w′++w″ , ( path , cr ) )
+    = ( w′ , w″ , w≡w′++w″ , ( pdend path , pdesc path , cr ) )
+```
+
+That is the one shape of the general `completeness` which is closed: the two
+trees disagree *between the branches of a sum*.  What the general statement
+still asks for is the descent through the remaining constructors — a path
+below `l` lifted to `l + s \` loc`, `l ● s \` loc` (through
+`pdinstance-fst` and `concatmap-pdinstance-snd`, the second together with the
+empty-tree split of §12's counting lemmas) and `r ⋆` through
+`pdinstance-star`; and the pairs that disagree *inside* one branch, where the
+two trees no longer share a word but split it — precisely the situation A2's
+nullable-left condition is about.

@@ -84,7 +84,9 @@ This module develops the two ingredients of that argument.
   (a branch-anchored version is refuted by the `($a`1 + ε) + $a`2`
   counterexample, whose witness is the fused derivative `ε + ε`), with a
   hole; `ε∈→emptyU` and `A1-⊕` fire A1 at any sum of two nullable
-  expressions.
+  expressions, which closes the first clauses of the pair recursion:
+  pairs with an empty tree on one side (`crit-ε+`, `crit-+ε`) and pairs
+  of literal trees (`crit-$$`, the duplicate pattern with `ctx = 𝟘`).
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -1136,6 +1138,36 @@ A1-⊕ : ( l s : RE ) ( loc : ℕ ) ( ε∈l : RE.ε∈ l ) ( ε∈s : RE.ε∈ 
   → AmbigCheck.AmbigA1 ( l + s ` loc )
 A1-⊕ l s loc ε∈l ε∈s with ε∈→emptyU ε∈l | ε∈→emptyU ε∈s
 ... | ( u , u≡ ) | ( v , v≡ ) = split-+-A1 l s loc u v u≡ v≡
+```
+
+For the pair recursion these give the closed first clauses: any pair with
+an *empty* tree on one side reaches the first disjunct (the empty tree on
+that side and the empty-word tree on the other side are two empty trees
+of the sum), and any pair of *literal* trees does too — equal words make
+the letters equal, and literals over one letter are `≈₀`-similar, so the
+duplicate pattern fires at the sum with the empty context.
+
+```agda
+crit-ε+ : ∀ { s : RE } ( loc : ℕ ) ( v : U s )
+  → proj₁ (flat {s} v) ≡ [] → crit ( ε + s ` loc )
+crit-ε+ {s} loc v v≡
+  = inj₁ (A1-⊕ ε s loc RE.ε∈ε
+            (Word.[]∈⟦r⟧→ε∈r (subst ( λ w → w ∈⟦ s ⟧) v≡ (proj₂ (flat {s} v)))))
+
+crit-+ε : ∀ { l : RE } ( loc : ℕ ) ( u : U l )
+  → proj₁ (flat {l} u) ≡ [] → crit ( l + ε ` loc )
+crit-+ε {l} loc u u≡
+  = inj₁ (A1-⊕ l ε loc
+            (Word.[]∈⟦r⟧→ε∈r (subst ( λ w → w ∈⟦ l ⟧) u≡ (proj₂ (flat {l} u))))
+            RE.ε∈ε)
+
+-- two literal trees over the same letter: the duplicate pattern at the sum
+crit-$$ : ∀ { c d : Char } { loc₁ loc₂ loc : ℕ }
+  → c ≡ d → crit ( ( $ c ` loc₁ ) + ( $ d ` loc₂ ) ` loc )
+crit-$$ {c} {d} {loc₁} {loc₂} {loc} c≡d with c≡d
+... | refl = inj₂ (inj₂
+  ( AmbigCheck.𝟘 , $ c ` loc₁ , $ d ` loc₂ , loc
+  , ( refl , Canonic.≈₀-$ c loc₁ loc₂ ) ) )
 ```
 
 A criterion found *below* a branch of a sum is heard *at* the sum.  A2 and

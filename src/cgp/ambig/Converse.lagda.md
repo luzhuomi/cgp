@@ -32,7 +32,10 @@ Short answer: **not as stated**, and the two readings have to be separated.
     as soon as the injectivity of the transition map of that path is supplied
     (§4); A3 (`Idemp`) fires one letter later (§6).  Finding such a state out
     of an arbitrary ambiguity witness is the paper's `AllParseFST` / `Desc(r)`
-    construction; §7 lists what is missing here.
+    construction; §7 lists what is missing here.  The injectivity half of that
+    direction — the transition map of each pd builder is injective under
+    conditions that are the negations of the criteria — is developed in
+    `cgp.ambig.Complete`.
  3. *The duplicate one would expect here* — the choice
     `[ ε · r⋆ , ε · a · r⋆ , ε · r⋆ ]` an **unfused** (Antimirov) derivative
     would produce, whose third element repeats the first — is indeed detected
@@ -551,10 +554,13 @@ That settles what `sd` can and cannot be used for:
 * The three criteria as *decidable* tests on the state list (`A1?`/`A2?` via
   `mkAllEmptyU`, duplicate detection via `dups-≈₀`) and a proof that firing of
   the test is equivalent to the proposition used by the lift lemmas.
-* `inj-inj` for the concrete injections built by `pdUMany` — the `lne`/`greedy`
-  builders are injective, `PosixPD.mkfuseInj` is not in general, and a state
-  reached through a fused instance cannot be lifted without recovering the
-  multiplicity.  §5 shows the fusion is exactly where an alternative-level
-  duplicate disappears; for this `r` at that depth the multiplicity survives
-  only as the second empty parse tree of the state, i.e. as A1 (§4), while the
-  `Idemp` situation only shows up one level deeper (§6).
+* `inj-inj` for the concrete injections built by `pdUMany` — the per-builder
+  injectivity proofs are in `cgp.ambig.Complete` §3 (`injId`, `mkinjList`, the
+  pair and sum extensions); `PosixPD.mkfuseInj` is injective only relative to a
+  disjointness of its two branch ranges, which is the Antimirov-disjointness
+  half missing above.  A state reached through a fused instance cannot be
+  lifted without recovering the multiplicity.  §5 shows the fusion is exactly
+  where an alternative-level duplicate disappears; for this `r` at that depth
+  the multiplicity survives only as the second empty parse tree of the state,
+  i.e. as A1 (§4), while the `Idemp` situation only shows up one level deeper
+  (§6).

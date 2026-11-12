@@ -1805,10 +1805,19 @@ Desc-⊕-crit {l} {s} loc π π′ cr =
 
 What is *not* covered by these two lemmas is exactly the decision the fusion
 postpones: when only one side derives the word, `pdinstance-oplus`'s singleton
-equations put the one path through unchanged and no state extension happens —
-and deciding that a `pdU`/`pdUMany` list is empty for a symbolic expression is
-the stuck-list obstacle of §4.  The concatenation lift has the same shape once
-that decision is available (`pdinstance-fst`'s continuation is
-`pd-expr pdi ● r \` loc`, and `pd-expr` of a `concatmap-pdinstance-snd` member
-is the sibling's, so the fused state again asks for `crit-+<`, unfused for
-`crit-●<`).
+equations put the one path through unchanged and no state extension happens.
+That case cannot be lifted symbolically at all — it is §4's obstacle, now with
+its reason.  `pdU[ l ● s \` loc , c ]` branches on `RE.ε∈? l`, and for a
+symbolic `l` that decision never reduces, so which list the membership lives in
+is not observable; splitting `l`'s head constructor does not help, because
+`ε∈?` recurses into `l`'s sub-expressions, which are still variables, and
+`pdinstance-fst pdi ∈ pdU[ l ● s \` loc , c ]` is unprovable there.  (`⊕` is the
+opposite case: `pdinstance-oplus` needs nothing about either side beyond the two
+members, so fusion *is* available symbolically — that is `pdU∈-⊕`.)  The
+general statement therefore cannot be assembled by lifting paths from a
+subexpression to its parent.  Either the derivative is redefined symbolically,
+with one clause per pair of expression shapes so that the branch is taken in the
+definition rather than in the proof, or the descent is run the way §13 runs the
+pair: never asking whether a list is empty, only taking a member of it out of
+`pdU-complete` for the tree in hand — which is why the pair theorem could be
+proved at all, and where the remaining research step is.

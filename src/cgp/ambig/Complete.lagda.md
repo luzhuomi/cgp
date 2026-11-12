@@ -32,12 +32,15 @@ This module develops the two ingredients of that argument.
   is not local is `mkfuseInj-inj`'s disjointness of the two branch ranges:
   whether the images of the two branches of a fused sum coincide is a fact
   about `r` as a whole — it *is* the Antimirov disjointness statement (§4.1).
-* §4 records what still stands between this and a proof of the completeness
-  direction for a concrete `r`: uniqueness of the reconstructing instance
-  (Antimirov disjointness, absent from the project), and an Agda-level
-  obstacle — a *computed* instance such as `pdUMany[ sd , a a ]` cannot be
-  named, so §2–§3 cannot be pointed at it.  The checks behind that claim are
-  in §4.
+* §4 separates what is *not* proved yet: uniqueness of the reconstructing
+  instance (Antimirov disjointness, absent from the project — and visible as
+  the one non-local side condition of `mkfuseInj-inj`), and the Agda-level
+  obstacle that a *computed* instance cannot be bound by matching
+  (`with`-abstraction over `pdUMany[ sd , a a ]` has unrefutable cases).
+* §5 beats the second obstacle by mirroring the computation of
+  `pdU[ sd-s1 , a ]` / `pdUMany[ sd , a a ]` with the same constructors: the
+  named instances satisfy the computed-list equations, the continuation
+  equation `pd*-expr pdi₂ ≡ sd-s2`, and `A1` at that state — all by `refl`.
 
 ```agda
 {-# OPTIONS --rewriting #-}
@@ -48,17 +51,21 @@ open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉)
 
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U ; EmptyU ; LetterU ; LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU
-                     ; inv-leftU ; inv-rightU ; inv-pairU )
+                     ; flat-Uε≡[] ; inv-leftU ; inv-rightU ; inv-pairU )
 
 import cgp.Word as Word
 open Word using (_∈⟦_⟧)
 
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance*
-               ; mkinjList ; compose-pdi-with )
+               ; mkinjList ; compose-pdi-with
+               ; pdinstance-left ; pdinstance-right ; pdinstance-fst ; pdinstance-star ; mk-snd-pdi )
+
+import cgp.empty.AllEmptyParseTree as AllEmpty
+open AllEmpty using ( flat-[] )
 
 import cgp.posix.PartialDerivative as PosixPD
-open PosixPD using ( mkfuseInj ; injId )
+open PosixPD using ( mkfuseInj ; fuse ; pdinstance-oplus ; injId ; injId-sound )
 
 import cgp.ambig.AmbigCheck as AmbigCheck
 open AmbigCheck using ( Ambig )
@@ -66,20 +73,21 @@ open AmbigCheck using ( Ambig )
 import cgp.ambig.Canonic as Canonic
 
 import cgp.ambig.Converse as Converse
-open Converse using ( sd ; sd-s1 ; sd-s2 ; aa ; res-a ; sd-s2-A1 ; sd-Desc₂ )
+open Converse using ( sd ; sd-body ; sd-ε∉ ; sd-s1 ; sd-s2 ; sd-x ; aa ; res-a ; sd-s2-A1 ; sd-Desc₂ )
 
 import cgp.Recons as Recons
 open Recons using ( Recons ; Recons* )
 
 open import Data.Char using (Char)
-open import Data.Nat using (ℕ)
-open import Data.List using (List; _∷_; []; _++_)
+open import Data.Nat using (ℕ; _≟_)
+open import Data.List using (List; _∷_; []; _++_; map; [_])
 open import Data.List.Properties using (++-cancelˡ)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Empty using (⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
-open import Relation.Binary.PropositionalEquality using (_≡_; refl; sym; trans; cong; cong₂)
-open import Relation.Nullary using (¬_)
+open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂)
+open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
+open import Relation.Nullary using (¬_; yes; no)
 ```
 
 ## 1. Two trees identified by one transition map
@@ -236,11 +244,10 @@ trees of the state, `LeftU u ≢ RightU v`; whether their images coincide is a
 fact about `r`, not about the node).  The general form is an induction along
 `pdU`, parallel to the existing `pdU-complete`/`pdUMany-complete` proofs.
 
-**4.2 A computed instance cannot be named.**  The injectivity proofs of §3 are
-about maps; to use one for a transition map of `pdU` the instance has to be a
-term.  It is not: matching on the computed list leaves unrefutable cases,
-
-The definitions
+**4.2 A computed instance cannot be named by `with`, but it can be mirrored.**
+The injectivity proofs of §3 are about maps; to use one for a transition map
+of `pdU` the instance has to be a term.  Naming it by *matching* fails:
+the definitions
 
     pdUMany-sd-aa-named : PDInstance* sd aa
     pdUMany-sd-aa-named with PosixPD.pdUMany[ sd , aa ]
@@ -252,12 +259,16 @@ The definitions
 
 are rejected with `Missing cases: [] / x ∷ x₁ ∷ w`: nothing in the type of
 those lists rules the other shapes out (being a singleton is a computational
-fact, not a typing fact), so the case split cannot be closed.
-
-and the parametric substitute does not work either: given `pdis ≡ pdU[ … ]` and
+fact, not a typing fact), so the case split cannot be closed.  And the
+parametric substitute does not work either: given `pdis ≡ pdU[ … ]` and
 `pdis ≡ pdi ∷ []` for *variables*, the goal `pd-expr pdi ≡ sd-s2` is not `refl`
 — an equation about a list cannot rewrite the field of an abstract instance.
-What *is* computational is the list as a whole:
+
+What closes the gap is §5: *build the instance the way `pdU` computes it* —
+run the same case analysis by hand (`ε∈? res-a = yes`, `'a' ≟ 'a' = yes`, the
+one empty parse tree of `res-a`) through the same constructors — and check by
+`refl` that the computed list equals the singleton containing it.  Two facts
+about `sd` that the rest needs, the list as a whole being computational:
 
 ```agda
 -- the state after `a a`, as a computed list (Converse.sd-Desc₂)
@@ -269,11 +280,115 @@ sd-aa-A1 : AmbigCheck.AmbigA1 sd-s2
 sd-aa-A1 = sd-s2-A1
 ```
 
-Closing 4.2 means either building the instance by hand out of the constructors
-(`pdinstance-left`/`-right`/`-fst`/`-snd`/`-star`, `fuse`) and proving the
-computed list equal to the singleton containing it — a mechanical replay of the
-`any-recons-*` lemmas — or a cardinality lemma for `pdU`/`pdUMany`.  With that
-instance in hand, §3 gives injectivity of its map once §4.1 discharges the
-range-disjointness of its `+` node (`mkfuseInj-inj` is the only step that is
-not local), §1 plus `sd-s2-A1` give `Ambig sd`, and the criterion that fires
-is `A1`, as computed by `Converse.sd-s2-criteria`.
+With the named instance of §5 in hand, §3 gives injectivity of its map once
+the range-disjointness of its `+` node is discharged (`mkfuseInj-inj` is the
+only step that is not local — §4.1), §1 plus `sd-s2-A1` then give `Ambig sd`,
+and the criterion that fires is `A1`, as computed by `Converse.sd-s2-criteria`.
+
+## 5. Naming the instances of `a` and `a a`
+
+Mirroring the computation of `pdU[ sd-s1 , 'a' ]` and `pdUMany[ sd , a a ]`.
+The pieces, in computation order: the three letter instances; the one-step
+instance of `res-a = ε + (ε · a) ` 5` (only the right summand matches `a`, and
+`ε · a` derives to `ε` through its empty tree `EmptyU`); then the two
+branches of the concatenation node `res-a · r⋆ ` 6` of `sd-s1`:
+
+* the left branch `pdinstance-fst`: a first `a` consumed inside `res-a`,
+  continuation `sd-x = ε · r⋆`;
+* the right branch `concatmap-pdinstance-snd`: nothing consumed in `res-a`
+  (its empty parse tree `LeftU EmptyU` is carried along — this is a
+  *singleton*, `ε · a` is not nullable), and `a` consumed inside `r⋆`, i.e.
+  `pdinstance-star` of `pdU[ r , a ]`, continuation `sd-s1`.
+
+`pdinstance-oplus` fuses the two branches (`fuse`), and the single resulting
+instance has continuation `sd-x + sd-s1 ` 6 = sd-s2`.
+
+```agda
+-- the three letter instances (the two locations of r = a + a · a, and the a
+-- inside res-a); the ev proof is copied verbatim from pdU's clause so the
+-- comparisons below hold definitionally
+letter-pdi : ∀ { loc : ℕ } → PDInstance ($ 'a' ` loc) 'a'
+letter-pdi {loc} with (loc ≟ loc)
+...   | yes refl = pdinstance {ε} {$ 'a' ` loc} {'a'}
+                     (λ u → LetterU {loc} 'a')
+                     (λ u → begin
+                              [ 'a' ]
+                            ≡⟨⟩
+                              'a' ∷ []
+                            ≡⟨ cong ( λ x → ( 'a' ∷  x) ) (sym (flat-Uε≡[] u)) ⟩
+                              'a' ∷ (proj₁ (flat u))
+                            ∎)
+...   | no  ¬a   = ⊥-elim (¬a refl)
+
+-- the one-step instance of res-a = ε + (ε · a) ` 5 : only the right summand
+-- matches 'a'; ε · a derives to ε through its empty tree EmptyU
+snd-₃ : PDInstance (ε ● ($ 'a' ` 3) ` 4) 'a'
+snd-₃ = mk-snd-pdi {ε} {($ 'a' ` 3)} {4} {'a'} (EmptyU , flat-[] EmptyU refl) (letter-pdi {3})
+
+r-res : PDInstance res-a 'a'
+r-res = pdinstance-right {ε} {(ε ● ($ 'a' ` 3) ` 4)} {5} {'a'} snd-₃
+
+-- the left branch of pdU[ res-a · r⋆ ` 6 , 'a' ]: continuation sd-x = ε · r⋆
+pdi-L : PDInstance sd-s1 'a'
+pdi-L = pdinstance-fst {res-a} {sd} {6} {'a'} r-res
+
+-- the one-step instance of r⋆ = sd: pdinstance-star of the fused instance of
+-- r = a + a · a (both summands match 'a', oplus fuses them into res-a · r⋆)
+o₅ : List (PDInstance sd-body 'a')
+o₅ = pdinstance-oplus {sd-body} {5} {'a'}
+       ( map (pdinstance-left  {($ 'a' ` 1)} {(($ 'a' ` 2) ● ($ 'a' ` 3) ` 4)} {5} {'a'}) [ letter-pdi {1} ] )
+       ( map (pdinstance-right {($ 'a' ` 1)} {(($ 'a' ` 2) ● ($ 'a' ` 3) ` 4)} {5} {'a'})
+               [ pdinstance-fst {($ 'a' ` 2)} {($ 'a' ` 3)} {4} {'a'} (letter-pdi {2}) ] )
+
+-- head of a computed list, with fallbacks for the (impossible here) empty /
+-- longer shapes: with-abstraction cannot name the head (§4.2), a total helper
+-- can; the refl checks below confirm the branch the computation takes
+head-or : ∀ {A : Set} → A → List A → A
+head-or d []       = d
+head-or d (x ∷ _)  = x
+
+star-fallback : PDInstance sd-body 'a'
+star-fallback = pdinstance {ε} {sd-body} {'a'}
+                  (λ u → LeftU {($ 'a' ` 1)} {(($ 'a' ` 2) ● ($ 'a' ` 3) ` 4)} {5} (LetterU {1} 'a'))
+                  (λ EmptyU → cong (λ x → 'a' ∷ x) (sym (flat-Uε≡[] EmptyU)))
+
+star-sd : PDInstance sd 'a'
+star-sd = pdinstance-star {sd-body} {sd-ε∉} {6} {'a'} (head-or star-fallback o₅)
+
+-- the right branch of pdU[ sd-s1 , 'a' ]: res-a contributes its single empty
+-- parse tree LeftU EmptyU, the letter is consumed inside r⋆; continuation sd-s1
+pdi-R : PDInstance sd-s1 'a'
+pdi-R = mk-snd-pdi {res-a} {sd} {6} {'a'}
+          ( LeftU {ε} {(ε ● ($ 'a' ` 3) ` 4)} {5} EmptyU , flat-[] _ refl) star-sd
+
+-- pdU[ sd-s1 , 'a' ] is exactly the fused pair: one instance, continuation sd-s2
+pdi-s1 : PDInstance sd-s1 'a'
+pdi-s1 = fuse {sd-s1} {6} {'a'} pdi-L pdi-R
+
+pdu-s1≡ : ( PosixPD.pdU[ sd-s1 , 'a' ] ) ≡ ( pdi-s1 ∷ [] )
+pdu-s1≡ = refl
+
+pd-pdi-s1 : Canonic.pd-expr pdi-s1 ≡ sd-s2
+pd-pdi-s1 = refl
+
+-- the path instance for the prefix `a` (the star extension of pdU[ r , a ],
+-- composed onto the empty path), and the two-step instance for `a a`
+path-a : PDInstance* sd ( 'a' ∷ [] )
+path-a = compose-pdi-with {sd} {sd} {[]} {'a'} injId injId-sound star-sd
+
+pdi₂ : PDInstance* sd aa
+pdi₂ = compose-pdi-with {sd} {sd-s1} { 'a' ∷ [] } {'a'}
+         (Canonic.pd*-inj path-a) (Canonic.pd*-ev path-a) pdi-s1
+
+pd-pdi₂ : Canonic.pd*-expr pdi₂ ≡ sd-s2
+pd-pdi₂ = refl
+
+pdUMany-sd-aa≡ : ( PosixPD.pdUMany[ sd , aa ] ) ≡ ( pdi₂ ∷ [] )
+pdUMany-sd-aa≡ = refl
+```
+
+So `Converse.sd-Ambig-from-descendant` applied to `pdi₂` and `pd-pdi₂` has a
+non-vacuous instance; what remains for the completeness direction at this
+example is exactly its last hypothesis — injectivity of `pd*-inj pdi₂` —
+which is the next task (§3 applied to the builders above, with the one
+non-local side condition of §4.1 discharged for this node).

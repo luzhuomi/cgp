@@ -52,8 +52,9 @@ This module develops the two ingredients of that argument.
 * §8 states the goal of the whole arc — the *completeness* direction proper
   (given an ambiguity witness, a pd-descendant state where a criterion
   fires) — with unchecked bodies: the general statement, and its reading
-  tied to the ambiguity pair of `sd`.  These two holes are the only
-  unsolved metas in the module (`--allow-unsolved-metas`).
+  tied to the ambiguity pair of `sd`.  Together with §12's `pair-complete`
+  these three holes are the only unsolved metas in the module
+  (`--allow-unsolved-metas`).
 * §9 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
   expression — via `flat`'s language component, `Word.[]∈⟦r⟧→ε∈r` and
@@ -69,6 +70,12 @@ This module develops the two ingredients of that argument.
   along RE-equalities of their targets (`pdtransport*`, `pdU-transport-∈`)
   — every such transport is a J-definition that reduces at `refl`, which is
   where the descent's concrete calls land once the trees fix `r`.
+* §12 opens the split case (B3b): the diagnosis disjunction of §8 is named
+  (`crit`); A2 and the duplicate pattern are stable under hole contexts
+  (`A2-Ctx`, `dup-Ctx` via `Ctx∘Ctx`); a pair of empty trees, one in each
+  branch of a sum, fires A1 at the sum itself (`split-+-A1`); and the pair
+  theorem `pair-complete` — the structural-recursion core of the paper's
+  ambiguity-criteria argument — is stated with a hole.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -1004,3 +1011,122 @@ membership in a `pdUMany-aux` call whose instance lists are neutral
 cannot be case-split at all.  The reverse transfer therefore has to run
 like the paper's `AllParseFST` argument — along the structural recursion of
 `pdU` on the expression — which is the remaining step (B3b).
+
+## 12. The split case: pair descent and context-stable criteria
+
+The paper's proposition justifies its criteria by enumerating the *only
+three situations in which the parse-tree construction can branch*: more
+than one empty tree at a final state (A1), an injection through a nullable
+concatenation whose left side has more than one empty tree (A2), and the
+`Idemp` merge of similar alternatives when building canonical
+representatives (A3 — here: the duplicate sum under a context).  The split
+case of the descent — two trees crossing a letter through *different*
+instances, i.e. a `LeftU` in one branch and a `RightU` in the other at
+some sum — is where the third situation lives.  What closes the argument
+is a *pair theorem*: two trees of a common word, one in each of two
+expressions, either diagnose a criterion at their sum or find one below
+one of the two along a common word prefix.  This section names the
+criteria, proves what is provable without touching neutral lists — the
+pair's base (`split-+-A1`) and the syntactic transfer of criteria through
+contexts (`A2-Ctx`, `dup-Ctx`) — and states the pair theorem as the goal
+of B3b.
+
+```agda
+-- the diagnosis disjunction of §8, named
+crit : RE → Set
+crit p = AmbigCheck.AmbigA1 p
+       ⊎ AmbigCheck.AmbigA2 p
+       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+             ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
+             × ( Canonic._≈₀_ l s ) )
+
+-- composition of hole contexts
+Ctx∘Ctx : AmbigCheck.Ctx → AmbigCheck.Ctx → AmbigCheck.Ctx
+Ctx∘Ctx AmbigCheck.𝟘 c₂ = c₂
+Ctx∘Ctx (AmbigCheck.Ctx●R c₁ r loc) c₂ = AmbigCheck.Ctx●R (Ctx∘Ctx c₁ c₂) r loc
+Ctx∘Ctx (AmbigCheck.L●Ctx l c₁ loc) c₂ = AmbigCheck.L●Ctx l (Ctx∘Ctx c₁ c₂) loc
+Ctx∘Ctx (AmbigCheck.Ctx+R c₁ r loc) c₂ = AmbigCheck.Ctx+R (Ctx∘Ctx c₁ c₂) r loc
+Ctx∘Ctx (AmbigCheck.L+Ctx l c₁ loc) c₂ = AmbigCheck.L+Ctx l (Ctx∘Ctx c₁ c₂) loc
+
+plug-Ctx∘ : ( c₁ c₂ : AmbigCheck.Ctx ) ( t : RE )
+  → AmbigCheck.plug (Ctx∘Ctx c₁ c₂) t ≡ AmbigCheck.plug c₁ (AmbigCheck.plug c₂ t)
+plug-Ctx∘ AmbigCheck.𝟘 c₂ t = refl
+plug-Ctx∘ (AmbigCheck.Ctx●R c₁ r loc) c₂ t = cong (λ x → x ● r ` loc) (plug-Ctx∘ c₁ c₂ t)
+plug-Ctx∘ (AmbigCheck.L●Ctx l c₁ loc) c₂ t = cong (λ x → l ● x ` loc) (plug-Ctx∘ c₁ c₂ t)
+plug-Ctx∘ (AmbigCheck.Ctx+R c₁ r loc) c₂ t = cong (λ x → x + r ` loc) (plug-Ctx∘ c₁ c₂ t)
+plug-Ctx∘ (AmbigCheck.L+Ctx l c₁ loc) c₂ t = cong (λ x → l + x ` loc) (plug-Ctx∘ c₁ c₂ t)
+
+-- A2 and the duplicate pattern transfer through any hole context
+-- (A1 does not: filling a ●-context needs the sibling to be nullable)
+A2-Ctx : ( ctx : AmbigCheck.Ctx ) { p : RE }
+  → AmbigCheck.AmbigA2 p → AmbigCheck.AmbigA2 (AmbigCheck.plug ctx p)
+A2-Ctx ctx ( ctx₂ , l , t , loc , ( plug-eq , ε∈l , len ) ) =
+  ( Ctx∘Ctx ctx ctx₂ , l , t , loc ,
+    ( trans (plug-Ctx∘ ctx ctx₂ ( l ● t ` loc )) (cong (AmbigCheck.plug ctx) plug-eq)
+    , ε∈l , len ) )
+
+dup-Ctx : ( ctx : AmbigCheck.Ctx ) { p : RE }
+  → ( Σ[ ctx₂ ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+        ( ( AmbigCheck.plug ctx₂ ( l + s ` loc ) ≡ p ) × ( Canonic._≈₀_ l s ) ) )
+  → ( Σ[ ctx′ ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+        ( ( AmbigCheck.plug ctx′ ( l + s ` loc ) ≡ AmbigCheck.plug ctx p )
+        × ( Canonic._≈₀_ l s ) ) )
+dup-Ctx ctx ( ctx₂ , l , s , loc , ( plug-eq , ≈₀ls ) ) =
+  ( Ctx∘Ctx ctx ctx₂ , l , s , loc ,
+    ( trans (plug-Ctx∘ ctx ctx₂ ( l + s ` loc )) (cong (AmbigCheck.plug ctx) plug-eq)
+    , ≈₀ls ) )
+
+-- the pair's base: one empty tree in each branch of a sum fires A1 at the
+-- sum itself — the two injected trees are always distinct (LeftU ≠ RightU)
+split-+-A1 : ( l s : RE ) ( loc : ℕ ) ( u : U l ) ( v : U s )
+  → proj₁ (flat {l} u) ≡ [] → proj₁ (flat {s} v) ≡ []
+  → AmbigCheck.AmbigA1 (l + s ` loc)
+split-+-A1 l s loc u v u≡[] v≡[] = ( ε∈l+s , two-distinct-members→len≥2 list u∈ v∈ u≢v )
+  where
+    ε∈l : RE.ε∈ l
+    ε∈l = Word.[]∈⟦r⟧→ε∈r (subst ( λ w → w ∈⟦ l ⟧) u≡[] (proj₂ (flat {l} u)))
+    ε∈s : RE.ε∈ s
+    ε∈s = Word.[]∈⟦r⟧→ε∈r (subst ( λ w → w ∈⟦ s ⟧) v≡[] (proj₂ (flat {s} v)))
+    ε∈l+s : RE.ε∈ (l + s ` loc)
+    ε∈l+s = RE.ε∈_+_ ε∈l ε∈s
+    list = mkAllEmptyU {l + s ` loc} ε∈l+s
+    u∈ : Any ( λ z → LeftU {l} {s} {loc} u ≡ z ) list
+    u∈ = mkAllEmptyU-complete ε∈l+s (LeftU u) (flat-[] (LeftU u) u≡[])
+    v∈ : Any ( λ z → RightU {l} {s} {loc} v ≡ z ) list
+    v∈ = mkAllEmptyU-complete ε∈l+s (RightU v) (flat-[] (RightU v) v≡[])
+    u≢v : ¬ ( LeftU {l} {s} {loc} u ≡ RightU {l} {s} {loc} v )
+    u≢v = LeftU≢RightU u v
+```
+
+(`proj₁ (flat (LeftU u)) ≡ proj₁ (flat u)` definitionally, so the words
+transfer by assumption.)
+
+The pair theorem proper recurses on the *two trees* (each step shrinks one
+of them, and the shared word shrinks at `LetterU` pairs): its base is the
+`split-+-A1` situation above; the `LeftU`/`LeftU`-style steps re-enter the
+recursion in one branch and lift the outcome through the sum with
+`A2-Ctx`/`dup-Ctx` or an A1-at-the-sum reconstruction; and the steps that
+move a found criterion *below* a branch along a nonempty word prefix are
+exactly the neutral-list transfer that §11's remark places inside the
+structural `pdU` recursion.  Stated as the goal of B3b:
+
+```agda
+pair-complete : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
+  ( u : U l ) ( v : U s )
+  → proj₁ (flat {l} u) ≡ w → proj₁ (flat {s} v) ≡ w
+  → crit ( l + s ` loc )
+  ⊎ ( ∃[ w′ ] ∃[ w″ ] ( ( w ≡ w′ ++ w″ )
+        × ( ∃[ p ] ( Any ( λ x → x ≡ p ) (Canonic.pd*-Desc l w′) × crit p )
+          ⊎ ∃[ p ] ( Any ( λ x → x ≡ p ) (Canonic.pd*-Desc s w′) × crit p ) ) ) )
+pair-complete {l} {s} loc w u v u≡ v≡ = _
+```
+
+From `pair-complete`, the split case of the §8 descent composes as follows:
+the two trees reach the sum state `l + s \` loc` through the common prefix
+`w′` (a chain instance, §10–§11); the pair theorem either fires `crit` at
+the sum — then `chain-in-pd*-Desc` (§10) puts the sum in
+`pd*-Desc r (w′)` — or finds `crit p` below one branch along `w″`; a
+`w″ = []` finding lifts to the sum through the branch-restricted A1/A2/dup
+reconstructions, and a `w″ = c ∷ ws` finding extends the chain by the
+branch's letter instance (`pdinstance-letter`, `pdinstance-left/right`) —
+the pd-descendant transfer the B3a reverse direction will supply.

@@ -149,7 +149,22 @@ This module develops the two ingredients of that argument.
   ends in a `pd*-Desc` state (`pdesc`) which computes, by `refl`, to the sum
   `( ε + ( ε + ε \` 3 ) \` 0 )` of two similar empty alternatives — where the
   third disjunct fires again (`pdend-π-dup-crit`) — so `desc-step` gives
-  `desc-concl` for the example word (`dup-desc`).
+  `desc-concl` for the example word (`dup-desc`).  `Canonic`'s mechanical test
+  fires too: `pd-Idemp?` on the example's instance list computes to `true`
+  (`dup-Idemp-fires`), and these witnesses are the reflection instance its
+  caveat asks for.
+* §19 takes stock and closes what can be closed: `Cross-instance→crit` names
+  the single missing rule (the two `pdU-complete` picks differ ⇒ a criterion at
+  the state), and `desc-picks` assembles the full recursion from that rule and
+  a decision of instance identity — base `desc-base`, shared-pick case
+  `Recons-residual-2` + `desc-step`, cross case by hypothesis — giving
+  `Desc-complete-picks` and `completeness-picks`, the §8 statement modulo its
+  two parameters.  Instance identity is intensional here (function fields): the
+  decision is classical or needs a quotient of instances by pattern (the
+  `Cast`/`≈₀` machinery), and that quotient is also where §17 says the
+  classification belongs.  `crit-●-2ε` adds the paper's second situation as a
+  rule: two distinct empty trees of a nullable left factor are A2 at the
+  concatenation.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -206,7 +221,7 @@ open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syn
 open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂ ; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 open import Function using (_∘_)
-open import Relation.Nullary using (¬_; yes; no)
+open import Relation.Nullary using (¬_; Dec ; yes ; no)
 open import Data.Bool using (true)
 ```
 
@@ -699,7 +714,11 @@ splits at a sum, which is `pair-complete` (§13) read through `pdesc`.  The
 general body is exactly what §16's `completeness-from-desc` computes once the
 single named hypothesis `Desc-complete` (§16) is supplied: its two cases are
 `pdesc pnil` at the state itself and `pdesc` of the path the descent returns,
-so nothing else stands between that hypothesis and this statement.
+so nothing else stands between that hypothesis and this statement.  §19 goes
+one step further and assembles `Desc-complete` — hence this statement, via
+`completeness-picks` — from two named parameters: the recognition rule
+`Cross-instance→crit` (the paper's enumeration as one rule) and a decision of
+instance identity; everything except those two parameters now checks.
 
 **The reading tied to a given pair, for this `r`** (what §5–§6 built the
 machinery for): every ambiguity pair of `sd` for the word `aa` is the image,
@@ -2199,3 +2218,120 @@ concatenation counting.  Second, the recognition can *name* its state:
 alternatives, and `pdesc` puts it in `pd*-Desc` — the shape
 `Desc-⊕-crit` (§15) produces symbolically for a pair of paths, exhibited here
 at a concrete instance.
+
+## 19. The completeness proof: what is missing, named, and assembled
+
+Where the program stands: §8's `completeness` is derived by §16's
+`completeness-from-desc` from the single recursion `Desc-complete`; that
+recursion's base is `desc-base` (§16, from §9) and its shared-instance step is
+`desc-step` with `Recons-residual-2` (§16); §17 exhibited the remaining case —
+the two picks of `pdU-complete` *differ* — and §18 gave its diagnosis on the
+example.  What is left is therefore exactly one rule, and naming it makes the
+whole assembly checkable: the two parameters below *are* the gap, nothing else
+is missing.
+
+```agda
+-- the paper's "three situations" as one rule: when the two picks differ, the
+-- diagnosis comes from the state
+Cross-instance→crit : Set
+Cross-instance→crit = ∀ { r : RE } { c : Char } { ws : List Char }
+  ( z z′ : PDInstance r c )
+  → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
+  → ( u v : U r ) → Recons {r} {c} u z → Recons {r} {c} v z′
+  → proj₁ (flat {r} u) ≡ c ∷ ws → proj₁ (flat {r} v) ≡ c ∷ ws
+  → ¬ ( z ≡ z′ )
+  → crit r
+
+-- the induction, assembled: the base is `desc-base`; the step splits on whether
+-- the two picks coincide — if they do, `Recons-residual-2` transports the pair
+-- through the shared instance and the recursion continues, if not, `cross`
+-- closes with `inj₁`
+desc-picks : ( cross : Cross-instance→crit )
+  → ( dec : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ ) )
+  → ( r : RE ) → ( w : List Char )
+  → ( u v : U r )
+  → proj₁ (flat {r} u) ≡ w → proj₁ (flat {r} v) ≡ w → ¬ ( u ≡ v )
+  → desc-concl r w
+desc-picks cross dec r [] u v u≡[] v≡[] u≢v = desc-base u v u≡[] v≡[] u≢v
+desc-picks cross dec r (c ∷ ws) u v u≡ v≡ u≢v
+  with pick-Any (PosixPD.pdU-complete {r} {c} u u≡)
+... | ( z , u∈ , z∈ ) with pick-Any (PosixPD.pdU-complete {r} {c} v v≡)
+...   | ( z′ , v∈ , z′∈ ) with dec z z′
+...     | yes z≡z′ = desc-step z z∈
+          (desc-picks cross dec (Canonic.pd-expr z) ws x y x≡ y≡ x≢y)
+      where
+        rr : Σ[ a ∈ U (Canonic.pd-expr z) ] Σ[ b ∈ U (Canonic.pd-expr z) ]
+              ( proj₁ (flat {Canonic.pd-expr z} a) ≡ ws
+              × proj₁ (flat {Canonic.pd-expr z} b) ≡ ws
+              × ¬ ( a ≡ b ) )
+        rr = Recons-residual-2 u∈
+               (subst ( λ q → Recons {r} {c} v q ) (sym z≡z′) v∈) u≡ v≡ u≢v
+        x    = proj₁ rr
+        y    = proj₁ (proj₂ rr)
+        x≡   = proj₁ (proj₂ (proj₂ rr))
+        y≡   = proj₁ (proj₂ (proj₂ (proj₂ rr)))
+        x≢y  = proj₂ (proj₂ (proj₂ (proj₂ rr)))
+...     | no z≢z′ = inj₁ (cross z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ z≢z′)
+
+Desc-complete-picks : ( cross : Cross-instance→crit )
+  → ( dec : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ ) )
+  → Desc-complete
+Desc-complete-picks cross dec = desc-picks cross dec
+
+-- and the §8 statement itself — this is the full proof, modulo its two parameters
+completeness-picks : ( cross : Cross-instance→crit )
+  → ( dec : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ ) )
+  → ∀ { r : RE } ( u v : U r )
+  → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
+  → ∃[ w′ ] ∃[ w″ ]
+      ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
+      × ∃[ p ]
+          ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
+          × crit p ) )
+completeness-picks cross dec {r} u v w≡ u≢v =
+  completeness-from-desc (Desc-complete-picks cross dec) r u v w≡ u≢v
+```
+
+The first parameter is the research content; the second is a formalism fact
+worth recording: `PDInstance` equality is *intensional* here — instances carry
+function fields (`inj : U p → U r`) — so `dec` is not definable in general.  It
+*is* definable at expressions in literal constructor form, where `pdU` computes
+as in §17–§18 (finite lists of concrete records); for arbitrary states the
+choices are the stdlib `Classical.em` (adding excluded middle), or a quotient of
+instances — equality of patterns plus transport along `Canonic.Cast`/`≈₀`, the
+canonical machinery of §2–§3, is the natural candidate and would make the
+induction run on canonical states, which §17 showed is where the classification
+belongs anyway.
+
+The two rules that any `cross` must ultimately reduce into *are* both here in
+their state-local direction: the nullable-sum case is `A1-⊕` / `split-+-A1`
+(§12) and the duplicate case is `dup-Ctx`/`crit-+<` (§12, with §18's
+`dup-s1-dup` as the pattern instance); what was missing was the second of the
+paper's three situations stated as a rule —
+
+```agda
+-- paper situation 2 as a rule: an injection through a concatenation whose left
+-- factor is nullable and has two distinct empty trees *is* A2 at the
+-- concatenation itself
+crit-●-2ε : ( l s : RE ) ( loc : ℕ ) ( ε∈l : RE.ε∈ l )
+  ( e f : U l )
+  → proj₁ (flat {l} e) ≡ [] → proj₁ (flat {l} f) ≡ [] → ¬ ( e ≡ f )
+  → crit ( l ● s ` loc )
+crit-●-2ε l s loc ε∈l e f e≡[] f≡[] e≢f =
+  inj₂ (inj₁ ( AmbigCheck.𝟘 , l , s , loc
+             , ( refl , ε∈l
+               , two-distinct-members→len≥2 (mkAllEmptyU {l} ε∈l) e∈ f∈ e≢f ) ) )
+  where
+    e∈ : Any ( λ z → e ≡ z ) (mkAllEmptyU {l} ε∈l)
+    e∈ = mkAllEmptyU-complete ε∈l e (flat-[] e e≡[])
+    f∈ : Any ( λ z → f ≡ z ) (mkAllEmptyU {l} ε∈l)
+    f∈ = mkAllEmptyU-complete ε∈l f (flat-[] f f≡[])
+```
+
+— and the remaining reduction, *cross-instance picks ⇒ one of the three
+shapes*, is the paper's enumeration argument: it needs the derivative to be
+read *symmetrically* from the pair of trees rather than from the list
+(§15's obstacle was exactly reading it from the list), and by §17 the shapes
+must be recognized on canonical patterns.  That reduction, plus a decision of
+pick-identity (classical or quotient, above), is the whole of what stands
+between this file and `completeness`.

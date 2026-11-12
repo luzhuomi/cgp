@@ -53,7 +53,7 @@ This module develops the two ingredients of that argument.
   (given an ambiguity witness, a pd-descendant state where a criterion
   fires) — with unchecked bodies: the general statement, and its reading
   tied to the ambiguity pair of `sd`.  Together with §12's `pair-complete`
-  and `pdesc` these four holes are the only unsolved metas in the module
+  these three holes are the only unsolved metas in the module
   (`--allow-unsolved-metas`).
 * §9 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
@@ -77,7 +77,8 @@ This module develops the two ingredients of that argument.
   found below a branch is carried across the sum (`A1-+<`/`A1-+>`,
   `crit-+<`/`crit-+>`); descent paths that carry their `pdU` memberships
   as fields (`Path`) sidestep the stuck-list obstacle of §10–§11, and
-  their end-state membership (`pdesc`) is stated with a hole; the pair
+  their run-lift (`pdesc`: `path-chain` composes the steps with
+  `compose-pdi-with`, as `advance-pdi*-with-c` does) is proved; the pair
   theorem `pair-complete` — the structural-recursion core of the paper's
   ambiguity-criteria argument — is stated over paths, with a hole.
 
@@ -1207,22 +1208,76 @@ pdend : ∀ { r w } → Path r w → RE
 pdend {r} pnil          = r
 pdend (pcons z m q) = pdend q
 
--- membership in a map, from membership in the source (constructing the
--- result, so the neutral `map f xs` never has to be case-split)
-map-Any-∈ : ∀ { A B : Set } ( f : A → B ) { xs : List A } { x : A }
-  → x ∈ xs → f x ∈ map f xs
-map-Any-∈ f (here p) = here (cong f p)
-map-Any-∈ f (there m) = there (map-Any-∈ f m)
+-- membership injection into a concatenation, from the right part
+any-++₂ : ∀ { A : Set } { P : A → Set } ( xs : List A ) { ys : List A }
+  → Any P ys → Any P (xs ++ ys)
+any-++₂ [] p = p
+any-++₂ (x ∷ xs) p = there (any-++₂ xs p)
+
+-- membership in a concatenated list, from membership in the parts
+any-concatMap : ∀ { A B : Set } ( g : A → List B ) { xs : List A } { P : B → Set }
+  → Any ( λ x → Any P (g x) ) xs → Any P (concatMap g xs)
+any-concatMap g (here p) = any++₁ p
+any-concatMap g (there m) = any-++₂ (g _) (any-concatMap g m)
+
+-- the run instance of a path: steps are composed with `compose-pdi-with`,
+-- exactly as `advance-pdi*-with-c` composes a head instance with a `pdU`
+-- step, so each constructed step *heads* the concatMap that `chain*`
+-- unfolds to, and membership follows by construction.  (The constructors
+-- are matched directly in the left-hand sides, not through `with`: the
+-- Path field's type mentions `pd*-expr hd` and must reduce through the
+-- matched constructor — a `with`-abstraction leaves `z : PDInstance
+-- (pd*-expr hd) c` stuck on the un-reduced projection.)
+path-chain : ∀ { r pref ws } ( hd : PDInstance* r pref )
+  → Path (Canonic.pd*-expr hd) ws
+  → PDInstance* r (pref ++ ws)
+path-chain {r} {pref} hd pnil = hd
+path-chain {r} {pref} (pdinstance* {d} d→r ev)
+               (pcons {c = c} {ws = ws} z@(pdinstance {p} p→d evz) m q) =
+  path-chain {r} {pref = pref ∷ʳ c} (compose-pdi-with {r} {d} {pref} {c} d→r ev z) q
+
+path-chain∈ : ∀ { r pref ws } ( hd : PDInstance* r pref )
+  ( π : Path (Canonic.pd*-expr hd) ws )
+  → path-chain hd π ∈ chain* {r} {pref} hd ws
+path-chain∈ hd pnil = here refl
+path-chain∈ {r} {pref} (pdinstance* {d} d→r ev)
+                     (pcons {c = c} {ws = ws} z@(pdinstance {p} p→d evz) m q) =
+  any-concatMap ( λ x → chain* {r} {pref ∷ʳ c} x ws )
+    ( map-Any (compose-pdi-with {r} {d} {pref} {c} d→r ev)
+        ( λ a eq → subst ( λ h → path-chain (compose-pdi-with {r} {d} {pref} {c} d→r ev z) q
+                              ∈ chain* {r} {pref ∷ʳ c} h ws )
+                         ( cong (compose-pdi-with {r} {d} {pref} {c} d→r ev) eq )
+                         ( path-chain∈ (compose-pdi-with {r} {d} {pref} {c} d→r ev z) q ) )
+        m )
+
+path-chain-pd : ∀ { r pref ws } ( hd : PDInstance* r pref )
+  ( π : Path (Canonic.pd*-expr hd) ws )
+  → Canonic.pd*-expr (path-chain hd π) ≡ pdend π
+path-chain-pd hd pnil = refl
+path-chain-pd {r} {pref} (pdinstance* {d} d→r ev)
+                       (pcons {c = c} {ws = ws} z@(pdinstance {p} p→d evz) m q) =
+  path-chain-pd (compose-pdi-with {r} {d} {pref} {c} d→r ev z) q
 
 -- the run-lift bridge in path form (the B3a reverse direction): a path
 -- from r is a run of r for its word, so its end state appears in
--- pd*-Desc r w.  Composing the steps into one `PDInstance* r w` goes
--- through `pdni∘` (§11); showing it a member of `pdUMany[ r , w ]` is a
--- construction over the path's fields, not a case split.  Stated with
--- a hole:
+-- pd*-Desc r w: the path instance is a member of `chain* hd₀ w` through
+-- `path-chain∈`, and `chain-aux` (§10) identifies that singleton run
+-- with `pdUMany[ r , w ]` itself.  (The §11 route `pdni∘` composes
+-- *after* a run and would first need the syntactic identity
+-- `pdni∘ hd id ≡ hd`, which its soundness-evidence plumbing does not
+-- give; `compose-pdi-with` builds the instance in the very shape of the
+-- list that contains it.)
 pdesc : ∀ { r w } ( π : Path r w )
   → Any ( λ x → x ≡ pdend π ) (Canonic.pd*-Desc r w)
-pdesc π = _
+pdesc pnil = here refl
+pdesc {r} π@(pcons {c = c} {ws = ws} z m q) =
+  map-Any Canonic.pd*-expr
+    ( λ a eq → trans ( cong Canonic.pd*-expr ( sym eq ) ) ( path-chain-pd hd₀ π ) )
+    ( subst ( λ L → path-chain hd₀ π ∈ L ) ( chain-aux hd₀ (c ∷ ws) )
+        ( path-chain∈ hd₀ π ) )
+  where
+    hd₀ : PDInstance* r []
+    hd₀ = pdinstance* {r} {r} {[]} injId injId-sound
 ```
 
 The pair theorem proper recurses on the *two trees* (each step shrinks one

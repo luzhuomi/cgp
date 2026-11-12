@@ -109,6 +109,17 @@ This module develops the two ingredients of that argument.
   `completeness` that is closed; the rest of that statement needs the descent
   through `●` and `⋆` and the split-word pairs (A2's shape), §14's last
   paragraph.
+* §15 lifts a criterion across a state extension.  Two paths of one word, one
+  per branch, fuse into one path at the sum (`Path-⊕`, `pdend-subst`,
+  `pdend-Path-⊕`, built from §13's `pdU∈-⊕`), so a criterion below *one*
+  branch at a word the sibling also derives is a criterion at a `pd*-Desc`
+  state of the sum (`Desc-⊕-crit`, with `pdesc` and `crit-+<`);
+  `pd-expr-star`/`crit-*<` do the same for the star continuation, which ends at
+  `p ● r ⋆ \` loc` — a nullable-right concatenation, so `crit-●<` applies.  The
+  lift that is *not* covered is the one-sided one, where a symbolic `pdU` list
+  must be seen to be empty: §4's obstacle, and the reason the general statement
+  has to be run as an induction with explicit `RE.ε∈?` decisions rather than as
+  a path lift.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -1722,3 +1733,82 @@ empty-tree split of §12's counting lemmas) and `r ⋆` through
 `pdinstance-star`; and the pairs that disagree *inside* one branch, where the
 two trees no longer share a word but split it — precisely the situation A2's
 nullable-left condition is about.
+
+## 15. Lifting across a state extension
+
+Each step of that descent needs two things: a path at the parent expression,
+and a criterion that survives the state extension the step performs.  The
+case in which **both** sides of a sum derive the word needs no decision about
+computed lists at all — `pdinstance-oplus` pairs them, and §13 already has the
+membership, so the two paths simply fuse:
+
+```agda
+-- two paths of one word, one per branch, fuse into one path at the sum
+Path-⊕ : ∀ { l s : RE } ( loc : ℕ ) { w : List Char }
+  → Path l w → Path s w → Path ( l + s ` loc ) w
+Path-⊕ {l} {s} loc pnil pnil = pnil
+Path-⊕ {l} {s} loc (pcons {c = c} {ws = ws} z m π) (pcons {c = c} z′ m′ π′) =
+  pcons (fuse-⊕ {l} {s} {loc} {c} z z′) (pdU∈-⊕ {l} {s} {loc} {c} z z′ m m′)
+        ( subst ( λ e → Path e ws ) ( sym (pd-expr-fuse-⊕ {l} {s} {loc} {c} z z′) )
+          ( Path-⊕ loc π π′ ) )
+
+-- transporting a path does not move its end state
+pdend-subst : ∀ { r r′ : RE } { w : List Char } ( eq : r ≡ r′ ) ( π : Path r w )
+  → pdend ( subst ( λ e → Path e w ) eq π ) ≡ pdend π
+pdend-subst refl π = refl
+
+-- and it ends where the two branches end, summed
+pdend-Path-⊕ : ∀ { l s : RE } ( loc : ℕ ) { w : List Char }
+  ( π : Path l w ) ( π′ : Path s w )
+  → pdend (Path-⊕ {l} {s} loc π π′) ≡ pdend π + pdend π′ ` loc
+pdend-Path-⊕ {l} {s} loc pnil pnil = refl
+pdend-Path-⊕ {l} {s} loc (pcons z m π) (pcons z′ m′ π′) =
+  trans (pdend-subst (sym (pd-expr-fuse-⊕ {l} {s} {loc} z z′)) (Path-⊕ loc π π′))
+        (pdend-Path-⊕ loc π π′)
+```
+
+The star is the dual situation: `pdU[ r * ε∉r \` loc , c ]` is `pdU[ r , c ]`
+*through* `pdinstance-star`, so no fusion happens — but every state below `r`
+becomes the concatenation `(p ● r ⋆ \` loc)`, a concatenation whose right
+factor is nullable.  That is the shape §12's `crit-●<` consumes, with the
+sibling's `ε∈` supplied by `RE.ε∈*`:
+
+```agda
+pd-expr-star : ∀ { r : RE } { ε∉r : RE.ε∉ r } { loc : ℕ } { c : Char }
+  ( pdi : PDInstance r c )
+  → Canonic.pd-expr (pdinstance-star {r} {ε∉r} {loc} {c} pdi)
+      ≡ (Canonic.pd-expr pdi) ● ( r * ε∉r ` loc ) ` loc
+pd-expr-star (pdinstance {p} f s-ev) = refl
+
+crit-*< : ∀ { r : RE } ( ε∉r : RE.ε∉ r ) ( loc : ℕ ) ( p : RE )
+  → crit p → crit ( p ● ( r * ε∉r ` loc ) ` loc )
+crit-*< {r} ε∉r loc p cr = crit-●< p ( r * ε∉r ` loc ) loc RE.ε∈* cr
+```
+
+Composing the fused paths with `pdesc` (§12) and `crit-+<` (§12) yields the
+first piece of the general §8 conclusion: a criterion at a state reached below
+*one* branch of a sum, at a word the other branch derives as well, is a
+criterion at a pd-descendant state **of the sum**.
+
+```agda
+Desc-⊕-crit : ∀ { l s : RE } ( loc : ℕ ) { w : List Char }
+  ( π : Path l w ) ( π′ : Path s w )
+  → crit (pdend π)
+  → ∃[ p ]
+      ( Any ( λ t → t ≡ p ) (Canonic.pd*-Desc ( l + s ` loc ) w)
+      × crit p )
+Desc-⊕-crit {l} {s} loc π π′ cr =
+  ( pdend (Path-⊕ loc π π′) , pdesc (Path-⊕ loc π π′)
+  , subst crit (sym (pdend-Path-⊕ loc π π′))
+      (crit-+< (pdend π) (pdend π′) loc cr) )
+```
+
+What is *not* covered by these two lemmas is exactly the decision the fusion
+postpones: when only one side derives the word, `pdinstance-oplus`'s singleton
+equations put the one path through unchanged and no state extension happens —
+and deciding that a `pdU`/`pdUMany` list is empty for a symbolic expression is
+the stuck-list obstacle of §4.  The concatenation lift has the same shape once
+that decision is available (`pdinstance-fst`'s continuation is
+`pd-expr pdi ● r \` loc`, and `pd-expr` of a `concatmap-pdinstance-snd` member
+is the sibling's, so the fused state again asks for `crit-+<`, unfused for
+`crit-●<`).

@@ -207,6 +207,7 @@ open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym;
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 open import Function using (_∘_)
 open import Relation.Nullary using (¬_; yes; no)
+open import Data.Bool using (true)
 ```
 
 ## 1. Two trees identified by one transition map
@@ -2173,6 +2174,20 @@ right factor's `ε∈` from `RE.ε∈_+_ RE.ε∈ε RE.ε∈ε` — so the desce
 diagnosable by the first criterion as well; what is *not* available anywhere
 before reading the letter is A1 or A2, and the only criterion the state itself
 carries is the third.)
+
+The mechanical A3 test of `cgp.ambig.Canonic` §6.2 fires on this same
+expression — its `pd-Idemp?` reads the sum-spine of the member continuations,
+which is exactly what `pdend-π-dup≡` computed:
+
+```agda
+dup-Idemp-fires : Canonic.pd-Idemp? (PosixPD.pdU[ dup-r-lit , ca ]) ≡ true
+dup-Idemp-fires = refl
+```
+
+Canonic's caveat there says that turning `A3? r c ≡ true` into `Ambig r` needs
+a reflection of the test into a concrete `Ctx`/`plug` duplicate witness;
+`dup-s1-dup`, `dup-r-lit-dup` and `pdend-π-dup-crit` are that reflection
+instance for this `r` and `c`.
 
 Two things follow for §16.  First, the missing case of `desc-step` — where
 `pdU-complete` gives the two trees *different* instances — is here exactly a

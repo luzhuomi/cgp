@@ -63,6 +63,12 @@ This module develops the two ingredients of that argument.
   from a member is contained in any advancement run containing that member
   (`any-aux`), and `chain-in-pd*-Desc` transfers a suffix chain from a
   reachable instance to a pd-descendant of `r` for the concatenated word.
+* §11 is the descent's instance side: composing a prefix instance with an
+  instance of its continuation (`pdni∘`) preserves pd-fields exactly
+  (`pd*-expr-∘`, `∘-pres-∈`), and instances / `pdU` memberships transport
+  along RE-equalities of their targets (`pdtransport*`, `pdU-transport-∈`)
+  — every such transport is a J-definition that reduces at `refl`, which is
+  where the descent's concrete calls land once the trees fix `r`.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -115,6 +121,7 @@ open import Data.Sum using (_⊎_ ; inj₁ ; inj₂)
 open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
 open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂ ; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
+open import Function using (_∘_)
 open import Relation.Nullary using (¬_; yes; no)
 ```
 
@@ -891,3 +898,109 @@ word with a variable accumulated index directly; as in `pdUMany-aux-complete`
 in `cgp.posix.PartialDerivative`, those cases go through
 `rewrite (++-identityʳ …)`, which is why the equation is registered as a
 rewrite rule above.
+
+## 11. The descent's instance side: composition and transport
+
+A letter instance of `pdU[ r , c ]` is the same thing as a prefix instance
+for the one-letter word (`pdinstance-letter`), and a path of instances can
+be built by composition: `pdni∘` composes a prefix instance `pdi` with any
+instance whose *target* is `pdi`'s continuation — that equation is an
+argument, and `with`-refinement makes it reduce at constructor forms (the
+type-level route `PDInstance* (pd*-expr pdi) pre` stays stuck on the
+variable `pdi`, the same stuck-list phenomenon as §10's remarks).
+Composition is invisible to pd-fields (`pd*-expr-∘`) and preserves
+membership pointwise (`∘-pres-∈`).
+
+Below induction depth the composition equalities are hypotheses, not
+definitions, so instances and their `pdU` memberships must be *moved*
+between equal targets: `pdtransport`, `pdtransport*` and
+`pdU-transport-∈` do that, each defined by `with eq | refl` so the
+transport is the identity where the equality is — every concrete call of
+the descent, once the pair of trees forces the states, is such a case.
+
+```agda
+-- a one-letter instance is a prefix instance for the one-letter word
+pdinstance-letter : ∀ { r : RE } { c : Char } → PDInstance r c → PDInstance* r (c ∷ [])
+pdinstance-letter {c = c} (pdinstance {p} {r} inj ev) = pdinstance* {p} {r} {c ∷ []} inj ev
+
+-- composing a prefix instance with an instance of its continuation
+pdni∘ : ∀ { r d : RE } { pref pre : List Char }
+  ( pdi : PDInstance* r pref ) ( pe : PDInstance* d pre )
+  → Canonic.pd*-expr pdi ≡ d
+  → PDInstance* r (pref ++ pre)
+pdni∘ {pref = pref} {pre = pre} pdi pe eq with pdi | pe | eq
+... | pdinstance* {p} {r} pref→r ev-pref | pdinstance* {q} pre→p ev-pre | refl =
+  pdinstance* {q} {r} (pref→r ∘ pre→p)
+    (λ u → trans (ev-pref (pre→p u))
+                 (trans (cong (pref ++_) (ev-pre u)) (sym (++-assoc pref pre (proj₁ (flat {q} u))))))
+
+-- composition is invisible to pd-fields (holds after refinement by with)
+pd*-expr-∘ : ∀ { r d : RE } { pref pre : List Char }
+  ( pdi : PDInstance* r pref ) ( pe : PDInstance* d pre )
+  ( eq : Canonic.pd*-expr pdi ≡ d )
+  → Canonic.pd*-expr (pdni∘ pdi pe eq) ≡ Canonic.pd*-expr pe
+pd*-expr-∘ {pref = pref} {pre = pre} pdi pe eq with pdi | pe | eq
+... | pdinstance* {p} {r} pref→r ev-pref | pdinstance* {q} pre→p ev-pre | refl = refl
+
+-- pointwise composition preserves membership in instance lists
+∘-pres-∈ : ∀ { r d : RE } { pref pre : List Char }
+  ( pdi : PDInstance* r pref ) ( eq : Canonic.pd*-expr pdi ≡ d )
+  ( pds : List (PDInstance* d pre) ) ( pe : PDInstance* d pre )
+  → pe ∈ pds → pdni∘ pdi pe eq ∈ map (λ x → pdni∘ pdi x eq) pds
+∘-pres-∈ pdi eq (pe ∷ pds) pe (here refl) = here refl
+∘-pres-∈ pdi eq (x ∷ pds) pe (there m)   = there (∘-pres-∈ pdi eq pds pe m)
+
+-- ─── transport of instances along RE-equalities of their targets ────────
+U-transport : ∀ { r r′ : RE } → r ≡ r′ → U r → U r′
+U-transport eq = subst (λ x → U x) eq
+
+-- transport preserves the yield word (J: reduces at refl)
+flat-transport : ∀ { r r′ : RE } ( eq : r ≡ r′ ) ( t : U r )
+  → proj₁ (flat {r′} (U-transport eq t)) ≡ proj₁ (flat {r} t)
+flat-transport refl t = refl
+
+pdtransport : ∀ { c : Char } { d d′ : RE } ( z : PDInstance d c ) ( eq : d ≡ d′ )
+  → PDInstance d′ c
+pdtransport z eq with eq
+... | refl = z
+
+pdtransport-pd : ∀ { c : Char } { d d′ : RE } ( z : PDInstance d c ) ( eq : d ≡ d′ )
+  → Canonic.pd-expr (pdtransport z eq) ≡ Canonic.pd-expr z
+pdtransport-pd z refl = refl
+
+pdtransport* : ∀ { d d′ : RE } { pre : List Char } ( x : PDInstance* d pre ) ( eq : d ≡ d′ )
+  → PDInstance* d′ pre
+pdtransport* x eq with eq
+... | refl = x
+
+pdtransport*-pd : ∀ { d d′ : RE } { pre : List Char } ( x : PDInstance* d pre ) ( eq : d ≡ d′ )
+  → Canonic.pd*-expr (pdtransport* x eq) ≡ Canonic.pd*-expr x
+pdtransport*-pd x refl = refl
+
+-- membership in a pdU list moves with the index
+pdU-transport-∈ : ∀ { c : Char } { d d′ : RE } ( eq : d ≡ d′ )
+  ( z : PDInstance d c )
+  → z ∈ PosixPD.pdU[ d , c ] → pdtransport z eq ∈ PosixPD.pdU[ d′ , c ]
+pdU-transport-∈ refl z m = m
+
+-- the pd-field of a composed letter instance is the letter's continuation
+compose-letter-pd : ∀ { r d : RE } { pref : List Char } { c : Char }
+  ( d→r : U d → U r )
+  ( ev : ∀ v → proj₁ (flat {r} (d→r v)) ≡ pref ++ proj₁ (flat {d} v) )
+  ( z : PDInstance d c )
+  → Canonic.pd*-expr (compose-pdi-with {r} {d} {pref} {c} d→r ev z) ≡ Canonic.pd-expr z
+compose-letter-pd d→r ev z with z
+... | pdinstance {p} {_} {_} _ _ = refl
+```
+
+With these two sections the letter step of the descent is fully equipped on
+the *chain* side: the trees' common instance `pdi`, the IH's state `p` and
+the continuation `suff` assemble through `chain-in-pd*-Desc` (§10) once the
+IH's witness is a chain from `pdi`.  Making the IH's `pd*-Desc p suff`
+membership into such a chain — the *reverse* direction — hits the deeper
+obstacle this module's probes established: below depth the hypothesis is a
+membership in a `pdUMany-aux` call whose instance lists are neutral
+(`pdU[ d , c ]`, `map`/`concatMap` over neutral arguments), and those lists
+cannot be case-split at all.  The reverse transfer therefore has to run
+like the paper's `AllParseFST` argument — along the structural recursion of
+`pdU` on the expression — which is the remaining step (B3b).

@@ -80,7 +80,11 @@ This module develops the two ingredients of that argument.
   their run-lift (`pdesc`: `path-chain` composes the steps with
   `compose-pdi-with`, as `advance-pdi*-with-c` does) is proved; the pair
   theorem `pair-complete` — the structural-recursion core of the paper's
-  ambiguity-criteria argument — is stated over paths, with a hole.
+  ambiguity-criteria argument — is stated with paths anchored at the sum
+  (a branch-anchored version is refuted by the `($a`1 + ε) + $a`2`
+  counterexample, whose witness is the fused derivative `ε + ε`), with a
+  hole; `ε∈→emptyU` and `A1-⊕` fire A1 at any sum of two nullable
+  expressions.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -1106,6 +1110,34 @@ split-+-A1 l s loc u v u≡[] v≡[] = ( ε∈l+s , two-distinct-members→len�
 (`proj₁ (flat (LeftU u)) ≡ proj₁ (flat u)` definitionally, so the words
 transfer by assumption.)
 
+The same situation occurs at any pair of nullable expressions: an `ε∈`
+proof constructs an empty tree (the `with`-free recursion mirrors the
+`ε∈` constructors), and `split-+-A1` then gives A1 at the sum — the form
+in which A1 will keep firing, since the continuation of a sum instance
+under `pdinstance-oplus` is a *sum of continuations*, nullable on both
+sides whenever the pair of trees reached it.
+
+```agda
+ε∈→emptyU : ∀ { r : RE } → ( ε∈r : RE.ε∈ r )
+  → Σ[ u ∈ U r ] ( proj₁ (flat {r} u) ≡ [] )
+ε∈→emptyU RE.ε∈ε               = ( EmptyU , refl )
+ε∈→emptyU ( RE.ε∈_●_ ε∈l ε∈r ) with ε∈→emptyU ε∈l | ε∈→emptyU ε∈r
+... | ( u , u≡ ) | ( v , v≡ ) = ( PairU u v , cong₂ _++_ u≡ v≡ )
+ε∈→emptyU ( RE.ε∈_+_ ε∈l ε∈r ) with ε∈→emptyU ε∈l
+... | ( u , u≡ ) = ( LeftU u , u≡ )
+ε∈→emptyU ( RE.ε∈_<+_ ε∈l ε∉r ) with ε∈→emptyU ε∈l
+... | ( u , u≡ ) = ( LeftU u , u≡ )
+ε∈→emptyU ( RE.ε∈_+>_ ε∉l ε∈r ) with ε∈→emptyU ε∈r
+... | ( v , v≡ ) = ( RightU v , v≡ )
+ε∈→emptyU RE.ε∈*               = ( ListU [] , refl )
+
+-- A1 at the sum of any two nullable expressions
+A1-⊕ : ( l s : RE ) ( loc : ℕ ) ( ε∈l : RE.ε∈ l ) ( ε∈s : RE.ε∈ s )
+  → AmbigCheck.AmbigA1 ( l + s ` loc )
+A1-⊕ l s loc ε∈l ε∈s with ε∈→emptyU ε∈l | ε∈→emptyU ε∈s
+... | ( u , u≡ ) | ( v , v≡ ) = split-+-A1 l s loc u v u≡ v≡
+```
+
 A criterion found *below* a branch of a sum is heard *at* the sum.  A2 and
 the duplicate pattern travel through the one-hole contexts `_ + s \` loc`
 and `l + _ \` loc` by `A2-Ctx`/`dup-Ctx`; A1 is reconstructed at the sum:
@@ -1190,8 +1222,9 @@ the lists **fuse** — every member pairs a left and a right instance
 (PartialDerivative 362–368) — so a path below one branch does *not*
 extend through the sum head in general; the singleton equations of
 `pdinstance-oplus` (one side deriving nowhere) are the only clean
-embeddings.  The pair descent therefore runs its two chains *inside* the
-two branches, which is what the statement below asks for.
+embeddings.  A path is therefore never threaded *through* a sum head: it
+is anchored at the state the descent stands in — which for the pair
+theorem means the sum itself, as the counterexample below shows.
 
 ```agda
 -- a descent path: each step names its letter instance and carries its
@@ -1280,13 +1313,23 @@ pdesc {r} π@(pcons {c = c} {ws = ws} z m q) =
     hd₀ = pdinstance* {r} {r} {[]} injId injId-sound
 ```
 
-The pair theorem proper recurses on the *two trees* (each step shrinks one
-of them, and the shared word shrinks at `LetterU` pairs): its base is the
-`split-+-A1` situation above; the `LeftU`/`LeftU`-style steps re-enter the
-recursion in one branch and lift the outcome through the sum with
-`crit-+<`/`crit-+>`; and the findings below a branch are handed back as
-paths, whose membership content `pdesc` supplies.  Stated as the goal of
-B3b:
+The pair theorem proper recurses on the *two trees*.  The first form one
+tries for it anchors the path disjunct *below* one of the two branches —
+a path in `l` or in `s`.  That form is **false**: take
+`u = LeftU (LetterU a) : U ( $ a \` 1 + ε )` and `v = LetterU a :
+U ( $ a \` 2 )`, both with word `[ a ]`.  No criterion holds at the sum
+`( $ a \` 1 + ε ) + $ a \` 2` — it has exactly one empty tree (via the
+inner right branch), no concatenation subterm, and its two branch
+expressions are `≈₀`-apart — and no criterion is reachable below either
+branch: the only path below `l` for `[ a ]` and the only path below `s`
+both end at `ε`, where no criterion ever holds.  What happens instead:
+`pdU[ ( $ a \` 1 + ε ) + $ a \` 2 , a ]` has exactly *one* member — the
+`fuse` pairing of the two branch instances (the fusion remark above) —
+and that member's continuation is `ε + ε`, precisely the state where
+`split-+-A1` fires A1.  The witness of a branching pair lives at the
+*fused derivative*, not below either branch.  Since the pair's own letter
+steps are instances of the sum (the fused ones), the path disjunct must
+be anchored at the sum itself:
 
 ```agda
 pair-complete : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
@@ -1294,21 +1337,32 @@ pair-complete : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
   → proj₁ (flat {l} u) ≡ w → proj₁ (flat {s} v) ≡ w
   → crit ( l + s ` loc )
   ⊎ ( ∃[ w′ ] ∃[ w″ ] ( ( w ≡ w′ ++ w″ )
-        × ( ( Σ[ π ∈ Path l w′ ] crit (pdend π) )
-          ⊎ ( Σ[ π ∈ Path s w′ ] crit (pdend π) ) ) ) )
+        × ( Σ[ π ∈ Path ( l + s ` loc ) w′ ] crit (pdend π) ) ) )
 pair-complete {l} {s} loc w u v u≡ v≡ = _
 ```
 
-From `pair-complete`, the split case of the §8 descent composes as follows:
-the two trees reach the sum state `l + s \` loc` through the common prefix
-`w′` (a chain instance, §10–§11); the pair theorem either fires `crit` at
-the sum — then `chain-in-pd*-Desc` (§10) puts the sum in
-`pd*-Desc r (w′)` — or hands back a path below one branch ending in a
-`crit` state; `pdesc` turns the path into a `pd*-Desc l w′` membership,
-and the prefix decomposition `w ≡ w′ ++ w″` transports it to a
-pd-descendant of `r` for the whole word (§10's composition lemma read in
-reverse).  Filling the pair hole is the paper's three-situations argument
-run structurally on the tree pair: the word boundary at a `LetterU` pair
-is where `split-+-A1` fires, the branch steps lift with `crit-+<`/
-`crit-+>`, and the `PairU`/`ListU` word-splitting steps are where A2 and
-the duplicate pattern surface.
+Every empty-word pair is covered without recursion: `split-+-A1` fires
+A1 at the sum for *any* pair of empty trees, so the recursion only sees
+nonempty words.  A `LetterU`/`LetterU` pair makes both expressions
+literals over the same letter, which are `≈₀`-similar (`≈₀-$`) — the
+duplicate pattern at the sum with `ctx = 𝟘`.  In every other step the
+trees are reconstructed through instances of the `pdU` lists at their
+current expressions, and those instances — mapped through
+`pdinstance-left`/`-right`/`-star`/`-fst` and `concatmap-pdinstance-snd`,
+and pairwise fused at every `+` and every nullable `●` — *are* instances
+of the sum state, so the recursive call is taken at that state's
+continuation and the path is built at the sum through `pcons`.  (A
+counting refinement sharpens the recursion: `pdU[ r , c ]` has more than
+one member only below a nullable concatenation, where
+`concatmap-pdinstance-snd` enumerates one instance per empty tree of the
+left factor — the paper's "these are the only situations" in counting
+form.)
+
+From `pair-complete`, the split case of the §8 descent composes directly:
+the pair reaches the sum state `l + s \` loc` through the chain instance
+for `w′` (§10–§11); the pair theorem either fires `crit` at the sum —
+then `chain-in-pd*-Desc` (§10) puts the sum in `pd*-Desc r (w′)` — or
+hands back a path `π` at the sum with `crit (pdend π)`; `pdesc` turns
+`π` into a `pd*-Desc ( l + s \` loc ) w′` membership and §10's
+composition lemma extends it through the chain to a pd-descendant of `r`
+for the whole prefix.

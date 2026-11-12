@@ -41,6 +41,13 @@ This module develops the two ingredients of that argument.
   `pdU[ sd-s1 , a ]` / `pdUMany[ sd , a a ]` with the same constructors: the
   named instances satisfy the computed-list equations, the continuation
   equation `pd*-expr pdi₂ ≡ sd-s2`, and `A1` at that state — all by `refl`.
+* §6 discharges the third hypothesis: the transition map of `pdi₂` is
+  injective, by running §3 along the builders of §5; the range-disjointness
+  of its one fusion node falls out of the constructor heads of the two
+  branch images (an instance of §4.1 proved by inspection, not by the
+  general lemma).
+* §7 assembles `Converse.sd-Ambig-from-descendant`, `sd-s2-A1` and §6 into a
+  checked `Ambig sd`: the completeness direction for this example.
 
 ```agda
 {-# OPTIONS --rewriting #-}
@@ -51,14 +58,15 @@ open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉)
 
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U ; EmptyU ; LetterU ; LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU
-                     ; flat-Uε≡[] ; inv-leftU ; inv-rightU ; inv-pairU )
+                     ; flat-Uε≡[] ; inv-leftU ; inv-rightU ; inv-pairU
+                     ; LeftU≢RightU ; RightU≢LeftU )
 
 import cgp.Word as Word
 open Word using (_∈⟦_⟧)
 
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance*
-               ; mkinjList ; compose-pdi-with
+               ; mkinjList ; mkinjFst ; mkinjSnd ; compose-pdi-with
                ; pdinstance-left ; pdinstance-right ; pdinstance-fst ; pdinstance-star ; mk-snd-pdi )
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
@@ -83,7 +91,7 @@ open import Data.Nat using (ℕ; _≟_)
 open import Data.List using (List; _∷_; []; _++_; map; [_])
 open import Data.List.Properties using (++-cancelˡ)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
-open import Data.Empty using (⊥-elim)
+open import Data.Empty using (⊥ ; ⊥-elim)
 open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
 open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
@@ -128,7 +136,31 @@ Collapsed→Ambig-Top inj ev inj-inj c =
 
 ## 2. Injectivity, and how it is composed
 
+The accessors for the transition map stored in an instance, and the
+injectivity predicates used in the rest of the module:
+
 ```agda
+pdx : ∀ { r : RE } { pref : List Char } → ( pdi : PDInstance* r pref ) → RE
+pdx (pdinstance* {p} inj ev) = p
+
+pdi-inj : ∀ { r : RE } { pref : List Char } ( pdi : PDInstance* r pref )
+  → U (pdx pdi) → U r
+pdi-inj (pdinstance* {p} inj ev) = inj
+
+pd1-expr : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r c ) → RE
+pd1-expr (pdinstance {p} inj ev) = p
+
+pd1-inj : ∀ { r : RE } { c : Char } ( pdi : PDInstance r c )
+  → U (pd1-expr pdi) → U r
+pd1-inj (pdinstance {p} inj ev) = inj
+
+-- the transition map of an instance identifies no two distinct trees
+PInj : ∀ { r : RE } { pref : List Char } → ( pdi : PDInstance* r pref ) → Set
+PInj {r} {pref} pdi = ∀ ( u v : U (pdx pdi) ) → pdi-inj pdi u ≡ pdi-inj pdi v → u ≡ v
+
+Inj₁ : ∀ { r : RE } { c : Char } → ( pdi : PDInstance r c ) → Set
+Inj₁ {r} {c} pdi = ∀ ( u v : U (pd1-expr pdi) ) → pd1-inj pdi u ≡ pd1-inj pdi v → u ≡ v
+
 -- composing injective maps (the shape of a pd path: compose-pdi-with chains the
 -- path map d→r in front of the one-step map p→d).  Extending a path this way
 -- never introduces an identification: an identification made by the composed
@@ -200,21 +232,37 @@ mkinjList-inj {r'} {r} {nε} {loc} f f-inj (PairU v (ListU vs)) (PairU w (ListU 
 -- pdinstance-snd / pdinstance-fst).  The fixed component is unique when the
 -- other factor has a single empty parse tree — the A1/A2 side condition, which
 -- is where mkAllEmptyU's length enters
-pairL-inj : ∀ { l r : RE } { loc : ℕ } { t : U r }
-  → ( f : U l → U l )
-  → ( ∀ ( u v : U l ) → f u ≡ f v → u ≡ v )
-  → ∀ ( u v : U l ) → PairU {l} {r} {loc} (f u) t ≡ PairU (f v) t → u ≡ v
-pairL-inj {l} {r} {loc} {t} f f-inj u v eq
-  with inv-pairU {l = l} {r} {loc} (f u) t (f v) t eq
+pairL-inj : ∀ { p l r : RE } { loc : ℕ } { t : U r }
+  → ( f : U p → U l )
+  → ( ∀ ( u v : U p ) → f u ≡ f v → u ≡ v )
+  → ∀ ( u v : U p ) → PairU {l} {r} {loc} (f u) t ≡ PairU (f v) t → u ≡ v
+pairL-inj {p} {l} {r} {loc} {t} f f-inj u v eq
+  with inv-pairU {l = l} {r} {loc} _ _ _ _ eq
 ...   | fu≡fv , _ = f-inj u v fu≡fv
 
-pairR-inj : ∀ { l r : RE } { loc : ℕ } { t : U l }
-  → ( f : U r → U r )
-  → ( ∀ ( u v : U r ) → f u ≡ f v → u ≡ v )
-  → ∀ ( u v : U r ) → PairU {l} {r} {loc} t (f u) ≡ PairU t (f v) → u ≡ v
-pairR-inj {l} {r} {loc} {t} f f-inj u v eq
-  with inv-pairU {l = l} {r} {loc} t (f u) t (f v) eq
+pairR-inj : ∀ { p l r : RE } { loc : ℕ } { t : U l }
+  → ( f : U p → U r )
+  → ( ∀ ( u v : U p ) → f u ≡ f v → u ≡ v )
+  → ∀ ( u v : U p ) → PairU {l} {r} {loc} t (f u) ≡ PairU t (f v) → u ≡ v
+pairR-inj {p} {l} {r} {loc} {t} f f-inj u v eq
+  with inv-pairU {l = l} {r} {loc} _ _ _ _ eq
 ...   | _ , fu≡fv = f-inj u v fu≡fv
+
+-- the concatenation maps of pdinstance-fst and mk-snd-pdi: the pair inversion
+-- handles both components
+mkinjFst-inj : ∀ { p l r : RE } { loc : ℕ }
+  → ( f : U p → U l )
+  → ( ∀ ( u v : U p ) → f u ≡ f v → u ≡ v )
+  → ∀ ( u v : U (p ● r ` loc) ) → mkinjFst f u ≡ mkinjFst f v → u ≡ v
+mkinjFst-inj {p} {l} {r} {loc} f f-inj (PairU a vs) (PairU b ws) eq
+  with inv-pairU {l = l} {r} {loc} _ _ _ _ eq
+...   | a≡b , vs≡ws = cong₂ (PairU {l = p} {r} {loc}) (f-inj a b a≡b) vs≡ws
+
+mkinjSnd-inj : ∀ { p l r : RE } { loc : ℕ } { e : U l }
+  → ( f : U p → U r )
+  → ( ∀ ( u v : U p ) → f u ≡ f v → u ≡ v )
+  → ∀ ( u v : U p ) → mkinjSnd {l} {r} {p} {loc} f e u ≡ mkinjSnd f e v → u ≡ v
+mkinjSnd-inj {p} {l} {r} {loc} {e} f f-inj u v eq = pairR-inj f f-inj u v eq
 
 -- the two sum injections (pdinstance-left / pdinstance-right)
 leftU-inj : ∀ { l r : RE } { loc : ℕ } → ∀ ( u v : U l ) → LeftU {l} {r} {loc} u ≡ LeftU v → u ≡ v
@@ -282,8 +330,9 @@ sd-aa-A1 = sd-s2-A1
 
 With the named instance of §5 in hand, §3 gives injectivity of its map once
 the range-disjointness of its `+` node is discharged (`mkfuseInj-inj` is the
-only step that is not local — §4.1), §1 plus `sd-s2-A1` then give `Ambig sd`,
-and the criterion that fires is `A1`, as computed by `Converse.sd-s2-criteria`.
+only step that is not local — §4.1); §6 discharges it for this node and §7
+then gives `Ambig sd`, the criterion that fires being `A1`, as computed by
+`Converse.sd-s2-criteria`.
 
 ## 5. Naming the instances of `a` and `a a`
 
@@ -390,5 +439,108 @@ pdUMany-sd-aa≡ = refl
 So `Converse.sd-Ambig-from-descendant` applied to `pdi₂` and `pd-pdi₂` has a
 non-vacuous instance; what remains for the completeness direction at this
 example is exactly its last hypothesis — injectivity of `pd*-inj pdi₂` —
-which is the next task (§3 applied to the builders above, with the one
-non-local side condition of §4.1 discharged for this node).
+which §6 discharges by running §3 along the builders of §5.
+
+## 6. Injectivity of the named instances
+
+Case analysis along the constructed instances.  The only place where §3's
+non-local side condition (`mkfuseInj-inj`'s range disjointness, §4.1) has to
+be faced is the fusion `pdi-s1 = fuse pdi-L pdi-R`; there it is discharged by
+the *constructor heads* of the two branch images: the left branch consumes its
+letter inside `res-a`, so its image re-enters `res-a` through the `a`-summand
+(`RightU (PairU EmptyU (LetterU 'a'))` as first component), while the right
+branch carries `res-a`'s empty parse tree through the `ε`-summand
+(`LeftU EmptyU`).  The two heads are different constructors of
+`U res-a` (`RightU≢LeftU`), so no image can be shared — this is the instance
+of Antimirov disjointness that this example needs, proved by inspection rather
+than by the general lemma §4.1 leaves open.
+
+```agda
+-- U ε has one element
+ε-unique : ∀ ( u v : U ε ) → u ≡ v
+ε-unique EmptyU EmptyU = refl
+
+-- the fused one-step instance of r = a + a · a (head of the computed o₅):
+-- its pd is res-a, its map sends LeftU to the letter of a, RightU to the
+-- pair of two letters inside a · a
+o₅head : PDInstance sd-body 'a'
+o₅head = head-or star-fallback o₅
+
+o₅-LL : ( u v : U ε ) → pd1-inj o₅head (LeftU u) ≡ pd1-inj o₅head (LeftU v) → u ≡ v
+o₅-LL u v eq = ε-unique u v
+
+o₅-LR : ( u : U ε ) ( v : U (ε ● ($ 'a' ` 3) ` 4) )
+  → pd1-inj o₅head (LeftU u) ≡ pd1-inj o₅head (RightU v) → ⊥
+o₅-LR u v eq = ⊥-elim (LeftU≢RightU _ _ eq)
+
+o₅-RL : ( u : U ε ) ( v : U (ε ● ($ 'a' ` 3) ` 4) )
+  → pd1-inj o₅head (RightU v) ≡ pd1-inj o₅head (LeftU u) → ⊥
+o₅-RL u v eq = ⊥-elim (LeftU≢RightU _ _ (sym eq))
+
+o₅-RR : ( v w : U (ε ● ($ 'a' ` 3) ` 4) )
+  → pd1-inj o₅head (RightU v) ≡ pd1-inj o₅head (RightU w) → v ≡ w
+o₅-RR (PairU a vs) (PairU b ws) eq =
+  cong₂ (PairU {l = ε} {($ 'a' ` 3)} {4}) (ε-unique a b)
+        (proj₂ (inv-pairU {l = ($ 'a' ` 2)} {($ 'a' ` 3)} {4} _ _ _ _
+                  (inv-rightU {l = ($ 'a' ` 1)} {(($ 'a' ` 2) ● ($ 'a' ` 3) ` 4)} {5} _ _ eq)))
+
+o₅head-inj : Inj₁ o₅head
+o₅head-inj u v eq with u | v
+...   | LeftU  x | LeftU  y = cong LeftU (o₅-LL x y eq)
+...   | LeftU  x | RightU y = ⊥-elim (o₅-LR x y eq)
+...   | RightU x | LeftU  y = ⊥-elim (o₅-RL y x eq)
+...   | RightU x | RightU y = cong RightU (o₅-RR x y eq)
+
+-- the star extension r⋆ = sd: injective along mkinjList
+star-inj : Inj₁ star-sd
+star-inj = mkinjList-inj (pd1-inj o₅head) o₅head-inj
+
+-- both branches of pdU[ sd-s1 , 'a' ]: the first-factor branch (r-res has
+-- only the empty tree of ε as domain) and the star-extension branch
+r-res-inj : Inj₁ r-res
+r-res-inj u v eq with u | v
+...   | EmptyU | EmptyU = refl
+
+pdi-L-inj : Inj₁ pdi-L
+pdi-L-inj = mkinjFst-inj (pd1-inj r-res) r-res-inj
+
+pdi-R-inj : Inj₁ pdi-R
+pdi-R-inj = mkinjSnd-inj (pd1-inj star-sd) star-inj
+
+-- range disjointness of the fusion, by the argument above
+s1-disj : ( u : U sd-x ) ( v : U sd-s1 ) → ¬ ( pd1-inj pdi-L u ≡ pd1-inj pdi-R v )
+s1-disj (PairU a t) (PairU b t′) eq =
+  ⊥-elim (RightU≢LeftU _ _ (proj₁ (inv-pairU {l = res-a} {r = sd} {loc = 6} _ _ _ _ eq)))
+
+pdi-s1-inj : Inj₁ pdi-s1
+pdi-s1-inj = mkfuseInj-inj {pˡ = sd-x} {pʳ = sd-s1} {r = sd-s1} {loc = 6}
+               (pd1-inj pdi-L) (pd1-inj pdi-R) pdi-L-inj pdi-R-inj s1-disj
+
+-- the path instance for `a` composes the identity path map with star-sd, and
+-- pdi₂ chains pdi-s1 behind it: §2's composition lemma closes the chain
+patha-inj : ∀ ( u v : U (Canonic.pd*-expr path-a) )
+  → Canonic.pd*-inj path-a u ≡ Canonic.pd*-inj path-a v → u ≡ v
+patha-inj = comp-inj (injId) (pd1-inj star-sd) star-inj injId-inj
+
+pdi₂-inj : PInj pdi₂
+pdi₂-inj = comp-inj (Canonic.pd*-inj path-a) (pd1-inj pdi-s1) pdi-s1-inj patha-inj
+```
+
+## 7. `Ambig sd` from A1 at the state
+
+With the instance of §5 and its injectivity from §6,
+`Converse.sd-Ambig-from-descendant` — the state-level criterion (`A1` at
+`sd-s2`, `Converse.sd-s2-A1`) lifted along a transition map — applies:
+
+```agda
+sd-Ambig-from-A1-at-state : Ambig sd
+sd-Ambig-from-A1-at-state = Converse.sd-Ambig-from-descendant pdi₂ pd-pdi₂ pdi₂-inj
+```
+
+This is the completeness direction *for this example*, in the form the paper
+proves in general: the ambiguity witness is the pair of distinct trees of the
+state `sd-s2` that `Canonic.pd*-A1→Ambig` extracts from A1 there (§1's
+`Collapsed` witness is what `lift-Ambig` inside it consumes), transported back
+along the *injective* map of the unique instance of `pdUMany[ sd , a a ]`.
+What the general statement would still need is §4.1 — that every word
+reaches *some* injective-instance state — which stays open.

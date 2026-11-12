@@ -342,9 +342,9 @@ sd-Ambig-from-descendant pdi eq inj-inj =
 The hypotheses are not vacuous: `sd-Desc₂` above is a `refl`, i.e. `pdUMany`
 really does produce exactly one instance for `a a` and its continuation is
 `sd-s2`; that instance is named in `cgp.ambig.Complete` §5 (`pdi₂`, with
-`pd*-expr pdi₂ ≡ sd-s2` by `refl`), so the hypothesis `pd*-expr pdi ≡ sd-s2`
-instantiates.  What is missing is a proof that the injection of that instance
-(built with `PosixPD.mkfuseInj`) is injective.
+`pd*-expr pdi₂ ≡ sd-s2` by `refl`), and its injection (built with
+`PosixPD.mkfuseInj`) is proved injective in `cgp.ambig.Complete` §6 — so
+`cgp.ambig.Complete` §7 instantiates this proposition to a checked `Ambig sd`.
 
 ## 5. The duplicate that is (and is not) there
 

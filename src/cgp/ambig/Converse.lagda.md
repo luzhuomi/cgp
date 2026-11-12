@@ -24,22 +24,26 @@ Short answer: **not as stated**, and the two readings have to be separated.
    ambiguity of `r` is a *factorisation* of the word inside the star, which is
    not one of the three syntactic patterns; that is exactly why the paper
    quantifies the criteria over `Desc(r)` instead of over `r`.
- 2. *Read over the reachable states* (the paper's proposition): for this same
-   `r` the criteria do fire, two letters down — the state reached after `a a`
-   is `( (ε · r⋆) + ((ε + ε · a) · r⋆) )`, which has two empty parse trees, so
-   **A1 fires there**, `A1→Ambig` proves that state ambiguous, and
-   `pd*-A1→Ambig` turns it into an ambiguity of `r` as soon as the injectivity
-   of the transition map of that path is supplied (§4).  Finding such a state
-   out of an arbitrary ambiguity witness is the paper's `AllParseFST` /
-   `Desc(r)` construction; §6 lists what is missing here.
-3. *The duplicate one would expect here* — the Antimirov state
-   `[ ε · r⋆ , ε · a · r⋆ , ε · r⋆ ]`, whose third element repeats the first —
-   is a real property of Antimirov's construction, but it is not what this
-   project computes and it is invisible to every `Idemp`/duplicate test we have:
-   `pdUMany` (the posix variant) fuses the two branches into the *single*
-   instance `sd-s2`, whose two sum-spine alternatives `ε · r⋆` and
-   `(ε + ε · a) · r⋆` are not `≈₀`-congruent.  What the duplicate *does* buy us
-   is the multiplicity that makes A1 fire.  §5.
+ 2. *Read over the reachable states* (the paper's proposition): **not refuted
+    by this example** — for this same `r` the criteria do fire further down.
+    The state reached after `a a` is `( (ε · r⋆) + ((ε + ε · a) · r⋆) )`,
+    which has two empty parse trees, so **A1 fires there**, `A1→Ambig` proves
+    that state ambiguous, and `pd*-A1→Ambig` turns it into an ambiguity of `r`
+    as soon as the injectivity of the transition map of that path is supplied
+    (§4); A3 (`Idemp`) fires one letter later (§6).  Finding such a state out
+    of an arbitrary ambiguity witness is the paper's `AllParseFST` / `Desc(r)`
+    construction; §7 lists what is missing here.
+ 3. *The duplicate one would expect here* — the choice
+    `[ ε · r⋆ , ε · a · r⋆ , ε · r⋆ ]` an **unfused** (Antimirov) derivative
+    would produce, whose third element repeats the first — is indeed detected
+    (`ant-aa-dup`; `canonic` applies `Idemp` to the oplus'ed form), but it is
+    not a *canonical* state: the nullable-prefix elimination the derivative
+    itself performs turns the third alternative into `ε · a · r⋆`, i.e. into
+    the second one, so the canonical state after `a a` is `{ r⋆ , a · r⋆ }` and
+    `Idemp` does not apply there.  This project's `pdUMany` (the posix variant)
+    reaches the same pair even more directly, as the single fused instance
+    `sd-s2`.  The genuine `Idemp` situation for this `r` is one letter deeper
+    (§5.1, §6).
 
 ```agda
 {-# OPTIONS --rewriting #-}
@@ -62,7 +66,8 @@ open AmbigCheck using ( Ambig; AmbigA1; AmbigA2; Ctx; 𝟘; Ctx●R; L●Ctx; Ct
 
 import cgp.ambig.Canonic as Canonic
 open Canonic using ( _≈₀_ ; _≟₀_ ; pd*-Desc ; pd*-expr ; pd*-inj ; pd*-A1→Ambig ; _∈Descᵖ_
-                   ; dups-≈₀ ; sum-spine ; sum-build ; canonic ; ≈₀-● ; ≈₀-ε ; ≈₀-refl )
+                   ; dups-≈₀ ; dedup ; A3-list? ; sum-spine ; sum-build ; canonic
+                   ; ≈₀-● ; ≈₀-ε ; ≈₀-$ ; ≈₀-+ ; ≈₀-refl )
 
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_] ; map ; length ; any)
@@ -177,6 +182,19 @@ sd-plug-+≢sd (L+Ctx s₁ ctx loc₁) l s loc ()
 
 sd-not-CtxDup : ¬ CtxDup sd
 sd-not-CtxDup (ctx , l , s , loc , (eq , _)) = sd-plug-+≢sd ctx l s loc eq
+
+-- A3 has the shape "at the state r, on the letter x, Idemp applies to
+-- deriv r x", so a reading at the initial state also has to fail there.
+-- The Brzozowski derivative of sd (paper's rule for _conc_, the residual
+-- of a star is deriv r x · r⋆):  d_a sd = a · r⋆ + r · r⋆
+deriv-a-sd : RE
+deriv-a-sd = ( ($ 'a' ` 1) ● sd ` 30 ) + ( sd-body ● sd ` 31 ) ` 32
+
+deriv-a-sd-no-dup : dups-≈₀ ( sum-spine deriv-a-sd ) ≡ false
+deriv-a-sd-no-dup = refl
+
+deriv-a-sd-no-Idemp : proj₂ (canonic deriv-a-sd) ≡ false
+deriv-a-sd-no-Idemp = refl
 
 -- the top-level reading of the converse is refutable
 Complete-Top-sd : Complete-Top sd → ⊥
@@ -323,7 +341,7 @@ really does produce exactly one instance for `a a` and its continuation is
 `sd-s2`; what is missing is a proof that the injection of that instance
 (built with `PosixPD.mkfuseInj`) is injective.
 
-## 5. The duplicate that *is* there, and why no `Idemp` test sees it
+## 5. The duplicate that is (and is not) there
 
 One might expect the state after `a a` to be the Antimirov triple
 
@@ -351,7 +369,8 @@ element as a duplicate of the first, i.e. as criterion A3/`Idemp`.  With
   non-congruent alternatives;
 * if one duplicates the Antimirov list by hand, the duplicate *is* found —
   `dups-≈₀ ( sd-x ∷ sd-s1 ∷ sd-x ∷ [] ) ≡ true` — so the reading is right for
-  the Antimirov construction, it just is not what `pdUMany` computes;
+  *a* list of alternatives, it just is not what `pdUMany` computes; §5.1 checks
+  the list an unfused (`Antimirov`) `pdU` would really produce;
 * even distributing the concatenation, `(ε · r⋆) + (ε · a · r⋆)`, does not
   create the duplicate: its two summands are `≈₀`-different.  Only the sum of
   *all three* alternatives makes `Idemp` fire (`canonic` of
@@ -360,8 +379,9 @@ element as a duplicate of the first, i.e. as criterion A3/`Idemp`.  With
   (`deriv (r₁ · r₂) x = deriv r₁ x · r₂ + deriv r₂ x` when `r₁` is nullable),
   and its similarity rules are only `Idemp`/`Comm`/`Assoc` — no distributivity
   — so whether A3 fires for this `r` depends on the *position/AST marking* of
-  its `deriv`.  In the marking computed here, `A1` is what fires (the duplicate
-  alternative is precisely what makes `mkAllEmptyU ε∈sd-s2` have length 2).
+  its `deriv`.  In the marking computed here `A1` is what fires at this depth
+  (the duplicate alternative is precisely what makes `mkAllEmptyU ε∈sd-s2` have
+  length 2); §6 shows the depth at which the `Idemp` test really does fire.
 
 ```agda
 aa : List Char
@@ -430,7 +450,98 @@ distrib₃-removed : sum-spine (proj₁ (canonic distrib₃))
 distrib₃-removed = refl
 ```
 
-## 6. What a completeness proof would need
+### 5.1 The unfused (Antimirov) state after `a a`
+
+With `pdinstance-oplus` replaced by plain list concatenation, one `PDInstance`
+per partial derivative, the state after `a a` is the choice of three
+alternatives (fresh locations stand for the AST nodes a derivative would
+build):
+
+```agda
+ant-aa : List RE
+ant-aa = ( ε ● sd ` 21 )
+       ∷ ( ( ε ● ($ 'a' ` 3) ` 22 ) ● sd ` 23 )
+       ∷ ( ε ● sd ` 24 )
+       ∷ []
+
+ant-aa-dup : dups-≈₀ ant-aa ≡ true
+ant-aa-dup = refl
+
+ant-aa-13 : ( ε ● sd ` 21 ) ≈₀ ( ε ● sd ` 24 )
+ant-aa-13 = ≈₀-● ≈₀-ε (≈₀-refl sd)
+```
+
+So *that* form does contain the 1st/3rd duplicate, and `canonic` of the
+expression oplus'ing it applies `Idemp` (`proj₂ ≡ true`) and drops the third
+alternative.  It is however not a *canonical* state: the rules the derivative
+itself performs eliminate a nullable prefix (`deriv (ε · t) x = t` for the
+paper, `concatmap-pdinstance-snd`/`pdinstance-snd` here), so the third
+alternative is `ε · a · r⋆`, which is the second one,
+
+```agda
+ant-aa-23 : ( ( ε ● ($ 'a' ` 3) ` 22 ) ● sd ` 23 ) ≈₀ ( ( ε ● ($ 'a' ` 3) ` 4 ) ● sd ` 6 )
+ant-aa-23 = ≈₀-● p q
+  where
+    p : ( ε ● ($ 'a' ` 3) ` 22 ) ≈₀ ( ε ● ($ 'a' ` 3) ` 4 )
+    p = ≈₀-● ≈₀-ε (≈₀-$ 'a' 3 3)
+
+    q : sd ≈₀ sd
+    q = ≈₀-refl sd
+
+ant-aa-dedup : proj₁ ( dedup ant-aa )
+  ≡ ( ε ● sd ` 21 ) ∷ ( ( ε ● ($ 'a' ` 3) ` 22 ) ● sd ` 23 ) ∷ []
+ant-aa-dedup = refl
+```
+
+and the Antimirov state of `sd` after `a a` is `{ r⋆ , a · r⋆ }` — two
+alternatives, no duplicate.  (This is the paper's own pattern: in
+`deriv (deriv (x+y)* x) y = (φ + φ) · (x+y)* + (φ + ε) · (x+y)*` the residual
+`y` of the `x · y` branch survives in the second term.)  A3 at the state after
+`a a`, in the pd-native form of `Canonic` §9, is therefore `false`, and so is
+it at the initial expression and at the state after `a`:
+
+```agda
+A3-sd-none : ( A3-list? sd [] 'a' ) ∷ ( A3-list? sd ( 'a' ∷ [] ) 'a' ) ∷ ( A3-list? sd aa 'a' ) ∷ []
+  ≡ false ∷ false ∷ true ∷ []
+A3-sd-none = refl
+```
+
+## 6. Where `Idemp` does fire: one level deeper
+
+Continuing one letter further: `A3-list? sd aa 'a' ≡ true` (third component of
+`A3-sd-none` above).  What happens is that the continuation of the *outer* star
+is glued onto the first summand `(ε · r⋆)`, whose own continuation is `r⋆`;
+extending that inner star gives the same continuation, so `deriv`-ing the state
+after `a a` yields `ε · r⋆ · r⋆` twice.  In this project the two copies are
+merged by `fuse` into a literal `+` node with `≈₀`-equal branches — which is
+exactly what `dups-≈₀` of `Canonic` §9 detects.  Written out, the derivative of
+`sd-s1 = (ε + ε · a) · r⋆` is
+
+    d_a( (ε + ε·a)·r⋆ ) = ε·r⋆ + (ε·a)·r⋆ + r·(ε·r⋆ + (ε·a)·r⋆)
+
+whose first alternative, extended once more, is `ε · r⋆ · r⋆` — the same term
+the star extension of `ε · r⋆` produces.
+
+Whether the *same* depth already shows it in the paper's form depends on the
+normal form its FST state is kept in: for the canonical pair of §5.1 the
+star extension is `d_a(r) · r⋆ = (a + a · a)·r⋆`, i.e. `a · r⋆ + r · r⋆` with
+`a ≢₀ r`, so no `+` with congruent branches appears there.  Both derivations
+describe the same ambiguity (two ways of gluing the outer star onto a
+continuation that is itself a star); this is a difference of bookkeeping, and
+pinning it down would need the `pdUMany`/`deriv` correspondence listed in §7.
+
+That settles what `sd` can and cannot be used for:
+
+* the reading "a criterion fires **at the initial expression**" is refuted
+  (§3): `sd` is ambiguous and `¬ A1`, `¬ A2`, `¬ CtxDup` there, and A3 in the
+  paper's own form fails too (`deriv-a-sd-no-Idemp`);
+* the reading of the paper's proposition — "there is a *realizable descendant*
+  `s ∈ Desc(r)` and a letter `x`" — is **not** refuted by `sd`: A1 holds at
+  the pd-state `sd-s2` reached after `a a` (§4) and the A3 *test* holds for
+  the pd-state after `a a` on the letter `a` (§6).  `sd` witnesses the
+  *soundness* lifts working, not a gap in the proposition.
+
+## 7. What a completeness proof would need
 
 * A witness search over `Desc(r)`: from `Ambig r` (two parse trees of `r` for a
   word `w`) produce the state of `pd*-Desc r u` (for a prefix `u` of `w`) at
@@ -443,6 +554,7 @@ distrib₃-removed = refl
 * `inj-inj` for the concrete injections built by `pdUMany` — the `lne`/`greedy`
   builders are injective, `PosixPD.mkfuseInj` is not in general, and a state
   reached through a fused instance cannot be lifted without recovering the
-  multiplicity.  §5 shows the fusion is exactly where the Antimirov duplicate
-  disappears: for this `r` the multiplicity survives only as the second empty
-  parse tree of the state, i.e. as A1, not as an `Idemp` rewrite.
+  multiplicity.  §5 shows the fusion is exactly where an alternative-level
+  duplicate disappears; for this `r` at that depth the multiplicity survives
+  only as the second empty parse tree of the state, i.e. as A1 (§4), while the
+  `Idemp` situation only shows up one level deeper (§6).

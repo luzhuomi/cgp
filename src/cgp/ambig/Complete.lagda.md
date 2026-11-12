@@ -54,6 +54,15 @@ This module develops the two ingredients of that argument.
   fires) — with unchecked bodies: the general statement, and its reading
   tied to the ambiguity pair of `sd`.  These two holes are the only
   unsolved metas in the module (`--allow-unsolved-metas`).
+* §9 is the base case of the descent: two distinct parse trees with empty
+  word force `AmbigA1` at the state (`base-A1-at-root`), for any
+  expression — via `flat`'s language component, `Word.[]∈⟦r⟧→ε∈r` and
+  `mkAllEmptyU-complete`.
+* §10 is the descent's pd-side plumbing: `chain*` (advances of a single
+  instance) is `pdUMany-aux` on the singleton list (`chain-aux`), a chain
+  from a member is contained in any advancement run containing that member
+  (`any-aux`), and `chain-in-pd*-Desc` transfers a suffix chain from a
+  reachable instance to a pd-descendant of `r` for the concatenated word.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -96,9 +105,11 @@ open import Data.Char using (Char)
 open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; s≤s ; z≤n)
 import Data.Nat.Properties as NatProperties
 open NatProperties using ( ≤-reflexive )
-open import Data.List using (List; _∷_; []; _++_; map; [_]; length)
-open import Data.List.Properties using (++-cancelˡ)
+open import Data.List using (List; _∷_; _∷ʳ_; []; _++_; map; concatMap; [_]; length)
+open import Data.List.Properties using (++-cancelˡ ; ++-identityʳ ; ++-assoc )
+{-# REWRITE ++-identityʳ #-}
 open import Data.List.Relation.Unary.Any using (Any; here; there)
+open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Empty using (⊥ ; ⊥-elim)
 open import Data.Sum using (_⊎_ ; inj₁ ; inj₂)
 open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
@@ -669,3 +680,214 @@ eventually merge or split (the merge = A1 by the base case just proved; a
 split at a sum or a duplicated subterm = A2 / the `Idemp` pattern).  That
 machinery is what remains to build; the base case above is already exactly
 its stopping rule.
+
+## 10. Walking pd paths (the descent's plumbing)
+
+The letter step of the descent reads an IH that lives at a *continuation
+state* and must be heard from the *whole expression*: if the word `pref`
+reaches the instance `pdi` of `r` (`pdi ∈ pdUMany[ r , pref ]`) and from
+`pdi` the suffix `suff` reaches the state `p`, then `p` is a pd-descendant of
+`r` for the concatenated word —
+
+> `pdi ∈ pdUMany[ r , pref ]` and `p ∈ Canonic.pd*-Desc (pd r pref) suff`
+> together imply `p ∈ Canonic.pd*-Desc r (pref ++ suff)` .
+
+Formally: a chain of advances `chain*` from a single instance — the same
+recursion as `pdUMany-aux` but started from one instance — lands inside the
+member list of any advancement run containing that instance (`any-aux`), and
+membership of the chain's `pd` fields transfers to `pd*-Desc` of the
+concatenation (`chain-in-aux`, induction on `pref`; the `pref = []` base uses
+the same `rewrite (++-identityʳ …)` device as `pdUMany-aux-complete`'s base
+case in `cgp.posix.PartialDerivative`).  The index plumbing needs the
+`++-identityʳ` equation added as a rewrite rule next to the project-wide
+`∷ʳ-++`; both are used exactly as `pdUMany-aux` itself uses them.
+
+```agda
+-- concatMap f distributes over ++
+concatMap-++ : ∀ {A B : Set} (f : A → List B) (xs ys : List A)
+  → concatMap f (xs ++ ys) ≡ concatMap f xs ++ concatMap f ys
+concatMap-++ f [] ys = refl
+concatMap-++ f (x ∷ xs) ys = trans
+  ( cong (f x ++_) (concatMap-++ f xs ys) )
+  ( sym (++-assoc (f x) (concatMap f xs) (concatMap f ys)) )
+
+-- pointwise equal maps, under one concatMap
+concatMap-cong-λ : ∀ {A B : Set} (zs : List A) (f g : A → List B)
+  → ( ∀ x → f x ≡ g x ) → concatMap f zs ≡ concatMap g zs
+concatMap-cong-λ [] f g f≡g = refl
+concatMap-cong-λ (z ∷ zs) f g f≡g = cong₂ _++_ (f≡g z) (concatMap-cong-λ zs f g f≡g)
+
+concatMap-compose : ∀ {A B C : Set} (f : B → List C) (g : A → List B) (zs : List A)
+  → concatMap f (concatMap g zs) ≡ concatMap (λ z → concatMap f (g z)) zs
+concatMap-compose f g [] = refl
+concatMap-compose f g (z ∷ zs) = trans
+  ( concatMap-++ f (g z) (concatMap g zs) )
+  ( cong (concatMap f (g z) ++_) (concatMap-compose f g zs) )
+
+-- concatMap of singletons is the identity
+concatMap-∷[]-id : ∀ {A : Set} (ys : List A)
+  → concatMap (λ x → x ∷ []) ys ≡ ys
+concatMap-∷[]-id [] = refl
+concatMap-∷[]-id (y ∷ ys) = cong (y ∷_) (concatMap-∷[]-id ys)
+
+-- membership in a concatenated list, from membership in either part
+any-mid : ∀ {A : Set} {P : A → Set} {ys zs : List A} (xs : List A)
+  → Any P (ys ++ zs) → Any P (xs ++ (ys ++ zs))
+any-mid {ys = ys} {zs = zs} [] p = p
+any-mid {ys = ys} {zs = zs} (x ∷ xs) p = there (any-mid {ys = ys} {zs = zs} xs p)
+
+any++₁ : ∀ {A : Set} {P : A → Set} {xs ys : List A}
+  → Any P xs → Any P (xs ++ ys)
+any++₁ {xs = x ∷ xs} {ys = ys} (here p) = here p
+any++₁ {xs = x ∷ xs} {ys = ys} (there p) = there (any++₁ {xs = xs} {ys = ys} p)
+
+map-Any : ∀ {A B : Set} (f : A → B) {P : A → Set} {Q : B → Set}
+  → (∀ x → P x → Q (f x)) → {xs : List A} → Any P xs → Any Q (map f xs)
+map-Any f P→Q (here p) = here (P→Q _ p)
+map-Any f P→Q (there p) = there (map-Any f P→Q p)
+
+-- a member splits its list around it
+∈-split : ∀ {A : Set} (ys : List A) (x : A) → x ∈ ys
+  → ∃[ xs ] ∃[ zs ] ( xs ++ (x ∷ zs) ≡ ys )
+∈-split [] x ()
+∈-split (y ∷ ys) x (here refl) = ([] , ys , refl)
+∈-split (y ∷ ys) x (there m) with ∈-split ys x m
+... | ( xs , zs , eq ) = (y ∷ xs , zs , cong (y ∷_) eq)
+
+-- advancing runs respect concatenation of instance lists, concatMaps and conses
+aux-++ : ∀ {r : RE} {pref : List Char} (suff : List Char)
+  → (xs ys : List (PDI.PDInstance* r pref))
+  → PosixPD.pdUMany-aux {r} {pref} suff (xs ++ ys)
+    ≡ PosixPD.pdUMany-aux {r} {pref} suff xs ++ PosixPD.pdUMany-aux {r} {pref} suff ys
+aux-++ {r} {pref} [] xs ys rewrite ++-identityʳ pref = refl
+aux-++ {r} {pref} (c ∷ cs) xs ys = trans
+  ( cong (λ l → PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs l)
+         (concatMap-++ (PosixPD.advance-pdi*-with-c {r} {pref} {c}) xs ys) )
+  ( aux-++ {r} {pref ∷ʳ c} cs
+      (concatMap (PosixPD.advance-pdi*-with-c {r} {pref} {c}) xs)
+      (concatMap (PosixPD.advance-pdi*-with-c {r} {pref} {c}) ys) )
+
+aux-concatMap : ∀ {r : RE} {pref : List Char} (suff : List Char)
+  → {A : Set} (g : A → List (PDI.PDInstance* r pref)) (zs : List A)
+  → PosixPD.pdUMany-aux {r} {pref} suff (concatMap g zs)
+    ≡ concatMap (λ z → PosixPD.pdUMany-aux {r} {pref} suff (g z)) zs
+aux-concatMap {r} {pref} [] g zs rewrite ++-identityʳ pref = refl
+aux-concatMap {r} {pref} (c ∷ cs) g zs = trans
+  ( cong (λ l → PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs l)
+         (concatMap-compose (PosixPD.advance-pdi*-with-c {r} {pref} {c}) g zs) )
+  ( trans ( aux-concatMap {r} {pref ∷ʳ c} cs
+              (λ z → concatMap (PosixPD.advance-pdi*-with-c {r} {pref} {c}) (g z)) zs )
+          ( concatMap-cong-λ zs
+              (λ z → PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs
+                       (concatMap (PosixPD.advance-pdi*-with-c {r} {pref} {c}) (g z)))
+              (λ z → PosixPD.pdUMany-aux {r} {pref} (c ∷ cs) (g z))
+              (λ z → refl) ) )
+
+aux-cons : ∀ {r : RE} {pref : List Char} (suff : List Char)
+  → (pdi : PDI.PDInstance* r pref) (zs : List (PDI.PDInstance* r pref))
+  → PosixPD.pdUMany-aux {r} {pref} suff (pdi ∷ zs)
+    ≡ PosixPD.pdUMany-aux {r} {pref} suff (pdi ∷ [])
+      ++ PosixPD.pdUMany-aux {r} {pref} suff zs
+aux-cons {r} {pref} [] pdi zs rewrite ++-identityʳ pref = refl
+aux-cons {r} {pref} (c ∷ cs) pdi zs = trans
+  ( aux-++ {r} {pref ∷ʳ c} cs
+      (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi)
+      (concatMap (PosixPD.advance-pdi*-with-c {r} {pref} {c}) zs) )
+  ( trans
+      ( cong (λ u → PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs
+                     (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi) ++ u)
+             refl' )
+      ( cong (λ u → u ++ PosixPD.pdUMany-aux {r} {pref} (c ∷ cs) zs) e1 ) )
+  where
+    e1 : PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs
+           (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi)
+         ≡ PosixPD.pdUMany-aux {r} {pref} (c ∷ cs) (pdi ∷ [])
+    e1 = refl
+    refl' : PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs
+              (concatMap (PosixPD.advance-pdi*-with-c {r} {pref} {c}) zs)
+            ≡ PosixPD.pdUMany-aux {r} {pref} (c ∷ cs) zs
+    refl' = refl
+
+-- chain* : advances of a single instance, mirroring pdUMany-aux's recursion;
+-- chain-aux : it is exactly pdUMany-aux run on the singleton list
+chain* : ∀ {r : RE} {pref : List Char}
+  → ( pdi : PDI.PDInstance* r pref ) → ( suff : List Char )
+  → List (PDI.PDInstance* r (pref ++ suff))
+chain* {r} {pref} pdi [] = pdi ∷ []
+chain* {r} {pref} pdi (c ∷ cs)
+  = concatMap (λ x → chain* {r} {pref ∷ʳ c} x cs)
+              (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi)
+
+chain-aux : ∀ {r : RE} {pref : List Char} ( pdi : PDI.PDInstance* r pref ) ( suff : List Char )
+  → chain* {r} {pref} pdi suff
+    ≡ PosixPD.pdUMany-aux {r} {pref} suff (pdi ∷ [])
+chain-aux {r} {pref} pdi [] rewrite ++-identityʳ pref = refl
+chain-aux {r} {pref} pdi (c ∷ cs) = trans
+  ( concatMap-cong-λ (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi)
+      (λ x → chain* {r} {pref ∷ʳ c} x cs)
+      (λ x → PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs (x ∷ []))
+      (λ x → chain-aux {r} {pref ∷ʳ c} x cs) )
+  ( trans
+      ( sym ( aux-concatMap {r} {pref ∷ʳ c} cs (λ x → x ∷ [])
+                       (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi) ) )
+      ( cong (λ l → PosixPD.pdUMany-aux {r} {pref ∷ʳ c} cs l)
+             (concatMap-∷[]-id (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi)) ) )
+
+-- a chain from a member of ys continues inside the advancement run of ys
+any-aux : ∀ {r : RE} {pref : List Char} ( suff : List Char )
+  → ( ys : List (PDI.PDInstance* r pref ) ) ( pdi : PDI.PDInstance* r pref ) ( p : RE )
+  → pdi ∈ ys
+  → Any ( λ e → Canonic.pd*-expr e ≡ p ) (chain* pdi suff)
+  → Any ( λ e → Canonic.pd*-expr e ≡ p ) (PosixPD.pdUMany-aux {r} {pref} suff ys)
+any-aux {r} {pref} suff ys pdi p m anychain =
+  subst (λ w → Any ( λ e → Canonic.pd*-expr e ≡ p ) (PosixPD.pdUMany-aux {r} {pref} suff w)) eq
+    ( subst (λ L → Any ( λ e → Canonic.pd*-expr e ≡ p ) L) (sym e2)
+      ( any-mid {ys = PosixPD.pdUMany-aux {r} {pref} suff (pdi ∷ [])}
+                 {zs = PosixPD.pdUMany-aux {r} {pref} suff zs}
+                 (PosixPD.pdUMany-aux {r} {pref} suff xs)
+        ( any++₁ {ys = PosixPD.pdUMany-aux {r} {pref} suff zs}
+          ( subst (λ L → Any ( λ e → Canonic.pd*-expr e ≡ p ) L)
+              (chain-aux {r} {pref} pdi suff) anychain ) ) ) )
+  where
+    eq∃ = ∈-split ys pdi m
+    xs  = proj₁ eq∃
+    zs  = proj₁ (proj₂ eq∃)
+    eq  = proj₂ (proj₂ eq∃)
+    e2  = trans (aux-++ {r} {pref} suff xs (pdi ∷ zs))
+                (cong (λ u → PosixPD.pdUMany-aux {r} {pref} suff xs ++ u)
+                      (aux-cons {r} {pref} suff pdi zs))
+
+-- the composition lemma: a suffix chain from a reachable instance of r
+-- reaches, in r's descendant list, for the concatenated word
+chain-in-aux : ∀ {r : RE} {q : List Char} (pref suff : List Char)
+  → ( xs : List (PDI.PDInstance* r q) ) ( pd : PDI.PDInstance* r (q ++ pref) ) ( p : RE )
+  → pd ∈ PosixPD.pdUMany-aux {r} {q} pref xs
+  → Any ( λ e → Canonic.pd*-expr e ≡ p ) (chain* {r} {q ++ pref} pd suff)
+  → Any ( λ qe → qe ≡ p ) (map Canonic.pd*-expr
+                             (PosixPD.pdUMany-aux {r} {q} (pref ++ suff) xs))
+chain-in-aux {r} {q} [] suff xs pd p m anychain rewrite ++-identityʳ q =
+  map-Any Canonic.pd*-expr (λ x eq → eq)
+    (any-aux {r} {q} suff xs pd p m anychain)
+chain-in-aux {r} {q} (c ∷ pref) suff xs pd p m anychain =
+  chain-in-aux {r} {q ∷ʳ c} pref suff
+    (concatMap (PosixPD.advance-pdi*-with-c {r} {q} {c}) xs) pd p m anychain
+
+chain-in-pd*-Desc : ( r : RE ) ( pref suff : List Char ) ( p : RE )
+    ( pdi : PDI.PDInstance* r pref )
+  → pdi ∈ PosixPD.pdUMany[ r , pref ]
+  → Any ( λ e → Canonic.pd*-expr e ≡ p ) (chain* pdi suff)
+  → Any ( λ qe → qe ≡ p ) (Canonic.pd*-Desc r (pref ++ suff))
+chain-in-pd*-Desc r pref suff p pdi pdi∈ anychain =
+  chain-in-aux {r} {[]} pref suff
+    [ pdinstance* {r} {r} {[]} injId injId-sound ] pdi p pdi∈ anychain
+```
+
+`chain-in-pd*-Desc` is the transfer the letter step of the descent needs:
+once both trees have crossed the same letter through the same instance
+`pdi`, whatever the induction hypothesis produces at `pd pdi` — a state
+reachable by `chain* pdi suff` — is a pd-descendant of `r` for the whole
+word.  Note the plumbing lemmas never evaluate `pdUMany-aux` at the empty
+word with a variable accumulated index directly; as in `pdUMany-aux-complete`
+in `cgp.posix.PartialDerivative`, those cases go through
+`rewrite (++-identityʳ …)`, which is why the equation is registered as a
+rewrite rule above.

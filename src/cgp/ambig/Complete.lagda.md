@@ -52,9 +52,9 @@ This module develops the two ingredients of that argument.
 * §8 states the goal of the whole arc — the *completeness* direction proper
   (given an ambiguity witness, a pd-descendant state where a criterion
   fires) — with unchecked bodies: the general statement, and its reading
-  tied to the ambiguity pair of `sd`.  Together with §12's `pair-complete`
-  these three holes are the only unsolved metas in the module
-  (`--allow-unsolved-metas`).
+  tied to the ambiguity pair of `sd`.  Those two holes are the only
+  unsolved metas left in the module (`--allow-unsolved-metas`); §12–§13
+  are the machinery they are made of.
 * §9 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
   expression — via `flat`'s language component, `Word.[]∈⟦r⟧→ε∈r` and
@@ -80,10 +80,10 @@ This module develops the two ingredients of that argument.
   their run-lift (`pdesc`: `path-chain` composes the steps with
   `compose-pdi-with`, as `advance-pdi*-with-c` does) is proved; the pair
   theorem `pair-complete` — the structural-recursion core of the paper's
-  ambiguity-criteria argument — is stated with paths anchored at the sum
+  ambiguity-criteria argument — is proved with paths anchored at the sum
   (a branch-anchored version is refuted by the `($a`1 + ε) + $a`2`
-  counterexample, whose witness is the fused derivative `ε + ε`), with a
-  hole; `ε∈→emptyU` and `A1-⊕` fire A1 at any sum of two nullable
+  counterexample, whose witness is the fused derivative `ε + ε`);
+  `ε∈→emptyU` and `A1-⊕` fire A1 at any sum of two nullable
   expressions, which closes the first clauses of the pair recursion:
   pairs with an empty tree on one side (`crit-ε+`, `crit-+ε`) and pairs
   of literal trees (`crit-$$`, the duplicate pattern with `ctx = 𝟘`);
@@ -91,6 +91,16 @@ This module develops the two ingredients of that argument.
   `A1-●>`, `crit-●<`, `crit-●>`), via a length-counting toolkit
   (`len-++≥`/`len-++≥ˡ`/`len-++≥₁`, `len∈concatMap`, `length-concatMap≥`,
   `mkAllEmptyU-nonempty`).
+* §13 is the one letter step of that recursion: a member of an instance
+  list with its witness (`pick-Any` — the list must be a parameter, since
+  at the call sites it is the stuck `pdU[ r , c ]`), the residual tree of
+  a reconstruction and its forced word (`Recons-residual`, read off the
+  instance's own soundness evidence, no `flat∘unflat`), membership of the
+  instance pair in the sum's list (`∈-concatMap`, `∈-oplus-fuse`,
+  `pdU∈-⊕`) and the continuation equation of that pair
+  (`pd-expr-fuse-⊕`: `fuse`'s continuation *is* the sum of the two
+  continuations, which is where the recursive call stands), with
+  `Path-rescue` carrying a found path across that equation.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -116,7 +126,10 @@ import cgp.empty.AllEmptyParseTree as AllEmpty
 open AllEmpty using ( flat-[] ; mkAllEmptyU ; mkAllEmptyU-complete )
 
 import cgp.posix.PartialDerivative as PosixPD
-open PosixPD using ( mkfuseInj ; fuse ; pdinstance-oplus ; injId ; injId-sound )
+open PosixPD using ( mkfuseInj ; fuse ; pdinstance-oplus ; injId ; injId-sound ; pdU-complete )
+
+import cgp.Utils as Utils
+open Utils using ( ∷-inj )
 
 import cgp.ambig.AmbigCheck as AmbigCheck
 open AmbigCheck using ( Ambig )
@@ -127,7 +140,7 @@ import cgp.ambig.Converse as Converse
 open Converse using ( sd ; sd-body ; sd-ε∉ ; sd-s1 ; sd-s2 ; sd-x ; aa ; res-a ; sd-s2-A1 ; sd-Desc₂ )
 
 import cgp.Recons as Recons
-open Recons using ( Recons ; Recons* )
+open Recons using ( Recons ; recons ; Recons* )
 
 open import Data.Char using (Char)
 open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; _+_ ; s≤s ; z≤n)
@@ -1039,12 +1052,12 @@ case of the descent — two trees crossing a letter through *different*
 instances, i.e. a `LeftU` in one branch and a `RightU` in the other at
 some sum — is where the third situation lives.  What closes the argument
 is a *pair theorem*: two trees of a common word, one in each of two
-expressions, either diagnose a criterion at their sum or find one below
-one of the two along a common word prefix.  This section names the
-criteria, proves what is provable without touching neutral lists — the
+expressions, either diagnose a criterion at their sum or find one at a
+continuation of that sum along a common word prefix.  This section names
+the criteria, proves what is provable without touching neutral lists — the
 pair's base (`split-+-A1`) and the syntactic transfer of criteria through
-contexts (`A2-Ctx`, `dup-Ctx`) — and states the pair theorem as the goal
-of B3b.
+contexts (`A2-Ctx`, `dup-Ctx`) — and states the pair theorem; its proof is
+the recursion of §13.
 
 ```agda
 -- the diagnosis disjunction of §8, named
@@ -1284,10 +1297,15 @@ len-++≥₁ {u = u ∷ us} {v = v} _ = s≤s (len-++≥ us v)
 1≤len→∈ []       ()
 1≤len→∈ (x ∷ xs) _ = ( x , here refl )
 
-len∈concatMap : ∀ {A B : Set} ( g : A → List B ) {x : A} {xs : List A}
+-- (`xs` is an explicit parameter: with it implicit, `length` of a metavariable
+-- has to be inverted against `length (g x)` and the check falls back on
+-- foldr inversion)
+len∈concatMap : ∀ {A B : Set} ( g : A → List B ) ( xs : List A ) { x : A }
   → x ∈ xs → length (g x) ≤ length (concatMap g xs)
-len∈concatMap g (here refl)  = len-++≥ˡ _ _
-len∈concatMap g (there ∈xs)  = ≤-trans (len∈concatMap g ∈xs) (len-++≥ _ _)
+len∈concatMap g []       ()
+len∈concatMap g (x ∷ xs) (here refl)  = len-++≥ˡ (g x) (concatMap g xs)
+len∈concatMap g (x ∷ xs) (there ∈xs)  =
+  ≤-trans (len∈concatMap g xs ∈xs) (len-++≥ (g x) (concatMap g xs))
 
 -- so a concatMap whose blocks all have ≥ 1 element has at least as many
 -- elements as there are blocks
@@ -1309,7 +1327,8 @@ mkAllEmptyU-nonempty {l ● r ` loc} (RE.ε∈_●_ ε∈l ε∈r)
                                     (mkAllEmptyU {r} ε∈r)))
                    (mkAllEmptyU-nonempty ε∈r))
             (len∈concatMap (λ u → map (λ v → PairU {l = l} {r} {loc} u v)
-                                      (mkAllEmptyU {r} ε∈r)) u∈)
+                                      (mkAllEmptyU {r} ε∈r))
+                           (mkAllEmptyU {l} ε∈l) u∈)
 mkAllEmptyU-nonempty {l + r ` loc} (RE.ε∈_+_ ε∈l ε∈r) =
   ≤-trans (subst ( λ n → suc zero ≤ n )
                  (sym (length-map (λ v → RightU {l = l} {r} {loc} v)
@@ -1355,7 +1374,7 @@ A1-●> l s loc ε∈l ( ε∈s , len )
                    (sym (length-map (λ v → PairU {l = l} {s} {loc} u v)
                                     (mkAllEmptyU {s} ε∈s)))
                    len)
-            (len∈concatMap f u∈) )
+            (len∈concatMap f (mkAllEmptyU {l} ε∈l) u∈) )
   where
     f : U l → List (U ( l ● s ` loc ))
     f u = map (λ v → PairU {l = l} {s} {loc} u v) (mkAllEmptyU {s} ε∈s)
@@ -1477,6 +1496,92 @@ pdesc {r} π@(pcons {c = c} {ws = ws} z m q) =
     hd₀ = pdinstance* {r} {r} {[]} injId injId-sound
 ```
 
+## 13. One letter of the pair: reconstruction and fusion
+
+Both trees of the pair consume the same first letter, so `pdU-complete`
+turns each of them into a member of *its own* expression's instance list
+together with a reconstruction witness.  Four small facts turn that pair
+of members into **one** step of the sum state, and together with
+`split-+-A1` (§12) they are the whole of the pair descent: the pick out of
+a list, the residual tree and its forced word, the membership of the pair
+in the sum's list, and the equation saying where that step lands.
+
+```agda
+-- a member of an instance list, with its witness.  The list is a
+-- parameter and not the stuck term `pdU[ r , c ]` of the call sites: the
+-- case-split has to happen once, here.
+pick-Any : ∀ { A : Set } { P : A → Set } { x : A } { xs : List A }
+  → Any P xs
+  → Σ[ y ∈ A ] ( P y × y ∈ xs )
+pick-Any (here p) = ( _ , p , here refl )
+pick-Any (there p) with pick-Any p
+... | ( y , q , m ) = ( y , q , there m )
+
+-- the residual of a reconstruction: its word is *forced* to be the tail,
+-- because the instance's soundness evidence prefixes the same letter on
+-- both sides.  No `flat∘unflat` is needed — the equation is read off the
+-- instance's own evidence.
+Recons-residual : ∀ { r : RE } { c : Char } { pdi : PDInstance r c } { u : U r } { ws : List Char }
+  → Recons {r} {c} u pdi
+  → proj₁ (flat {r} u) ≡ c ∷ ws
+  → Σ[ x ∈ U (Canonic.pd-expr pdi) ] ( proj₁ (flat {Canonic.pd-expr pdi} x) ≡ ws )
+Recons-residual {pdi = pdinstance {p} inj ev} (recons _ ( w∈ , eq )) u≡cw =
+  ( unflat w∈
+  , proj₂ (∷-inj (trans (sym (ev (unflat w∈))) (trans (cong ( λ z → proj₁ (flat z) ) eq) u≡cw))) )
+
+-- membership in a concatenation, from membership in one of the parts
+∈-concatMap : ∀ { A B : Set } ( f : A → List B ) ( xs : List A ) { x : A }
+  → x ∈ xs → { y : B } → y ∈ f x → y ∈ concatMap f xs
+∈-concatMap f [] () q
+∈-concatMap f (x ∷ xs) (here refl) q = any++₁ q
+∈-concatMap f (x ∷ xs) (there p) q = any-++₂ (f x) (∈-concatMap f xs p q)
+
+-- `⊕` of two *non-empty* instance lists: every member pair gives one
+-- member, through `fuse` — the sum's derivative really is pairwise.
+∈-oplus-fuse : ∀ { r : RE } { loc : ℕ } { c : Char } { zl zr : PDInstance r c }
+  ( xl xr : List (PDInstance r c) )
+  → zl ∈ xl → zr ∈ xr
+  → fuse {r} {loc} {c} zl zr ∈ pdinstance-oplus {r} {loc} {c} xl xr
+∈-oplus-fuse [] xr () q
+∈-oplus-fuse (x ∷ xs) [] p ()
+∈-oplus-fuse {r} {loc} {c} {zl} {zr} (x ∷ xs) (y ∷ ys) p q
+  = ∈-concatMap (λ pdiˡ → map (fuse {r} {loc} {c} pdiˡ) (y ∷ ys)) (x ∷ xs) p
+      (map-Any (fuse {r} {loc} {c} zl) (λ w eq → cong (fuse {r} {loc} {c} zl) eq) q)
+
+-- the instance pair of a letter step at a sum, in the shape `pdU` puts in
+-- its own list (PartialDerivative 396–399)
+fuse-⊕ : ∀ { l s : RE } { loc : ℕ } { c : Char }
+  → PDInstance l c → PDInstance s c → PDInstance ( l + s ` loc ) c
+fuse-⊕ {l} {s} {loc} {c} zl zr = fuse {l + s ` loc} {loc} {c} (pdinstance-left {l} {s} {loc} {c} zl)
+                                                  (pdinstance-right {l} {s} {loc} {c} zr)
+
+-- the pair of instances *is* an instance of the sum, and its continuation
+-- is the sum of the two continuations — which is exactly the state the
+-- recursive call of the pair theorem stands in.
+pdU∈-⊕ : ∀ { l s : RE } { loc : ℕ } { c : Char }
+  ( zl : PDInstance l c ) ( zr : PDInstance s c )
+  → zl ∈ PosixPD.pdU[ l , c ] → zr ∈ PosixPD.pdU[ s , c ]
+  → fuse-⊕ zl zr ∈ PosixPD.pdU[ l + s ` loc , c ]
+pdU∈-⊕ {l} {s} {loc} {c} zl zr zl∈ zr∈
+  = ∈-oplus-fuse {l + s ` loc} {loc} {c}
+      (map (pdinstance-left {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ]))
+      (map (pdinstance-right {l} {s} {loc} {c}) (PosixPD.pdU[ s , c ]))
+      (map-Any (pdinstance-left {l} {s} {loc} {c}) (λ a eq → cong (pdinstance-left {l} {s} {loc} {c}) eq) zl∈)
+      (map-Any (pdinstance-right {l} {s} {loc} {c}) (λ a eq → cong (pdinstance-right {l} {s} {loc} {c}) eq) zr∈)
+
+pd-expr-fuse-⊕ : ∀ { l s : RE } { loc : ℕ } { c : Char }
+  ( zl : PDInstance l c ) ( zr : PDInstance s c )
+  → Canonic.pd-expr (fuse-⊕ zl zr) ≡ (Canonic.pd-expr zl) + (Canonic.pd-expr zr) ` loc
+pd-expr-fuse-⊕ (pdinstance {p} inj ev) (pdinstance {p₂} g ev₂) = refl
+
+-- carrying a whole found path across such a continuation equation (the
+-- `crit (pdend π)` component moves with it, which a path-only transport
+-- could not say)
+Path-rescue : ( r r′ : RE ) ( w : List Char ) → r ≡ r′
+  → ( Σ[ π ∈ Path r w ] crit (pdend π) ) → ( Σ[ π ∈ Path r′ w ] crit (pdend π) )
+Path-rescue r r′ w eq = subst ( λ e → Σ[ π ∈ Path e w ] crit (pdend π) ) eq
+```
+
 The pair theorem proper recurses on the *two trees*.  The first form one
 tries for it anchors the path disjunct *below* one of the two branches —
 a path in `l` or in `s`.  That form is **false**: take
@@ -1502,21 +1607,43 @@ pair-complete : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
   → crit ( l + s ` loc )
   ⊎ ( ∃[ w′ ] ∃[ w″ ] ( ( w ≡ w′ ++ w″ )
         × ( Σ[ π ∈ Path ( l + s ` loc ) w′ ] crit (pdend π) ) ) )
-pair-complete {l} {s} loc w u v u≡ v≡ = _
+pair-complete {l} {s} loc [] u v u≡ v≡ = inj₁ (inj₁ (split-+-A1 l s loc u v u≡ v≡))
+pair-complete {l} {s} loc (c ∷ w) u v u≡ v≡
+  with pick-Any (pdU-complete {l} {c} u u≡) | pick-Any (pdU-complete {s} {c} v v≡)
+... | ( zl , rec-l , zl∈ ) | ( zr , rec-r , zr∈ )
+    with Recons-residual rec-l u≡ | Recons-residual rec-r v≡
+...   | ( x , x≡ ) | ( y , y≡ )
+      with pair-complete {l = Canonic.pd-expr zl} {s = Canonic.pd-expr zr} loc w x y x≡ y≡
+...     | inj₁ cr = inj₂ ( [ c ] , w , refl
+                          , ( pcons (fuse-⊕ zl zr) (pdU∈-⊕ zl zr zl∈ zr∈) pnil
+                            , subst crit (sym (pd-expr-fuse-⊕ zl zr)) cr ) )
+...     | inj₂ ( w′ , w″ , w≡w′++w″ , π )
+          = inj₂ ( ( c ∷ w′ ) , w″ , cong (c ∷_) w≡w′++w″
+                  , let ( π′ , cr′ ) = Path-rescue (Canonic.pd-expr zl + Canonic.pd-expr zr ` loc)
+                                                   (Canonic.pd-expr (fuse-⊕ zl zr)) w′
+                                                   (sym (pd-expr-fuse-⊕ zl zr)) π
+                    in ( pcons (fuse-⊕ zl zr) (pdU∈-⊕ zl zr zl∈ zr∈) π′ , cr′ ) )
 ```
 
-Every empty-word pair is covered without recursion: `split-+-A1` fires
-A1 at the sum for *any* pair of empty trees, so the recursion only sees
-nonempty words.  A `LetterU`/`LetterU` pair makes both expressions
-literals over the same letter, which are `≈₀`-similar (`≈₀-$`) — the
-duplicate pattern at the sum with `ctx = 𝟘`.  In every other step the
-trees are reconstructed through instances of the `pdU` lists at their
-current expressions, and those instances — mapped through
-`pdinstance-left`/`-right`/`-star`/`-fst` and `concatmap-pdinstance-snd`,
-and pairwise fused at every `+` and every nullable `●` — *are* instances
-of the sum state, so the recursive call is taken at that state's
-continuation and the path is built at the sum through `pcons`.  (A
-counting refinement sharpens the recursion: `pdU[ r , c ]` has more than
+The recursion is on the word and it is uniform: `pdU-complete` supplies a
+reconstructing instance of each tree's *own* expression,
+`Recons-residual` reads off the residual tree together with the fact that
+its word is the tail (both sides share that tail), and `pdU∈-⊕` shows
+that the two instances — mapped through `pdinstance-left`/`pdinstance-right`
+and paired by `fuse` — form **one** member of the sum's own list, whose
+continuation is `pd-expr zl + pd-expr zr \` loc` (`pd-expr-fuse-⊕`).  One
+recursive call at that continuation plus one `pcons` step is therefore a
+step at the sum; when the recursive call stops *at* the continuation the
+same single step ends the path there, with `w′ = [ c ]`.  The empty-word
+case needs no recursion at all: `split-+-A1` fires A1 at the sum for *any*
+pair of empty trees — that is the content of `crit-ε+`/`crit-+ε` — and a
+pair of literal trees is the other closed form (`crit-$$`: equal words make
+the letters equal, so the two branches are `≈₀`-similar and the duplicate
+pattern fires with `ctx = 𝟘`).  Those three lemmas are not clauses of the
+recursion — the uniform step covers their pairs too — they are the closed
+forms the paper enumerates, kept as such.
+
+(A counting refinement sharpens the recursion: `pdU[ r , c ]` has more than
 one member only below a nullable concatenation, where
 `concatmap-pdinstance-snd` enumerates one instance per empty tree of the
 left factor — the paper's "these are the only situations" in counting

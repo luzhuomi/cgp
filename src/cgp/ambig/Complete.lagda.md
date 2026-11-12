@@ -132,15 +132,24 @@ This module develops the two ingredients of that argument.
 * §17 examines that case on a checked example: a sum whose left branch
   re-appears inside its right branch.  A literal's derivative is its own
   singleton (`pdU-$a1≡`), a sum of two literals has the one fused member
-  (`pdU-⊕-lit≡`), and the duplicated sum reaches *two* members for one letter —
-  the branch instance and `dup-pdi`, its fusion with the right branch's member,
-  membership from `pdU∈-⊕` with no emptiness decision; the same tree
-  reconstructs through the branch instance (`dup-u-recon`), i.e. it is derived
-  twice.  The expression is ambiguous but has no concatenation and no nullable
-  state, so no A1/A2 fires: it is an `Idemp`/A3 (duplicate-pattern) case.
-  Hence the classification §16 needs is a statement about *canonical*
-  expressions (`≈₀`), not about `pdU` multiplicity — the paper's third situation
-  is genuinely one of the three.
+  (`pdU-⊕-lit≡`), and the duplicated sum's single member `dup-pdi` — the fusion
+  of the branch instance with the right branch's member, membership from
+  `pdU∈-⊕` with no emptiness decision — reconstructs the *same* tree as the
+  plain branch injection does (`dup-u-recon`, `dup-u-recon₂`): one letter, one
+  member, two derivations.  Nothing is nullable and there is no concatenation
+  *before* reading, so no A1/A2 holds at the state; the state carries the
+  `Idemp`/duplicate pattern (`≈₀`-similar branches under a context) and A1
+  recurs only at the fusion's nullable continuation.  Hence the classification
+  §16 needs is a statement about *canonical* expressions (`≈₀`), not about
+  `pdU` multiplicity — the paper's third situation is genuinely one of the three.
+* §18 writes that third-criterion witness down for the example and runs the
+  descent to it: the duplicate sum is `dup-s1` itself in no context
+  (`dup-s1-dup`, via `≈₀-$`), it moves under the outer sum's left context by
+  `dup-Ctx` (`dup-r-lit-crit`), and the one-letter path through `dup-pdi`
+  ends in a `pd*-Desc` state (`pdesc`) which computes, by `refl`, to the sum
+  `( ε + ( ε + ε \` 3 ) \` 0 )` of two similar empty alternatives — where the
+  third disjunct fires again (`pdend-π-dup-crit`) — so `desc-step` gives
+  `desc-concl` for the example word (`dup-desc`).
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -1923,12 +1932,13 @@ would be the counting form: two members of `pdU[ r , c ]` arise only where `pdU`
 duplicates instances, below a nullable concatenation through
 `concatmap-pdinstance-snd`, one instance per empty tree of the left factor.
 §17 shows that guess is wrong as stated — a *sum* whose left branch reappears in
-its right branch has two `pdU` members for one letter, both reconstructing the
-same tree, with no concatenation in the expression at all — and it also shows
-what saves the argument: the two trees differ by an injection through a sum of
-`≈₀`-similar alternatives, which is exactly the `Idemp`/A3 situation, the
-duplicate pattern this project states (`crit`'s third disjunct) and proves sound
-but does not test.  So the classification has to be made on the *canonical*
+its right branch derives the *same* tree through the branch injection and through
+the fused member `pdU` computes, with no concatenation in the expression at all
+— and it also shows what saves the argument: the two derivations differ by an
+injection through a sum of `≈₀`-similar alternatives, which is exactly the
+`Idemp`/A3 situation, the duplicate pattern this project states (`crit`'s third
+disjunct) and proves sound but does not test; §18 exhibits that witness at the
+example and runs the descent to it.  So the classification has to be made on the *canonical*
 expression, where such alternatives have been merged, and that is the content of
 the completeness direction; §12's counting toolkit (`mkAllEmptyU-nonempty`,
 `length-concatMap≥`) is the half of it that is here.
@@ -2056,33 +2066,121 @@ dup-u-pdi = (pdinstance-left {dup-l1} {dup-s1} {0} {ca})
 dup-u-recon : Recons { dup-r-lit } { ca } dup-u dup-u-pdi
 dup-u-recon = recons dup-u ( Word.ε , refl )
 
--- The reconstruction *through the fused member* is not statable here: its word
--- evidence would have to live in the language of that member's continuation,
--- and `pd-expr` of an instance built by `pdinstance-left`/`-right`/`fuse` does
--- not reduce — the index of those instances mentions the defined expressions
--- `dup-l1`/`dup-s1`, so the match inside `pd-expr` is stuck (§4's obstacle, in
--- a completely concrete example).
+-- and *through the fused member as well*: the same tree, derived a second
+-- time, reconstructed through the member `pdU` actually computes.  The word
+-- evidence lives in the language of that member's continuation, which *does*
+-- reduce (`pd-expr-fuse-⊕`): the sum of the two branch continuations
+dup-u-recon₂ : Recons { dup-r-lit } { ca } dup-u dup-pdi
+dup-u-recon₂ = recons dup-u
+                 ( Word._+L_ { ε } { [] } { 0 } ( ε + ε ` 3 ) Word.ε , refl )
 ```
 
 The example carries its own diagnosis.  `dup-r-lit` is ambiguous — `[ a ]` has
-the two trees `LeftU (LetterU a)` and `LeftU (RightU (LetterU a))` — but it
-contains *no concatenation at all*, so the "nullable left factor" mechanism
-cannot produce the multiplicity; `⊕` at a sum does.  The members are the plain
-branch instance and the fusion `dup-pdi` of that instance with the right branch's
-member; by `pd-expr-fuse-⊕` their continuations are `ε` and
-`ε + dup-s1 \` 0`, and none of those expressions is nullable, because every
-branch of the expression is a literal.  So no A1 and no A2 holds at the states
-this word reaches.  What separates the two trees is that the sum
-`( ($a`1) + ($a`1) \` 3 )` inside the right branch is the `Idemp` merge of two
-`≈₀`-similar alternatives — the paper's third situation, criterion A3, which this
-project states as the duplicate *pattern* and proves sound for
-(`Canonic.pd*-Ctx-dup→Ambig`) but does not implement as a test (`AmbigCheck` §4).
+the two trees `LeftU (LetterU a)` and `RightU (LeftU (LetterU a))` — and the
+first of them is derived *twice*: through the branch injection `dup-u-pdi`
+(which is *not* a member of `pdU[ dup-r-lit , a ]`) and through `dup-pdi`, the
+one member that list does contain.  One letter, one member, two reconstructions:
+the branching is not in the list, it is in the `⊕`-fusion of two alternatives of
+the same letter.
 
-That is the correction §16 needed: a `pdU` list with two members reconstructing
-the *same* tree is not by itself one of the two first criteria — the
-classification has to be made on the canonical expression, where `≈₀`-similar
-alternatives have been merged.  In the descent the case is recognised the way
-this example shows it: the two instances are a branch instance and a fusion of
-that branch instance with the sibling's, so the two trees differ exactly by an
-injection through a sum whose two branches are similar, which is the duplicate
-pattern under the context the descent has been walking in.
+No A1 or A2 holds at the expression or its subexpressions — there is no
+concatenation anywhere, and every branch is a literal, so no state *before*
+reading the letter is nullable.  The fusion's continuation, however, is
+`( ε + ( ε + ε \` 3 ) \` 0 )` by `pd-expr-fuse-⊕` — nullable — and A1 *does*
+fire at the pd-descendant this word reaches (the sum has the two empty trees
+`LeftU EmptyU` and `RightU (LeftU EmptyU)`).  What the state itself carries is
+the paper's third situation: the sum `( ($a`1) + ($a`2) \` 3 )` inside the right
+branch has `≈₀`-similar branches — the `Idemp` pattern — under the context
+`dup-l1 + · \` 0`, so the duplicate-pattern criterion is the one that fires at
+the state, *before* reading; this project states it (`crit`'s third disjunct) and
+proves it sound (`Canonic.pd*-Ctx-dup→Ambig`) but does not implement it as a
+test (`AmbigCheck` §4).  §18 writes that witness and the descent to it.
+
+That is what §16's step has to find in general.  The two derivations of the same
+tree are a branch instance and a fusion of that instance with the sibling's — a
+pair related by `⊕` over `≈₀`-similar alternatives — and the diagnosis holding
+*at the state* is the duplicate pattern, not a counting statement about `pdU`
+lists: the classification has to be made on the canonical expression, where
+`≈₀`-similar alternatives have been merged, and A1 reappears only at the
+nullable continuation the fusion produces.
+
+## 18. The A3 witness for the example, and the descent that reaches it
+
+§17 identified the §16 cross-instance case with the duplicate pattern; here that
+diagnosis is *written down* for the example and connected to §16's descent type
+`desc-concl`.  The pattern is already in the expression: `dup-s1`'s two branches
+are the literals `($ a \` 1)` and `($ a \` 2)`, which are `≈₀`-similar
+(`≈₀-$`), so the third disjunct of `crit` fires at `dup-s1` with the empty
+context, and `dup-Ctx` (§12) moves it under the outer sum's left context.
+
+```agda
+-- the duplicate pattern at `dup-s1`: the sum of two similar literals, in place
+dup-s1-dup : Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+    ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ dup-s1 ) × ( Canonic._≈₀_ l s ) )
+dup-s1-dup = ( AmbigCheck.𝟘 , dup-l1 , dup-l2 , 3 , ( refl , Canonic.≈₀-$ ca 1 2 ) )
+
+dup-s1-crit : crit dup-s1
+dup-s1-crit = inj₂ (inj₂ dup-s1-dup)
+
+-- and at the example state itself, under the context `dup-l1 + · ` 0`
+dup-r-lit-dup : Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+    ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ dup-r-lit ) × ( Canonic._≈₀_ l s ) )
+dup-r-lit-dup = dup-Ctx (AmbigCheck.L+Ctx dup-l1 AmbigCheck.𝟘 0) dup-s1-dup
+
+dup-r-lit-crit : crit dup-r-lit
+dup-r-lit-crit = inj₂ (inj₂ dup-r-lit-dup)
+```
+
+So the empty prefix of the ambiguity word already settles `desc-concl` at the
+state (`inj₁ dup-r-lit-crit`).  The non-trivial half is that the *one-letter*
+descent — the step §16 could not close when `pdU-complete` hands out the fused
+member — reaches a state that carries a criterion too, and it is the same
+pattern one level down: the fusion's continuation is a sum of two `ε`
+alternatives.
+
+```agda
+-- the one-letter descent through the member `pdU` computes: a `Path` step
+-- asks for nothing but the membership
+π-dup : Path dup-r-lit ( ca ∷ [] )
+π-dup = pcons dup-pdi dup-pdi∈ pnil
+
+-- its end state *is* a pd-descendant of the example state (§12's `pdesc`)
+π-dup-Desc : Any ( λ t → t ≡ pdend π-dup )
+               (Canonic.pd*-Desc dup-r-lit ( ca ∷ [] ))
+π-dup-Desc = pdesc π-dup
+
+-- and the state is the sum of the two branch continuations — both `ε`, by the
+-- `pdU-$a1≡`/`pdU-⊕-lit≡` computations of §17, so `pd-expr` unfolds through
+-- the whole fusion
+pdend-π-dup≡ : pdend π-dup ≡ ( ε + ( ε + ε ` 3 ) ` 0 )
+pdend-π-dup≡ = refl
+
+-- the third criterion fires there as well: under the context `ε + · ` 0` a sum
+-- of two similar empty alternatives
+pdend-π-dup-crit : crit (pdend π-dup)
+pdend-π-dup-crit = subst crit pdend-π-dup≡
+  ( inj₂ (inj₂ ( AmbigCheck.L+Ctx ε AmbigCheck.𝟘 0
+               , ε , ε , 3 , ( refl , Canonic.≈₀-ε ) ) ) )
+
+-- the §16 step, instantiated: the fused member carries the conclusion of its
+-- own continuation back up to the example state and the word `a`
+dup-desc : desc-concl dup-r-lit ( ca ∷ [] )
+dup-desc = desc-step dup-pdi dup-pdi∈ (inj₁ pdend-π-dup-crit)
+```
+
+(A1 *also* fires at the reached state — `A1-⊕ ε ( ε + ε \` 3 ) 0 RE.ε∈ε` with the
+right factor's `ε∈` from `RE.ε∈_+_ RE.ε∈ε RE.ε∈ε` — so the descendant is
+diagnosable by the first criterion as well; what is *not* available anywhere
+before reading the letter is A1 or A2, and the only criterion the state itself
+carries is the third.)
+
+Two things follow for §16.  First, the missing case of `desc-step` — where
+`pdU-complete` gives the two trees *different* instances — is here exactly a
+branch instance and its `⊕`-fusion with the sibling's instance, and the
+diagnosis that closes it is `crit`'s third disjunct, so a general
+`Desc-complete` needs the duplicate-pattern recognition, not only the nullable
+concatenation counting.  Second, the recognition can *name* its state:
+`pdend-π-dup≡` shows the reached state computes to a literal sum of similar
+alternatives, and `pdesc` puts it in `pd*-Desc` — the shape
+`Desc-⊕-crit` (§15) produces symbolically for a pair of paths, exhibited here
+at a concrete instance.

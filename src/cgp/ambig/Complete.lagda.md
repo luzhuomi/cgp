@@ -53,7 +53,7 @@ This module develops the two ingredients of that argument.
   (given an ambiguity witness, a pd-descendant state where a criterion
   fires) — with unchecked bodies: the general statement, and its reading
   tied to the ambiguity pair of `sd`.  Together with §12's `pair-complete`
-  these three holes are the only unsolved metas in the module
+  and `pdesc` these four holes are the only unsolved metas in the module
   (`--allow-unsolved-metas`).
 * §9 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
@@ -73,9 +73,13 @@ This module develops the two ingredients of that argument.
 * §12 opens the split case (B3b): the diagnosis disjunction of §8 is named
   (`crit`); A2 and the duplicate pattern are stable under hole contexts
   (`A2-Ctx`, `dup-Ctx` via `Ctx∘Ctx`); a pair of empty trees, one in each
-  branch of a sum, fires A1 at the sum itself (`split-+-A1`); and the pair
+  branch of a sum, fires A1 at the sum itself (`split-+-A1`); a criterion
+  found below a branch is carried across the sum (`A1-+<`/`A1-+>`,
+  `crit-+<`/`crit-+>`); descent paths that carry their `pdU` memberships
+  as fields (`Path`) sidestep the stuck-list obstacle of §10–§11, and
+  their end-state membership (`pdesc`) is stated with a hole; the pair
   theorem `pair-complete` — the structural-recursion core of the paper's
-  ambiguity-criteria argument — is stated with a hole.
+  ambiguity-criteria argument — is stated over paths, with a hole.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -115,11 +119,11 @@ import cgp.Recons as Recons
 open Recons using ( Recons ; Recons* )
 
 open import Data.Char using (Char)
-open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; s≤s ; z≤n)
+open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; _+_ ; s≤s ; z≤n)
 import Data.Nat.Properties as NatProperties
-open NatProperties using ( ≤-reflexive )
+open NatProperties using ( ≤-reflexive ; ≤-trans ; m≤m+n ; m≤n+m )
 open import Data.List using (List; _∷_; _∷ʳ_; []; _++_; map; concatMap; [_]; length)
-open import Data.List.Properties using (++-cancelˡ ; ++-identityʳ ; ++-assoc )
+open import Data.List.Properties using (++-cancelˡ ; ++-identityʳ ; ++-assoc ; length-map ; length-++ )
 {-# REWRITE ++-identityʳ #-}
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -1101,14 +1105,133 @@ split-+-A1 l s loc u v u≡[] v≡[] = ( ε∈l+s , two-distinct-members→len�
 (`proj₁ (flat (LeftU u)) ≡ proj₁ (flat u)` definitionally, so the words
 transfer by assumption.)
 
+A criterion found *below* a branch of a sum is heard *at* the sum.  A2 and
+the duplicate pattern travel through the one-hole contexts `_ + s \` loc`
+and `l + _ \` loc` by `A2-Ctx`/`dup-Ctx`; A1 is reconstructed at the sum:
+the decision `RE.ε∈? s` turns the nullable half into an `ε∈` proof whose
+shape makes `mkAllEmptyU` unfold — through its `<+`/`+>` forms to
+`map LeftU (mkAllEmptyU {l} …)` (or the right-hand mirror) alone, and
+through its `+` form to `map LeftU … ++ map RightU …` — and the length
+witness moves along `length-map`/`length-++` (one summand embeds by
+`m≤m+n`/`m≤n+m`).
+
+```agda
+A1-+< : ( l s : RE ) ( loc : ℕ )
+  → AmbigCheck.AmbigA1 l → AmbigCheck.AmbigA1 ( l + s ` loc )
+A1-+< l s loc ( ε∈l , len ) with RE.ε∈? s
+... | yes ε∈s =
+  ( RE.ε∈_+_ ε∈l ε∈s
+  , subst ( λ n → suc (suc zero) ≤ n ) (sym e-++-len)
+      (≤-trans len (m≤m+n (length (mkAllEmptyU {l} ε∈l)) _)) )
+  where
+    f : U l → U ( l + s ` loc )
+    f v = LeftU {l} {s} {loc} v
+    g : U s → U ( l + s ` loc )
+    g v = RightU {l} {s} {loc} v
+    e-++-len : length (map f (mkAllEmptyU {l} ε∈l) ++ map g (mkAllEmptyU {s} ε∈s))
+                 ≡ length (mkAllEmptyU {l} ε∈l) + length (map g (mkAllEmptyU {s} ε∈s))
+    e-++-len = trans (length-++ (map f (mkAllEmptyU {l} ε∈l)) {map g (mkAllEmptyU {s} ε∈s)})
+                     (cong (λ m → m + length (map g (mkAllEmptyU {s} ε∈s)))
+                           (length-map f (mkAllEmptyU {l} ε∈l)))
+... | no ¬ε∈s =
+  ( RE.ε∈_<+_ ε∈l (RE.¬ε∈r→ε∉r ¬ε∈s)
+  , subst ( λ n → suc (suc zero) ≤ n ) (sym (length-map f (mkAllEmptyU {l} ε∈l))) len )
+  where
+    f : U l → U ( l + s ` loc )
+    f v = LeftU {l} {s} {loc} v
+
+A1-+> : ( l s : RE ) ( loc : ℕ )
+  → AmbigCheck.AmbigA1 s → AmbigCheck.AmbigA1 ( l + s ` loc )
+A1-+> l s loc ( ε∈s , len ) with RE.ε∈? l
+... | yes ε∈l =
+  ( RE.ε∈_+_ ε∈l ε∈s
+  , subst ( λ n → suc (suc zero) ≤ n ) (sym e-++-len)
+      (≤-trans len (m≤n+m (length (mkAllEmptyU {s} ε∈s)) _)) )
+  where
+    f : U l → U ( l + s ` loc )
+    f v = LeftU {l} {s} {loc} v
+    g : U s → U ( l + s ` loc )
+    g v = RightU {l} {s} {loc} v
+    e-++-len : length (map f (mkAllEmptyU {l} ε∈l) ++ map g (mkAllEmptyU {s} ε∈s))
+                 ≡ length (map f (mkAllEmptyU {l} ε∈l)) + length (mkAllEmptyU {s} ε∈s)
+    e-++-len = trans (length-++ (map f (mkAllEmptyU {l} ε∈l)) {map g (mkAllEmptyU {s} ε∈s)})
+                     (cong (λ n → length (map f (mkAllEmptyU {l} ε∈l)) + n)
+                           (length-map g (mkAllEmptyU {s} ε∈s)))
+... | no ¬ε∈l =
+  ( RE.ε∈_+>_ (RE.¬ε∈r→ε∉r ¬ε∈l) ε∈s
+  , subst ( λ n → suc (suc zero) ≤ n ) (sym (length-map f (mkAllEmptyU {s} ε∈s))) len )
+  where
+    f : U s → U ( l + s ` loc )
+    f v = RightU {l} {s} {loc} v
+
+-- a criterion found below a branch is a criterion at the sum
+crit-+< : ( l s : RE ) ( loc : ℕ ) → crit l → crit ( l + s ` loc )
+crit-+< l s loc (inj₁ a1)        = inj₁ (A1-+< l s loc a1)
+crit-+< l s loc (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.Ctx+R AmbigCheck.𝟘 s loc) a2))
+crit-+< l s loc (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.Ctx+R AmbigCheck.𝟘 s loc) d))
+
+crit-+> : ( l s : RE ) ( loc : ℕ ) → crit s → crit ( l + s ` loc )
+crit-+> l s loc (inj₁ a1)        = inj₁ (A1-+> l s loc a1)
+crit-+> l s loc (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) a2))
+crit-+> l s loc (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) d))
+```
+
+What the recursion must hand back from below a pair step is not a bare
+`pd*-Desc` membership but a witness of *how the state was reached*: a
+chain of letter instances carrying their `pdU` memberships as fields.
+That is the `Path` structure below — it sidesteps the §10–§11 stuck-list
+obstacle entirely, since every transfer along a path is by construction
+and no membership is ever case-split.  One structural fact shapes how
+paths may enter a sum: `pdU[ l + s \` loc , c ]` is *not*
+`map pdinstance-left … ++ map pdinstance-right …` but
+`pdinstance-oplus` of the two lists, and when both sides derive by `c`
+the lists **fuse** — every member pairs a left and a right instance
+(PartialDerivative 362–368) — so a path below one branch does *not*
+extend through the sum head in general; the singleton equations of
+`pdinstance-oplus` (one side deriving nowhere) are the only clean
+embeddings.  The pair descent therefore runs its two chains *inside* the
+two branches, which is what the statement below asks for.
+
+```agda
+-- a descent path: each step names its letter instance and carries its
+-- pdU membership as a field (never to be case-split)
+data Path : ( r : RE ) → ( w : List Char ) → Set where
+  pnil  : ∀ { r } → Path r []
+  pcons : ∀ { r c ws } ( z : PDInstance r c )
+    → z ∈ PosixPD.pdU[ r , c ]
+    → Path (Canonic.pd-expr z) ws
+    → Path r (c ∷ ws)
+
+-- the state a path ends in
+pdend : ∀ { r w } → Path r w → RE
+pdend {r} pnil          = r
+pdend (pcons z m q) = pdend q
+
+-- membership in a map, from membership in the source (constructing the
+-- result, so the neutral `map f xs` never has to be case-split)
+map-Any-∈ : ∀ { A B : Set } ( f : A → B ) { xs : List A } { x : A }
+  → x ∈ xs → f x ∈ map f xs
+map-Any-∈ f (here p) = here (cong f p)
+map-Any-∈ f (there m) = there (map-Any-∈ f m)
+
+-- the run-lift bridge in path form (the B3a reverse direction): a path
+-- from r is a run of r for its word, so its end state appears in
+-- pd*-Desc r w.  Composing the steps into one `PDInstance* r w` goes
+-- through `pdni∘` (§11); showing it a member of `pdUMany[ r , w ]` is a
+-- construction over the path's fields, not a case split.  Stated with
+-- a hole:
+pdesc : ∀ { r w } ( π : Path r w )
+  → Any ( λ x → x ≡ pdend π ) (Canonic.pd*-Desc r w)
+pdesc π = _
+```
+
 The pair theorem proper recurses on the *two trees* (each step shrinks one
 of them, and the shared word shrinks at `LetterU` pairs): its base is the
 `split-+-A1` situation above; the `LeftU`/`LeftU`-style steps re-enter the
 recursion in one branch and lift the outcome through the sum with
-`A2-Ctx`/`dup-Ctx` or an A1-at-the-sum reconstruction; and the steps that
-move a found criterion *below* a branch along a nonempty word prefix are
-exactly the neutral-list transfer that §11's remark places inside the
-structural `pdU` recursion.  Stated as the goal of B3b:
+`crit-+<`/`crit-+>`; and the findings below a branch are handed back as
+paths, whose membership content `pdesc` supplies.  Stated as the goal of
+B3b:
 
 ```agda
 pair-complete : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
@@ -1116,8 +1239,8 @@ pair-complete : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
   → proj₁ (flat {l} u) ≡ w → proj₁ (flat {s} v) ≡ w
   → crit ( l + s ` loc )
   ⊎ ( ∃[ w′ ] ∃[ w″ ] ( ( w ≡ w′ ++ w″ )
-        × ( ∃[ p ] ( Any ( λ x → x ≡ p ) (Canonic.pd*-Desc l w′) × crit p )
-          ⊎ ∃[ p ] ( Any ( λ x → x ≡ p ) (Canonic.pd*-Desc s w′) × crit p ) ) ) )
+        × ( ( Σ[ π ∈ Path l w′ ] crit (pdend π) )
+          ⊎ ( Σ[ π ∈ Path s w′ ] crit (pdend π) ) ) ) )
 pair-complete {l} {s} loc w u v u≡ v≡ = _
 ```
 
@@ -1125,8 +1248,12 @@ From `pair-complete`, the split case of the §8 descent composes as follows:
 the two trees reach the sum state `l + s \` loc` through the common prefix
 `w′` (a chain instance, §10–§11); the pair theorem either fires `crit` at
 the sum — then `chain-in-pd*-Desc` (§10) puts the sum in
-`pd*-Desc r (w′)` — or finds `crit p` below one branch along `w″`; a
-`w″ = []` finding lifts to the sum through the branch-restricted A1/A2/dup
-reconstructions, and a `w″ = c ∷ ws` finding extends the chain by the
-branch's letter instance (`pdinstance-letter`, `pdinstance-left/right`) —
-the pd-descendant transfer the B3a reverse direction will supply.
+`pd*-Desc r (w′)` — or hands back a path below one branch ending in a
+`crit` state; `pdesc` turns the path into a `pd*-Desc l w′` membership,
+and the prefix decomposition `w ≡ w′ ++ w″` transports it to a
+pd-descendant of `r` for the whole word (§10's composition lemma read in
+reverse).  Filling the pair hole is the paper's three-situations argument
+run structurally on the tree pair: the word boundary at a `LetterU` pair
+is where `split-+-A1` fires, the branch steps lift with `crit-+<`/
+`crit-+>`, and the `PairU`/`ListU` word-splitting steps are where A2 and
+the duplicate pattern surface.

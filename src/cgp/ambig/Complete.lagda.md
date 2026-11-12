@@ -117,9 +117,19 @@ This module develops the two ingredients of that argument.
   `pd-expr-star`/`crit-*<` do the same for the star continuation, which ends at
   `p ● r ⋆ \` loc` — a nullable-right concatenation, so `crit-●<` applies.  The
   lift that is *not* covered is the one-sided one, where a symbolic `pdU` list
-  must be seen to be empty: §4's obstacle, and the reason the general statement
-  has to be run as an induction with explicit `RE.ε∈?` decisions rather than as
-  a path lift.
+  must be seen to be empty: §4's obstacle, probed and recorded, so the general
+  descent cannot be assembled by lifting paths upward.
+* §16 states what is left as one named hypothesis.  `Desc-complete` is the
+  single-expression form of the descent (two trees of one `r`, pick-only,
+  never asking whether a list is empty), `desc-concl` its conclusion; its base
+  is §9's `base-A1-at-root` (`desc-base`), its one-instance step is proved
+  (`desc-step`, extending the path by `pcons`) together with the fact that a
+  *shared* instance carries a distinct pair to a distinct pair of residuals
+  (`Recons-residual-2`).  `completeness-from-desc` then derives §8's statement
+  from `Desc-complete` through `pdesc`, so the whole completeness direction is
+  reduced to one case split — the case where `pdU-complete` yields *different*
+  instances for the two trees, which is the paper's "three situations" and the
+  classification §12's counting toolkit only half of.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -664,7 +674,11 @@ prefix `w′` — the paper's `AllParseFST` argument over parse trees of the
 word.  It is not formalized here (like the realizable-states / FST side of
 the paper), and this is the actual research gap of the program, beyond §4.1.
 One shape of it is discharged in §14 (`split-completeness`): the pair that
-splits at a sum, which is `pair-complete` (§13) read through `pdesc`.
+splits at a sum, which is `pair-complete` (§13) read through `pdesc`.  The
+general body is exactly what §16's `completeness-from-desc` computes once the
+single named hypothesis `Desc-complete` (§16) is supplied: its two cases are
+`pdesc pnil` at the state itself and `pdesc` of the path the descent returns,
+so nothing else stands between that hypothesis and this statement.
 
 **The reading tied to a given pair, for this `r`** (what §5–§6 built the
 machinery for): every ambiguity pair of `sd` for the word `aa` is the image,
@@ -1820,4 +1834,111 @@ with one clause per pair of expression shapes so that the branch is taken in the
 definition rather than in the proof, or the descent is run the way §13 runs the
 pair: never asking whether a list is empty, only taking a member of it out of
 `pdU-complete` for the tree in hand — which is why the pair theorem could be
-proved at all, and where the remaining research step is.
+proved at all.  That second way is the one taken in §16.
+
+## 16. The remaining step, stated exactly
+
+`pair-complete` (§13) treats a pair of trees living in **two** expressions —
+that is what a sum's branches are, and it is why the split case closed.  The
+general `completeness` is the case where both trees live in **one** expression
+`r`, so the descent has to stay inside `r`'s own states.  Stating that case as
+its own goal is what is left of the paper's proposition — and the §8 statement
+is reducible to it.
+
+```agda
+-- what the descent produces at a state for a word
+desc-concl : ( r : RE ) → ( w : List Char ) → Set
+desc-concl r w = crit r
+             ⊎ ( ∃[ w′ ] ∃[ w″ ] ( ( w ≡ w′ ++ w″ )
+                   × ( Σ[ π ∈ Path r w′ ] crit (pdend π) ) ) )
+
+-- THE GOAL, as a type: two distinct trees of one expression and one word —
+-- a prefix of that word reaches a state at which a criterion fires.
+Desc-complete : Set
+Desc-complete = ∀ ( r : RE ) ( w : List Char ) ( u v : U r )
+  → proj₁ (flat {r} u) ≡ w → proj₁ (flat {r} v) ≡ w → ¬ ( u ≡ v )
+  → desc-concl r w
+```
+
+`Desc-complete` is a recursion on the word, and both halves of that recursion
+are proved here; what is missing is one case inside the step, not the shape of
+the proof.
+
+```agda
+-- the base: two distinct empty trees of `r` *are* A1 at `r` (§9)
+desc-base : ∀ { r : RE } ( u v : U r )
+  → proj₁ (flat {r} u) ≡ [] → proj₁ (flat {r} v) ≡ [] → ¬ ( u ≡ v )
+  → desc-concl r []
+desc-base u v u≡[] v≡[] u≢v = inj₁ (inj₁ (base-A1-at-root _ u v u≡[] v≡[] u≢v))
+
+-- the step: one letter through *one* instance carries a conclusion of the
+-- continuation back to the state — the path is extended by `pcons`, the word
+-- split by one letter.  Note that it constructs no instance of the
+-- continuation and examines no list.
+desc-step : ∀ { r : RE } { c : Char } { ws : List Char }
+  ( z : PDInstance r c ) → z ∈ PosixPD.pdU[ r , c ]
+  → desc-concl (Canonic.pd-expr z) ws → desc-concl r (c ∷ ws)
+desc-step {r} {c} {ws} z z∈ (inj₁ cr) =
+  inj₂ ( [ c ] , ws , refl , ( pcons z z∈ pnil , cr ) )
+desc-step {r} {c} {ws} z z∈ (inj₂ ( w′ , w″ , w≡w′++w″ , path , cr )) =
+  inj₂ ( ( c ∷ w′ ) , w″ , cong (c ∷_) w≡w′++w″
+        , ( pcons z z∈ path , cr ) )
+
+-- and a shared instance really does carry the pair down: reconstructed through
+-- one and the same instance, the residuals have the same word and *remain*
+-- distinct, since the instance's transition map sends them to distinct trees
+Recons-residual-2 : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u v : U r }
+  → Recons {r} {c} u z → Recons {r} {c} v z
+  → proj₁ (flat {r} u) ≡ c ∷ ws → proj₁ (flat {r} v) ≡ c ∷ ws → ¬ ( u ≡ v )
+  → Σ[ x ∈ U (Canonic.pd-expr z) ] Σ[ y ∈ U (Canonic.pd-expr z) ]
+      ( proj₁ (flat {Canonic.pd-expr z} x) ≡ ws
+      × proj₁ (flat {Canonic.pd-expr z} y) ≡ ws
+      × ¬ ( x ≡ y ) )
+Recons-residual-2 {z = pdinstance {p} inj ev} (recons _ ( w∈u , eq-u )) (recons _ ( w∈v , eq-v )) u≡ v≡ u≢v =
+  ( unflat w∈u , unflat w∈v
+  , proj₂ (∷-inj (trans (sym (ev (unflat w∈u))) (trans (cong ( λ t → proj₁ (flat t) ) eq-u) u≡)))
+  , proj₂ (∷-inj (trans (sym (ev (unflat w∈v))) (trans (cong ( λ t → proj₁ (flat t) ) eq-v) v≡)))
+  , λ x≡y → u≢v (trans (sym eq-u) (trans (cong inj x≡y) eq-v)) )
+```
+
+The gap is inside the step and it is a single case.  `pdU-complete` gives *an*
+instance for `u` and *an* instance for `v`: when those coincide,
+`Recons-residual-2` supplies the residuals and `desc-step` closes the step.
+When they do not, the residuals live at different states and need not be
+distinct at all, so the step cannot continue by recursion; what closes that
+case is a diagnosis *at the state* — the paper's enumeration of the only
+situations in which the transition-tree construction branches.  In counting
+form: `pdU[ r , c ]` having two members that reconstruct one tree each happens
+only where `pdU` duplicates instances, i.e. below a nullable concatenation,
+through `concatmap-pdinstance-snd`, which enumerates one instance per empty
+tree of the left factor — so the two instances differ exactly when that factor
+has two distinct empty trees, which is A1 at the factor, or A2 at the
+concatenation whose left factor it is, or the `Idemp` duplicate if the two
+alternatives they sit under are `≈₀`-similar.  The counting half of that
+argument is §12's toolkit (`mkAllEmptyU-nonempty`, `length-concatMap≥`); the
+classification itself — *duplicate members of a `pdU` list come only from
+`concatmap-pdinstance-snd`* — is not proved here, and it is the content of the
+completeness direction.
+
+What is proved is the reduction: the §8 goal is a corollary of `Desc-complete`,
+because a path is a `pd*-Desc` membership (`pdesc`) and the state itself is the
+pd-descendant of the empty prefix.
+
+```agda
+completeness-from-desc : ( dc : Desc-complete )
+  → ( r : RE ) ( u v : U r )
+  → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
+  → ∃[ w′ ] ∃[ w″ ]
+      ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
+      × ∃[ p ]
+          ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
+          × ( AmbigCheck.AmbigA1 p
+            ⊎ AmbigCheck.AmbigA2 p
+            ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+                  ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
+                  × ( Canonic._≈₀_ l s ) ) ) ) )
+completeness-from-desc dc r u v w≡ u≢v with dc r (proj₁ (flat {r} u)) u v refl (sym w≡) u≢v
+... | inj₁ cr = ( [] , proj₁ (flat {r} u) , refl , ( r , pdesc pnil , cr ) )
+... | inj₂ ( w′ , w″ , w≡w′++w″ , ( path , cr ) )
+    = ( w′ , w″ , w≡w′++w″ , ( pdend path , pdesc path , cr ) )
+```

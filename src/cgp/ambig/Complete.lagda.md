@@ -60,7 +60,7 @@ This module develops the two ingredients of that argument.
 module cgp.ambig.Complete where
 
 import cgp.RE as RE
-open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉)
+open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉ ; ε∈)
 
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U ; EmptyU ; LetterU ; LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU
@@ -76,7 +76,7 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance*
                ; pdinstance-left ; pdinstance-right ; pdinstance-fst ; pdinstance-star ; mk-snd-pdi )
 
 import cgp.empty.AllEmptyParseTree as AllEmpty
-open AllEmpty using ( flat-[] )
+open AllEmpty using ( flat-[] ; mkAllEmptyU ; mkAllEmptyU-complete )
 
 import cgp.posix.PartialDerivative as PosixPD
 open PosixPD using ( mkfuseInj ; fuse ; pdinstance-oplus ; injId ; injId-sound )
@@ -93,14 +93,16 @@ import cgp.Recons as Recons
 open Recons using ( Recons ; Recons* )
 
 open import Data.Char using (Char)
-open import Data.Nat using (ℕ; _≟_)
-open import Data.List using (List; _∷_; []; _++_; map; [_])
+open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; s≤s ; z≤n)
+import Data.Nat.Properties as NatProperties
+open NatProperties using ( ≤-reflexive )
+open import Data.List using (List; _∷_; []; _++_; map; [_]; length)
 open import Data.List.Properties using (++-cancelˡ)
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.Empty using (⊥ ; ⊥-elim)
 open import Data.Sum using (_⊎_ ; inj₁ ; inj₂)
 open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
-open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂)
+open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂ ; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 open import Relation.Nullary using (¬_; yes; no)
 ```
@@ -619,3 +621,51 @@ Deriving `flat u′ ≡ []` and `flat v′ ≡ []` from the soundness evidence m
 them the empty trees A1 counts.  So unlike the general statement, this one is
 a proof exercise, not a research gap — left as a hole until the statement is
 agreed.
+
+## 9. Toward the general proof: the base case of the descent
+
+The general `completeness` above is proved by following the two trees through
+their common word letter by letter (the paper's `AllParseFST` argument).  Its
+base case — the word is consumed, what remains are two distinct *empty* parse
+trees of the state reached — forces A1 *at that state*, for every expression.
+Formalized here, for arbitrary `r`:
+
+```agda
+-- a list with two distinct members has length ≥ 2
+two-distinct-members→len≥2 : ∀ {A : Set} {x y : A} ( xs : List A )
+  → Any ( λ z → x ≡ z ) xs → Any ( λ z → y ≡ z ) xs → ¬ ( x ≡ y )
+  → suc (suc zero) ≤ length xs
+two-distinct-members→len≥2 (x ∷ x₁ ∷ xs) _ _ _ = s≤s (s≤s z≤n)
+two-distinct-members→len≥2 (x ∷ []) (here refl) (here refl) x≢y = ⊥-elim (x≢y refl)
+two-distinct-members→len≥2 (x ∷ []) (here p) (there ()) _
+two-distinct-members→len≥2 (x ∷ []) (there ()) _ _
+two-distinct-members→len≥2 [] () _ _
+
+-- two distinct parse trees of r for the empty word ⇒ A1 fires at r
+base-A1-at-root : ( r : RE ) ( u v : U r )
+  → proj₁ (flat {r} u) ≡ [] → proj₁ (flat {r} v) ≡ [] → ¬ ( u ≡ v )
+  → AmbigCheck.AmbigA1 r
+base-A1-at-root r u v u≡[] v≡[] u≢v = ( ε∈r , two-distinct-members→len≥2 list u∈ v∈ u≢v )
+  where
+    ε∈r : ε∈ r
+    ε∈r = Word.[]∈⟦r⟧→ε∈r (subst ( λ w → w ∈⟦ r ⟧) u≡[] (proj₂ (flat {r} u)))
+    list = mkAllEmptyU {r} ε∈r
+    u∈ : Any ( λ z → u ≡ z ) list
+    u∈ = mkAllEmptyU-complete ε∈r u (flat-[] u u≡[])
+    v∈ : Any ( λ z → v ≡ z ) list
+    v∈ = mkAllEmptyU-complete ε∈r v (flat-[] v v≡[])
+```
+
+(`u ∈ mkAllEmptyU` is `Any (u ≡_)` by definition of `List._∈_` — the
+membership `mkAllEmptyU-complete` produces is used directly.)
+
+The step case of the descent — given a pair at word `c ++ cs`, move both
+trees across the letter `c` and recurse on `cs` — is where the Antimirov
+nondeterminism bites: the two trees may cross `c` through *different*
+instances of `pdU[ r , c ]`, into *different* continuation states, so the
+recursion has to run on a pair of states as in the paper's `AllParseFST`;
+the criteria then have to be found from a pair-derivation whose two sides
+eventually merge or split (the merge = A1 by the base case just proved; a
+split at a sum or a duplicated subterm = A2 / the `Idemp` pattern).  That
+machinery is what remains to build; the base case above is already exactly
+its stopping rule.

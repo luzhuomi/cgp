@@ -165,18 +165,28 @@ This module develops the two ingredients of that argument.
   classification belongs.  `crit-●-2ε` adds the paper's second situation as a
   rule: two distinct empty trees of a nullable left factor are A2 at the
   concatenation.
+* §20 makes the pick test computable.  `RE` equality is decidable (`RE-≟`, via
+  `ε∉-≟` for the Kleene argument), the residual tree of a reconstruction and its
+  word are named terms (`residual`, `residual-word`), and `desc-picks-dec`
+  decides at every state whether its pair continues at one state with distinct
+  residuals — then it recurses — or falls into one of two named configurations:
+  different continuations (`pick-diff-state`) or one continuation rebuilt twice
+  through two records (`pick-diff-record`).  `Desc-complete-dec` and
+  `completeness-dec` give §8's statement from those two rules alone; the test
+  evaluates on the §17–§18 example (`dup-cont-differ`), whose pair is descended
+  end to end by the recursion with neither rule used (`dup-desc-dec`).
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
 module cgp.ambig.Complete where
 
 import cgp.RE as RE
-open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉ ; ε∈)
+open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉ ; ε∈ ; ε∉$ ; ε∉fst ; ε∉snd ; ε∉_+_)
 
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U ; EmptyU ; LetterU ; LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU
                      ; flat-Uε≡[] ; inv-leftU ; inv-rightU ; inv-pairU
-                     ; LeftU≢RightU ; RightU≢LeftU )
+                     ; _⊢_≟_ ; LeftU≢RightU ; RightU≢LeftU )
 
 import cgp.Word as Word
 open Word using (_∈⟦_⟧ ; _+L_ ; $_)
@@ -207,6 +217,7 @@ import cgp.Recons as Recons
 open Recons using ( Recons ; recons ; Recons* ; recons* )
 
 open import Data.Char using (Char)
+import Data.Char as Char
 open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; _+_ ; s≤s ; z≤n)
 import Data.Nat.Properties as NatProperties
 open NatProperties using ( ≤-refl ; ≤-reflexive ; ≤-trans ; m≤m+n ; m≤n+m ; n≤1+n )
@@ -2334,4 +2345,291 @@ read *symmetrically* from the pair of trees rather than from the list
 (§15's obstacle was exactly reading it from the list), and by §17 the shapes
 must be recognized on canonical patterns.  That reduction, plus a decision of
 pick-identity (classical or quotient, above), is the whole of what stands
-between this file and `completeness`.
+between this file and `completeness`; §20 replaces the second of those by a
+computable test on states and residuals.
+
+## 20. The pick test, made computable
+
+§19's second parameter decides identity of *instances*, which is not a computable
+property here (`inj : U p → U r` is a function field), and it is stronger than
+the recursion needs.  What the step really decides is whether the two picks
+continue at *one state* and, if they do, whether they continue into *one tree*.
+Both questions are decidable: `RE` equality by a structural test (`RE-≟` below),
+trees of a fixed expression by `ParseTree._⊢_≟_` (already proved in `cgp.ParseTree`
+§Parsing trees).  Replacing `dec` by those tests makes the recursion run without
+excluded middle, and it *widens* the recursing case: the pair continues whenever
+its residuals are distinct trees of one state — which covers two different
+records with equal continuations, not only one record picked twice.  What stops
+the recursion are two configurations, and they are exactly the two in which a
+pair provably forks at the state: the continuations differ (`pick-diff-state`),
+or one continuation is reached twice through two records that rebuild the *same*
+residual tree (`pick-diff-record`).
+
+```agda
+-- the two readings of a concatenation's non-emptiness are different proofs
+ε∉-fst≢snd : ∀ { l r : RE } { loc : ℕ } ( p : ε∉ l ) ( q : ε∉ r )
+  → ¬ ( ε∉fst {l} {r} {loc} p ≡ ε∉snd {l} {r} {loc} q )
+ε∉-fst≢snd p q ()
+
+-- equalities under a constructor of non-emptiness evidence
+ε∉-fst-inj : ∀ { l r : RE } { loc : ℕ } ( p q : ε∉ l )
+  → ε∉fst {l} {r} {loc} p ≡ ε∉fst {l} {r} {loc} q → p ≡ q
+ε∉-fst-inj p .p refl = refl
+
+ε∉-snd-inj : ∀ { l r : RE } { loc : ℕ } ( p q : ε∉ r )
+  → ε∉snd {l} {r} {loc} p ≡ ε∉snd {l} {r} {loc} q → p ≡ q
+ε∉-snd-inj p .p refl = refl
+
+ε∉-+ˡ-inj : ∀ { l r : RE } { loc : ℕ } ( p q : ε∉ l ) ( p′ q′ : ε∉ r )
+  → ε∉_+_ {l} {r} {loc} p p′ ≡ ε∉_+_ {l} {r} {loc} q q′ → p ≡ q
+ε∉-+ˡ-inj p .p p′ .p′ refl = refl
+
+ε∉-+ʳ-inj : ∀ { l r : RE } { loc : ℕ } ( p q : ε∉ l ) ( p′ q′ : ε∉ r )
+  → ε∉_+_ {l} {r} {loc} p p′ ≡ ε∉_+_ {l} {r} {loc} q q′ → p′ ≡ q′
+ε∉-+ʳ-inj p .p p′ .p′ refl = refl
+
+-- non-emptiness evidence at a fixed expression has decidable equality
+ε∉-≟ : ∀ { r : RE } ( p q : ε∉ r ) → Dec ( p ≡ q )
+ε∉-≟ ε∉$ ε∉$ = yes refl
+ε∉-≟ (ε∉fst p) (ε∉fst q) with ε∉-≟ p q
+... | yes eq = yes (cong ε∉fst eq)
+... | no ¬eq = no ( λ e → ¬eq (ε∉-fst-inj p q e))
+ε∉-≟ (ε∉fst p) (ε∉snd q) = no (ε∉-fst≢snd p q)
+ε∉-≟ (ε∉snd p) (ε∉fst q) = no ( λ e → ε∉-fst≢snd q p (sym e))
+ε∉-≟ (ε∉snd p) (ε∉snd q) with ε∉-≟ p q
+... | yes eq = yes (cong ε∉snd eq)
+... | no ¬eq = no ( λ e → ¬eq (ε∉-snd-inj p q e))
+ε∉-≟ (ε∉_+_ p₁ p₂) (ε∉_+_ q₁ q₂) with ε∉-≟ p₁ q₁ | ε∉-≟ p₂ q₂
+... | yes e₁ | yes e₂ = yes (cong₂ ε∉_+_ e₁ e₂)
+... | no ¬e₁ | _ = no ( λ e → ¬e₁ (ε∉-+ˡ-inj p₁ q₁ p₂ q₂ e))
+... | _ | no ¬e₂ = no ( λ e → ¬e₂ (ε∉-+ʳ-inj p₁ q₁ p₂ q₂ e))
+
+-- an equality of first components plus an equality of the transported second
+-- components is an equality of dependent pairs
+,≡→≡ : ∀ { A : Set } { B : A → Set } { x y : Σ[ a ∈ A ] B a } ( p : proj₁ x ≡ proj₁ y )
+  → subst B p (proj₂ x) ≡ proj₂ y → x ≡ y
+,≡→≡ {x = a , b} refl eq = cong ( λ z → a , z ) eq
+
+-- the parts of a compound expression: a failed comparison of the parts pulls
+-- back along these congruences
+re-left : RE → RE
+re-left ( l ● r ` loc) = l
+re-left ( l + r ` loc) = l
+re-left ( r * ε∉r ` loc) = r
+re-left _ = ε
+
+re-right : RE → RE
+re-right ( l ● r ` loc) = r
+re-right ( l + r ` loc) = r
+re-right _ = ε
+
+re-loc : RE → ℕ
+re-loc ( $ _ ` loc) = loc
+re-loc ( _ ● _ ` loc) = loc
+re-loc ( _ + _ ` loc) = loc
+re-loc ( _ * _ ` loc) = loc
+re-loc _ = zero
+
+re-char : RE → Char
+re-char ( $ c ` loc) = c
+re-char _ = 'a'
+
+-- two Kleene expressions with equal bases are equal exactly when their
+-- non-emptiness proofs are; with unequal bases the pullback is a projection
+star-irr : ∀ { r : RE } { loc₁ loc₂ : ℕ } ( p q : ε∉ r )
+  → r * p ` loc₁ ≡ r * q ` loc₂ → p ≡ q
+star-irr p .p refl = refl
+
+star-irr-subst : ∀ { r₁ r₂ : RE } ( r₁≡r₂ : r₁ ≡ r₂ ) ( ε∉₁ : ε∉ r₁ ) ( ε∉₂ : ε∉ r₂ )
+  { loc : ℕ } → r₁ * ε∉₁ ` loc ≡ r₂ * ε∉₂ ` loc
+  → subst ( λ q → ε∉ q) r₁≡r₂ ε∉₁ ≡ ε∉₂
+star-irr-subst refl ε∉₁ .ε∉₁ refl = refl
+
+-- RE equality is decidable: characters, locations and non-emptiness proofs are
+RE-≟ : ( r s : RE ) → Dec ( r ≡ s )
+RE-≟ ε ε = yes refl
+RE-≟ ε ($ c ` loc) = no λ ()
+RE-≟ ε (l ● r ` loc) = no λ ()
+RE-≟ ε (l + r ` loc) = no λ ()
+RE-≟ ε (r * ε∉r ` loc) = no λ ()
+RE-≟ ($ c₁ ` loc₁) ε = no λ ()
+RE-≟ ($ c₁ ` loc₁) ($ c₂ ` loc₂) with Char._≟_ c₁ c₂ | loc₁ ≟ loc₂
+...   | yes refl | yes refl = yes refl
+...   | no ¬c | _ = no ( λ e → ¬c (cong re-char e))
+...   | _ | no ¬loc = no ( λ e → ¬loc (cong re-loc e))
+RE-≟ ($ c₁ ` loc₁) (l ● r ` loc₂) = no λ ()
+RE-≟ ($ c₁ ` loc₁) (l + r ` loc₂) = no λ ()
+RE-≟ ($ c₁ ` loc₁) (r * ε∉r ` loc₂) = no λ ()
+RE-≟ (l₁ ● r₁ ` loc₁) ε = no λ ()
+RE-≟ (l₁ ● r₁ ` loc₁) ($ c ` loc₂) = no λ ()
+RE-≟ (l₁ ● r₁ ` loc₁) (l₂ ● r₂ ` loc₂) with RE-≟ l₁ l₂ | RE-≟ r₁ r₂ | loc₁ ≟ loc₂
+...   | yes refl | yes refl | yes refl = yes refl
+...   | no ¬l | _ | _ = no ( λ e → ¬l (cong re-left e))
+...   | _ | no ¬r | _ = no ( λ e → ¬r (cong re-right e))
+...   | _ | _ | no ¬loc = no ( λ e → ¬loc (cong re-loc e))
+RE-≟ (l₁ ● r₁ ` loc₁) (l₂ + r₂ ` loc₂) = no λ ()
+RE-≟ (l₁ ● r₁ ` loc₁) (r₂ * ε∉₂ ` loc₂) = no λ ()
+RE-≟ (l₁ + r₁ ` loc₁) ε = no λ ()
+RE-≟ (l₁ + r₁ ` loc₁) ($ c ` loc₂) = no λ ()
+RE-≟ (l₁ + r₁ ` loc₁) (l₂ ● r₂ ` loc₂) = no λ ()
+RE-≟ (l₁ + r₁ ` loc₁) (l₂ + r₂ ` loc₂) with RE-≟ l₁ l₂ | RE-≟ r₁ r₂ | loc₁ ≟ loc₂
+...   | yes refl | yes refl | yes refl = yes refl
+...   | no ¬l | _ | _ = no ( λ e → ¬l (cong re-left e))
+...   | _ | no ¬r | _ = no ( λ e → ¬r (cong re-right e))
+...   | _ | _ | no ¬loc = no ( λ e → ¬loc (cong re-loc e))
+RE-≟ (l₁ + r₁ ` loc₁) (r₂ * ε∉₂ ` loc₂) = no λ ()
+RE-≟ (r₁ * ε∉₁ ` loc₁) ε = no λ ()
+RE-≟ (r₁ * ε∉₁ ` loc₁) ($ c ` loc₂) = no λ ()
+RE-≟ (r₁ * ε∉₁ ` loc₁) (l ● r ` loc₂) = no λ ()
+RE-≟ (r₁ * ε∉₁ ` loc₁) (l + r ` loc₂) = no λ ()
+RE-≟ (r₁ * ε∉₁ ` loc₁) (r₂ * ε∉₂ ` loc₂) with RE-≟ r₁ r₂ | loc₁ ≟ loc₂
+...   | no ¬r | _ = no ( λ e → ¬r (cong re-left e))
+...   | _ | no ¬loc = no ( λ e → ¬loc (cong re-loc e))
+...   | yes r₁≡r₂ | yes refl with ε∉-≟ (subst ( λ q → ε∉ q) r₁≡r₂ ε∉₁) ε∉₂
+...     | yes eq =
+        yes (cong ( λ ( x , ε∉x) → x * ε∉x ` loc₂) (,≡→≡ r₁≡r₂ eq))
+...     | no ¬eq = no ( λ e → ¬eq (star-irr-subst r₁≡r₂ ε∉₁ ε∉₂ e))
+
+-- different continuations, therefore different records
+pd-expr-diff→records-diff : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c )
+  → ¬ ( Canonic.pd-expr z ≡ Canonic.pd-expr z′ ) → ¬ ( z ≡ z′ )
+pd-expr-diff→records-diff z z′ ¬pd eq = ¬pd (cong Canonic.pd-expr eq)
+```
+
+The step of the descent then reads the continuation test first.  In the
+same-continuation branch both reconstructions are moved to one state — trees
+travel along an `RE` equality by `U-transport` (§11) and their words are
+preserved by `flat-transport` (§11) — and compared as trees.  Distinct residuals
+are simply the next state of the recursion; `desc-step` lifts what it finds.
+
+```agda
+-- the residual tree of a reconstruction and its word, as named terms
+-- (§13's `Recons-residual`, split in two so the case split can use them)
+residual : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u : U r }
+  → Recons {r} {c} u z → proj₁ (flat {r} u) ≡ c ∷ ws → U (Canonic.pd-expr z)
+residual u∈ u≡ = proj₁ (Recons-residual u∈ u≡)
+
+residual-word : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u : U r }
+  ( u∈ : Recons {r} {c} u z ) ( u≡ : proj₁ (flat {r} u) ≡ c ∷ ws )
+  → proj₁ (flat {Canonic.pd-expr z} (residual u∈ u≡)) ≡ ws
+residual-word u∈ u≡ = proj₂ (Recons-residual u∈ u≡)
+
+-- the two stopping configurations
+pick-diff-state : Set
+pick-diff-state = ∀ { r : RE } { c : Char } { ws : List Char }
+  ( z z′ : PDInstance r c )
+  → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
+  → ( u v : U r ) → Recons {r} {c} u z → Recons {r} {c} v z′
+  → proj₁ (flat {r} u) ≡ c ∷ ws → proj₁ (flat {r} v) ≡ c ∷ ws
+  → ¬ ( Canonic.pd-expr z ≡ Canonic.pd-expr z′ )
+  → crit r
+
+pick-diff-record : Set
+pick-diff-record = ∀ { r : RE } { c : Char } { ws : List Char }
+  ( z z′ : PDInstance r c )
+  → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
+  → ( u v : U r ) → Recons {r} {c} u z → Recons {r} {c} v z′
+  → ( eq : Canonic.pd-expr z ≡ Canonic.pd-expr z′ )
+  → ( x : U (Canonic.pd-expr z) ) ( y : U (Canonic.pd-expr z′) )
+  → proj₁ (flat {Canonic.pd-expr z} x) ≡ ws
+  → proj₁ (flat {Canonic.pd-expr z′} y) ≡ ws
+  → x ≡ U-transport (sym eq) y
+  → proj₁ (flat {r} u) ≡ c ∷ ws → proj₁ (flat {r} v) ≡ c ∷ ws
+  → crit r
+
+-- §19's rule implies the first configuration: distinct continuations are
+-- distinct records
+pick-diff-state-from-cross : Cross-instance→crit → pick-diff-state
+pick-diff-state-from-cross cross z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ ¬pd =
+  cross z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ (pd-expr-diff→records-diff z z′ ¬pd)
+
+-- the whole recursion, with the decision computed instead of postulated
+desc-picks-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+  → ( r : RE ) → ( w : List Char )
+  → ( u v : U r )
+  → proj₁ (flat {r} u) ≡ w → proj₁ (flat {r} v) ≡ w → ¬ ( u ≡ v )
+  → desc-concl r w
+desc-picks-dec cstate cdsr r [] u v u≡[] v≡[] u≢v = desc-base u v u≡[] v≡[] u≢v
+desc-picks-dec cstate cdsr r (c ∷ ws) u v u≡ v≡ u≢v
+  with pick-Any (PosixPD.pdU-complete {r} {c} u u≡)
+... | ( z , u∈ , z∈ ) with pick-Any (PosixPD.pdU-complete {r} {c} v v≡)
+...   | ( z′ , v∈ , z′∈ ) with RE-≟ (Canonic.pd-expr z) (Canonic.pd-expr z′)
+...     | no ¬pd = inj₁ (cstate z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ ¬pd)
+...     | yes eq with _⊢_≟_ (Canonic.pd-expr z) (residual u∈ u≡)
+                            (U-transport (sym eq) (residual v∈ v≡))
+...       | no ¬res =
+          desc-step z z∈ (desc-picks-dec cstate cdsr (Canonic.pd-expr z) ws
+                    (residual u∈ u≡)
+                    (U-transport (sym eq) (residual v∈ v≡))
+                    (residual-word u∈ u≡)
+                    (trans (flat-transport (sym eq) (residual v∈ v≡))
+                           (residual-word v∈ v≡))
+                    ¬res)
+...       | yes res = inj₁ (cdsr z z′ z∈ z′∈ u v u∈ v∈ eq
+                       (residual u∈ u≡) (residual v∈ v≡)
+                       (residual-word u∈ u≡) (residual-word v∈ v≡)
+                       res u≡ v≡)
+
+Desc-complete-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+  → Desc-complete
+Desc-complete-dec cstate cdsr = desc-picks-dec cstate cdsr
+
+-- the test is not vacuous: it evaluates on the §17–§18 instances.  The branch
+-- injection `dup-u-pdi` and the fused member `dup-pdi` — the two derivations of
+-- the *same* tree `dup-u` — continue at different expressions, and the test sees
+-- that by computation.  (The ambiguity *pair* of §17–§18 is not in that
+-- configuration: `pdU[ dup-r-lit , ca ]` is the singleton `dup-pdi ∷ []`
+-- (`pdU-⊕-lit≡`), so the recursion takes its recursing branch there — which is
+-- §18's `dup-desc`.  What the example exhibits instead is a double derivation
+-- through two *records*, one level of the recursion away from the state that
+-- carries the criterion: the shape `pick-diff-record` names.)
+dup-cont-differ : ¬ ( Canonic.pd-expr dup-pdi ≡ Canonic.pd-expr dup-u-pdi )
+dup-cont-differ with RE-≟ (Canonic.pd-expr dup-pdi) (Canonic.pd-expr dup-u-pdi)
+... | no ¬eq = ¬eq
+
+-- the second tree of the §17 example, and the fact that the pair is distinct
+dup-u₂ : U dup-r-lit
+dup-u₂ = RightU (LeftU (LetterU {loc = 1} ca))
+
+dup-u≢u₂ : ¬ ( dup-u ≡ dup-u₂ )
+dup-u≢u₂ ()
+
+-- the example pair, descended by the computable recursion alone: the member list
+-- is a singleton, so the two picks coincide, the residuals at the reached state
+-- are distinct trees, the recursion continues, and at the empty word §9's base
+-- fires A1 — no instance of either stopping rule is needed here
+dup-desc-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+  → desc-concl dup-r-lit ( ca ∷ [] )
+dup-desc-dec cstate cdsr =
+  desc-picks-dec cstate cdsr dup-r-lit ( ca ∷ [] ) dup-u dup-u₂ refl refl dup-u≢u₂
+
+-- §8's statement, from the decidable recursion
+completeness-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+  → ∀ { r : RE } ( u v : U r )
+  → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
+  → ∃[ w′ ] ∃[ w″ ]
+      ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
+      × ∃[ p ]
+          ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
+          × ( AmbigCheck.AmbigA1 p
+            ⊎ AmbigCheck.AmbigA2 p
+            ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+                  ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
+                  × ( Canonic._≈₀_ l s ) ) ) ) )
+completeness-dec cstate cdsr {r} u v w≡ u≢v =
+  completeness-from-desc (Desc-complete-dec cstate cdsr) r u v w≡ u≢v
+```
+
+`pick-diff-record` is §17's "one letter, one member, two derivations" made
+precise: two members with the *same* continuation rebuilding the *same* residual
+tree, while the trees above them differ — so the double derivation is in the
+records, not in the word.  That is the `Idemp` configuration: `Canonic`'s
+`Idemp` removes exactly one of two `≈₀`-similar alternatives, and the duplicate
+pattern is the criterion that names it (`Canonic.pd-Idemp?` fires on the §18
+instance, `dup-Idemp-fires`, and §18 wrote the matching `Ctx`/`plug` witness).
+So the recursion is now fully computable up to two rules, one of which is the
+configuration the canonical form is designed to exclude.  Making that precise —
+showing `pick-diff-record` is impossible for a canonical state, and that
+`pick-diff-state` reduces to the paper's other two situations — is the
+enumeration argument §19 pointed at, and it is a statement about canonical
+patterns, which is where §17 said the classification belongs.

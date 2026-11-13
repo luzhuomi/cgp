@@ -185,9 +185,28 @@ This module develops the two ingredients of that argument.
    computation (`pd-a3-Idemp-applied`), an ambiguous expression
    (`pd-a3-ambiguous`) — and the criterion sits at the *merged derivative*
    state (`pd-a3-Desc`), where `crit-sum-≈₀` fires (`pd-a3-crit`), not at the
-   state carrying the transition.  Re-targeting the descent's conclusion to
-   that (`derivᵖ`/`∈Desc`, not the per-path `pd*-Desc` list) and matching
-   `pick-diff-state` against the paper's remaining situations is §22.
+   state carrying the transition.
+ * §22 shows that the last step is smaller than it looks, because it is the
+   criterion that was stated wrong.  The paper's A3 is a test on a *transition*
+   out of a state ("A1 is always connected to a final state whereas A2 and A3
+   are always connected to transitions"), and `Canonic.pd-Idemp?` is exactly
+   that test on the partial-derivative list: it becomes `crit`'s fourth
+   disjunct, in the same hole-context shape as the third, and `A3-Ctx` gives it
+   the same stability, so §12's four lifting lemmas (`crit-+<`, `crit-+>`,
+   `crit-●<`, `crit-●>`) carry it too.  It fires at the states themselves —
+   `dup-r-lit-crit-A3`, and `pd-a3-crit-A3` at `pd-a3-target`, an expression
+   that contains no duplicate at all (`pd-a3-canonic-flag`) — and
+   `pd-a3-pair-complete` settles §8's goal for that ambiguity pair at the empty
+   prefix, with no descent and no `derivᵖ` re-gluing.  Stating the same
+   criterion over *members* ("two members of `pdU[ p , c ]` with similar
+   continuations") is the wrong shape, and the reason is structural: the sum
+   clause of `pdU` fuses the branch instances, so the duplicate survives only as
+   a `+`-spine inside one continuation, and the one clause that does keep
+   several members is the nullable concatenation, which is A2's own
+   configuration.  §20's record rule, finally, is *false* without the record
+   distinctness §21 proves it has; restating §20 with that premise and with
+   §19's decision of instance identity is the next step, and `pick-diff-state`
+   — the paper's enumeration — is then all that is left.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -708,12 +727,29 @@ levels, since the general one needs machinery this project does not have.
 
 **The general statement** (the paper's proposition, section 6): given an
 ambiguity of `r` — two distinct parse trees for one word — the word has a
-prefix whose pd-states include one at which a criterion fires.  The third
-disjunct is the `Idemp`/A3 *pattern* (a sum with `≈₀`-equal members under a
-hole context — the shape `Canonic.Ctx-dup→Ambig` consumes); A3 proper is not
-formalized (`AmbigCheck` §4).
+prefix whose pd-states include one at which a criterion fires.  The diagnosis
+disjunction is named once, here, since every later section states its result in
+terms of it: the first two disjuncts are the paper's A1 and A2
+(`cgp.ambig.AmbigCheck` §3, §4), the third is the `Idemp` *pattern* (a sum with
+`≈₀`-equal members under a hole context — the shape `Canonic.Ctx-dup→Ambig`
+consumes), the fourth is A3 proper: the `Idemp` *test* firing on a transition out
+of a state, again read under a hole context, since the paper's criteria range
+over descendants `s ∈ Desc(r)` and a hole context is what this project has of
+that (`cgp.ambig.Canonic`'s `pd-Idemp?`; why that is the right shape, and what
+it fires on, is §22).  All four are stable under plugging a context: §12's
+`A2-Ctx`, `dup-Ctx`, `A3-Ctx`.
 
 ```agda
+crit : RE → Set
+crit p = AmbigCheck.AmbigA1 p
+       ⊎ AmbigCheck.AmbigA2 p
+       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
+             ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
+             × ( Canonic._≈₀_ l s ) )
+       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ q ∈ RE ] Σ[ c ∈ Char ]
+             ( ( AmbigCheck.plug ctx q ≡ p )
+             × ( Canonic.pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true ) )
+
 completeness : ∀ { r : RE }
   → ( u v : U r )
   → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
@@ -721,11 +757,7 @@ completeness : ∀ { r : RE }
       ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
       × ∃[ p ]
           ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
-          × ( AmbigCheck.AmbigA1 p
-            ⊎ AmbigCheck.AmbigA2 p
-            ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
-                  ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
-                  × ( Canonic._≈₀_ l s ) ) ) ) )
+          × crit p ) )
 completeness u v w≡ u≢v = _
 ```
 
@@ -1174,27 +1206,19 @@ three situations in which the parse-tree construction can branch*: more
 than one empty tree at a final state (A1), an injection through a nullable
 concatenation whose left side has more than one empty tree (A2), and the
 `Idemp` merge of similar alternatives when building canonical
-representatives (A3 — here: the duplicate sum under a context).  The split
+representatives (A3 — here: the duplicate sum under a context, or the `Idemp`
+test on a transition out of a state under a context).  The split
 case of the descent — two trees crossing a letter through *different*
 instances, i.e. a `LeftU` in one branch and a `RightU` in the other at
 some sum — is where the third situation lives.  What closes the argument
 is a *pair theorem*: two trees of a common word, one in each of two
 expressions, either diagnose a criterion at their sum or find one at a
-continuation of that sum along a common word prefix.  This section names
-the criteria, proves what is provable without touching neutral lists — the
-pair's base (`split-+-A1`) and the syntactic transfer of criteria through
-contexts (`A2-Ctx`, `dup-Ctx`) — and states the pair theorem; its proof is
-the recursion of §13.
+continuation of that sum along a common word prefix.  This section proves what
+is provable without touching neutral lists — the pair's base (`split-+-A1`) and
+the syntactic transfer of criteria through contexts (`A2-Ctx`, `dup-Ctx`) — and
+states the pair theorem; its proof is the recursion of §13.
 
 ```agda
--- the diagnosis disjunction of §8, named
-crit : RE → Set
-crit p = AmbigCheck.AmbigA1 p
-       ⊎ AmbigCheck.AmbigA2 p
-       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
-             ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
-             × ( Canonic._≈₀_ l s ) )
-
 -- composition of hole contexts
 Ctx∘Ctx : AmbigCheck.Ctx → AmbigCheck.Ctx → AmbigCheck.Ctx
 Ctx∘Ctx AmbigCheck.𝟘 c₂ = c₂
@@ -1230,6 +1254,19 @@ dup-Ctx ctx ( ctx₂ , l , s , loc , ( plug-eq , ≈₀ls ) ) =
   ( Ctx∘Ctx ctx ctx₂ , l , s , loc ,
     ( trans (plug-Ctx∘ ctx ctx₂ ( l + s ` loc )) (cong (AmbigCheck.plug ctx) plug-eq)
     , ≈₀ls ) )
+
+-- the fourth disjunct moves the same way: the A3 test is a property of the
+-- state *in the hole*, the hole itself only grows
+A3-Ctx : ( ctx : AmbigCheck.Ctx ) { q : RE }
+  → ( Σ[ ctx₂ ∈ AmbigCheck.Ctx ] Σ[ q′ ∈ RE ] Σ[ c ∈ Char ]
+        ( ( AmbigCheck.plug ctx₂ q′ ≡ q )
+        × ( Canonic.pd-Idemp? (PosixPD.pdU[ q′ , c ]) ≡ true ) ) )
+  → ( Σ[ ctx′ ∈ AmbigCheck.Ctx ] Σ[ q′ ∈ RE ] Σ[ c ∈ Char ]
+        ( ( AmbigCheck.plug ctx′ q′ ≡ AmbigCheck.plug ctx q )
+        × ( Canonic.pd-Idemp? (PosixPD.pdU[ q′ , c ]) ≡ true ) ) )
+A3-Ctx ctx ( ctx₂ , q′ , c , ( plug-eq , test ) ) =
+  ( Ctx∘Ctx ctx ctx₂ , q′ , c
+  , ( trans (plug-Ctx∘ ctx ctx₂ q′) (cong (AmbigCheck.plug ctx) plug-eq) , test ) )
 
 -- the pair's base: one empty tree in each branch of a sum fires A1 at the
 -- sum itself — the two injected trees are always distinct (LeftU ≠ RightU)
@@ -1309,9 +1346,9 @@ crit-+ε {l} loc u u≡
 crit-$$ : ∀ { c d : Char } { loc₁ loc₂ loc : ℕ }
   → c ≡ d → crit ( ( $ c ` loc₁ ) + ( $ d ` loc₂ ) ` loc )
 crit-$$ {c} {d} {loc₁} {loc₂} {loc} c≡d with c≡d
-... | refl = inj₂ (inj₂
+... | refl = inj₂ (inj₂ (inj₁
   ( AmbigCheck.𝟘 , $ c ` loc₁ , $ d ` loc₂ , loc
-  , ( refl , Canonic.≈₀-$ c loc₁ loc₂ ) ) )
+  , ( refl , Canonic.≈₀-$ c loc₁ loc₂ ) ) ))
 ```
 
 A criterion found *below* a branch of a sum is heard *at* the sum.  A2 and
@@ -1377,12 +1414,14 @@ A1-+> l s loc ( ε∈s , len ) with RE.ε∈? l
 crit-+< : ( l s : RE ) ( loc : ℕ ) → crit l → crit ( l + s ` loc )
 crit-+< l s loc (inj₁ a1)        = inj₁ (A1-+< l s loc a1)
 crit-+< l s loc (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.Ctx+R AmbigCheck.𝟘 s loc) a2))
-crit-+< l s loc (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.Ctx+R AmbigCheck.𝟘 s loc) d))
+crit-+< l s loc (inj₂ (inj₂ (inj₁ d)))  = inj₂ (inj₂ (inj₁ (dup-Ctx (AmbigCheck.Ctx+R AmbigCheck.𝟘 s loc) d)))
+crit-+< l s loc (inj₂ (inj₂ (inj₂ a3))) = inj₂ (inj₂ (inj₂ (A3-Ctx (AmbigCheck.Ctx+R AmbigCheck.𝟘 s loc) a3)))
 
 crit-+> : ( l s : RE ) ( loc : ℕ ) → crit s → crit ( l + s ` loc )
 crit-+> l s loc (inj₁ a1)        = inj₁ (A1-+> l s loc a1)
 crit-+> l s loc (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) a2))
-crit-+> l s loc (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) d))
+crit-+> l s loc (inj₂ (inj₂ (inj₁ d)))  = inj₂ (inj₂ (inj₁ (dup-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) d)))
+crit-+> l s loc (inj₂ (inj₂ (inj₂ a3))) = inj₂ (inj₂ (inj₂ (A3-Ctx (AmbigCheck.L+Ctx l AmbigCheck.𝟘 loc) a3)))
 ```
 
 A criterion found at a *concatenation* position must be liftable the same
@@ -1512,12 +1551,14 @@ A1-●> l s loc ε∈l ( ε∈s , len )
 crit-●< : ( l s : RE ) ( loc : ℕ ) ( ε∈s : RE.ε∈ s ) → crit l → crit ( l ● s ` loc )
 crit-●< l s loc ε∈s (inj₁ a1)        = inj₁ (A1-●< l s loc ε∈s a1)
 crit-●< l s loc ε∈s (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.Ctx●R AmbigCheck.𝟘 s loc) a2))
-crit-●< l s loc ε∈s (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.Ctx●R AmbigCheck.𝟘 s loc) d))
+crit-●< l s loc ε∈s (inj₂ (inj₂ (inj₁ d)))  = inj₂ (inj₂ (inj₁ (dup-Ctx (AmbigCheck.Ctx●R AmbigCheck.𝟘 s loc) d)))
+crit-●< l s loc ε∈s (inj₂ (inj₂ (inj₂ a3))) = inj₂ (inj₂ (inj₂ (A3-Ctx (AmbigCheck.Ctx●R AmbigCheck.𝟘 s loc) a3)))
 
 crit-●> : ( l s : RE ) ( loc : ℕ ) ( ε∈l : RE.ε∈ l ) → crit s → crit ( l ● s ` loc )
 crit-●> l s loc ε∈l (inj₁ a1)        = inj₁ (A1-●> l s loc ε∈l a1)
 crit-●> l s loc ε∈l (inj₂ (inj₁ a2)) = inj₂ (inj₁ (A2-Ctx (AmbigCheck.L●Ctx l AmbigCheck.𝟘 loc) a2))
-crit-●> l s loc ε∈l (inj₂ (inj₂ d))  = inj₂ (inj₂ (dup-Ctx (AmbigCheck.L●Ctx l AmbigCheck.𝟘 loc) d))
+crit-●> l s loc ε∈l (inj₂ (inj₂ (inj₁ d)))  = inj₂ (inj₂ (inj₁ (dup-Ctx (AmbigCheck.L●Ctx l AmbigCheck.𝟘 loc) d)))
+crit-●> l s loc ε∈l (inj₂ (inj₂ (inj₂ a3))) = inj₂ (inj₂ (inj₂ (A3-Ctx (AmbigCheck.L●Ctx l AmbigCheck.𝟘 loc) a3)))
 ```
 
 What the recursion must hand back from below a pair step is not a bare
@@ -1997,13 +2038,7 @@ completeness-from-desc : ( dc : Desc-complete )
   → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
   → ∃[ w′ ] ∃[ w″ ]
       ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
-      × ∃[ p ]
-          ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
-          × ( AmbigCheck.AmbigA1 p
-            ⊎ AmbigCheck.AmbigA2 p
-            ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
-                  ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
-                  × ( Canonic._≈₀_ l s ) ) ) ) )
+      × ∃[ p ] ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′) × crit p ) )
 completeness-from-desc dc r u v w≡ u≢v with dc r (proj₁ (flat {r} u)) u v refl (sym w≡) u≢v
 ... | inj₁ cr = ( [] , proj₁ (flat {r} u) , refl , ( r , pdesc pnil , cr ) )
 ... | inj₂ ( w′ , w″ , w≡w′++w″ , ( path , cr ) )
@@ -2164,7 +2199,7 @@ dup-s1-dup : Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc 
 dup-s1-dup = ( AmbigCheck.𝟘 , dup-l1 , dup-l2 , 3 , ( refl , Canonic.≈₀-$ ca 1 2 ) )
 
 dup-s1-crit : crit dup-s1
-dup-s1-crit = inj₂ (inj₂ dup-s1-dup)
+dup-s1-crit = inj₂ (inj₂ (inj₁ dup-s1-dup))
 
 -- and at the example state itself, under the context `dup-l1 + · ` 0`
 dup-r-lit-dup : Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
@@ -2172,7 +2207,7 @@ dup-r-lit-dup : Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ l
 dup-r-lit-dup = dup-Ctx (AmbigCheck.L+Ctx dup-l1 AmbigCheck.𝟘 0) dup-s1-dup
 
 dup-r-lit-crit : crit dup-r-lit
-dup-r-lit-crit = inj₂ (inj₂ dup-r-lit-dup)
+dup-r-lit-crit = inj₂ (inj₂ (inj₁ dup-r-lit-dup))
 ```
 
 So the empty prefix of the ambiguity word already settles `desc-concl` at the
@@ -2203,8 +2238,8 @@ pdend-π-dup≡ = refl
 -- of two similar empty alternatives
 pdend-π-dup-crit : crit (pdend π-dup)
 pdend-π-dup-crit = subst crit pdend-π-dup≡
-  ( inj₂ (inj₂ ( AmbigCheck.L+Ctx ε AmbigCheck.𝟘 0
-               , ε , ε , 3 , ( refl , Canonic.≈₀-ε ) ) ) )
+  ( inj₂ (inj₂ (inj₁ ( AmbigCheck.L+Ctx ε AmbigCheck.𝟘 0
+               , ε , ε , 3 , ( refl , Canonic.≈₀-ε ) ) )) )
 
 -- the §16 step, instantiated: the fused member carries the conclusion of its
 -- own continuation back up to the example state and the word `a`
@@ -2624,11 +2659,7 @@ completeness-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
       ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
       × ∃[ p ]
           ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
-          × ( AmbigCheck.AmbigA1 p
-            ⊎ AmbigCheck.AmbigA2 p
-            ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
-                  ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
-                  × ( Canonic._≈₀_ l s ) ) ) ) )
+          × crit p ) )
 completeness-dec cstate cdsr {r} u v w≡ u≢v =
   completeness-from-desc (Desc-complete-dec cstate cdsr) r u v w≡ u≢v
 ```
@@ -2711,7 +2742,7 @@ duplicate pattern is syntactic (`l + s` with `l ≈₀ s`):
 crit-sum-≈₀ : ∀ ( l s : RE ) ( loc : ℕ )
   → Canonic._≈₀_ l s
   → crit ( l + s ` loc )
-crit-sum-≈₀ l s loc ≈₀ls = inj₂ (inj₂ ( AmbigCheck.𝟘 , l , s , loc , ( refl , ≈₀ls ) ))
+crit-sum-≈₀ l s loc ≈₀ls = inj₂ (inj₂ (inj₁ ( AmbigCheck.𝟘 , l , s , loc , ( refl , ≈₀ls ) )))
 
 -- the merged derivative state of the A3 example carries the criterion
 pd-a3-crit : crit Canonic.pd-a3-state
@@ -2736,3 +2767,120 @@ completeness proof:
   the `derivᵖ`/`∈Desc` sense, which `pd*-Desc` per-path lists do not give) at
   which a criterion fires — and matching `pick-diff-state` against the paper's
   remaining two situations is the enumeration argument: §22.
+
+## 22. A3 proper is a test on the *transition*, and it needs no descent
+
+§21 left the impression that the duplicate situation can only be diagnosed at the
+*merged* derivative state, and that §8's conclusion therefore has to be
+re-targeted from path descendants to `derivᵖ`.  It does not: the paper's own A3
+is a test on a transition *out of* the state, not on the state that the
+transition reaches —
+
+> criteria **A1** is always connected to a final state whereas criteria **A2**
+> and **A3** are always connected to transitions (section 7)
+
+and A3 is "`lang(canonic(deriv s x)) ≠ {}` and `deriv s x` simplifies to
+`canonic(deriv s x)` with rule **Idemp** applied".  `Canonic.pd-Idemp?` is that
+test on the partial-derivative list in place of the derivative expression
+(`cgp.ambig.Canonic` §6.2, §9's `A3-list?`): `pd-alts` takes the `+`-spine of
+each member continuation, which is what `Idemp` would merge, and `dups-≈₀` asks
+whether two of the merged alternatives are similar.  The paper's side condition
+`lang(…) ≠ {}` (its "realizable state" clause) is automatic in this formalism —
+`ParseTree.r-∃u` inhabits `U q` for every `q`, the same fact `Canonic` §8 uses
+when it drops the realizability clause from `_∈Desc_`.  So the test is the
+missing criterion verbatim, and it is now `crit`'s fourth disjunct (§8).
+
+Like the third disjunct, it is written quantified over a hole context: the paper
+states its criteria for a *realizable* `s ∈ Desc(r)`, and a context with a hole
+is what this project has instead of quantifying over descendants (§7).
+`crit-A3-test` is the empty-context instance; the stability is `A3-Ctx` (§12),
+proved exactly as `dup-Ctx` is — the test speaks of the state in the hole, the
+hole only grows around it.  With that, the four context-lifting lemmas of §12
+(`crit-+<`, `crit-+>`, `crit-●<`, `crit-●>`) carry the new disjunct as they
+carried the old three, and nothing else in the file had to change: no earlier
+proof *destructs* the diagnosis sum except those four.
+
+```agda
+-- A3 as a diagnosis at the state the transition leaves
+crit-A3-test : ∀ ( r : RE ) ( c : Char )
+  → Canonic.pd-Idemp? (PosixPD.pdU[ r , c ]) ≡ true
+  → crit r
+crit-A3-test r c p≡true = inj₂ (inj₂ (inj₂ ( AmbigCheck.𝟘 , r , c , ( refl , p≡true ) )))
+```
+
+A member-level statement of the same thing — "there are two members of
+`pdU[ p , c ]` with similar continuations" — was tried first and rejected, and
+the reason is worth recording, because it is the same structural fact §18 found
+by computation.  Its non-emptiness conjunct is vacuous here (`r-∃u`), and
+`pdU` does not keep two unfused members with similar continuations in the first
+place: the sum clause fuses the branch instances into one member whose
+continuation is the *sum* of theirs (`pdinstance-oplus`, §16's fusion remark), so
+the duplicate survives as a `+`-spine inside one continuation — exactly what
+`pd-alts`/`sum-spine` reads and what the third disjunct sees one step later
+(§18's `pdend-π-dup≡`, §21's `pd-a3-crit`).  The only clause of `pdU` that does
+produce several members is the nullable concatenation, and there the members come
+one per empty tree of the left factor, continuing at one and the same
+expression — which is the second criterion's own configuration.  Stated as a
+test on the whole member list, the criterion is instead *decidable* (the paper's
+"easy to verify") and it fires on the states where the paper says A3 fires.
+
+```agda
+-- the two states this repository already computes `pd-Idemp?` on now carry the
+-- diagnosis *at themselves*, for the letter they duplicate on.  §18's
+-- `dup-r-lit` — whose duplicate pattern §18 wrote down by hand (`dup-r-lit-crit`
+-- above, the third disjunct) — is diagnosed a second, independent way by the
+-- test on its `a` transition (`dup-Idemp-fires`): the two readings agree.
+dup-r-lit-crit-A3 : crit dup-r-lit
+dup-r-lit-crit-A3 = crit-A3-test dup-r-lit ca dup-Idemp-fires
+
+-- `Canonic` §6.2's `pd-a3-target` is the case the pattern *cannot* reach: no
+-- duplicate is present in the expression (`pd-a3-canonic-flag` says `canonic`
+-- applies no `Idemp` to it), the duplicate is created by the transition on `a`;
+-- the test sees it (`pd-a3-Idemp-applied`) and §21's `pd-a3-crit` needed the
+-- merged derivative state for the same conclusion.
+pd-a3-crit-A3 : crit Canonic.pd-a3-target
+pd-a3-crit-A3 = crit-A3-test Canonic.pd-a3-target 'a' Canonic.pd-a3-Idemp-applied
+
+-- so §8's goal for that pair (the two trees of `pd-a3-ambiguous`) is settled at
+-- the *empty* prefix, at the state itself, with no descent and no `derivᵖ`:
+pd-a3-pair-complete : ∃[ w′ ] ∃[ w″ ]
+    ( ( proj₁ (flat {Canonic.pd-a3-target} (proj₁ Canonic.pd-a3-ambiguous))
+        ≡ w′ ++ w″ )
+    × ∃[ p ] ( Any ( λ s → s ≡ p )
+                  (Canonic.pd*-Desc Canonic.pd-a3-target w′)
+              × crit p ) )
+pd-a3-pair-complete =
+  ( [] , proj₁ (flat {Canonic.pd-a3-target} (proj₁ Canonic.pd-a3-ambiguous))
+  , refl , ( Canonic.pd-a3-target , pdesc pnil , pd-a3-crit-A3 ) )
+```
+
+Soundness of the new disjunct is exactly the reflection lemma `Canonic` §8
+records as missing there ("to make `A3? r x ≡ true → Ambig r` itself a theorem,
+`canonic`'s rewrite trace would have to be reflected into a concrete `Ctx`/`plug`
++ pair witness"): `pd-a3-ambiguous` and §18's `dup-s1-dup`/`dup-r-lit-dup` are
+that reflection for these two states.  Adding a disjunct to `crit` touches every
+place that *builds* one (each witness of the third disjunct moves one level
+deeper, one more `inj₁`) and every place that *destructs* one, which in this
+file is exactly the four context-lifting lemmas of §12 — they gained the clause
+written there (`A3-Ctx`).  No other proof reads a `crit`, and no earlier witness
+changed summand.
+
+What the new disjunct does change is §20's two stopping rules, and it exposes a
+gap in one of them.  Its record rule says: two picks `z`, `z′` with *equal*
+continuations, reconstructed trees, equal residuals ⇒ `crit r`.  With A3 present
+that conclusion is the fourth disjunct — but the rule as stated is *false*, for
+want of one premise: take ``r = $ 'a' ` 1``, its single record and single tree;
+every premise holds (`z ≡ z′`, `eq = refl`, one residual compared with itself),
+and no disjunct fires at ``$ 'a' ` 1``.  What the rule needs, and what the
+descent has in the branch that calls it, is that the two picks are *distinct
+records*: then the member list holds two entries with equal — hence `≈₀`-similar
+— continuations, and the A3 test fires on that list.  §19's descent had exactly
+that decision, as the parameter `dec`; §20 traded it away for the expression test
+`RE-≟`.  Both are needed, and §20 has to be restated with both: the record rule
+takes the record distinctness its own use in the descent supplies (and its
+conclusion then follows from the test, via a list-level lemma turning two
+distinct members with one continuation into `dups-≈₀` — not written yet), and the
+recursion takes back the decision of record identity.  What survives that
+restatement is `pick-diff-state`, and that is the paper's enumeration argument,
+not a formalism gap.
+

@@ -51,7 +51,7 @@ This module develops the two ingredients of that argument.
   injective transition map, is a genuine ambiguity of `r`.
 * §8 states the goal of the whole arc — the *completeness* direction proper
   (given an ambiguity witness, a pd-descendant state where a criterion
-  fires) — with the statement here and its proof given in §23, and its
+  fires) — with the statement here and its proof given in §23–§24, and its
   reading tied to the ambiguity pair of `sd` proved (`Recons*-at-singleton`, `sd-recons*-at-pdi₂`,
   `sd-completeness-at-the-state`: every tree of `aa` is the image under
   `pd*-inj pdi₂` of a tree of `sd-s2`, and distinctness reflects).
@@ -215,16 +215,25 @@ This module develops the two ingredients of that argument.
    continuations (`pd-expr-resp∘*`) or fuses them pairwise
    (`fuse-pair-const`), and the POSIX `pdinstance-oplus` only ever joins
    constant lists (`oplus-const`)).  So `pick-diff-state` never applies
-   (`cstate-⊥`), and §20's descent runs on with only the instance-identity
-   decision named as a postulate (`PDInstance-identity`, realizable
-   classically or by §19's quotient): `desc-picks-dec cstate-⊥
-   PDInstance-identity` is `Desc-complete`, and §16's
-   `completeness-from-desc` proves §8's `completeness`.
+   (`cstate-⊥`), and §20's descent runs on with only the record decision left:
+   `pdinstance` stores its transition as a function, so that decision, as
+   §19's `dec`, has no decision procedure as stated.
+ * §24 closes the goal with no postulate: the descent never needs record
+   identity — what its two branches use it for is choosing between continuing
+   through one shared transition and firing the criterion, and that choice is
+   decidable on the *residual trees*: both residuals sit at one expression
+   (`pdU-const`'s equation, `flat-resp` moves words with the transport), and
+   tree identity there is `ParseTree._⊢_≟_`.  Different residuals: continue
+   through one member; equal residuals: the records cannot have been equal
+   (`Recons-residual-2`, as `diff-records-≟`), which is the A3 configuration
+   closed by §22's `pick-diff-record-prf`.  `desc-picks-≟` is
+   `Desc-complete-≟`, and §16's `completeness-from-desc` proves §8's
+   `completeness`.
 
 ```agda
 -- `data Path` is strictly positive by inspection (`pcons` carries it only in
 -- argument position), but Agda 2.7.0.1's positivity checker false-positives on
--- it through the `subst` motive in `Path-rescue`'s type once §23 instantiates
+-- it through the `subst` motive in `Path-rescue`'s type once §24 instantiates
 -- the descent (agda/agda#7669, fixed in 2.8.0), so the check is off here
 {-# OPTIONS --rewriting --no-positivity-check #-}
 module cgp.ambig.Complete where
@@ -776,8 +785,9 @@ completeness : ∀ { r : RE }
           ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
           × crit p ) )
 
--- (the body of `completeness` is §23's: the statement stays here, but its
--- proof needs `Desc-complete` (§16) and `pdU-const` (§23), defined below)
+-- (the body of `completeness` is §24's: the statement stays here, but its
+-- proof needs `Desc-complete` (§16) and the descent `desc-picks-≟` (§24),
+-- defined below)
 ```
 
 The fourth disjunct is worth naming outright at the empty context, since it is a
@@ -805,10 +815,10 @@ one step further and assembles `Desc-complete` — hence this statement, via
 `completeness-picks` — from two named parameters: the recognition rule
 `Cross-instance→crit` (the paper's enumeration as one rule) and a decision of
 instance identity; everything except those two parameters now checks.  §23
-supplies both: the recognition rule is vacuous once `pdU-const` shows every
-transition continues at a single expression, and the decision is named once as
-`PDInstance-identity` — the assembled body of `completeness` is at the end of
-§23.
+discharges the recognition rule — it is vacuous once `pdU-const` shows every
+transition continues at a single expression — and §24 replaces the record
+decision by a decidable question on residuals (`ParseTree._⊢_≟_`): the
+assembled body of `completeness` is at the end of §24.
 
 **The reading tied to a given pair, for this `r`** (what §5–§6 built the
 machinery for): every ambiguity pair of `sd` for the word `aa` is the image,
@@ -2404,12 +2414,14 @@ The first parameter is the research content; the second is a formalism fact
 worth recording: `PDInstance` equality is *intensional* here — instances carry
 function fields (`inj : U p → U r`) — so `dec` is not definable in general.  It
 *is* definable at expressions in literal constructor form, where `pdU` computes
-as in §17–§18 (finite lists of concrete records); for arbitrary states the
-choices are an excluded-middle postulate (the §23 `PDInstance-identity`), or a quotient of
-instances — equality of patterns plus transport along `Canonic.Cast`/`≈₀`, the
-canonical machinery of §2–§3, is the natural candidate and would make the
-induction run on canonical states, which §17 showed is where the classification
-belongs anyway.
+as in §17–§18 (finite lists of concrete records); for arbitrary states this
+parameter was the open point — §23 first granted it as an assumption, and §24
+showed the descent never has to ask the question: an equivalent of it on
+residual trees *is* decidable (`ParseTree._⊢_≟_`).  A quotient of instances —
+equality of patterns plus transport along `Canonic.Cast`/`≈₀`, the canonical
+machinery of §2–§3 — remains the natural candidate for a genuine `dec`, and
+would make the induction run on canonical states, which §17 showed is where
+the classification belongs anyway.
 
 The two rules that any `cross` must ultimately reduce into *are* both here in
 their state-local direction: the nullable-sum case is `A1-⊕` / `split-+-A1`
@@ -2937,7 +2949,7 @@ case does not speak of residuals.  What survives that restatement is
 `pick-diff-state`, and that is the paper's enumeration argument, not a
 formalism gap.  §23 settles it: the configuration is unreachable.
 
-## 23. One continuation per transition: the completeness direction, closed
+## 23. One continuation per transition
 
 Everything §17–§22 turns on a single property of this project's derivative
 list.  The POSIX merging (`pdinstance-oplus`, applied in the sum clause and in
@@ -2948,11 +2960,11 @@ tree of the left factor, which is the second criterion's own configuration, as
 §22 observed — and *all members of `pdU[ r , c ]` continue at one and the same
 expression*.  Two picks therefore never continue at *different* expressions:
 `pick-diff-state` is discharged by absurdity, and the descent of §20 runs with
-only the record decision left — the postulate `PDInstance-identity` below,
-which is §19's `dec` named (the alternatives §19 listed — an excluded-middle
-postulate, or a quotient of instances by pattern — both supply it).
-`Desc-complete` follows, and with §16's `completeness-from-desc` the §8
-statement is proved.
+only the record decision left.  That decision, §19's `dec`, is what this
+section cannot supply — `pdinstance` stores a function field — and §24 shows
+the descent does not need it: an equivalent question on residual trees is
+decidable.  With it the §8 statement follows through §16's
+`completeness-from-desc`.
 
 The result also places this file precisely against the paper's diagnosis.  The
 proof walks the pair to the state reached by the *whole* word, and there
@@ -3198,23 +3210,97 @@ cstate-⊥ : pick-diff-state
 cstate-⊥ {r} {c} z z′ z∈ z′∈ z≢z′ u v u∈ v∈ u≡ v≡ ¬pd =
   ⊥-elim (¬pd (pdU-const r c z z′ z∈ z′∈))
 
--- the record decision, named as an assumption: `PDInstance` equality is
--- intensional (function fields), so it has no decision procedure in this
--- formalism; this postulate is §19's `dec` and the one non-constructive
--- step of the completeness direction.  §19 lists the alternatives — an
--- excluded-middle postulate, or a quotient of instances by pattern
--- (the `Cast`/`≈₀` machinery), which would also make the decision computable
-postulate
-  PDInstance-identity : ∀ { r : RE } { c : Char }
-    ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ )
+-- what remains of §20's descent after this: the record decision.  §23 stops
+-- here because `PDInstance` equality is intensional (the constructor stores a
+-- function field), so §19's `dec` has no decision procedure *as stated* —
+-- §24 shows the descent does not need it
+```
 
--- the completeness direction, closed: the descent of §20 runs with
--- `pick-diff-state` discharged by `pdU-const` and the record decision by
--- the postulate above, and §16 turns it into the statement about the pair
-Desc-complete-⊥ : Desc-complete
-Desc-complete-⊥ = desc-picks-dec cstate-⊥ PDInstance-identity
+## 24. The record decision, computed: the completeness direction, closed
+
+The one question §23 leaves is whether the two picks are *one record*.  As
+stated that question has no decision procedure — `pdinstance` stores a function
+(`U p → U r`), so record identity is intensional (§19) — and this is where the
+paper's enumeration would have to quotient instances by pattern.  But the
+descent never uses record identity *as such*: it uses it to choose between
+continuing through one shared transition and firing the criterion.  That choice
+has an equivalent form on the other side of the reconstruction, where it is
+decidable: the two **residual trees**.  By `pdU-const` both residuals, after
+transport along one equation, live at the same expression, and tree identity at
+one expression is decidable (`ParseTree._⊢_≟_`).
+
+- *different residuals*: the descent continues — at the single reached state,
+  through the single member `z`, exactly as §20's shared-record branch does;
+- *equal residuals*: the two records cannot have been one: a single record maps
+  distinct trees to distinct residuals (`Recons-residual-2`), so equal
+  residuals mean *two distinct members with one continuation* — the A3
+  configuration, closed by §22's `pick-diff-record-prf`.
+
+In `diff-records-≟` the claim's two transports cancel in a single clause: the
+record equation and the continuation equation are case-split, which identifies
+the two records and dissolves the transport — constructor injectivity does all
+the work, no postulate and no transport coherence.
+
+```agda
+-- transporting a tree across an equation of expressions does not move its word
+flat-resp : ∀ { r r′ : RE } ( eq : r ≡ r′ ) ( u : U r )
+  → proj₁ (flat {r′} (subst ( λ e → U e ) eq u)) ≡ proj₁ (flat {r} u)
+flat-resp refl u = refl
+
+-- equal residuals ⇒ distinct records: were the picks one record,
+-- `Recons-residual-2`'s computation (`cong inj` under one transition map)
+-- would separate the residuals.  Splitting the record equation identifies the
+-- two records, and with it the continuation equation dissolves
+diff-records-≟ : ∀ { r : RE } { c : Char } { ws : List Char } { u v : U r }
+  ( z z′ : PDInstance r c )
+  ( rec-l : Recons {r} {c} u z ) ( rec-r : Recons {r} {c} v z′ )
+  ( u≡ : proj₁ (flat {r} u) ≡ c ∷ ws ) ( v≡ : proj₁ (flat {r} v) ≡ c ∷ ws )
+  ( q : Canonic.pd-expr z′ ≡ Canonic.pd-expr z )
+  → residual rec-l u≡ ≡ subst ( λ e → U e ) q ( residual rec-r v≡ )
+  → ¬ ( u ≡ v )
+  → ¬ ( z ≡ z′ )
+diff-records-≟ z z′ (recons {inj = inj} uˡ ( w∈ˡ , eqˡ ))
+                  (recons {inj = inj′} vʳ ( w∈ʳ , eqʳ ))
+  u≡ v≡ q eq u≢v ρ with q | ρ
+...   | refl | refl = u≢v (trans (sym eqˡ) (trans (cong inj eq) eqʳ))
+
+-- the completeness descent, with the decidable test in place of the record
+-- decision: pick both members, place the second residual at the first
+-- member's continuation (`pdU-const`), and decide the residuals
+desc-picks-≟ : ( r : RE ) → ( w : List Char )
+  → ( u v : U r )
+  → proj₁ (flat {r} u) ≡ w → proj₁ (flat {r} v) ≡ w → ¬ ( u ≡ v )
+  → desc-concl r w
+desc-picks-≟ r [] u v u≡[] v≡[] u≢v = desc-base u v u≡[] v≡[] u≢v
+desc-picks-≟ r (c ∷ ws) u v u≡ v≡ u≢v
+  with pick-Any (PosixPD.pdU-complete {r} {c} u u≡)
+... | ( z , rec-l , z∈ ) with pick-Any (PosixPD.pdU-complete {r} {c} v v≡)
+...   | ( z′ , rec-r , z′∈ )
+      with (ParseTree._⊢_≟_ (Canonic.pd-expr z) (residual rec-l u≡)
+             ( subst ( λ e → U e ) (sym (pdU-const r c z z′ z∈ z′∈))
+               (residual rec-r v≡) ))
+...     | yes eq =
+          inj₁ (pick-diff-record-prf z z′ z∈ z′∈
+                  (diff-records-≟ z z′ rec-l rec-r u≡ v≡
+                     (sym (pdU-const r c z z′ z∈ z′∈)) eq u≢v)
+                  (pdU-const r c z z′ z∈ z′∈))
+...     | no x≢y =
+          desc-step z z∈
+            (desc-picks-≟ (Canonic.pd-expr z) ws x y x≡ y≡ x≢y)
+        where
+          q  = sym (pdU-const r c z z′ z∈ z′∈)
+          x  = residual rec-l u≡
+          x≡ = residual-word rec-l u≡
+          y  = subst ( λ e → U e ) q ( residual rec-r v≡ )
+          y≡ = trans (flat-resp q (residual rec-r v≡)) (residual-word rec-r v≡)
+
+-- the completeness direction, closed with no postulate at all: §23's
+-- `pdU-const` supplies the shared continuation, the residual test replaces the
+-- record decision, and §16 turns the descent into the statement about the pair
+Desc-complete-≟ : Desc-complete
+Desc-complete-≟ r w u v = desc-picks-≟ r w u v
 
 -- and §8's `completeness` (signature stated there, proved here)
-completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-⊥ r u v w≡ u≢v
+completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v w≡ u≢v
 ```
 

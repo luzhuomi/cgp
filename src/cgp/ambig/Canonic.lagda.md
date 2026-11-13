@@ -377,6 +377,11 @@ automatically (`r-∃u`).
 pd-expr : ∀ { r : RE } { c : Char } → PDInstance r c → RE
 pd-expr (pdinstance {p} inj ev) = p
 
+-- the transition map of one pd path, read off at a named continuation
+pd-inj : ∀ { r p : RE } { c : Char } → ( pdi : PDInstance r c )
+  → pd-expr pdi ≡ p → (U p → U r)
+pd-inj (pdinstance {p} inj ev) refl = inj
+
 pd*-expr : ∀ { r : RE } { pref : List Char } → PDInstance* r pref → RE
 pd*-expr (pdinstance* {p} inj ev) = p
 

@@ -175,6 +175,19 @@ This module develops the two ingredients of that argument.
   `completeness-dec` give §8's statement from those two rules alone; the test
   evaluates on the §17–§18 example (`dup-cont-differ`), whose pair is descended
   end to end by the recursion with neither rule used (`dup-desc-dec`).
+ * §21 locates the second configuration exactly.  `recon-uniq`: two
+   reconstructions through the *same* member with the same residual rebuild the
+   same tree — a `pick-diff-record` stop for a distinct pair always has two
+   *distinct* members with one continuation (dropping that premise fails
+   exactly where the two members' transition maps differ).  The configuration
+   is realized by `Canonic` §8.1's verbatim-A3 example: two members with
+   `≈₀`-similar continuations (`pd-a3-continuations`), `Idemp` firing by
+   computation (`pd-a3-Idemp-applied`), an ambiguous expression
+   (`pd-a3-ambiguous`) — and the criterion sits at the *merged derivative*
+   state (`pd-a3-Desc`), where `crit-sum-≈₀` fires (`pd-a3-crit`), not at the
+   state carrying the transition.  Re-targeting the descent's conclusion to
+   that (`derivᵖ`/`∈Desc`, not the per-path `pd*-Desc` list) and matching
+   `pick-diff-state` against the paper's remaining situations is §22.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -228,7 +241,7 @@ open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Membership.Propositional using (_∈_)
 open import Data.Empty using (⊥ ; ⊥-elim)
 open import Data.Sum using (_⊎_ ; inj₁ ; inj₂)
-open import Data.Product using (_×_; _,_; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
+open import Data.Product using (_×_; _,_; Σ ; proj₁ ; proj₂; Σ-syntax; ∃-syntax)
 open import Relation.Binary.PropositionalEquality as Eq using (_≡_; refl; sym; trans; cong; cong₂ ; subst)
 open Eq.≡-Reasoning using (begin_; step-≡;  step-≡-∣;  step-≡-⟩; _∎)
 open import Function using (_∘_)
@@ -2633,3 +2646,93 @@ showing `pick-diff-record` is impossible for a canonical state, and that
 `pick-diff-state` reduces to the paper's other two situations — is the
 enumeration argument §19 pointed at, and it is a statement about canonical
 patterns, which is where §17 said the classification belongs.
+
+## 21. Reconstruction uniqueness: where the second rule is needed
+
+§20 closed with the suspicion that its second stopping configuration might be
+vacuous.  It is not, and this section locates exactly where it sits.  Trying to
+close the `yes` branch of the residual test by "equal continuations + equal
+residuals ⇒ equal trees" fails at a point that is mathematical, not technical:
+after the two reconstruction equations `inj (unflat w∈) ≡ u` are exposed, the
+two members are two *different* `pdinstance`s, and equal continuation
+*expressions* do not identify their transition maps — different maps apply one
+residual tree to different trees.  What *is* true is uniqueness per record, and
+it sharpens the configuration: the stop requires *two distinct records with one
+continuation*.  That is precisely the `Idemp` configuration the canonical form
+removes, `Canonic.pd-Idemp?` is the computation that detects it, and the
+duplicate pattern is the criterion that names it.  The second rule is not a gap
+in the recursion; it is the place where the duplicate pattern enters the
+completeness proof.
+
+```agda
+-- reconstruction uniqueness for one record: two reconstructions through the
+-- *same* member with the same residual tree rebuild the same tree.  The `with`
+-- ladder first matches the member equality (so both reconstructions live at one
+-- member, one injection), then destructs the reconstructions to expose their
+-- equations `inj (unflat w∈) ≡ u` and assembles the chain
+recon-uniq : ∀ { r : RE } { c : Char } { ws : List Char }
+  { z z′ : PDInstance r c } { u v : U r }
+  ( z≡z′ : z ≡ z′ )
+  ( u∈ : Recons {r} {c} u z ) ( v∈ : Recons {r} {c} v z′ )
+  ( u≡ : proj₁ (flat {r} u) ≡ c ∷ ws ) ( v≡ : proj₁ (flat {r} v) ≡ c ∷ ws )
+  → residual u∈ u≡
+    ≡ U-transport (sym (cong Canonic.pd-expr z≡z′)) (residual v∈ v≡)
+  → u ≡ v
+recon-uniq {z = z} {z′ = z′} {u = u₁} {v = v₁} z≡z′ u∈ v∈ u≡ v≡ res
+  with z≡z′
+... | refl with u∈ | v∈
+...   | recons .u₁ ( p₁ , q₁ ) | recons .v₁ ( p₂ , q₂ ) =
+        trans (sym q₁) (trans (cong (Canonic.pd-inj z refl) res) q₂)
+```
+
+The attempted strengthening — dropping `z≡z′` and taking the continuation
+equation `eq` as the hypothesis instead — does not type-check, and the failure
+is the point: with both reconstructions destructed, Agda reports `inj != inj₃`,
+two distinct transition maps.  No replacement for §20's `desc-picks-dec` (both
+rules) comes out of this section; what comes out is the *characterization*:
+`pick-diff-record` fires only at a state whose member list holds two distinct
+records continuing at one expression.
+
+The stop is not vacuous.  The configuration "`pdU` holds two distinct members
+continuing at `≈₀`-similar expressions" is realized, and this repository
+already carries the example — `Canonic` §8.1, built when A3 was stated
+verbatim: `pd-a3-target` derives the letter `a` through two members whose
+continuations are `≈₀` (the list is *computed*, `pd-a3-continuations`),
+`Idemp` fires on it (`pd-a3-Idemp-applied`, `pd-a3-A3?-fires`), the expression
+is ambiguous (`pd-a3-ambiguous`), and `pd-a3-Desc` exhibits the merged
+derivative state — `derivᵖ` re-glues the member continuations into one sum,
+which is the paper's `Desc` — as a descendant of the target.  At such a state
+the recursion stops or continues by the computed residual test; the criterion
+that witnesses the ambiguity, however, is at the *derivative* state, where the
+duplicate pattern is syntactic (`l + s` with `l ≈₀ s`):
+
+```agda
+-- the duplicate pattern of a sum state fires `crit`'s third disjunct directly
+crit-sum-≈₀ : ∀ ( l s : RE ) ( loc : ℕ )
+  → Canonic._≈₀_ l s
+  → crit ( l + s ` loc )
+crit-sum-≈₀ l s loc ≈₀ls = inj₂ (inj₂ ( AmbigCheck.𝟘 , l , s , loc , ( refl , ≈₀ls ) ))
+
+-- the merged derivative state of the A3 example carries the criterion
+pd-a3-crit : crit Canonic.pd-a3-state
+pd-a3-crit =
+  crit-sum-≈₀ ( ε ● ( $ 'c' ` 4 ) ` 5 ) ( ε ● ( $ 'c' ` 7 ) ` 8 ) zero
+              ( Canonic.≈₀-● Canonic.≈₀-ε ( Canonic.≈₀-$ 'c' 4 7 ) )
+```
+
+Two corrections come out of this section, and both are load-bearing for the
+completeness proof:
+
+* `recon-uniq`: a `pick-diff-record` stop for a *distinct* pair always has two
+  **distinct** members with one continuation and one residual — a genuine
+  double record, never one record twice.  The duplicate-record configuration is
+  exactly what `Canonic.pd-Idemp?` detects on a member list; the rule is where
+  the duplicate pattern enters the recursion.
+
+* the witness of a duplicate-record configuration is a criterion at the
+  **derivative** state (`pd-a3-crit` at `pd-a3-Desc`), not at the state that
+  carries the transition.  §20's two rules conclude `crit r` at the state
+  itself; making the descent's conclusion the paper's — a *pd-descendant* (in
+  the `derivᵖ`/`∈Desc` sense, which `pd*-Desc` per-path lists do not give) at
+  which a criterion fires — and matching `pick-diff-state` against the paper's
+  remaining two situations is the enumeration argument: §22.

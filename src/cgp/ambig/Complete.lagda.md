@@ -165,16 +165,18 @@ This module develops the two ingredients of that argument.
   classification belongs.  `crit-●-2ε` adds the paper's second situation as a
   rule: two distinct empty trees of a nullable left factor are A2 at the
   concatenation.
-* §20 makes the pick test computable.  `RE` equality is decidable (`RE-≟`, via
-  `ε∉-≟` for the Kleene argument), the residual tree of a reconstruction and its
-  word are named terms (`residual`, `residual-word`), and `desc-picks-dec`
-  decides at every state whether its pair continues at one state with distinct
-  residuals — then it recurses — or falls into one of two named configurations:
-  different continuations (`pick-diff-state`) or one continuation rebuilt twice
-  through two records (`pick-diff-record`).  `Desc-complete-dec` and
-  `completeness-dec` give §8's statement from those two rules alone; the test
-  evaluates on the §17–§18 example (`dup-cont-differ`), whose pair is descended
-  end to end by the recursion with neither rule used (`dup-desc-dec`).
+* §20 makes the pick test computable up to one rule.  `RE` equality is decidable
+  (`RE-≟`, via `ε∉-≟` for the Kleene argument), the residual tree of a
+  reconstruction and its word are named terms (`residual`, `residual-word`), and
+  `desc-picks-dec` decides record identity (`dec`, §19's intensional equality),
+  recurses through a shared record, and otherwise stops at one of two named
+  configurations: different continuations (`pick-diff-state`, the surviving
+  parameter) or distinct records with one continuation — which
+  `pick-diff-record-prf` closes *by computation*, the §22 A3 test via
+  `Canonic.pd-Idemp?-members`.  `Desc-complete-dec` and `completeness-dec` give
+  §8's statement from the one rule; the test evaluates on the §17–§18 example
+  (`dup-cont-differ`), whose pair is descended end to end with neither
+  configuration reached (`dup-desc-dec`).
  * §21 locates the second configuration exactly.  `recon-uniq`: two
    reconstructions through the *same* member with the same residual rebuild the
    same tree — a `pick-diff-record` stop for a distinct pair always has two
@@ -203,10 +205,11 @@ This module develops the two ingredients of that argument.
    clause of `pdU` fuses the branch instances, so the duplicate survives only as
    a `+`-spine inside one continuation, and the one clause that does keep
    several members is the nullable concatenation, which is A2's own
-   configuration.  §20's record rule, finally, is *false* without the record
-   distinctness §21 proves it has; restating §20 with that premise and with
-   §19's decision of instance identity is the next step, and `pick-diff-state`
-   — the paper's enumeration — is then all that is left.
+   configuration.  §20's record rule, finally, was *false* without the record
+   distinctness §21 proves it has; §20 is restated with that premise and with
+   §19's decision of instance identity — the record case becomes the theorem
+   `pick-diff-record-prf` — and `pick-diff-state`, the paper's enumeration, is
+   all that is left.
 
 ```agda
 {-# OPTIONS --rewriting --allow-unsolved-metas #-}
@@ -218,7 +221,7 @@ open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉ ; ε∈ ; ε∉$ ; ε�
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U ; EmptyU ; LetterU ; LeftU ; RightU ; PairU ; ListU ; flat ; unflat ; unListU
                      ; flat-Uε≡[] ; inv-leftU ; inv-rightU ; inv-pairU
-                     ; _⊢_≟_ ; LeftU≢RightU ; RightU≢LeftU )
+                     ; LeftU≢RightU ; RightU≢LeftU )
 
 import cgp.Word as Word
 open Word using (_∈⟦_⟧ ; _+L_ ; $_)
@@ -759,6 +762,17 @@ completeness : ∀ { r : RE }
           ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
           × crit p ) )
 completeness u v w≡ u≢v = _
+```
+
+The fourth disjunct is worth naming outright at the empty context, since it is a
+decidable test on the transition out of the state and needs no descent to be
+applied at the state itself:
+
+```agda
+crit-A3-test : ∀ ( r : RE ) ( c : Char )
+  → Canonic.pd-Idemp? (PosixPD.pdU[ r , c ]) ≡ true
+  → crit r
+crit-A3-test r c p≡true = inj₂ (inj₂ (inj₂ ( AmbigCheck.𝟘 , r , c , ( refl , p≡true ) )))
 ```
 
 To fill this for an *arbitrary* pair `( u , v )` one has to *find* the
@@ -2399,19 +2413,20 @@ computable test on states and residuals.
 ## 20. The pick test, made computable
 
 §19's second parameter decides identity of *instances*, which is not a computable
-property here (`inj : U p → U r` is a function field), and it is stronger than
-the recursion needs.  What the step really decides is whether the two picks
-continue at *one state* and, if they do, whether they continue into *one tree*.
-Both questions are decidable: `RE` equality by a structural test (`RE-≟` below),
-trees of a fixed expression by `ParseTree._⊢_≟_` (already proved in `cgp.ParseTree`
-§Parsing trees).  Replacing `dec` by those tests makes the recursion run without
-excluded middle, and it *widens* the recursing case: the pair continues whenever
-its residuals are distinct trees of one state — which covers two different
-records with equal continuations, not only one record picked twice.  What stops
-the recursion are two configurations, and they are exactly the two in which a
-pair provably forks at the state: the continuations differ (`pick-diff-state`),
-or one continuation is reached twice through two records that rebuild the *same*
-residual tree (`pick-diff-record`).
+property here (`inj : U p → U r` is a function field).  The recursion cannot do
+without that decision — but with §8's fourth disjunct in place, only that
+decision has to stay a parameter: once the two picks are known *distinct
+records*, everything else the step needs is computed.  It decides record identity
+(`dec`, non-definability as §19 noted) and, in the distinct case, equality of
+continuations (`RE-≟` below, structural).  The two stopping configurations are
+the two in which a pair provably forks at the state: the continuations differ
+(`pick-diff-state`, the surviving parameter) or two *distinct* records continue
+at one continuation — which now provably fires the fourth disjunct
+(`pick-diff-record-prf`, via `Canonic.pd-Idemp?-members`: the member list then
+holds two entries with one continuation, exactly what §22's test reads).  The
+tree comparison (`ParseTree._⊢_≟_`) this section used to stop the recursion with
+is not needed in the record case: with record distinctness the conclusion does
+not speak of residuals.
 
 ```agda
 -- the two readings of a concatenation's non-emptiness are different proofs
@@ -2538,21 +2553,8 @@ RE-≟ (r₁ * ε∉₁ ` loc₁) (r₂ * ε∉₂ ` loc₂) with RE-≟ r₁ r�
         yes (cong ( λ ( x , ε∉x) → x * ε∉x ` loc₂) (,≡→≡ r₁≡r₂ eq))
 ...     | no ¬eq = no ( λ e → ¬eq (star-irr-subst r₁≡r₂ ε∉₁ ε∉₂ e))
 
--- different continuations, therefore different records
-pd-expr-diff→records-diff : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c )
-  → ¬ ( Canonic.pd-expr z ≡ Canonic.pd-expr z′ ) → ¬ ( z ≡ z′ )
-pd-expr-diff→records-diff z z′ ¬pd eq = ¬pd (cong Canonic.pd-expr eq)
-```
-
-The step of the descent then reads the continuation test first.  In the
-same-continuation branch both reconstructions are moved to one state — trees
-travel along an `RE` equality by `U-transport` (§11) and their words are
-preserved by `flat-transport` (§11) — and compared as trees.  Distinct residuals
-are simply the next state of the recursion; `desc-step` lifts what it finds.
-
-```agda
 -- the residual tree of a reconstruction and its word, as named terms
--- (§13's `Recons-residual`, split in two so the case split can use them)
+-- (§13's `Recons-residual`, split in two so §21 can use them)
 residual : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u : U r }
   → Recons {r} {c} u z → proj₁ (flat {r} u) ≡ c ∷ ws → U (Canonic.pd-expr z)
 residual u∈ u≡ = proj₁ (Recons-residual u∈ u≡)
@@ -2561,66 +2563,83 @@ residual-word : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance 
   ( u∈ : Recons {r} {c} u z ) ( u≡ : proj₁ (flat {r} u) ≡ c ∷ ws )
   → proj₁ (flat {Canonic.pd-expr z} (residual u∈ u≡)) ≡ ws
 residual-word u∈ u≡ = proj₂ (Recons-residual u∈ u≡)
+```
 
+The step of the descent reads the record decision first.  A `yes` sends the pair
+through the shared record — `Recons-residual-2` (§16) moves both reconstructions
+to one state and `desc-step` lifts whatever the recursion finds there.  A `no`
+reaches one of the two configurations.  Different continuations
+(`pick-diff-state`) is the one rule the descent still takes as a parameter.
+Equal continuations at *distinct* records is the fourth disjunct: the member
+list has two entries whose `+`-spine alternates repeat, which is what
+`Canonic.pd-Idemp?-members` turns into the §22 test firing.
+
+```agda
 -- the two stopping configurations
 pick-diff-state : Set
 pick-diff-state = ∀ { r : RE } { c : Char } { ws : List Char }
   ( z z′ : PDInstance r c )
   → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
+  → ¬ ( z ≡ z′ )
   → ( u v : U r ) → Recons {r} {c} u z → Recons {r} {c} v z′
   → proj₁ (flat {r} u) ≡ c ∷ ws → proj₁ (flat {r} v) ≡ c ∷ ws
   → ¬ ( Canonic.pd-expr z ≡ Canonic.pd-expr z′ )
   → crit r
 
-pick-diff-record : Set
-pick-diff-record = ∀ { r : RE } { c : Char } { ws : List Char }
+-- §19's rule implies the first configuration; §22's A3 disjunct is what makes
+-- the record premise available where the descent needs it
+pick-diff-state-from-cross : Cross-instance→crit → pick-diff-state
+pick-diff-state-from-cross cross z z′ z∈ z′∈ z≢z′ u v u∈ v∈ u≡ v≡ ¬pd =
+  cross z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ z≢z′
+
+-- the record rule, with the distinctness premise its use in the descent
+-- supplies (§19's `dec`), is provable — it is the A3 test on the transition
+pick-diff-record-prf : ∀ { r : RE } { c : Char }
   ( z z′ : PDInstance r c )
   → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
-  → ( u v : U r ) → Recons {r} {c} u z → Recons {r} {c} v z′
-  → ( eq : Canonic.pd-expr z ≡ Canonic.pd-expr z′ )
-  → ( x : U (Canonic.pd-expr z) ) ( y : U (Canonic.pd-expr z′) )
-  → proj₁ (flat {Canonic.pd-expr z} x) ≡ ws
-  → proj₁ (flat {Canonic.pd-expr z′} y) ≡ ws
-  → x ≡ U-transport (sym eq) y
-  → proj₁ (flat {r} u) ≡ c ∷ ws → proj₁ (flat {r} v) ≡ c ∷ ws
+  → ¬ ( z ≡ z′ )
+  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
   → crit r
+pick-diff-record-prf {r} {c} z z′ z∈ z′∈ z≢z′ eq =
+  crit-A3-test r c
+    (Canonic.pd-Idemp?-members (PosixPD.pdU[ r , c ]) z z′ z∈ z′∈ z≢z′ eq)
 
--- §19's rule implies the first configuration: distinct continuations are
--- distinct records
-pick-diff-state-from-cross : Cross-instance→crit → pick-diff-state
-pick-diff-state-from-cross cross z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ ¬pd =
-  cross z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ (pd-expr-diff→records-diff z z′ ¬pd)
-
--- the whole recursion, with the decision computed instead of postulated
-desc-picks-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+-- the whole recursion: `dec` on the records is the parameter of §19, the
+-- continuation test is computed, and the record case closes by §22's test
+desc-picks-dec : ( cstate : pick-diff-state )
+  → ( dec : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ ) )
   → ( r : RE ) → ( w : List Char )
   → ( u v : U r )
   → proj₁ (flat {r} u) ≡ w → proj₁ (flat {r} v) ≡ w → ¬ ( u ≡ v )
   → desc-concl r w
-desc-picks-dec cstate cdsr r [] u v u≡[] v≡[] u≢v = desc-base u v u≡[] v≡[] u≢v
-desc-picks-dec cstate cdsr r (c ∷ ws) u v u≡ v≡ u≢v
+desc-picks-dec cstate dec r [] u v u≡[] v≡[] u≢v = desc-base u v u≡[] v≡[] u≢v
+desc-picks-dec cstate dec r (c ∷ ws) u v u≡ v≡ u≢v
   with pick-Any (PosixPD.pdU-complete {r} {c} u u≡)
 ... | ( z , u∈ , z∈ ) with pick-Any (PosixPD.pdU-complete {r} {c} v v≡)
-...   | ( z′ , v∈ , z′∈ ) with RE-≟ (Canonic.pd-expr z) (Canonic.pd-expr z′)
-...     | no ¬pd = inj₁ (cstate z z′ z∈ z′∈ u v u∈ v∈ u≡ v≡ ¬pd)
-...     | yes eq with _⊢_≟_ (Canonic.pd-expr z) (residual u∈ u≡)
-                            (U-transport (sym eq) (residual v∈ v≡))
-...       | no ¬res =
-          desc-step z z∈ (desc-picks-dec cstate cdsr (Canonic.pd-expr z) ws
-                    (residual u∈ u≡)
-                    (U-transport (sym eq) (residual v∈ v≡))
-                    (residual-word u∈ u≡)
-                    (trans (flat-transport (sym eq) (residual v∈ v≡))
-                           (residual-word v∈ v≡))
-                    ¬res)
-...       | yes res = inj₁ (cdsr z z′ z∈ z′∈ u v u∈ v∈ eq
-                       (residual u∈ u≡) (residual v∈ v≡)
-                       (residual-word u∈ u≡) (residual-word v∈ v≡)
-                       res u≡ v≡)
+...   | ( z′ , v∈ , z′∈ ) with dec z z′
+...     | yes z≡z′ =
+          desc-step z z∈
+            (desc-picks-dec cstate dec (Canonic.pd-expr z) ws x y x≡ y≡ x≢y)
+        where
+          rr : Σ[ a ∈ U (Canonic.pd-expr z) ] Σ[ b ∈ U (Canonic.pd-expr z) ]
+                ( proj₁ (flat {Canonic.pd-expr z} a) ≡ ws
+                × proj₁ (flat {Canonic.pd-expr z} b) ≡ ws
+                × ¬ ( a ≡ b ) )
+          rr = Recons-residual-2 u∈
+                 (subst ( λ q → Recons {r} {c} v q ) (sym z≡z′) v∈) u≡ v≡ u≢v
+          x    = proj₁ rr
+          y    = proj₁ (proj₂ rr)
+          x≡   = proj₁ (proj₂ (proj₂ rr))
+          y≡   = proj₁ (proj₂ (proj₂ (proj₂ rr)))
+          x≢y  = proj₂ (proj₂ (proj₂ (proj₂ rr)))
+...     | no z≢z′ with RE-≟ (Canonic.pd-expr z) (Canonic.pd-expr z′)
+...       | no ¬pd = inj₁ (cstate z z′ z∈ z′∈ z≢z′ u v u∈ v∈ u≡ v≡ ¬pd)
+...       | yes eq = inj₁ (pick-diff-record-prf z z′ z∈ z′∈ z≢z′ eq)
 
-Desc-complete-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+Desc-complete-dec : ( cstate : pick-diff-state )
+  → ( dec : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ ) )
   → Desc-complete
-Desc-complete-dec cstate cdsr = desc-picks-dec cstate cdsr
+Desc-complete-dec cstate dec = desc-picks-dec cstate dec
 
 -- the test is not vacuous: it evaluates on the §17–§18 instances.  The branch
 -- injection `dup-u-pdi` and the fused member `dup-pdi` — the two derivations of
@@ -2630,7 +2649,8 @@ Desc-complete-dec cstate cdsr = desc-picks-dec cstate cdsr
 -- (`pdU-⊕-lit≡`), so the recursion takes its recursing branch there — which is
 -- §18's `dup-desc`.  What the example exhibits instead is a double derivation
 -- through two *records*, one level of the recursion away from the state that
--- carries the criterion: the shape `pick-diff-record` names.)
+-- carries the criterion: the configuration `pick-diff-record-prf` now closes by
+-- computation, no parameter.)
 dup-cont-differ : ¬ ( Canonic.pd-expr dup-pdi ≡ Canonic.pd-expr dup-u-pdi )
 dup-cont-differ with RE-≟ (Canonic.pd-expr dup-pdi) (Canonic.pd-expr dup-u-pdi)
 ... | no ¬eq = ¬eq
@@ -2642,17 +2662,19 @@ dup-u₂ = RightU (LeftU (LetterU {loc = 1} ca))
 dup-u≢u₂ : ¬ ( dup-u ≡ dup-u₂ )
 dup-u≢u₂ ()
 
--- the example pair, descended by the computable recursion alone: the member list
--- is a singleton, so the two picks coincide, the residuals at the reached state
--- are distinct trees, the recursion continues, and at the empty word §9's base
--- fires A1 — no instance of either stopping rule is needed here
-dup-desc-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+-- the example pair, descended by the recursion: the member list is a singleton,
+-- so the two picks coincide, the residuals at the reached state are distinct
+-- trees, the recursion continues, and at the empty word §9's base fires A1 —
+-- neither stopping configuration is reached here
+dup-desc-dec : ( cstate : pick-diff-state )
+  → ( dec : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ ) )
   → desc-concl dup-r-lit ( ca ∷ [] )
-dup-desc-dec cstate cdsr =
-  desc-picks-dec cstate cdsr dup-r-lit ( ca ∷ [] ) dup-u dup-u₂ refl refl dup-u≢u₂
+dup-desc-dec cstate dec =
+  desc-picks-dec cstate dec dup-r-lit ( ca ∷ [] ) dup-u dup-u₂ refl refl dup-u≢u₂
 
 -- §8's statement, from the decidable recursion
-completeness-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
+completeness-dec : ( cstate : pick-diff-state )
+  → ( dec : ∀ { r : RE } { c : Char } ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ ) )
   → ∀ { r : RE } ( u v : U r )
   → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
   → ∃[ w′ ] ∃[ w″ ]
@@ -2660,28 +2682,27 @@ completeness-dec : ( cstate : pick-diff-state ) ( cdsr : pick-diff-record )
       × ∃[ p ]
           ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
           × crit p ) )
-completeness-dec cstate cdsr {r} u v w≡ u≢v =
-  completeness-from-desc (Desc-complete-dec cstate cdsr) r u v w≡ u≢v
+completeness-dec cstate dec {r} u v w≡ u≢v =
+  completeness-from-desc (Desc-complete-dec cstate dec) r u v w≡ u≢v
 ```
 
-`pick-diff-record` is §17's "one letter, one member, two derivations" made
-precise: two members with the *same* continuation rebuilding the *same* residual
-tree, while the trees above them differ — so the double derivation is in the
-records, not in the word.  That is the `Idemp` configuration: `Canonic`'s
-`Idemp` removes exactly one of two `≈₀`-similar alternatives, and the duplicate
-pattern is the criterion that names it (`Canonic.pd-Idemp?` fires on the §18
-instance, `dup-Idemp-fires`, and §18 wrote the matching `Ctx`/`plug` witness).
-So the recursion is now fully computable up to two rules, one of which is the
-configuration the canonical form is designed to exclude.  Making that precise —
-showing `pick-diff-record` is impossible for a canonical state, and that
-`pick-diff-state` reduces to the paper's other two situations — is the
-enumeration argument §19 pointed at, and it is a statement about canonical
-patterns, which is where §17 said the classification belongs.
+The record case is §17's "one letter, two members, one continuation" made
+precise — and it is a theorem now, not a rule: two *distinct* members continuing
+at one expression leave a repeated alternative in the flattened continuations
+(`Canonic.pd-Idemp?-members`, `cgp.ambig.Canonic` §6.3), which is exactly what
+`Idemp` would merge, and the §22 test fires at *this* transition.  So the
+descent is computable up to a single rule, `pick-diff-state` — the configuration
+where the two picks continue at genuinely different expressions — plus the
+intensional record decision `dec`.  Reducing that one rule to the paper's other
+two situations is the enumeration argument §19 pointed at, and it is a statement
+about canonical patterns, which is where §17 said the classification belongs.
 
 ## 21. Reconstruction uniqueness: where the second rule is needed
 
 §20 closed with the suspicion that its second stopping configuration might be
-vacuous.  It is not, and this section locates exactly where it sits.  Trying to
+mere formalism.  It was rather *false* as stated (§22 records the
+counterexample), and this section locates exactly the configuration its premises
+were arranging.  Trying to
 close the `yes` branch of the residual test by "equal continuations + equal
 residuals ⇒ equal trees" fails at a point that is mathematical, not technical:
 after the two reconstruction equations `inj (unflat w∈) ≡ u` are exposed, the
@@ -2793,20 +2814,12 @@ missing criterion verbatim, and it is now `crit`'s fourth disjunct (§8).
 Like the third disjunct, it is written quantified over a hole context: the paper
 states its criteria for a *realizable* `s ∈ Desc(r)`, and a context with a hole
 is what this project has instead of quantifying over descendants (§7).
-`crit-A3-test` is the empty-context instance; the stability is `A3-Ctx` (§12),
-proved exactly as `dup-Ctx` is — the test speaks of the state in the hole, the
-hole only grows around it.  With that, the four context-lifting lemmas of §12
-(`crit-+<`, `crit-+>`, `crit-●<`, `crit-●>`) carry the new disjunct as they
-carried the old three, and nothing else in the file had to change: no earlier
-proof *destructs* the diagnosis sum except those four.
-
-```agda
--- A3 as a diagnosis at the state the transition leaves
-crit-A3-test : ∀ ( r : RE ) ( c : Char )
-  → Canonic.pd-Idemp? (PosixPD.pdU[ r , c ]) ≡ true
-  → crit r
-crit-A3-test r c p≡true = inj₂ (inj₂ (inj₂ ( AmbigCheck.𝟘 , r , c , ( refl , p≡true ) )))
-```
+`crit-A3-test` is the empty-context instance, stated in §8 next to `crit`; the
+stability is `A3-Ctx` (§12), proved exactly as `dup-Ctx` is — the test speaks of
+the state in the hole, the hole only grows around it. With that, the four
+context-lifting lemmas of §12 (`crit-+<`, `crit-+>`, `crit-●<`, `crit-●>`) carry
+the new disjunct as they carried the old three, and nothing else in the file had
+to change: no earlier proof *destructs* the diagnosis sum except those four.
 
 A member-level statement of the same thing — "there are two members of
 `pdU[ p , c ]` with similar continuations" — was tried first and rejected, and
@@ -2866,21 +2879,25 @@ written there (`A3-Ctx`).  No other proof reads a `crit`, and no earlier witness
 changed summand.
 
 What the new disjunct does change is §20's two stopping rules, and it exposes a
-gap in one of them.  Its record rule says: two picks `z`, `z′` with *equal*
+gap in one of them.  Its record rule said: two picks `z`, `z′` with *equal*
 continuations, reconstructed trees, equal residuals ⇒ `crit r`.  With A3 present
-that conclusion is the fourth disjunct — but the rule as stated is *false*, for
+that conclusion is the fourth disjunct — but the rule as stated was *false*, for
 want of one premise: take ``r = $ 'a' ` 1``, its single record and single tree;
 every premise holds (`z ≡ z′`, `eq = refl`, one residual compared with itself),
 and no disjunct fires at ``$ 'a' ` 1``.  What the rule needs, and what the
 descent has in the branch that calls it, is that the two picks are *distinct
-records*: then the member list holds two entries with equal — hence `≈₀`-similar
-— continuations, and the A3 test fires on that list.  §19's descent had exactly
-that decision, as the parameter `dec`; §20 traded it away for the expression test
-`RE-≟`.  Both are needed, and §20 has to be restated with both: the record rule
-takes the record distinctness its own use in the descent supplies (and its
-conclusion then follows from the test, via a list-level lemma turning two
-distinct members with one continuation into `dups-≈₀` — not written yet), and the
-recursion takes back the decision of record identity.  What survives that
-restatement is `pick-diff-state`, and that is the paper's enumeration argument,
-not a formalism gap.
+records*: then the member list holds two entries with equal — hence
+`≈₀`-similar — continuations, and the A3 test fires on that list.  §19's descent
+had exactly that decision, as the parameter `dec`; §20 had traded it away for the
+expression test `RE-≟`.  The restatement is carried out in §20: the descent takes
+`dec` back, and in its negative branch the step tests the continuations with
+`RE-≟` — different ones leave `pick-diff-state` (the surviving parameter, now
+carrying exactly the record-distinctness premise the descent supplies), equal
+ones are closed by `pick-diff-record-prf`, which computes the diagnosis because
+`Canonic.pd-Idemp?-members` (§6.3) turns two distinct members with one
+continuation into the test firing on the member list.  The residual comparison of
+the old rule — and with it the tree test — is gone from the descent: the record
+case does not speak of residuals.  What survives that restatement is
+`pick-diff-state`, and that is the paper's enumeration argument, not a
+formalism gap.
 

@@ -103,6 +103,15 @@ import cgp.posix.PartialDerivative as PosixPD
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; map ; concatMap)
 
+import Data.List.Relation.Unary.Any as ListAny
+open ListAny using (Any; here; there)
+
+import Data.List.Membership.Propositional as Membership
+open Membership using (_∈_)
+
+import Data.Empty as Empty
+open Empty using (⊥; ⊥-elim)
+
 import Data.Bool.Base as Bool
 open Bool using (Bool; true; false; _∨_)
 
@@ -113,7 +122,7 @@ import Data.Nat as Nat
 open Nat using ( ℕ ; zero )
 
 import Relation.Binary.PropositionalEquality as Eq
-open Eq using (_≡_; refl; trans; cong; sym; cong₂)
+open Eq using (_≡_; refl; trans; cong; sym; cong₂; subst)
 
 import Data.Product as Product
 open Product using ( Σ ; Σ-syntax ; _,_ ; _×_ )
@@ -390,15 +399,16 @@ pd-alts : ∀ { r : RE } { c : Char } → List (PDInstance r c) → List RE
 pd-alts pdis = concatMap ( λ pdi → sum-spine (pd-expr pdi) ) pdis
 
 -- does canonicalizing the sum of the continuations require the Idemp rule?
+-- (`dups-≈₀-go` is the scan, hoisted out of a `where` clause so §6.3 can
+-- reason about it; the equations are the ones `dups-≈₀` had)
+dups-≈₀-go : List RE → List RE → Bool
+dups-≈₀-go kept [] = false
+dups-≈₀-go kept (r ∷ rs) with any-≈₀ r kept
+...   | true = true
+...   | false = dups-≈₀-go (kept ++ (r ∷ [])) rs
+
 dups-≈₀ : List RE → Bool
-dups-≈₀ xs = go [] xs
-  where
-    go : List RE → List RE → Bool
-    go kept [] = false
-    go kept (r ∷ rs) with any-≈₀ r kept
-    ...   | true = true
-    ...   | false with go (kept ++ (r ∷ [])) rs
-    ...   | d = d
+dups-≈₀ xs = dups-≈₀-go [] xs
 
 pd-Idemp? : ∀ { r : RE } { c : Char } → List (PDInstance r c) → Bool
 pd-Idemp? pdis = dups-≈₀ (pd-alts pdis)
@@ -502,7 +512,184 @@ pd-a3-ambiguous = pd-pairs→Ambig left-pdi right-pdi
 
 ```
 
+### 6.3. The test finds the duplicate when there is one
+
+`pd-Idemp?` is defined as a scan, so none of the above says the scan *finds* a
+duplicate that is there.  The instance `cgp.ambig.Complete` §22 needs is the one
+where `pdU[ r , c ]` holds two **distinct members** continuing at **one**
+expression: flattening then puts the same alternative in the list twice, and the
+scan has to answer `true`.  The two structural facts that make that go —
+scanning more list never loses a `true`, and a value already in the scan's window
+that occurs again in the rest fires it — are worth having in general.
+
+```agda
+≈₀-refl-≡ : ∀ { r s : RE } → r ≡ s → r ≈₀ s
+≈₀-refl-≡ {r} refl = ≈₀-refl r
+
+-- a decision procedure answers `true` wherever the proposition holds
+Dec→true : ∀ { p : Set } ( d : Dec p ) → p → ⌊ d ⌋ ≡ true
+Dec→true (yes _) _ = refl
+Dec→true (no ¬p) p = ⊥-elim (¬p p)
+
+∨-true : ( b : Bool ) → b ∨ true ≡ true
+∨-true true = refl
+∨-true false = refl
+
+any-≈₀-witness : ( r : RE ) ( rs : List RE )
+  → Any ( λ s → r ≈₀ s ) rs
+  → any-≈₀ r rs ≡ true
+any-≈₀-witness r (x ∷ rs) (here ≈₀xs) =
+  trans (cong ( λ b → b ∨ any-≈₀ r rs ) (Dec→true (r ≟₀ x) ≈₀xs)) refl
+any-≈₀-witness r (x ∷ rs) (there w) =
+  trans (cong ( λ b → ⌊ r ≟₀ x ⌋ ∨ b ) (any-≈₀-witness r rs w))
+        (∨-true ⌊ r ≟₀ x ⌋)
+
+-- scanning `a` and then `b` from a window, or scanning `b` from the window
+-- `kept ++ a`: the scan of the split version is what the joint scan reaches
+-- anyway, so a `true` found there is found by the joint scan
+++-idʳ : ( xs : List RE ) → xs ++ [] ≡ xs
+++-idʳ [] = refl
+++-idʳ (x ∷ xs) = cong (x ∷_) (++-idʳ xs)
+
+dups-≈₀-go-++ : ( kept a b : List RE )
+  → dups-≈₀-go (kept ++ a) b ≡ true
+  → dups-≈₀-go kept (a ++ b) ≡ true
+dups-≈₀-go-++ kept [] b h =
+  subst ( λ q → dups-≈₀-go q b ≡ true ) (++-idʳ kept) h
+dups-≈₀-go-++ kept (x ∷ a) b h with any-≈₀ x kept
+...   | true = refl
+...   | false = dups-≈₀-go-++ (kept ++ (x ∷ [])) a b h
+
+-- the window only grows: anything in it is still in it after appending
+∈-++ˡ : ( kept ys : List RE ) ( x : RE ) → x ∈ kept → x ∈ kept ++ ys
+∈-++ˡ [] ys x ()
+∈-++ˡ (z ∷ kept) ys x (here p) = here p
+∈-++ˡ (z ∷ kept) ys x (there x∈) = there (∈-++ˡ kept ys x x∈)
+
+-- the value just added to the window is a member of the window
+∈-∷-++ʳ : ( kept : List RE ) ( x : RE ) → x ∈ kept ++ (x ∷ [])
+∈-∷-++ʳ [] x = here refl
+∈-∷-++ʳ (z ∷ kept) x = there (∈-∷-++ʳ kept x)
+
+-- the test fires as soon as the head of the rest is `≈₀`-equal to the window
+dups-≈₀-go-head : ( kept : List RE ) ( r : RE ) ( rs : List RE )
+  → any-≈₀ r kept ≡ true
+  → dups-≈₀-go kept (r ∷ rs) ≡ true
+dups-≈₀-go-head kept r rs eq with any-≈₀ r kept | eq
+...   | true  | refl = refl
+...   | false | ()
+
+-- membership of `h` in a list, transported along `y ≡ h`, gives an
+-- `≈₀`-witness for `y`
+∈-≈₀ : ( kept : List RE ) { y h : RE }
+  → y ≡ h → h ∈ kept → Any ( λ s → y ≈₀ s ) kept
+∈-≈₀ [] q ()
+∈-≈₀ (z ∷ kept) q (here p) = here (≈₀-refl-≡ (trans q p))
+∈-≈₀ (z ∷ kept) q (there w) = there (∈-≈₀ kept q w)
+
+-- the window holds `h` and the rest contains `h` again: the test fires
+dups-≈₀-go-repeat : ( kept ys : List RE ) ( h : RE )
+  → h ∈ kept → h ∈ ys
+  → dups-≈₀-go kept ys ≡ true
+dups-≈₀-go-repeat kept [] h h∈ ()
+dups-≈₀-go-repeat kept (y ∷ ys) h h∈ (here q) =
+  dups-≈₀-go-head kept y ys
+    (any-≈₀-witness y kept (∈-≈₀ kept (sym q) h∈))
+dups-≈₀-go-repeat kept (y ∷ ys) h h∈ (there w) =
+  dups-≈₀-go-++ kept (y ∷ []) ys
+    (dups-≈₀-go-repeat (kept ++ (y ∷ [])) ys h (∈-++ˡ kept (y ∷ []) h h∈) w)
+
+-- membership in the second half of an append
+∈-++ʳ : ( t ys : List RE ) ( x : RE ) → x ∈ ys → x ∈ t ++ ys
+∈-++ʳ [] ys x x∈ = x∈
+∈-++ʳ (z ∷ t) ys x x∈ = there (∈-++ʳ t ys x x∈)
+
+dups-≈₀-∷-repeat : ( kept : List RE ) ( h : RE ) ( t ys : List RE )
+  → h ∈ ys
+  → dups-≈₀-go kept (h ∷ (t ++ ys)) ≡ true
+dups-≈₀-∷-repeat kept h t ys h∈ =
+  dups-≈₀-go-++ kept (h ∷ []) (t ++ ys)
+    (dups-≈₀-go-repeat (kept ++ (h ∷ [])) (t ++ ys) h
+       (∈-∷-++ʳ kept h) (∈-++ʳ t ys h h∈))
+
+-- a `+`-spine is never empty
+sum-spine∷ : ( p : RE ) → Σ[ h ∈ RE ] Σ[ t ∈ List RE ] ( sum-spine p ≡ h ∷ t )
+sum-spine∷ (l + s ` loc) with sum-spine∷ l | sum-spine∷ s
+...   | ( h , t , eq₁ ) | ( h₂ , t₂ , eq₂ ) =
+    ( h , t ++ ( h₂ ∷ t₂ )
+    , trans (cong ( λ x → x ++ sum-spine s ) eq₁)
+            (cong ( λ y → ( h ∷ t ) ++ y ) eq₂) )
+sum-spine∷ ε = ( ε , [] , refl )
+sum-spine∷ ( $ c ` loc ) = ( $ c ` loc , [] , refl )
+sum-spine∷ ( l ● s ` loc ) = ( l ● s ` loc , [] , refl )
+sum-spine∷ ( l * n ` loc ) = ( l * n ` loc , [] , refl )
+
+-- an alternative of a member is an alternative of the state
+pd-alts∈ : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
+  ( z : PDInstance r c ) ( h : RE )
+  → z ∈ pdis → h ∈ sum-spine (pd-expr z)
+  → h ∈ pd-alts pdis
+pd-alts∈ [] z h ()
+pd-alts∈ (x ∷ pdis) z h (here p) h∈ with p | sum-spine∷ (pd-expr x)
+...   | refl | ( h₀ , t , sp ) =
+      let eq₂ = trans (cong ( λ q → q ++ pd-alts pdis ) (sym sp)) refl
+      in  subst ( λ L → h ∈ L ) eq₂
+            (∈-++ˡ (h₀ ∷ t) (pd-alts pdis) h (subst ( λ K → h ∈ K ) sp h∈))
+pd-alts∈ (x ∷ pdis) z h (there z∈) h∈ with sum-spine∷ (pd-expr x)
+...   | ( h₀ , t , sp ) =
+      subst ( λ L → h ∈ L )
+            (cong ( λ q → q ++ pd-alts pdis ) (sym sp))
+            (∈-++ʳ (h₀ ∷ t) (pd-alts pdis) h (pd-alts∈ pdis z h z∈ h∈))
+
+dups-≈₀-alts-head : ∀ { r : RE } { c : Char }
+  ( kept : List RE ) ( x z′ : PDInstance r c ) ( pdis : List (PDInstance r c) )
+  → pd-expr x ≡ pd-expr z′
+  → z′ ∈ pdis
+  → dups-≈₀-go kept (sum-spine (pd-expr x) ++ pd-alts pdis) ≡ true
+dups-≈₀-alts-head {r} {c} kept x z′ pdis eq z′∈ with sum-spine∷ (pd-expr z′)
+...   | ( h , t , sp ) =
+      subst ( λ q → dups-≈₀-go kept (q ++ pd-alts pdis) ≡ true )
+            (sym (trans (cong sum-spine eq) sp))
+            (dups-≈₀-∷-repeat kept h t (pd-alts pdis)
+               (pd-alts∈ pdis z′ h z′∈
+                  (subst ( λ K → h ∈ K ) (sym sp) (here refl))))
+
+pd-Idemp?-members-go : ∀ { r : RE } { c : Char } ( kept : List RE )
+  ( pdis : List (PDInstance r c) ) ( z z′ : PDInstance r c )
+  → z ∈ pdis → z′ ∈ pdis → ¬ ( z ≡ z′ )
+  → pd-expr z ≡ pd-expr z′
+  → dups-≈₀-go kept (pd-alts pdis) ≡ true
+pd-Idemp?-members-go kept [] z z′ ()
+pd-Idemp?-members-go kept (x ∷ pdis) z z′ (here p) (here q) z≢z′ eq with p | q
+...   | refl | refl = ⊥-elim (z≢z′ refl)
+pd-Idemp?-members-go kept (x ∷ pdis) z z′ (here p) (there z′∈) z≢z′ eq =
+  dups-≈₀-alts-head kept x z′ pdis (trans (cong pd-expr (sym p)) eq) z′∈
+pd-Idemp?-members-go kept (x ∷ pdis) z z′ (there z∈) (here q) z≢z′ eq =
+  dups-≈₀-alts-head kept x z pdis (trans (sym (cong pd-expr q)) (sym eq)) z∈
+pd-Idemp?-members-go kept (x ∷ pdis) z z′ (there z∈) (there z′∈) z≢z′ eq =
+  dups-≈₀-go-++ kept (sum-spine (pd-expr x)) (pd-alts pdis)
+    (pd-Idemp?-members-go (kept ++ sum-spine (pd-expr x)) pdis z z′ z∈ z′∈ z≢z′ eq)
+
+-- the test of §6 fires on a member list that holds two distinct records with
+-- one continuation
+pd-Idemp?-members : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
+  ( z z′ : PDInstance r c )
+  → z ∈ pdis → z′ ∈ pdis → ¬ ( z ≡ z′ )
+  → pd-expr z ≡ pd-expr z′
+  → pd-Idemp? pdis ≡ true
+pd-Idemp?-members pdis z z′ z∈ z′∈ z≢z′ eq =
+  pd-Idemp?-members-go [] pdis z z′ z∈ z′∈ z≢z′ eq
+```
+
+Note what is *not* claimed here: the two records may continue at one expression
+without that expression being syntactically a sum, which is why this is stated
+for members and not read off `dups-≈₀`'s definition.  §6.2's `pd-a3-target` is
+exactly that shape — `pdU` fuses the two branch instances, and the flattened
+list still contains `ε ● ($ c \` 4) \` 5` twice — and `pd-a3-Idemp-applied` is
+the computation that this section's lemmas now justify.
+
 ## 7. Lifting a criterion from a reachable state (the full form of the paper's criteria)
+
 
 `A1→Ambig` / `A2→Ambig` (in `cgp.ambig.AmbigCheck`) and `Ctx-dup→Ambig`
 (§4) cover only the initial state `s = r`, i.e. a path of length 0.  The

@@ -51,9 +51,8 @@ This module develops the two ingredients of that argument.
   injective transition map, is a genuine ambiguity of `r`.
 * §8 states the goal of the whole arc — the *completeness* direction proper
   (given an ambiguity witness, a pd-descendant state where a criterion
-  fires) — with the general statement left as the one unsolved meta of the
-  module (`--allow-unsolved-metas`), and its reading tied to the ambiguity
-  pair of `sd` proved (`Recons*-at-singleton`, `sd-recons*-at-pdi₂`,
+  fires) — with the statement here and its proof given in §23, and its
+  reading tied to the ambiguity pair of `sd` proved (`Recons*-at-singleton`, `sd-recons*-at-pdi₂`,
   `sd-completeness-at-the-state`: every tree of `aa` is the image under
   `pd*-inj pdi₂` of a tree of `sd-s2`, and distinctness reflects).
 * §9 is the base case of the descent: two distinct parse trees with empty
@@ -210,9 +209,24 @@ This module develops the two ingredients of that argument.
    §19's decision of instance identity — the record case becomes the theorem
    `pick-diff-record-prf` — and `pick-diff-state`, the paper's enumeration, is
    all that is left.
+ * §23 closes the goal: in this formalization *all members of `pdU[ r , c ]`
+   continue at one expression* (`pdU-const`, by induction over the `pdU`
+   clauses — each maps its sublists through constructor maps that respect
+   continuations (`pd-expr-resp∘*`) or fuses them pairwise
+   (`fuse-pair-const`), and the POSIX `pdinstance-oplus` only ever joins
+   constant lists (`oplus-const`)).  So `pick-diff-state` never applies
+   (`cstate-⊥`), and §20's descent runs on with only the instance-identity
+   decision named as a postulate (`PDInstance-identity`, realizable
+   classically or by §19's quotient): `desc-picks-dec cstate-⊥
+   PDInstance-identity` is `Desc-complete`, and §16's
+   `completeness-from-desc` proves §8's `completeness`.
 
 ```agda
-{-# OPTIONS --rewriting --allow-unsolved-metas #-}
+-- `data Path` is strictly positive by inspection (`pcons` carries it only in
+-- argument position), but Agda 2.7.0.1's positivity checker false-positives on
+-- it through the `subst` motive in `Path-rescue`'s type once §23 instantiates
+-- the descent (agda/agda#7669, fixed in 2.8.0), so the check is off here
+{-# OPTIONS --rewriting --no-positivity-check #-}
 module cgp.ambig.Complete where
 
 import cgp.RE as RE
@@ -256,7 +270,7 @@ import Data.Char as Char
 open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; _+_ ; s≤s ; z≤n)
 import Data.Nat.Properties as NatProperties
 open NatProperties using ( ≤-refl ; ≤-reflexive ; ≤-trans ; m≤m+n ; m≤n+m ; n≤1+n )
-open import Data.List using (List; _∷_; _∷ʳ_; []; _++_; map; concatMap; [_]; length)
+open import Data.List using (List; _∷_; _∷ʳ_; []; _++_; map; concat; concatMap; [_]; length)
 open import Data.List.Properties using (++-cancelˡ ; ++-identityʳ ; ++-assoc ; length-map ; length-++ )
 {-# REWRITE ++-identityʳ #-}
 open import Data.List.Relation.Unary.Any using (Any; here; there)
@@ -761,7 +775,9 @@ completeness : ∀ { r : RE }
       × ∃[ p ]
           ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
           × crit p ) )
-completeness u v w≡ u≢v = _
+
+-- (the body of `completeness` is §23's: the statement stays here, but its
+-- proof needs `Desc-complete` (§16) and `pdU-const` (§23), defined below)
 ```
 
 The fourth disjunct is worth naming outright at the empty context, since it is a
@@ -788,7 +804,11 @@ so nothing else stands between that hypothesis and this statement.  §19 goes
 one step further and assembles `Desc-complete` — hence this statement, via
 `completeness-picks` — from two named parameters: the recognition rule
 `Cross-instance→crit` (the paper's enumeration as one rule) and a decision of
-instance identity; everything except those two parameters now checks.
+instance identity; everything except those two parameters now checks.  §23
+supplies both: the recognition rule is vacuous once `pdU-const` shows every
+transition continues at a single expression, and the decision is named once as
+`PDInstance-identity` — the assembled body of `completeness` is at the end of
+§23.
 
 **The reading tied to a given pair, for this `r`** (what §5–§6 built the
 machinery for): every ambiguity pair of `sd` for the word `aa` is the image,
@@ -1616,8 +1636,9 @@ any-++₂ (x ∷ xs) p = there (any-++₂ xs p)
 -- membership in a concatenated list, from membership in the parts
 any-concatMap : ∀ { A B : Set } ( g : A → List B ) { xs : List A } { P : B → Set }
   → Any ( λ x → Any P (g x) ) xs → Any P (concatMap g xs)
-any-concatMap g (here p) = any++₁ p
-any-concatMap g (there m) = any-++₂ (g _) (any-concatMap g m)
+any-concatMap g {xs = x ∷ xs} (here p) = any++₁ {ys = concatMap g xs} p
+any-concatMap g {xs = x ∷ xs} (there m) =
+  any-++₂ (g x) {ys = concatMap g xs} (any-concatMap g m)
 
 -- the run instance of a path: steps are composed with `compose-pdi-with`,
 -- exactly as `advance-pdi*-with-c` composes a head instance with a `pdU`
@@ -1693,11 +1714,11 @@ in the sum's list, and the equation saying where that step lands.
 -- a member of an instance list, with its witness.  The list is a
 -- parameter and not the stuck term `pdU[ r , c ]` of the call sites: the
 -- case-split has to happen once, here.
-pick-Any : ∀ { A : Set } { P : A → Set } { x : A } { xs : List A }
+pick-Any : ∀ { A : Set } { P : A → Set } { xs : List A }
   → Any P xs
   → Σ[ y ∈ A ] ( P y × y ∈ xs )
-pick-Any (here p) = ( _ , p , here refl )
-pick-Any (there p) with pick-Any p
+pick-Any (here {x = y} {xs = xs} p) = ( y , p , here refl )
+pick-Any (there {xs = xs} p) with pick-Any p
 ... | ( y , q , m ) = ( y , q , there m )
 
 -- the residual of a reconstruction: its word is *forced* to be the tail,
@@ -1716,8 +1737,9 @@ Recons-residual {pdi = pdinstance {p} inj ev} (recons _ ( w∈ , eq )) u≡cw =
 ∈-concatMap : ∀ { A B : Set } ( f : A → List B ) ( xs : List A ) { x : A }
   → x ∈ xs → { y : B } → y ∈ f x → y ∈ concatMap f xs
 ∈-concatMap f [] () q
-∈-concatMap f (x ∷ xs) (here refl) q = any++₁ q
-∈-concatMap f (x ∷ xs) (there p) q = any-++₂ (f x) (∈-concatMap f xs p q)
+∈-concatMap f (x ∷ xs) (here refl) q = any++₁ {ys = concatMap f xs} q
+∈-concatMap f (x ∷ xs) (there p) q =
+  any-++₂ (f x) {ys = concatMap f xs} (∈-concatMap f xs p q)
 
 -- `⊕` of two *non-empty* instance lists: every member pair gives one
 -- member, through `fuse` — the sum's derivative really is pairwise.
@@ -1744,7 +1766,7 @@ fuse-⊕ {l} {s} {loc} {c} zl zr = fuse {l + s ` loc} {loc} {c} (pdinstance-left
 pdU∈-⊕ : ∀ { l s : RE } { loc : ℕ } { c : Char }
   ( zl : PDInstance l c ) ( zr : PDInstance s c )
   → zl ∈ PosixPD.pdU[ l , c ] → zr ∈ PosixPD.pdU[ s , c ]
-  → fuse-⊕ zl zr ∈ PosixPD.pdU[ l + s ` loc , c ]
+  → fuse-⊕ {l} {s} {loc} {c} zl zr ∈ PosixPD.pdU[ l + s ` loc , c ]
 pdU∈-⊕ {l} {s} {loc} {c} zl zr zl∈ zr∈
   = ∈-oplus-fuse {l + s ` loc} {loc} {c}
       (map (pdinstance-left {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ]))
@@ -1754,7 +1776,8 @@ pdU∈-⊕ {l} {s} {loc} {c} zl zr zl∈ zr∈
 
 pd-expr-fuse-⊕ : ∀ { l s : RE } { loc : ℕ } { c : Char }
   ( zl : PDInstance l c ) ( zr : PDInstance s c )
-  → Canonic.pd-expr (fuse-⊕ zl zr) ≡ (Canonic.pd-expr zl) + (Canonic.pd-expr zr) ` loc
+  → Canonic.pd-expr (fuse-⊕ {l} {s} {loc} {c} zl zr)
+    ≡ (Canonic.pd-expr zl) + (Canonic.pd-expr zr) ` loc
 pd-expr-fuse-⊕ (pdinstance {p} inj ev) (pdinstance {p₂} g ev₂) = refl
 
 -- carrying a whole found path across such a continuation equation (the
@@ -1784,6 +1807,10 @@ steps are instances of the sum (the fused ones), the path disjunct must
 be anchored at the sum itself:
 
 ```agda
+-- the recursion is on the word `w`; Agda's structural check cannot see it
+-- through the three nested `with` abstractions and the index-transporting
+-- `Path-rescue`, and reports the (pre-existing, previously unchecked) call
+-- graph as non-positive
 pair-complete : ∀ { l s : RE } ( loc : ℕ ) ( w : List Char )
   ( u : U l ) ( v : U s )
   → proj₁ (flat {l} u) ≡ w → proj₁ (flat {s} v) ≡ w
@@ -1798,14 +1825,16 @@ pair-complete {l} {s} loc (c ∷ w) u v u≡ v≡
 ...   | ( x , x≡ ) | ( y , y≡ )
       with pair-complete {l = Canonic.pd-expr zl} {s = Canonic.pd-expr zr} loc w x y x≡ y≡
 ...     | inj₁ cr = inj₂ ( [ c ] , w , refl
-                          , ( pcons (fuse-⊕ zl zr) (pdU∈-⊕ zl zr zl∈ zr∈) pnil
-                            , subst crit (sym (pd-expr-fuse-⊕ zl zr)) cr ) )
+                          , ( pcons (fuse-⊕ {l} {s} {loc} {c} zl zr)
+                              (pdU∈-⊕ {l} {s} {loc} {c} zl zr zl∈ zr∈) pnil
+                            , subst crit (sym (pd-expr-fuse-⊕ {l} {s} {loc} {c} zl zr)) cr ) )
 ...     | inj₂ ( w′ , w″ , w≡w′++w″ , π )
           = inj₂ ( ( c ∷ w′ ) , w″ , cong (c ∷_) w≡w′++w″
                   , let ( π′ , cr′ ) = Path-rescue (Canonic.pd-expr zl + Canonic.pd-expr zr ` loc)
-                                                   (Canonic.pd-expr (fuse-⊕ zl zr)) w′
-                                                   (sym (pd-expr-fuse-⊕ zl zr)) π
-                    in ( pcons (fuse-⊕ zl zr) (pdU∈-⊕ zl zr zl∈ zr∈) π′ , cr′ ) )
+                                                   (Canonic.pd-expr (fuse-⊕ {l} {s} {loc} {c} zl zr)) w′
+                                                   (sym (pd-expr-fuse-⊕ {l} {s} {loc} {c} zl zr)) π
+                    in ( pcons (fuse-⊕ {l} {s} {loc} {c} zl zr)
+                           (pdU∈-⊕ {l} {s} {loc} {c} zl zr zl∈ zr∈) π′ , cr′ ) )
 ```
 
 The recursion is on the word and it is uniform: `pdU-complete` supplies a
@@ -1877,13 +1906,17 @@ membership, so the two paths simply fuse:
 
 ```agda
 -- two paths of one word, one per branch, fuse into one path at the sum
+-- two paths of one word, one per branch, fuse into one path at the sum.
+-- (The word shape is pinned in the head patterns: matching `pcons` against a
+-- rigid index `w` only elaborates when the clause names the shape itself.)
 Path-⊕ : ∀ { l s : RE } ( loc : ℕ ) { w : List Char }
   → Path l w → Path s w → Path ( l + s ` loc ) w
-Path-⊕ {l} {s} loc pnil pnil = pnil
-Path-⊕ {l} {s} loc (pcons {c = c} {ws = ws} z m π) (pcons {c = c} z′ m′ π′) =
+Path-⊕ {l} {s} loc {w = []} pnil pnil = pnil
+Path-⊕ {l} {s} loc {w = c ∷ ws} (pcons z m π) (pcons z′ m′ π′) =
   pcons (fuse-⊕ {l} {s} {loc} {c} z z′) (pdU∈-⊕ {l} {s} {loc} {c} z z′ m m′)
-        ( subst ( λ e → Path e ws ) ( sym (pd-expr-fuse-⊕ {l} {s} {loc} {c} z z′) )
-          ( Path-⊕ loc π π′ ) )
+        ( subst ( λ e → Path e ws )
+            ( sym (pd-expr-fuse-⊕ {l} {s} {loc} {c} z z′) )
+            ( Path-⊕ {l = Canonic.pd-expr z} {s = Canonic.pd-expr z′} loc π π′ ) )
 
 -- transporting a path does not move its end state
 pdend-subst : ∀ { r r′ : RE } { w : List Char } ( eq : r ≡ r′ ) ( π : Path r w )
@@ -1894,10 +1927,12 @@ pdend-subst refl π = refl
 pdend-Path-⊕ : ∀ { l s : RE } ( loc : ℕ ) { w : List Char }
   ( π : Path l w ) ( π′ : Path s w )
   → pdend (Path-⊕ {l} {s} loc π π′) ≡ pdend π + pdend π′ ` loc
-pdend-Path-⊕ {l} {s} loc pnil pnil = refl
-pdend-Path-⊕ {l} {s} loc (pcons z m π) (pcons z′ m′ π′) =
-  trans (pdend-subst (sym (pd-expr-fuse-⊕ {l} {s} {loc} z z′)) (Path-⊕ loc π π′))
-        (pdend-Path-⊕ loc π π′)
+pdend-Path-⊕ {l} {s} loc {w = []} pnil pnil = refl
+pdend-Path-⊕ {l} {s} loc {w = c ∷ ws} (pcons z m π) (pcons z′ m′ π′) =
+  trans (pdend-subst
+           (sym (pd-expr-fuse-⊕ {l} {s} {loc} {c} z z′))
+           (Path-⊕ {l = Canonic.pd-expr z} {s = Canonic.pd-expr z′} loc π π′))
+        (pdend-Path-⊕ {l = Canonic.pd-expr z} {s = Canonic.pd-expr z′} loc π π′)
 ```
 
 The star is the dual situation: `pdU[ r * ε∉r \` loc , c ]` is `pdU[ r , c ]`
@@ -2370,7 +2405,7 @@ worth recording: `PDInstance` equality is *intensional* here — instances carry
 function fields (`inj : U p → U r`) — so `dec` is not definable in general.  It
 *is* definable at expressions in literal constructor form, where `pdU` computes
 as in §17–§18 (finite lists of concrete records); for arbitrary states the
-choices are the stdlib `Classical.em` (adding excluded middle), or a quotient of
+choices are an excluded-middle postulate (the §23 `PDInstance-identity`), or a quotient of
 instances — equality of patterns plus transport along `Canonic.Cast`/`≈₀`, the
 canonical machinery of §2–§3, is the natural candidate and would make the
 induction run on canonical states, which §17 showed is where the classification
@@ -2684,6 +2719,7 @@ completeness-dec : ( cstate : pick-diff-state )
           × crit p ) )
 completeness-dec cstate dec {r} u v w≡ u≢v =
   completeness-from-desc (Desc-complete-dec cstate dec) r u v w≡ u≢v
+
 ```
 
 The record case is §17's "one letter, two members, one continuation" made
@@ -2899,5 +2935,286 @@ continuation into the test firing on the member list.  The residual comparison o
 the old rule — and with it the tree test — is gone from the descent: the record
 case does not speak of residuals.  What survives that restatement is
 `pick-diff-state`, and that is the paper's enumeration argument, not a
-formalism gap.
+formalism gap.  §23 settles it: the configuration is unreachable.
+
+## 23. One continuation per transition: the completeness direction, closed
+
+Everything §17–§22 turns on a single property of this project's derivative
+list.  The POSIX merging (`pdinstance-oplus`, applied in the sum clause and in
+the nullable-concatenation clause of `pdU`) makes `pdU[ r , c ]` behave like the
+paper's single derivative expression `deriv s x`: the list has several members
+only when the transition leaves `l ● s` with nullable `l` — one member per empty
+tree of the left factor, which is the second criterion's own configuration, as
+§22 observed — and *all members of `pdU[ r , c ]` continue at one and the same
+expression*.  Two picks therefore never continue at *different* expressions:
+`pick-diff-state` is discharged by absurdity, and the descent of §20 runs with
+only the record decision left — the postulate `PDInstance-identity` below,
+which is §19's `dec` named (the alternatives §19 listed — an excluded-middle
+postulate, or a quotient of instances by pattern — both supply it).
+`Desc-complete` follows, and with §16's `completeness-from-desc` the §8
+statement is proved.
+
+The result also places this file precisely against the paper's diagnosis.  The
+proof walks the pair to the state reached by the *whole* word, and there
+§9's `desc-base` reads the two empty trees as A1: a criterion does fire, at the
+latest possible state.  The A2/A3 machinery of §17–§22 is what finds a criterion
+*earlier* — at the transition where the pair first separates, which is what the
+paper's enumeration is for; it sharpens the diagnosis, and the completeness
+direction itself does not depend on it.
+
+```agda
+-- every element of a `map`/`concatMap` comes from an element of the argument
+∈-map⁻ : {A B : Set} ( f : A → B ) ( xs : List A ) ( y : B )
+  → y ∈ map f xs → Σ[ x ∈ A ] ( x ∈ xs × f x ≡ y )
+∈-map⁻ f [] y ()
+∈-map⁻ f (x ∷ xs) y (here p) = ( x , here refl , sym p )
+∈-map⁻ f (x ∷ xs) y (there w) with ∈-map⁻ f xs y w
+...   | ( x₂ , x∈ , eq ) = ( x₂ , there x∈ , eq )
+
+-- membership destructors: an append and a `concat` (whose element lists must
+-- be matched in constructor form, hence the `[] ∷ `_`_` patterns)
+∈-++-dest : {A : Set} ( xs ys : List A ) ( y : A )
+  → y ∈ xs ++ ys → ( y ∈ xs ) ⊎ ( y ∈ ys )
+∈-++-dest [] ys y w = inj₂ w
+∈-++-dest (x ∷ xs) ys y (here q) = inj₁ (here q)
+∈-++-dest (x ∷ xs) ys y (there w) with ∈-++-dest xs ys y w
+...   | inj₁ u = inj₁ (there u)
+...   | inj₂ v = inj₂ v
+
+∈-concat-dest : {A : Set} ( xss : List ( List A ) ) ( y : A )
+  → y ∈ concat xss → Σ[ xs ∈ List A ] ( xs ∈ xss × y ∈ xs )
+∈-concat-dest [] y ()
+∈-concat-dest ([] ∷ xss) y z∈ with ∈-concat-dest xss y z∈
+...   | ( xs₂ , xs∈ , q ) = ( xs₂ , there xs∈ , q )
+∈-concat-dest ((x ∷ xs) ∷ xss) y (here q) = ( x ∷ xs , here refl , here q )
+∈-concat-dest ((x ∷ xs) ∷ xss) y (there w) with ∈-++-dest xs (concat xss) y w
+...   | inj₁ u = ( x ∷ xs , here refl , there u )
+...   | inj₂ v with ∈-concat-dest xss y v
+...     | ( xs₂ , xs∈ , q ) = ( xs₂ , there xs∈ , q )
+
+-- a list whose members all continue at one expression
+PdConst : ( r : RE ) ( c : Char ) → List ( PDInstance r c ) → Set
+PdConst r c xs = ∀ ( z z′ : PDInstance r c )
+  → z ∈ xs → z′ ∈ xs → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+
+-- constancy is preserved by maps that send equal continuations to equal
+-- continuations — which is what the `pdinstance-*` constructors do, each one
+-- wrapping the pattern field in a fixed RE context (`pd-expr-resp∘*` below)
+map-const : ( r s : RE ) ( c : Char ) ( f : PDInstance r c → PDInstance s c )
+  → ( resp : ( x x₂ : PDInstance r c )
+        → Canonic.pd-expr x ≡ Canonic.pd-expr x₂
+        → Canonic.pd-expr (f x) ≡ Canonic.pd-expr (f x₂) )
+  → ( xs : List ( PDInstance r c ) ) → PdConst r c xs → PdConst s c (map f xs)
+map-const r s c f resp xs u z z′ z∈ z′∈
+  with ∈-map⁻ f xs z z∈ | ∈-map⁻ f xs z′ z′∈
+...   | ( x , x∈ , eq ) | ( x₂ , x₂∈ , eq₂ ) =
+    trans (sym (cong Canonic.pd-expr eq))
+      (trans (resp x x₂ (u x x₂ x∈ x₂∈)) (cong Canonic.pd-expr eq₂))
+
+-- `concatMap` of a list whose images are pairwise constant at one expression
+concat-const : ( s : RE ) ( c : Char )
+  → ( xss : List ( List ( PDInstance s c ) ) )
+  → (∀ ( xs xs′ : List ( PDInstance s c ) ) → xs ∈ xss → xs′ ∈ xss
+       → ( z z′ : PDInstance s c ) → z ∈ xs → z′ ∈ xs′
+       → Canonic.pd-expr z ≡ Canonic.pd-expr z′)
+  → PdConst s c (concat xss)
+concat-const s c xss hyp z z′ z∈ z′∈ with ∈-concat-dest xss z z∈ | ∈-concat-dest xss z′ z′∈
+...   | ( xs , x∈ , q ) | ( xs′ , x′∈ , q′ ) = hyp xs xs′ x∈ x′∈ z z′ q q′
+
+concatMap-hyp : { A : Set } ( s : RE ) ( c : Char )
+  → ( f : A → List ( PDInstance s c ) ) → ( xs : List A )
+  → (∀ ( x x′ : A ) → x ∈ xs → x′ ∈ xs → ( y y′ : PDInstance s c )
+        → y ∈ f x → y′ ∈ f x′ → Canonic.pd-expr y ≡ Canonic.pd-expr y′)
+  → ( xs₁ xs₂ : List ( PDInstance s c ) )
+  → xs₁ ∈ map f xs → xs₂ ∈ map f xs
+  → ( z z′ : PDInstance s c ) → z ∈ xs₁ → z′ ∈ xs₂
+  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+concatMap-hyp s c f xs hyp xs₁ xs₂ m₁ m₂ z z′ q q′
+  with ∈-map⁻ f xs xs₁ m₁ | ∈-map⁻ f xs xs₂ m₂
+...   | ( x , x∈ , eq ) | ( x₂ , x₂∈ , eq₂ ) =
+    hyp x x₂ x∈ x₂∈ z z′
+      (subst ( λ L → z ∈ L ) (sym eq) q)
+      (subst ( λ L → z′ ∈ L ) (sym eq₂) q′)
+
+concatMap-const : ( s : RE ) ( c : Char ) { A : Set }
+  → ( f : A → List ( PDInstance s c ) ) → ( xs : List A )
+  → (∀ ( x x′ : A ) → x ∈ xs → x′ ∈ xs → ( y y′ : PDInstance s c )
+        → y ∈ f x → y′ ∈ f x′ → Canonic.pd-expr y ≡ Canonic.pd-expr y′)
+  → PdConst s c (concatMap f xs)
+concatMap-const s c f xs hyp =
+  concat-const s c (map f xs)
+    (λ xs₁ xs₂ m₁ m₂ z z′ q q′ →
+       concatMap-hyp s c f xs hyp xs₁ xs₂ m₁ m₂ z z′ q q′)
+
+-- continuations of the constructed records, in terms of their inputs
+pd-expr∘fuse : ( r : RE ) ( c : Char ) ( loc : ℕ )
+  ( x y : PDInstance r c )
+  → Canonic.pd-expr (fuse {r} {loc} {c} x y)
+    ≡ Canonic.pd-expr x + Canonic.pd-expr y ` loc
+pd-expr∘fuse r c loc (pdinstance {pˡ} injˡ evˡ) (pdinstance {pʳ} injʳ evʳ) = refl
+
+pd-expr∘snd : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( ex : Σ[ e ∈ U l ] ( AllEmpty.Flat-[] l e ) ) ( y : PDInstance r c )
+  → Canonic.pd-expr (mk-snd-pdi {l} {r} {loc} {c} ex y) ≡ Canonic.pd-expr y
+pd-expr∘snd ( e , flat-[] .e eq ) (pdinstance {p} inj ev) = refl
+
+-- the four constructor maps of the `pdU` clauses respect continuations: each
+-- computes the new pattern field from the old one, definitionally after the
+-- record is destructured (`left`/`right` keep it; `fst`/`star` put it into a
+-- fixed concatenation)
+pd-expr-resp∘left : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  ( z z′ : PDInstance l c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → Canonic.pd-expr (pdinstance-left {l} {r} {loc} {c} z)
+    ≡ Canonic.pd-expr (pdinstance-left {l} {r} {loc} {c} z′)
+pd-expr-resp∘left (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq = eq
+
+pd-expr-resp∘right : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  ( z z′ : PDInstance r c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → Canonic.pd-expr (pdinstance-right {l} {r} {loc} {c} z)
+    ≡ Canonic.pd-expr (pdinstance-right {l} {r} {loc} {c} z′)
+pd-expr-resp∘right (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq = eq
+
+pd-expr-resp∘fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  ( z z′ : PDInstance l c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → Canonic.pd-expr (pdinstance-fst {l} {r} {loc} {c} z)
+    ≡ Canonic.pd-expr (pdinstance-fst {l} {r} {loc} {c} z′)
+pd-expr-resp∘fst {l} {r} {loc} {c}
+  (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq =
+    cong ( λ q → q ● r ` loc ) eq
+
+pd-expr-resp∘star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
+  ( z z′ : PDInstance r c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → Canonic.pd-expr (pdinstance-star {r} {ε∉r} {loc} {c} z)
+    ≡ Canonic.pd-expr (pdinstance-star {r} {ε∉r} {loc} {c} z′)
+pd-expr-resp∘star {r} {ε∉r} {loc} {c}
+  (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq =
+    cong ( λ q → q ● (r * ε∉r ` loc) ` loc ) eq
+
+-- two members built by `fuse` from one right side and continuations that agree
+fuse-pair-const : ( r : RE ) ( c : Char ) ( loc : ℕ )
+  → ( ys : List ( PDInstance r c ) ) → PdConst r c ys
+  → ( x₁ x₂ : PDInstance r c ) → Canonic.pd-expr x₁ ≡ Canonic.pd-expr x₂
+  → ( z z′ : PDInstance r c )
+  → z ∈ map (fuse {r} {loc} {c} x₁) ys → z′ ∈ map (fuse {r} {loc} {c} x₂) ys
+  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+fuse-pair-const r c loc ys uy x₁ x₂ x₁≡x₂ z z′ q q₂
+  with ∈-map⁻ (fuse {r} {loc} {c} x₁) ys z q | ∈-map⁻ (fuse {r} {loc} {c} x₂) ys z′ q₂
+...   | ( w , w∈ , eq ) | ( w₂ , w₂∈ , eq₂ ) =
+    trans (sym (cong Canonic.pd-expr eq))
+      (trans (pd-expr∘fuse r c loc x₁ w)
+        (trans (cong₂ ( λ a b → a + b ` loc ) x₁≡x₂ (uy w w₂ w∈ w₂∈))
+               (trans (sym (pd-expr∘fuse r c loc x₂ w₂))
+                      (cong Canonic.pd-expr eq₂))))
+
+-- `pdinstance-oplus` of two constant lists is constant: its members are the
+-- pairwise fusions, and each one continues at the sum of one pair of
+-- continuations
+oplus-const : ( r : RE ) ( c : Char ) ( loc : ℕ )
+  → ( xs ys : List ( PDInstance r c ) )
+  → PdConst r c xs → PdConst r c ys
+  → PdConst r c (pdinstance-oplus {r} {loc} {c} xs ys)
+oplus-const r c loc []       ys ux uy z z′ z∈ z′∈ = uy z z′ z∈ z′∈
+oplus-const r c loc (x ∷ xs) []  ux uy z z′ z∈ z′∈ = ux z z′ z∈ z′∈
+oplus-const r c loc (x ∷ xs) (y ∷ ys) ux uy =
+  concatMap-const r c ( λ x₁ → map (fuse {r} {loc} {c} x₁) (y ∷ ys) ) (x ∷ xs)
+    ( λ x₁ x₂ x₁∈ x₂∈ → fuse-pair-const r c loc (y ∷ ys) uy x₁ x₂ (ux x₁ x₂ x₁∈ x₂∈) )
+
+-- the continuation of a `pdinstance-snd` member list: one member per empty
+-- tree of the left factor, all continuing at the right factor's continuation
+snd-pair-const : ∀ { l s : RE } { loc : ℕ } { c : Char }
+  → ( ex ex′ : Σ[ e ∈ U l ] ( AllEmpty.Flat-[] l e ) )
+  → PdConst s c (PosixPD.pdU[ s , c ])
+  → ( y y′ : PDInstance ( l ● s ` loc ) c )
+  → y ∈ PDI.pdinstance-snd {l} {s} {loc} {c} ex (PosixPD.pdU[ s , c ])
+  → y′ ∈ PDI.pdinstance-snd {l} {s} {loc} {c} ex′ (PosixPD.pdU[ s , c ])
+  → Canonic.pd-expr y ≡ Canonic.pd-expr y′
+snd-pair-const {l} {s} {loc} {c} ex ex′ u y y′ q q₂
+  with ∈-map⁻ (mk-snd-pdi {l} {s} {loc} {c} ex) (PosixPD.pdU[ s , c ]) y q
+    | ∈-map⁻ (mk-snd-pdi {l} {s} {loc} {c} ex′) (PosixPD.pdU[ s , c ]) y′ q₂
+...   | ( w , w∈ , eq ) | ( w₂ , w₂∈ , eq₂ ) =
+    trans (sym (cong Canonic.pd-expr eq))
+      (trans (pd-expr∘snd ex w)
+        (trans (u w w₂ w∈ w₂∈)
+          (trans (sym (pd-expr∘snd ex′ w₂)) (cong Canonic.pd-expr eq₂))))
+
+snd-list-const : ∀ { l s : RE } { ε∈l : RE.ε∈ l } { loc : ℕ } { c : Char }
+  → PdConst s c (PosixPD.pdU[ s , c ])
+  → PdConst ( l ● s ` loc ) c
+      (PDI.concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c} (PosixPD.pdU[ s , c ]))
+snd-list-const {l} {s} {ε∈l} {loc} {c} u =
+  concatMap-const ( l ● s ` loc ) c
+    ( λ ex → PDI.pdinstance-snd {l} {s} {loc} {c} ex (PosixPD.pdU[ s , c ]) )
+    ( PDI.zip-es-flat-[]-es {l} {ε∈l} (mkAllEmptyU {l} ε∈l)
+        (AllEmpty.mkAllEmptyU-sound {l} ε∈l) )
+    ( λ ex ex′ ex∈ ex′∈ → snd-pair-const {l} {s} {loc} {c} ex ex′ u )
+
+-- one continuation per transition: the members of `pdU[ r , c ]` all continue
+-- at the same expression.  Induction on `r`; every clause either maps a
+-- constant list or oplus's two constant lists, which is constant by
+-- `oplus-const`
+pdU-const : ( r : RE ) ( c : Char ) ( z z′ : PDInstance r c )
+  → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
+  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+pdU-const ε c z z′ ()
+pdU-const ( $ c₀ ` loc ) c z z′ z∈ z′∈ with c₀ Char.≟ c | z∈ | z′∈
+...   | yes refl | here p | here q = cong Canonic.pd-expr (trans p (sym q))
+...   | yes refl | here p | there ()
+...   | yes refl | there () | _
+...   | no ¬c | () | _
+pdU-const ( l + s ` loc ) c z z′ z∈ z′∈ =
+  oplus-const ( l + s ` loc ) c loc
+    ( map (pdinstance-left {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ]) )
+    ( map (pdinstance-right {l} {s} {loc} {c}) (PosixPD.pdU[ s , c ]) )
+    ( map-const l ( l + s ` loc ) c (pdinstance-left {l} {s} {loc} {c})
+        (pd-expr-resp∘left {l} {s} {loc} {c})
+        (PosixPD.pdU[ l , c ]) (pdU-const l c) )
+    ( map-const s ( l + s ` loc ) c (pdinstance-right {l} {s} {loc} {c})
+        (pd-expr-resp∘right {l} {s} {loc} {c})
+        (PosixPD.pdU[ s , c ]) (pdU-const s c) )
+    z z′ z∈ z′∈
+pdU-const ( r * ε∉r ` loc ) c z z′ z∈ z′∈ =
+  map-const r ( r * ε∉r ` loc ) c (pdinstance-star {r} {ε∉r} {loc} {c})
+    (pd-expr-resp∘star {r} {ε∉r} {loc} {c})
+    (PosixPD.pdU[ r , c ]) (pdU-const r c) z z′ z∈ z′∈
+pdU-const ( l ● s ` loc ) c z z′ z∈ z′∈ with RE.ε∈? l
+...   | no ¬ε∈l =
+      map-const l ( l ● s ` loc ) c (pdinstance-fst {l} {s} {loc} {c})
+        (pd-expr-resp∘fst {l} {s} {loc} {c})
+        (PosixPD.pdU[ l , c ]) (pdU-const l c) z z′ z∈ z′∈
+...   | yes ε∈l =
+      oplus-const ( l ● s ` loc ) c loc
+        ( map (pdinstance-fst {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ]) )
+        ( PDI.concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c}
+            (PosixPD.pdU[ s , c ]) )
+        ( map-const l ( l ● s ` loc ) c (pdinstance-fst {l} {s} {loc} {c})
+            (pd-expr-resp∘fst {l} {s} {loc} {c})
+            (PosixPD.pdU[ l , c ]) (pdU-const l c) )
+        ( snd-list-const {l} {s} {ε∈l} {loc} {c} (pdU-const s c) )
+        z z′ z∈ z′∈
+
+-- §20's first stopping configuration is unreachable: distinct records of one
+-- pd list never continue at distinct expressions
+cstate-⊥ : pick-diff-state
+cstate-⊥ {r} {c} z z′ z∈ z′∈ z≢z′ u v u∈ v∈ u≡ v≡ ¬pd =
+  ⊥-elim (¬pd (pdU-const r c z z′ z∈ z′∈))
+
+-- the record decision, named as an assumption: `PDInstance` equality is
+-- intensional (function fields), so it has no decision procedure in this
+-- formalism; this postulate is §19's `dec` and the one non-constructive
+-- step of the completeness direction.  §19 lists the alternatives — an
+-- excluded-middle postulate, or a quotient of instances by pattern
+-- (the `Cast`/`≈₀` machinery), which would also make the decision computable
+postulate
+  PDInstance-identity : ∀ { r : RE } { c : Char }
+    ( z z′ : PDInstance r c ) → Dec ( z ≡ z′ )
+
+-- the completeness direction, closed: the descent of §20 runs with
+-- `pick-diff-state` discharged by `pdU-const` and the record decision by
+-- the postulate above, and §16 turns it into the statement about the pair
+Desc-complete-⊥ : Desc-complete
+Desc-complete-⊥ = desc-picks-dec cstate-⊥ PDInstance-identity
+
+-- and §8's `completeness` (signature stated there, proved here)
+completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-⊥ r u v w≡ u≢v
+```
 

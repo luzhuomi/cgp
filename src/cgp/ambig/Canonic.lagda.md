@@ -814,8 +814,10 @@ Notes:
   `mkfuseInj`), and the converse direction
   ("`r` ambiguous ⇒ some realizable state fires A1/A2/A3"), which needs
   the FST / `Desc(r)` construction.  The converse does *not* hold without
-  the quantification over `Desc(r)`: `cgp.ambig.Converse` computes an
-  ambiguous `r` at which none of the three criteria fires.
+  the quantification over `Desc(r)`: for `r = ( a + a · a ) ⋆` the word
+  `a a` has two parse trees (`ListU [ a , a ]`, `ListU [ a · a ]`), yet no
+  criterion fires at `r` — a star has a single empty parse tree, and the
+  paper's hole contexts have no hole under a star.
 
 ## 8. `Desc(r)` — the paper's states, built from partial derivatives
 

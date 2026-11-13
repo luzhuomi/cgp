@@ -7,10 +7,16 @@
 
 that a witness *at a pd-state* lifts to an ambiguity of the original expression
 (`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`; all three are instances
-of the master lift `lift-Ambig`).  `cgp.ambig.Converse` shows that
-`sd = ( a + a · a ) ⋆` is **not** a counterexample to the paper's proposition:
-A1 holds at the pd-state reached after `a a`, and the A3 test fires for that
-state on the letter `a`.  What is left is the direction the paper obtains from
+of the master lift `lift-Ambig`).  The top-level reading of the converse —
+"criterion fires at `r` itself" — fails: for `r = ( a + a · a ) ⋆` the word
+`a a` has two parse trees (`ListU [ a , a ]` and `ListU [ a · a ]`), yet no
+criterion fires at `r` itself — a star has exactly one empty parse tree
+(¬ A1), and the hole contexts of the paper have no hole under a star, so
+neither the concatenation `a · a` nor the sum `a + a · a` is reachable
+(¬ A2, ¬ Ctx-dup).  The paper's proposition escapes this: computed along the
+pd-states, A1 holds at the state reached after `a a` —
+`( ( ε · r⋆ ) + ( ( ε + ε · a ) · r⋆ ) )`, nullable through both branches —
+and the A3 test fires for that state on the letter `a`.  What is left is the direction the paper obtains from
 its `AllParseFST` construction:
 
 > if `u ≢ v` are parse trees of `r` for the same word, then for the pd-state
@@ -1303,7 +1309,7 @@ Desc-complete-≟ r w u v = desc-picks-≟ r w u v
 -- §8's goal, stated here at its proof: given distinct parse trees of one
 -- word, a pd-descendant state of a prefix carries a criterion.
 -- (purpose): the completeness direction — the module's theorem
--- (used in): the module's statement; `cgp.ambig.Converse`'s discussion cites it
+-- (used in): the module's statement
 -- (proof idea): §16's `completeness-from-desc` applied to `Desc-complete-≟`
 completeness : ∀ { r : RE }
   → ( u v : U r )

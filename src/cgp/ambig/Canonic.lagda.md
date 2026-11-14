@@ -745,6 +745,48 @@ pd-Idemp?-witness : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   → pd-Idemp? pdis ≡ true
   → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ pd-alts pdis × b ∈ pd-alts pdis × a ≈₀ b )
 pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
+
+-- membership in an appended list resolves to one of the sides
+∈-++-inv : ∀ { A : Set } ( xs ys : List A ) { x : A }
+  → x ∈ xs ++ ys
+  → Sum._⊎_ (x ∈ xs) (x ∈ ys)
+∈-++-inv [] ys {x} x∈ = Sum.inj₂ x∈
+∈-++-inv (z ∷ xs) ys {x} (here p) = Sum.inj₁ (here p)
+∈-++-inv (z ∷ xs) ys {x} (there x∈) with ∈-++-inv xs ys x∈
+...   | Sum.inj₁ y = Sum.inj₁ (there y)
+...   | Sum.inj₂ y = Sum.inj₂ y
+
+-- the inverse of `pd-alts∈`: an alternative of the state belongs to a member
+pd-alts∈-inv : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
+  ( h : RE )
+  → h ∈ pd-alts pdis
+  → Σ[ z ∈ PDInstance r c ] ( z ∈ pdis × h ∈ sum-spine (pd-expr z) )
+pd-alts∈-inv [] h ()
+pd-alts∈-inv (x ∷ pdis) h h∈
+  with ∈-++-inv (sum-spine (pd-expr x)) (pd-alts pdis) h∈
+...   | Sum.inj₁ h∈₁ = ( x , here refl , h∈₁ )
+...   | Sum.inj₂ h∈₂ with pd-alts∈-inv pdis h h∈₂
+...   | ( z , z∈ , h∈₃ ) = ( z , there z∈ , h∈₃ )
+
+-- the test of §6 reflected through the member list: a fired `pd-Idemp?`
+-- names two members and one alternative of each, `≈₀`-equal.  For a `pdU`
+-- list the two members have one continuation (`Complete` §23's `pdU-const`),
+-- so the whole pair sits in one `sum-spine` — see `Complete`'s
+-- `pdU-Idemp?-member-witness`, which composes this inversion with that
+-- equation
+pd-Idemp?-member-witness : ∀ { r : RE } { c : Char }
+  ( pdis : List (PDInstance r c) )
+  → pd-Idemp? pdis ≡ true
+  → Σ[ z ∈ PDInstance r c ] Σ[ z′ ∈ PDInstance r c ]
+      Σ[ a ∈ RE ] Σ[ b ∈ RE ]
+        ( z ∈ pdis × z′ ∈ pdis
+        × a ∈ sum-spine (pd-expr z) × b ∈ sum-spine (pd-expr z′)
+        × a ≈₀ b )
+pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
+...   | ( a , b , ( a∈ , b∈ , a≈₀b ) )
+    with pd-alts∈-inv pdis a a∈ | pd-alts∈-inv pdis b b∈
+...   | ( z , z∈ , a∈₁ ) | ( z′ , z′∈ , b∈₁ ) =
+        ( z , z′ , a , b , ( z∈ , z′∈ , a∈₁ , b∈₁ , a≈₀b ) )
 ```
 
 Note what is *not* claimed here: the two records may continue at one expression
@@ -830,6 +872,17 @@ lift-Ctx-dup→Ambig : ∀ { r p : RE } { w : List Char }
   → Ambig r
 lift-Ctx-dup→Ambig {p = p} inj ev inj-inj ctx {l} {s} {loc} eq dup =
   lift-Ambig inj ev inj-inj (Ctx-dup→Ambig ctx {l} {s} {loc} p eq dup)
+
+-- the context lift on its own: an ambiguity of the hole expression
+-- transfers to the filled expression.  `Ctx-dup→Ambig` builds the same
+-- witness inline; this is the standalone form, the closer that a located
+-- sum-branch pair (§8.1's open step) would compose with
+lift-Ctx : ∀ ( ctx : Ctx ) { s : RE } → Ambig s → Ambig (plug ctx s)
+lift-Ctx ctx ( u , v , word≡ , u≢v ) =
+    ( CtxT ctx u
+    , CtxT ctx v
+    , CtxT-pres-flat ctx word≡
+    , λ trees≡ → u≢v (CtxT-injective ctx trees≡) )
 
 -- the three criteria at a pd-reachable state (pdUMany witnesses)
 pd*-Ambig→Ambig : ∀ { r : RE } { pref : List Char }
@@ -971,13 +1024,24 @@ Caveats (consistent with §6/§7):
   the A3 *test* is unaffected.
 * Soundness of a fired `A3?` still runs through `pd-pairs→Ambig` /
   `pd*-pairs→Ambig` (whose hypotheses need the duplicate pair in
-  different sum branches).  The boolean half of the reflection is now in
-  §6.3 (`dups-≈₀-witness`, `pd-Idemp?-witness`: a fired scan gives an
-  `≈₀`-pair at located positions of the flattened alternative list).
-  What remains is locating those two positions as the two branches of one
-  `+` node under one context — a concrete `Ctx`/`plug` + pair witness —
-  and that reflection lemma is the missing piece, not the machinery
-  around it.
+  different sum branches).  The reflection is now factored; what remains
+  is one named theorem:
+
+  > `star : ∀ { q : RE } { c : Char } → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
+
+  Its hypothesis is fully unpacked (§6.3: `pd-Idemp?-witness`,
+  `pd-alts∈-inv`, `pd-Idemp?-member-witness`; `Complete` §23's
+  `pdU-Idemp?-member-witness` adds via `pdU-const` that one member of
+  the list already carries the whole `≈₀` pair in the `sum-spine` of its
+  continuation).  The conclusion is produced by `pd-pairs→Ambig` lifted
+  through `lift-Ctx` (§7) from one `+` node up to `q`.  The single open
+  step is the middle: locating the pair's two positions as the two
+  branches of one `+` node — the inverse of the
+  `pdinstance-oplus`/`fuse` step that merged the branch records.  Its
+  shape would be an induction over the `pdU` clauses in the style of
+  `Complete` §23; the single-member case would additionally need
+  disjointness of the fused record's injections (the `mkfuseInj` gap
+  noted above).
 
 For the *criteria* themselves the single-expression form is not needed: the
 states are lists of partial derivatives, see §9.

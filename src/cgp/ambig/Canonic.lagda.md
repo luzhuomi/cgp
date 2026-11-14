@@ -796,6 +796,36 @@ exactly that shape — `pdU` fuses the two branch instances, and the flattened
 list still contains `ε ● ($ c \` 4) \` 5` twice — and `pd-a3-Idemp-applied` is
 the computation that this section's lemmas now justify.
 
+### 6.4. Inverting the fusion: a crossing configuration
+
+`fuse` (in `cgp.posix.PartialDerivative`) joins two records into one whose
+continuation is a *sum* of the two continuations: `mkfuseInj` reads
+`LeftU v` through the left record's map and `RightU v` through the right
+record's map, so the fused record's `+`-spine is the concatenation of the
+two spines.  When the pair of a fired test lies on both sides of that
+node, the ambiguity needs no injectivity: each tree travels through its
+own *pre-fusion* record and enters the parent sum through a different
+branch, so distinctness is the node's own (`LeftU≢RightU`).  This is
+§6.1's mechanism with the word-equal tree pair supplied as data instead
+of built from an `≈₀` of the whole continuations — §6.1's
+`pd-pairs→Ambig` is the special case where the two continuations are
+themselves the pair.
+
+```agda
+-- the record half of the crossing case: two records whose continuations
+-- hold trees with one word ⇒ the parent sum is ambiguous
+pd-fuse-cross→Ambig : ∀ { l s : RE } { loc : ℕ } { c : Char }
+  → ( pdi₁ : PDInstance l c ) ( pdi₂ : PDInstance s c )
+  → ( u : U (pd-expr pdi₁) ) ( v : U (pd-expr pdi₂) )
+  → proj₁ (flat {pd-expr pdi₁} u) ≡ proj₁ (flat {pd-expr pdi₂} v)
+  → Ambig ( l + s ` loc )
+pd-fuse-cross→Ambig {l} {s} {loc} {c} (pdinstance i₁ e₁) (pdinstance i₂ e₂) u v word≡ =
+    ( LeftU {l} {s} {loc} (i₁ u)
+    , RightU {l} {s} {loc} (i₂ v)
+    , trans (e₁ u) (trans (cong ( λ z → c ∷ z) word≡) (sym (e₂ v)))
+    , LeftU≢RightU (i₁ u) (i₂ v) )
+```
+
 ## 7. Lifting a criterion from a reachable state (the full form of the paper's criteria)
 
 
@@ -1031,17 +1061,25 @@ Caveats (consistent with §6/§7):
 
   Its hypothesis is fully unpacked (§6.3: `pd-Idemp?-witness`,
   `pd-alts∈-inv`, `pd-Idemp?-member-witness`; `Complete` §23's
-  `pdU-Idemp?-member-witness` adds via `pdU-const` that one member of
-  the list already carries the whole `≈₀` pair in the `sum-spine` of its
-  continuation).  The conclusion is produced by `pd-pairs→Ambig` lifted
-  through `lift-Ctx` (§7) from one `+` node up to `q`.  The single open
-  step is the middle: locating the pair's two positions as the two
-  branches of one `+` node — the inverse of the
-  `pdinstance-oplus`/`fuse` step that merged the branch records.  Its
-  shape would be an induction over the `pdU` clauses in the style of
-  `Complete` §23; the single-member case would additionally need
-  disjointness of the fused record's injections (the `mkfuseInj` gap
-  noted above).
+  `pdU-Idemp?-member-witness` adds via `pdU-const` that both values of
+  the pair already sit in the `sum-spine` of a single member's
+  continuation).  The conclusion is produced by the record lifts:
+  §6.4's `pd-fuse-cross→Ambig` for a pair crossing a fused node
+  (no injectivity needed — the pre-fusion records do the transport), or
+  `pd-pairs→Ambig` composed with `lift-Ctx` (§7) for a located pattern.
+  What is open is the *locating* step.  The pair of a fired test sits in
+  one of three configurations: (a) on both sides of a fused member's
+  continuation node — discharged by §6.4 once `pdinstance-oplus`
+  membership is inverted into the two pre-fusion records and the two
+  positions are turned into word-equal trees (the §6.1 `r-∃u`/`Cast`
+  construction one spine level down); (b) inside one `sum-spine` — a
+  recursive descent through the inner `+` nodes; (c) in two distinct
+  members' copies — a record distinctness question, record identity
+  being intensional (`Complete` §24's residual-tree decision is the
+  tool).  The shape of (a)/(b) is an induction over the `pdU` clauses in
+  the style of `Complete` §23; the `mkfuseInj` gap of §7 does not arise
+  in (a) — the branch maps are only used through different parent
+  branches.
 
 For the *criteria* themselves the single-expression form is not needed: the
 states are lists of partial derivatives, see §9.

@@ -1338,13 +1338,13 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --        → taken by no soundness lemma.  A3's soundness lemma is
 --          pd-pairs→Ambig / pd*-pairs→Ambig: its hypothesis is the *pair of
 --          derivative records* (instances of the two branches of one sum with
---          ≈₀-equal continuations), not the boolean test.  The reflection
---          that turns a fired scan into that pair — the two matching
---          alternatives in `pd-alts` located as the two branches of one `+`
---          node under one context — is the gap stated in Canonic §8.1;
---          §6.3's `pd-Idemp?-members` goes the other way (a real duplicate
---          pair makes the scan answer `true`, which is what §20/§22's stop
---          needs).
+--          ≈₀-equal continuations), not the boolean test.  Canonic §6.3
+--          reflects the fired scan into an ≈₀ pair at located positions of
+--          `pd-alts` (`pd-Idemp?-witness`), and `pd-Idemp?-members` goes the
+--          other way (a real duplicate pair makes the scan answer `true`,
+--          which is what §20/§22's stop needs); what remains open is locating
+--          the matched positions as the two branches of one `+` node under one
+--          context — the gap stated in Canonic §8.1.
 --
 -- The `Any ( λ s → s ≡ p ) (pd*-Desc r w′)` membership unfolds to
 -- `pd*-expr pdi ≡ p` for some `pdi : PDInstance* r w′` (the list is

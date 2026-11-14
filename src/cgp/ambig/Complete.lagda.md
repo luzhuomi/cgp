@@ -1352,15 +1352,101 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 -- lifts quantify over; only their injectivity hypothesis is not supplied —
 -- and not needed here, since `u ≢ v` is already given: running a lift after
 -- the fact certifies the diagnosis, it produces no new witness.
+```
 
+## 25. The soundness direction over the pd-states
 
-soundness : ∀ { r : RE } { w₁ w₂ : List Char }
-  → ( u : U r )
-  → ( proj₁ (flat {r} u) ≡ w₁ ++ w₂ )
-  → ( p : RE )
-  → crit p 
-  → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)
-  → ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v))  × (¬ ( u ≡ v ) ) 
-soundness = {!!}   
+The attempt to state the converse direction *about a given tree* —
 
+> `∀ { r } { w₁ w₂ } ( u : U r ) → proj₁ (flat {r} u) ≡ w₁ ++ w₂`
+> `→ ( p : RE ) → crit p → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)`
+> `→ ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) ) × ¬ ( u ≡ v )`
+
+— is false, and the counterexample is small: `r = ( ε + ε ) + b` has two
+ε-trees, so A1 (hence `crit`) fires at the state `r` itself, which `[]`
+reaches; but the word `b` has exactly one parse tree — take it for `u` and
+no `v ≢ u` exists.  Nothing in the statement ties `u` to the state `p`: the
+criterion's witness may live in a part of `r` the parse of `u` never
+traverses.  Constraining `u` would not repair the *shape* either: an A1
+witness at a state twins only the word `w₁` (its state trees read `ε`), and
+A1 at a state does not make every word of that state ambiguous —
+`( ε + ε ) + ( b ● c )` has two ε-trees and a unique `b c`-tree.  What is
+provable is the existential form at the end of this section, for the first
+three disjuncts of `crit` (the fourth is the locating gap of `Canonic`
+§8.1), with the lift's injectivity hypothesis made explicit.
+
+```agda
+-- the counterexample expression: A1 fires at the top, `b` is unambiguous
+fail-r : RE
+fail-r = ( ( ε + ε ` 1 ) + ( $ 'b' ` 2 ) ` 3 )
+
+fail-u : U fail-r
+fail-u = RightU (LetterU 'b')
+
+-- (purpose): the word `b` has exactly one parse tree in `fail-r` — the
+--   conclusion of the twin-of-u form is uninhabited for this `u`
+-- (used in): `soundness-fails`
+-- (proof idea): case on `v`: the left branch of the sum can only read `ε`
+--   (the equation then has type `[] ≡ 'b' ∷ []`, absurd), and the letter
+--   node is determined by its letter (the index pins it to `'b'`)
+fail-unique : ( v : U fail-r ) → proj₁ (flat {fail-r} v) ≡ 'b' ∷ [] → v ≡ fail-u
+fail-unique (LeftU (LeftU EmptyU)) ()
+fail-unique (LeftU (RightU EmptyU)) ()
+fail-unique (RightU (LetterU 'b')) refl = refl
+
+-- (purpose): A1 fires at `fail-r` — two ε-trees through the `ε + ε` branch
+-- (used in): `soundness-fails`
+-- (proof idea): computed nullability (left summand, right non-nullable) and
+--   `mkAllEmptyU` listing two trees, so `2 ≤ 2`
+fail-A1 : AmbigCheck.AmbigA1 fail-r
+fail-A1 = ( RE.ε∈_<+_ (RE.ε∈_+_ RE.ε∈ε RE.ε∈ε) ε∉$ , s≤s (s≤s ≤-refl) )
+
+-- (purpose): the state `fail-r` is reached by `[]`
+-- (used in): `soundness-fails`
+-- (proof idea): §12's `pdesc` of the empty path
+fail-Desc : Any ( λ s → s ≡ fail-r ) (Canonic.pd*-Desc fail-r [])
+fail-Desc = pdesc pnil
+
+-- (purpose): the twin-of-u form above, refuted
+-- (used in): the §25 prose
+-- (proof idea): instantiate at `fail-r`, `u = fail-u`, `p = fail-r`; the
+--   conclusion's `v` would be a second `b`-tree, and `fail-unique` forces
+--   `v ≡ fail-u`, contradicting `¬ ( u ≡ v )`
+soundness-fails : ¬ ( ∀ { r : RE } { w₁ w₂ : List Char }
+    ( u : U r )
+    → proj₁ (flat {r} u) ≡ w₁ ++ w₂
+    → ( p : RE )
+    → crit p
+    → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)
+    → ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) ) × ( ¬ ( u ≡ v ) ) )
+soundness-fails h
+  with h {fail-r} {[]} { 'b' ∷ [] } fail-u refl fail-r (inj₁ fail-A1) fail-Desc
+...   | ( v , ( word≡ , u≢v ) ) = u≢v (sym (fail-unique v (sym word≡)))
+
+-- the first three disjuncts of `crit` — the ones whose soundness lifts
+-- exist unconditionally (the fourth is `Canonic` §8.1's open step)
+crit-3 : RE → Set
+crit-3 p = AmbigCheck.AmbigA1 p
+       ⊎ AmbigCheck.AmbigA2 p
+       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ l′ ∈ RE ] Σ[ loc ∈ ℕ ]
+             ( ( AmbigCheck.plug ctx ( l + l′ ` loc ) ≡ p )
+             × ( Canonic._≈₀_ l l′ ) )
+
+-- (purpose): the soundness direction read over the pd-states — a criterion
+--   at a reached state lifts to an ambiguity of `r`
+-- (used in): the §25 prose
+-- (proof idea): case-split on the disjunction; each branch is the matching
+--   `Canonic` lift (`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`)
+--   under the lift's injectivity hypothesis
+soundness : ∀ { r : RE } { w : List Char }
+  → ( pdi : PDInstance* r w )
+  → ( ∀ ( x y : U (Canonic.pd*-expr pdi) )
+        → Canonic.pd*-inj pdi x ≡ Canonic.pd*-inj pdi y → x ≡ y )
+  → crit-3 (Canonic.pd*-expr pdi)
+  → ∃[ u′ ] ∃[ v′ ]
+      ( proj₁ (flat {r} u′) ≡ proj₁ (flat {r} v′) × ¬ ( u′ ≡ v′ ) )
+soundness pdi inj-inj (inj₁ a1) = Canonic.pd*-A1→Ambig pdi inj-inj a1
+soundness pdi inj-inj (inj₂ (inj₁ a2)) = Canonic.pd*-A2→Ambig pdi inj-inj a2
+soundness pdi inj-inj (inj₂ (inj₂ (ctx , l , l′ , loc , ( eq , dup )))) =
+  Canonic.pd*-Ctx-dup→Ambig pdi inj-inj ctx eq dup
 ```

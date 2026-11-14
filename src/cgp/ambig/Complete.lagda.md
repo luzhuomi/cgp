@@ -1320,5 +1320,37 @@ completeness : ∀ { r : RE }
           ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
           × crit p ) )
 completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v w≡ u≢v
+
+-- What the `crit p` of the conclusion means: each disjunct is the hypothesis
+-- of one soundness lemma of `cgp.ambig.Canonic` (§4/§6.1/§7), so the
+-- conclusion says "some reachable state satisfies the input condition of a
+-- soundness lift":
+--
+--   1  AmbigA1 p
+--        → pd*-A1→Ambig                   (lift also asks pd*-inj pdi injective)
+--   2  AmbigA2 p
+--        → pd*-A2→Ambig                   (ditto)
+--   3  ctx , l , s , loc ,
+--      plug ctx ( l + s ` loc ) ≡ p × l ≈₀ s
+--        → Ctx-dup→Ambig (no lift needed) / pd*-Ctx-dup→Ambig (asks injective)
+--   4  ctx , q , c ,
+--      plug ctx q ≡ p × pd-Idemp? (pdU[ q , c ]) ≡ true
+--        → taken by no soundness lemma.  A3's soundness lemma is
+--          pd-pairs→Ambig / pd*-pairs→Ambig: its hypothesis is the *pair of
+--          derivative records* (instances of the two branches of one sum with
+--          ≈₀-equal continuations), not the boolean test.  The reflection
+--          that turns a fired scan into that pair — the two matching
+--          alternatives in `pd-alts` located as the two branches of one `+`
+--          node under one context — is the gap stated in Canonic §8.1;
+--          §6.3's `pd-Idemp?-members` goes the other way (a real duplicate
+--          pair makes the scan answer `true`, which is what §20/§22's stop
+--          needs).
+--
+-- The `Any ( λ s → s ≡ p ) (pd*-Desc r w′)` membership unfolds to
+-- `pd*-expr pdi ≡ p` for some `pdi : PDInstance* r w′` (the list is
+-- `map pd*-expr (pdUMany[ r , w′ ])`), i.e. it supplies the instance the
+-- lifts quantify over; only their injectivity hypothesis is not supplied —
+-- and not needed here, since `u ≢ v` is already given: running a lift after
+-- the fact certifies the diagnosis, it produces no new witness.
 ```
 

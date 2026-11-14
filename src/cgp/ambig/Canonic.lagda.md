@@ -811,7 +811,65 @@ of built from an `≈₀` of the whole continuations — §6.1's
 `pd-pairs→Ambig` is the special case where the two continuations are
 themselves the pair.
 
+A located position is a structural judgement (`_◁_`): the membership form
+`p ∈ sum-spine r` cannot be case-split at a sum node — its list is a stuck
+`sum-spine l ++ sum-spine s` — while `_◁_` recurses along the expression,
+and `∈→◁` converts the computed membership back.  `spine-read` reads a tree
+at a position without moving its word, which gives the soundness theorem
+for the *located* pair, `pd-cross-positions→Ambig`.
+
 ```agda
+-- an alternative located *structurally* in the +-spine of an expression:
+-- the inductive form of `∈ sum-spine` (the Any-form cannot be case-split
+-- at a sum node: `sum-spine l ++ sum-spine s` is stuck for variable l, s)
+data _◁_ : RE → RE → Set where
+  sp-node  : ( r : RE ) → r ◁ r
+  sp-left  : ∀ { l s p : RE } { loc : ℕ } → l ◁ p → ( l + s ` loc ) ◁ p
+  sp-right : ∀ { l s p : RE } { loc : ℕ } → s ◁ p → ( l + s ` loc ) ◁ p
+
+-- membership in the computed spine gives the structural position
+∈→◁ : ( r p : RE ) → p ∈ sum-spine r → r ◁ p
+∈→◁ ε p (here refl) = sp-node ε
+∈→◁ ( $ c ` loc ) p (here refl) = sp-node _
+∈→◁ ( l ● s ` loc ) p (here refl) = sp-node _
+∈→◁ ( l * n ` loc ) p (here refl) = sp-node _
+∈→◁ ( l + s ` loc ) p pos with sum-spine∷ l
+...   | ( h₁ , t₁ , eq₁)
+    with ∈-++-inv (h₁ ∷ t₁) (sum-spine s)
+       (subst ( λ K → p ∈ K ) (cong ( λ K → K ++ sum-spine s) eq₁) pos)
+...   | Sum.inj₁ pos₁ =
+      sp-left (∈→◁ l p (subst ( λ K → p ∈ K ) (sym eq₁) pos₁))
+...   | Sum.inj₂ pos₂ = sp-right (∈→◁ s p pos₂)
+
+-- reading a tree through a spine position: the tree of `r` that reads the
+-- word of `u : U p` at the position `pos`
+spine-read : ( r p : RE ) → r ◁ p → U p → U r
+spine-read r p (sp-node .r) u = u
+spine-read (l + s ` loc) p (sp-left pos) u = LeftU {l} {s} {loc} (spine-read l p pos u)
+spine-read (l + s ` loc) p (sp-right pos) u = RightU {l} {s} {loc} (spine-read s p pos u)
+
+-- the sum branches do not move words
+flat∘LeftU : ∀ { l s : RE } { loc : ℕ } ( u : U l )
+  → proj₁ (flat { l + s ` loc } (LeftU {l} {s} {loc} u)) ≡ proj₁ (flat {l} u)
+flat∘LeftU {l} {s} {loc} u with flat u
+...   | ( xs , xs∈ ) = refl
+
+flat∘RightU : ∀ { l s : RE } { loc : ℕ } ( u : U s )
+  → proj₁ (flat { l + s ` loc } (RightU {l} {s} {loc} u)) ≡ proj₁ (flat {s} u)
+flat∘RightU {l} {s} {loc} u with flat u
+...   | ( xs , xs∈ ) = refl
+
+-- reading a position does not move the word
+spine-read-pres-flat : ( r p : RE ) ( pos : r ◁ p ) ( u : U p )
+  → proj₁ (flat {r} (spine-read r p pos u)) ≡ proj₁ (flat {p} u)
+spine-read-pres-flat r p (sp-node .r) u = refl
+spine-read-pres-flat (l + s ` loc) p (sp-left pos) u =
+  trans (flat∘LeftU {l} {s} {loc} (spine-read l p pos u))
+        (spine-read-pres-flat l p pos u)
+spine-read-pres-flat (l + s ` loc) p (sp-right pos) u =
+  trans (flat∘RightU {l} {s} {loc} (spine-read s p pos u))
+        (spine-read-pres-flat s p pos u)
+
 -- the record half of the crossing case: two records whose continuations
 -- hold trees with one word ⇒ the parent sum is ambiguous
 pd-fuse-cross→Ambig : ∀ { l s : RE } { loc : ℕ } { c : Char }
@@ -824,6 +882,26 @@ pd-fuse-cross→Ambig {l} {s} {loc} {c} (pdinstance i₁ e₁) (pdinstance i₂ 
     , RightU {l} {s} {loc} (i₂ v)
     , trans (e₁ u) (trans (cong ( λ z → c ∷ z) word≡) (sym (e₂ v)))
     , LeftU≢RightU (i₁ u) (i₂ v) )
+
+-- the crossing case complete: records whose continuations hold `≈₀`-equal
+-- alternatives at located positions.  The trees are read out at those
+-- positions (`spine-read`), transported by `Cast`, and carried by the two
+-- records — the lemma §8.1's configuration (a) reduces to, once the
+-- `pdinstance-oplus`/`map` memberships are inverted into pre-fusion records
+pd-cross-positions→Ambig : ∀ { l s : RE } { loc : ℕ } { c : Char }
+  → ( pdi₁ : PDInstance l c ) ( pdi₂ : PDInstance s c )
+  → ( p q : RE )
+  → pd-expr pdi₁ ◁ p → pd-expr pdi₂ ◁ q
+  → p ≈₀ q
+  → Ambig ( l + s ` loc )
+pd-cross-positions→Ambig pdi₁ pdi₂ p q pos₁ pos₂ p≈₀q =
+  pd-fuse-cross→Ambig pdi₁ pdi₂
+    (spine-read (pd-expr pdi₁) p pos₁ (proj₁ (r-∃u p)))
+    (spine-read (pd-expr pdi₂) q pos₂ (Cast p≈₀q (proj₁ (r-∃u p))))
+    (trans (spine-read-pres-flat (pd-expr pdi₁) p pos₁ (proj₁ (r-∃u p)))
+       (sym (trans (spine-read-pres-flat (pd-expr pdi₂) q pos₂
+                       (Cast p≈₀q (proj₁ (r-∃u p))))
+                   (Cast-pres-flat p≈₀q (proj₁ (r-∃u p))))))
 ```
 
 ## 7. Lifting a criterion from a reachable state (the full form of the paper's criteria)
@@ -1069,17 +1147,19 @@ Caveats (consistent with §6/§7):
   `pd-pairs→Ambig` composed with `lift-Ctx` (§7) for a located pattern.
   What is open is the *locating* step.  The pair of a fired test sits in
   one of three configurations: (a) on both sides of a fused member's
-  continuation node — discharged by §6.4 once `pdinstance-oplus`
-  membership is inverted into the two pre-fusion records and the two
-  positions are turned into word-equal trees (the §6.1 `r-∃u`/`Cast`
-  construction one spine level down); (b) inside one `sum-spine` — a
-  recursive descent through the inner `+` nodes; (c) in two distinct
-  members' copies — a record distinctness question, record identity
-  being intensional (`Complete` §24's residual-tree decision is the
-  tool).  The shape of (a)/(b) is an induction over the `pdU` clauses in
-  the style of `Complete` §23; the `mkfuseInj` gap of §7 does not arise
-  in (a) — the branch maps are only used through different parent
-  branches.
+  continuation node — the record half and the position half are §6.4
+  (`pd-cross-positions→Ambig`, via `∈→◁` and `spine-read`); what
+  remains for (a) is the list bookkeeping: inverting the
+  `pdinstance-oplus`/`map`/`concatMap` memberships into the pre-fusion
+  records; (b) inside one `sum-spine` — the same §6.4 construction one
+  level deeper (the `_◁_` recursion already descends through the inner
+  `+` nodes; what is missing is the pair-at-two-positions analysis
+  inside one spine); (c) in two distinct members' copies — a record
+  distinctness question, record identity being intensional
+  (`Complete` §24's residual-tree decision is the tool).  The shape of
+  (a)/(b) is an induction over the `pdU` clauses in the style of
+  `Complete` §23; the `mkfuseInj` gap of §7 does not arise in (a) — the
+  branch maps are only used through different parent branches.
 
 For the *criteria* themselves the single-expression form is not needed: the
 states are lists of partial derivatives, see §9.

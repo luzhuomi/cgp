@@ -103,6 +103,8 @@ import cgp.posix.PartialDerivative as PosixPD
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; map ; concatMap)
 
+open import Data.List.Properties using (++-assoc)
+
 import Data.List.Relation.Unary.Any as ListAny
 open ListAny using (Any; here; there)
 
@@ -126,6 +128,9 @@ open Eq using (_≡_; refl; trans; cong; sym; cong₂; subst)
 
 import Data.Product as Product
 open Product using ( Σ ; Σ-syntax ; _,_ ; _×_ )
+
+import Data.Sum as Sum
+-- (not opened: `inj₁`/`inj₂` are used as pattern variables in §6.1)
 open Σ using (proj₁ ; proj₂)
 
 import Data.Maybe as Maybe
@@ -679,6 +684,67 @@ pd-Idemp?-members : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   → pd-Idemp? pdis ≡ true
 pd-Idemp?-members pdis z z′ z∈ z′∈ z≢z′ eq =
   pd-Idemp?-members-go [] pdis z z′ z∈ z′∈ z≢z′ eq
+
+-- the reflection of the decision procedure: a `true` of the boolean test
+-- always comes from a proposition
+any-≈₀-true : ( r : RE ) ( ys : List RE )
+  → any-≈₀ r ys ≡ true
+  → Any ( λ s → r ≈₀ s ) ys
+any-≈₀-true r [] ()
+any-≈₀-true r (y ∷ ys) eq with r ≟₀ y | eq
+...   | yes r≈₀y | _ = here r≈₀y
+...   | no ¬r≈₀y | h = there (any-≈₀-true r ys h)
+
+-- an `Any` witness names its element
+Any-∃ : ∀ { A : Set } ( P : A → Set ) ( ys : List A )
+  → Any P ys
+  → Σ[ b ∈ A ] ( b ∈ ys × P b )
+Any-∃ P [] ()
+Any-∃ P (y ∷ ys) (here p) = ( y , here refl , p )
+Any-∃ P (y ∷ ys) (there w) with Any-∃ P ys w
+...   | ( b , b∈ , pb ) = ( b , there b∈ , pb )
+
+-- the scan step inverts into a disjunction: a `true` came either from the
+-- head matching the window or from the tail
+dups-≈₀-go-inv-step : ( kept xs : List RE ) ( x : RE )
+  → dups-≈₀-go kept (x ∷ xs) ≡ true
+  → Sum._⊎_ (any-≈₀ x kept ≡ true)
+            (dups-≈₀-go (kept ++ (x ∷ [])) xs ≡ true)
+dups-≈₀-go-inv-step kept xs x eq with any-≈₀ x kept | eq
+...   | true  | h = Sum.inj₁ refl
+...   | false | h = Sum.inj₂ h
+
+-- the converse direction of this section: a *fired* scan has a located
+-- witness — an element `a` of the rest and one `b` of the window (which
+-- already holds the scanned prefix) with `a ≈₀ b`.  It says nothing about
+-- where the two alternatives sit in the expressions the records continue
+-- at; locating them as the branches of one `+` node is the gap of §8.1
+dups-≈₀-go-witness : ( kept xs : List RE )
+  → dups-≈₀-go kept xs ≡ true
+  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ kept ++ xs × a ≈₀ b )
+dups-≈₀-go-witness kept [] ()
+dups-≈₀-go-witness kept (x ∷ xs) eq with dups-≈₀-go-inv-step kept xs x eq
+...   | Sum.inj₁ x∈ =
+    let ( b , b∈ , x≈₀b ) = Any-∃ ( λ s → x ≈₀ s ) kept (any-≈₀-true x kept x∈)
+    in  ( x , b , here refl , ∈-++ˡ kept (x ∷ xs) b b∈ , x≈₀b )
+...   | Sum.inj₂ h =
+    let ( a , b , a∈ , b∈ , a≈₀b ) =
+          dups-≈₀-go-witness (kept ++ (x ∷ [])) xs h
+    in  ( a , b , there a∈
+        , subst ( λ L → b ∈ L ) (++-assoc kept (x ∷ []) xs) b∈
+        , a≈₀b )
+
+dups-≈₀-witness : ( xs : List RE )
+  → dups-≈₀ xs ≡ true
+  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
+dups-≈₀-witness xs eq = dups-≈₀-go-witness [] xs eq
+
+-- the test of §6 reflected: a fired `pd-Idemp?` means the flattened
+-- alternative list holds an `≈₀` pair at located positions of `pd-alts`
+pd-Idemp?-witness : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
+  → pd-Idemp? pdis ≡ true
+  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ pd-alts pdis × b ∈ pd-alts pdis × a ≈₀ b )
+pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
 ```
 
 Note what is *not* claimed here: the two records may continue at one expression
@@ -905,10 +971,13 @@ Caveats (consistent with §6/§7):
   the A3 *test* is unaffected.
 * Soundness of a fired `A3?` still runs through `pd-pairs→Ambig` /
   `pd*-pairs→Ambig` (whose hypotheses need the duplicate pair in
-  different sum branches).  To make `A3? r x ≡ true → Ambig r` itself a
-  theorem, `canonic`'s rewrite trace would have to be reflected into a
-  concrete `Ctx`/`plug` + pair witness — that reflection lemma is the
-  missing piece, not the machinery around it.
+  different sum branches).  The boolean half of the reflection is now in
+  §6.3 (`dups-≈₀-witness`, `pd-Idemp?-witness`: a fired scan gives an
+  `≈₀`-pair at located positions of the flattened alternative list).
+  What remains is locating those two positions as the two branches of one
+  `+` node under one context — a concrete `Ctx`/`plug` + pair witness —
+  and that reflection lemma is the missing piece, not the machinery
+  around it.
 
 For the *criteria* themselves the single-expression form is not needed: the
 states are lists of partial derivatives, see §9.

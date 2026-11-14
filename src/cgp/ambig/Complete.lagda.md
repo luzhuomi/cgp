@@ -1352,5 +1352,15 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 -- lifts quantify over; only their injectivity hypothesis is not supplied —
 -- and not needed here, since `u ≢ v` is already given: running a lift after
 -- the fact certifies the diagnosis, it produces no new witness.
-```
 
+
+soundness : ∀ { r : RE } { w₁ w₂ : List Char }
+  → ( u : U r )
+  → ( proj₁ (flat {r} u) ≡ w₁ ++ w₂ )
+  → ( p : RE )
+  → crit p 
+  → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)
+  → ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v))  × (¬ ( u ≡ v ) ) 
+soundness = {!!}   
+
+```

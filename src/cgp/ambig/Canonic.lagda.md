@@ -902,6 +902,15 @@ pd-cross-positions→Ambig pdi₁ pdi₂ p q pos₁ pos₂ p≈₀q =
        (sym (trans (spine-read-pres-flat (pd-expr pdi₂) q pos₂
                        (Cast p≈₀q (proj₁ (r-∃u p))))
                    (Cast-pres-flat p≈₀q (proj₁ (r-∃u p))))))
+
+-- §6.4's general located-position theorem reproduces the §6.2 witness
+-- (both continuations are non-sums, so each position is `sp-node`):
+pd-a3-ambiguous-via-positions : Ambig pd-a3-target
+pd-a3-ambiguous-via-positions =
+  pd-cross-positions→Ambig left-pdi right-pdi
+    (pd-expr left-pdi) (pd-expr right-pdi)
+    (sp-node (pd-expr left-pdi)) (sp-node (pd-expr right-pdi))
+    (≈₀-● (≈₀-ε) (≈₀-$ 'c' 4 7))
 ```
 
 ## 7. Lifting a criterion from a reachable state (the full form of the paper's criteria)

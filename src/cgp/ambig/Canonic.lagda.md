@@ -1499,45 +1499,39 @@ Caveats (consistent with §6/§7):
   introduces artificial `+` locations.  The paper's own FST quotients by
   similarity anyway, and `≈₀`/`canonic` are location-insensitive, so
   the A3 *test* is unaffected.
-* Soundness of a fired `A3?` still runs through `pd-pairs→Ambig` /
-  `pd*-pairs→Ambig` (whose hypotheses need the duplicate pair in
-  different sum branches).  The reflection is now factored; what remains
-  is one named theorem:
+* The soundness of a fired `A3?` is composed in §8.6, stated with one
+  named hypothesis for the configuration that remains open:
 
-  > `star : ∀ { q : RE } { c : Char } → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
+  > `star : Config-c q c → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
 
-  Its hypothesis is fully unpacked (§6.3: `pd-Idemp?-witness`,
-  `pd-alts∈-inv`, `pd-Idemp?-member-witness`, and the positioned
-  reflection `dups-≈₀-dups : dups-≈₀ xs ≡ true → Dups-w xs`, which
-  reads a fired scan back as a *positioned* duplicate pair — two list
-  positions, not just two values (the value-only form is too weak: the
-  same value may legitimately occur twice in an unambiguous list);
-  `Complete` §23's `pdU-Idemp?-member-witness` adds via `pdU-const`
-  that both values of the pair already sit in the `sum-spine` of a
-  single member's continuation).  The conclusion is produced by the
-  record lifts: §6.4's `pd-fuse-cross→Ambig` for a pair crossing a fused
-  node (no injectivity needed — the pre-fusion records do the transport),
-  or `pd-pairs→Ambig` composed with `lift-Ctx` (§7) for a located
-  pattern.  The *classification* is proved (`Dups-w-++-split` +
-  `pd-alts-Dups-w-classify`, §6.3, instantiated at the example by
-  `pd-alts-classify-a3`): the pair of a fired test either sits at two
-  positions of one member's `sum-spine`, or has its earlier occurrence
-  in one member's spine and its later occurrence in another's.  What is
-  open is the analysis *inside* the
-  members: (a) on both sides of a fused member's continuation
-  node — the record half and the position half are §6.4
-  (`pd-cross-positions→Ambig`, via `∈→◁` and `spine-read`); what remains
-  for (a) is the list bookkeeping: inverting the
-  `pdinstance-oplus`/`map`/`concatMap` memberships into the pre-fusion
-  records; (b) inside one `sum-spine` — the same §6.4 construction one
-  level deeper (the `_◁_` recursion already descends through the inner
-  `+` nodes; the pair-at-two-positions witness inside one spine is
-  supplied by the classification's left branch); (c) in two distinct
-  members' copies — a record distinctness question, record identity
-  being intensional (`Complete` §24's residual-tree decision is the
-  tool).  The member-level placement of (a)/(b) is the `pd-alts`
-  induction `pd-alts-Dups-w-classify`; the `mkfuseInj` gap of §7 does
-  not arise in (a) — the
+  Its test hypothesis is fully unpacked (§6.3: the positioned reflection
+  `dups-≈₀-dups : dups-≈₀ xs ≡ true → Dups-w xs` reads a fired scan
+  back as a *positioned* duplicate pair — two list positions, not just
+  two values (the value-only form is too weak: the same value may
+  legitimately occur twice in an unambiguous list); the value-level
+  forms `pd-Idemp?-witness` / `pd-Idemp?-member-witness` and
+  `Complete` §23's `pdU-Idemp?-member-witness` remain as demoted
+  records of the same reflection).  The *classification* is proved
+  (`Dups-w-++-split` + `pd-alts-Dups-w-classify`, §6.3, instantiated at
+  the example by `pd-alts-classify-a3`): the pair of a fired test either
+  sits at two positions of one member's `sum-spine`, or has its earlier
+  occurrence in one member's spine and its later occurrence in another's.
+  The first branch is closed in full by §8.5's `pdU-member-pair→Ambig`,
+  an induction along the clauses of the `pdU` definition —
+  configurations (a) and (b) through `spine-pair→Ambig` /
+  `member-pair→Ambig` (§8.4) and the record lifts (§8.3), the crossings
+  of a `+` clause through §6.4's `pd-cross-positions→Ambig` and of the
+  nullable-`●` clause through §8.5's `pd-cross-●→Ambig` (which closes a
+  first-factor/empty-first-factor pair by *word* distinctness, `c ∷ _`
+  versus `[]` via `flat-[]`, the one place where branch-constructor
+  injectivity is unavailable because both records share their input
+  expression).  What remains open is configuration (c) — the pair's
+  occurrences living in *two members' copies*: `Config-c` (§8.6) is its
+  closure principle, a record-distinctness question since record
+  identity is intensional; `Complete` §24's `diff-records-≟` and §20's
+  `pick-diff-record-prf` are the tools on the record side, and
+  discharging it would mean a second clause-structure inversion
+  mirroring §8.5.  The `mkfuseInj` gap of §7 does not arise in (a) — the
   branch maps are only used through different parent branches.
 
 For the *criteria* themselves the single-expression form is not needed: the
@@ -2297,6 +2291,69 @@ pdU-member-pair→Ambig {c} ( l ● s ` loc ) z z∈ d with ε∈? l
 ...       | Sum.inj₁ amb = amb
 ...       | Sum.inj₂ ( z₂ , ( z₂∈ , d₂ ) ) =
             lift-Ctx (L●Ctx l 𝟘 loc) (pdU-member-pair→Ambig s z₂ z₂∈ d₂)
+```
+
+### 8.6. The soundness theorem, composed
+
+The pieces assembled: the scan reflection, the classification, §8.5's
+closure of the left branch — and one named hypothesis, `Config-c`, for
+configuration (c), whose record half is `Complete` §20/§24's material
+and whose remaining half would be a clause-structure inversion mirroring
+§8.5.
+
+```agda
+-- (purpose): the closure principle for configuration (c) — when the
+--   classification's right branch occurs, the pair's two members imply
+--   the ambiguity of the state
+-- (used in): `star` below; discharging it is the open question
+-- (proof idea): none yet.  The word half is automatic: reading trees at
+--   the pair's positions through §6.4's `spine-read` preserves words and
+--   `≈₀` preserves the matched sub-word, so the two images into q have
+--   one word; what is missing is that they are *distinct* trees, a
+--   record-distinctness question (record identity is intensional).
+--   `Complete` §24's `diff-records-≟` and §20's `pick-diff-record-prf`
+--   decide the record side once the continuations are known equal
+Config-c : ( q : RE ) ( c : Char ) → Set
+Config-c q c =
+    ∀ { z z′ : PDInstance q c } { earlier later : RE }
+    → ( z∈ : z ∈ PosixPD.pdU[ q , c ] )
+    → ( z′∈ : z′ ∈ PosixPD.pdU[ q , c ] )
+    → ( earlier∈ : earlier ∈ sum-spine (pd-expr z) )
+    → ( later∈ : later ∈ sum-spine (pd-expr z′) )
+    → ( later≈₀earlier : later ≈₀ earlier )
+    → Ambig q
+
+-- (purpose): §8.1's goal theorem — the A3-as-test of §8.1, reflected:
+--   a fired `pd-Idemp?` on the `pdU` member list implies ambiguity,
+--   with configuration (c)'s closure as its only remaining hypothesis
+-- (used in): `pd-a3-Ambig-via-star` below (the composition check on the
+--   §6.2 example)
+-- (proof idea): the hypothesis unpacking of §8.1's text — `dups-≈₀-dups`
+--   reads the fired scan as a positioned pair (`pd-Idemp?` unfolds to
+--   `dups-≈₀ ∘ pd-alts` definitionally), `pd-alts-Dups-w-classify`
+--   places it relative to the members, the left branch is closed by
+--   §8.5's `pdU-member-pair→Ambig`, the right branch is the hypothesis
+star : ∀ { q : RE } { c : Char }
+  → Config-c q c
+  → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true
+  → Ambig q
+star {q} {c} config-c eq
+  with pd-alts-Dups-w-classify (PosixPD.pdU[ q , c ])
+         (dups-≈₀-dups (pd-alts (PosixPD.pdU[ q , c ])) eq)
+...   | Sum.inj₁ ( z , ( z∈ , d ) ) =
+      pdU-member-pair→Ambig q z z∈ d
+...   | Sum.inj₂ ( z , z′ , earlier , later
+                 , ( z∈ , z′∈ , earlier∈ , later∈ , later≈₀earlier ) ) =
+      config-c z∈ z′∈ earlier∈ later∈ later≈₀earlier
+
+-- the whole composition elaborates on the §6.2 example: applying `star`
+-- to the fired test, with the gap hypothesis instantiated at a3 by
+-- §6.2's own `pd-a3-ambiguous` (the independent `pd-pairs→Ambig` proof)
+pd-a3-Config-c : Config-c pd-a3-target 'a'
+pd-a3-Config-c z∈ z′∈ earlier∈ later∈ later≈₀earlier = pd-a3-ambiguous
+
+pd-a3-Ambig-via-star : Ambig pd-a3-target
+pd-a3-Ambig-via-star = star pd-a3-Config-c pd-a3-Idemp-applied
 ```
 
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)

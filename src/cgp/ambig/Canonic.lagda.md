@@ -685,8 +685,11 @@ pd-Idemp?-members : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
 pd-Idemp?-members pdis z z′ z∈ z′∈ z≢z′ eq =
   pd-Idemp?-members-go [] pdis z z′ z∈ z′∈ z≢z′ eq
 
--- the reflection of the decision procedure: a `true` of the boolean test
--- always comes from a proposition
+-- (purpose): the reflection of the decision procedure — a `true` of the
+--   boolean test `any-≈₀` always comes from the proposition `Any (≈₀)`
+-- (used in): `dups-≈₀-go-witness` below (the head-match branch)
+-- (proof idea): case-split the decision `r ≟₀ y` against the hypothesis;
+--   `true` can only come from a `yes` cell, whose position is the witness
 any-≈₀-true : ( r : RE ) ( ys : List RE )
   → any-≈₀ r ys ≡ true
   → Any ( λ s → r ≈₀ s ) ys
@@ -695,7 +698,10 @@ any-≈₀-true r (y ∷ ys) eq with r ≟₀ y | eq
 ...   | yes r≈₀y | _ = here r≈₀y
 ...   | no ¬r≈₀y | h = there (any-≈₀-true r ys h)
 
--- an `Any` witness names its element
+-- (purpose): an `Any` witness names its element (with its position)
+-- (used in): `dups-≈₀-go-witness` below
+-- (proof idea): induction on the list — `here` names the head, `there`
+--   recurses and shifts the position
 Any-∃ : ∀ { A : Set } ( P : A → Set ) ( ys : List A )
   → Any P ys
   → Σ[ b ∈ A ] ( b ∈ ys × P b )
@@ -704,8 +710,12 @@ Any-∃ P (y ∷ ys) (here p) = ( y , here refl , p )
 Any-∃ P (y ∷ ys) (there w) with Any-∃ P ys w
 ...   | ( b , b∈ , pb ) = ( b , there b∈ , pb )
 
--- the scan step inverts into a disjunction: a `true` came either from the
--- head matching the window or from the tail
+-- (purpose): the scan step inverts — a `true` of `dups-≈₀-go` came
+--   either from the head matching the window or from the tail
+-- (used in): `dups-≈₀-go-witness` below
+-- (proof idea): case-split on the window decision.  Returning the
+--   disjunction, rather than splitting the goal on it, avoids the
+--   with-abstraction blocking on the non-datatype goal
 dups-≈₀-go-inv-step : ( kept xs : List RE ) ( x : RE )
   → dups-≈₀-go kept (x ∷ xs) ≡ true
   → Sum._⊎_ (any-≈₀ x kept ≡ true)
@@ -714,11 +724,17 @@ dups-≈₀-go-inv-step kept xs x eq with any-≈₀ x kept | eq
 ...   | true  | h = Sum.inj₁ refl
 ...   | false | h = Sum.inj₂ h
 
--- the converse direction of this section: a *fired* scan has a located
--- witness — an element `a` of the rest and one `b` of the window (which
--- already holds the scanned prefix) with `a ≈₀ b`.  It says nothing about
--- where the two alternatives sit in the expressions the records continue
--- at; locating them as the branches of one `+` node is the gap of §8.1
+-- (purpose): the converse direction of this section — a *fired* scan has
+--   a located witness: an element `a` of the rest and one `b` of the
+--   window (which already holds the scanned prefix) with `a ≈₀ b`
+-- (used in): `dups-≈₀-witness`, `pd-Idemp?-witness` below
+-- (proof idea): induction on the rest, stepping through
+--   `dups-≈₀-go-inv-step`; the head branch reads the match out with
+--   `any-≈₀-true` + `Any-∃`, the tail branch recurses with the head
+--   added to the window and transports the window membership along
+--   `++-assoc`.  It says nothing about where the two alternatives sit in
+--   the expressions the records continue at; locating them as the
+--   branches of one `+` node is the gap of §8.1
 dups-≈₀-go-witness : ( kept xs : List RE )
   → dups-≈₀-go kept xs ≡ true
   → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ kept ++ xs × a ≈₀ b )
@@ -734,19 +750,30 @@ dups-≈₀-go-witness kept (x ∷ xs) eq with dups-≈₀-go-inv-step kept xs x
         , subst ( λ L → b ∈ L ) (++-assoc kept (x ∷ []) xs) b∈
         , a≈₀b )
 
+-- (purpose): the whole-list form: a fired scan has an `≈₀` pair at two
+--   located positions of the list
+-- (used in): `pd-Idemp?-witness` below
+-- (proof idea): `dups-≈₀-go-witness` with the empty window
 dups-≈₀-witness : ( xs : List RE )
   → dups-≈₀ xs ≡ true
   → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
 dups-≈₀-witness xs eq = dups-≈₀-go-witness [] xs eq
 
--- the test of §6 reflected: a fired `pd-Idemp?` means the flattened
--- alternative list holds an `≈₀` pair at located positions of `pd-alts`
+-- (purpose): the test of §6 reflected — a fired `pd-Idemp?` means the
+--   flattened alternative list holds an `≈₀` pair at located positions of
+--   `pd-alts`
+-- (used in): `pd-Idemp?-member-witness` below, and (with
+--   `pd-alts∈-inv`) `pdU-Idemp?-member-witness` in `Complete` §23
+-- (proof idea): `dups-≈₀-witness` at the list `pd-alts pdis`
 pd-Idemp?-witness : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   → pd-Idemp? pdis ≡ true
   → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ pd-alts pdis × b ∈ pd-alts pdis × a ≈₀ b )
 pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
 
--- membership in an appended list resolves to one of the sides
+-- (purpose): membership in an appended list resolves to one of the sides
+-- (used in): `pd-alts∈-inv` below, `∈→◁` in §6.4
+-- (proof idea): induction on the first list: at the head, `here` names
+--   the left side; `there` recurses into the tail
 ∈-++-inv : ∀ { A : Set } ( xs ys : List A ) { x : A }
   → x ∈ xs ++ ys
   → Sum._⊎_ (x ∈ xs) (x ∈ ys)
@@ -756,7 +783,13 @@ pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
 ...   | Sum.inj₁ y = Sum.inj₁ (there y)
 ...   | Sum.inj₂ y = Sum.inj₂ y
 
--- the inverse of `pd-alts∈`: an alternative of the state belongs to a member
+-- (purpose): the inverse of `pd-alts∈` — an alternative of the state
+--   belongs to a member: it names a record `z` of the list with the
+--   alternative inside `z`'s `sum-spine`
+-- (used in): `pd-Idemp?-member-witness` below, and `pdU-Idemp?-member-witness`
+--   in `Complete` §23
+-- (proof idea): induction on the record list, splitting each membership
+--   in the concatenation with `∈-++-inv`
 pd-alts∈-inv : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   ( h : RE )
   → h ∈ pd-alts pdis
@@ -768,12 +801,17 @@ pd-alts∈-inv (x ∷ pdis) h h∈
 ...   | Sum.inj₂ h∈₂ with pd-alts∈-inv pdis h h∈₂
 ...   | ( z , z∈ , h∈₃ ) = ( z , there z∈ , h∈₃ )
 
--- the test of §6 reflected through the member list: a fired `pd-Idemp?`
--- names two members and one alternative of each, `≈₀`-equal.  For a `pdU`
--- list the two members have one continuation (`Complete` §23's `pdU-const`),
--- so the whole pair sits in one `sum-spine` — see `Complete`'s
--- `pdU-Idemp?-member-witness`, which composes this inversion with that
--- equation
+-- (purpose): the test of §6 reflected *through the member list* — a
+--   fired `pd-Idemp?` names two members and one alternative of each,
+--   `≈₀`-equal
+-- (used in): the §8.1 statement of `star` — the first half of its
+--   hypothesis unpacking.  `Complete`'s `pdU-Idemp?-member-witness`
+--   adds `pdU-const`'s equation (for a `pdU` list the two members have
+--   one continuation, so both alternatives sit in one `sum-spine`) and
+--   composes `pd-Idemp?-witness` + `pd-alts∈-inv` directly: this
+--   combined Σ passed through a module boundary produced a phantom
+--   conversion error, the small-step composition does not
+-- (proof idea): `pd-Idemp?-witness`, then `pd-alts∈-inv` at each side
 pd-Idemp?-member-witness : ∀ { r : RE } { c : Char }
   ( pdis : List (PDInstance r c) )
   → pd-Idemp? pdis ≡ true
@@ -819,15 +857,24 @@ at a position without moving its word, which gives the soundness theorem
 for the *located* pair, `pd-cross-positions→Ambig`.
 
 ```agda
--- an alternative located *structurally* in the +-spine of an expression:
--- the inductive form of `∈ sum-spine` (the Any-form cannot be case-split
--- at a sum node: `sum-spine l ++ sum-spine s` is stuck for variable l, s)
+-- (purpose): an alternative located *structurally* in the +-spine of an
+--   expression — the inductive form of `∈ sum-spine`
+-- (used in): `∈→◁`, `spine-read`, `spine-read-pres-flat`,
+--   `pd-cross-positions→Ambig` below
+-- (proof idea): the membership form cannot be case-split at a sum node
+--   (`sum-spine l ++ sum-spine s` is stuck for variable `l`, `s`), so the
+--   position is carried as a datatype that follows the +-structure
 data _◁_ : RE → RE → Set where
   sp-node  : ( r : RE ) → r ◁ r
   sp-left  : ∀ { l s p : RE } { loc : ℕ } → l ◁ p → ( l + s ` loc ) ◁ p
   sp-right : ∀ { l s p : RE } { loc : ℕ } → s ◁ p → ( l + s ` loc ) ◁ p
 
--- membership in the computed spine gives the structural position
+-- (purpose): membership in the computed spine gives the structural position
+-- (used in): converting `pd-Idemp?-member-witness` / `pd-alts∈-inv`
+--   memberships into `spine-read` inputs (§8.1 configurations (a)/(b))
+-- (proof idea): induction on the expression; at a sum node expose the
+--   spine head with `sum-spine∷`, split the concatenation with
+--   `∈-++-inv`, and transport the memberships along the head equation
 ∈→◁ : ( r p : RE ) → p ∈ sum-spine r → r ◁ p
 ∈→◁ ε p (here refl) = sp-node ε
 ∈→◁ ( $ c ` loc ) p (here refl) = sp-node _
@@ -841,25 +888,40 @@ data _◁_ : RE → RE → Set where
       sp-left (∈→◁ l p (subst ( λ K → p ∈ K ) (sym eq₁) pos₁))
 ...   | Sum.inj₂ pos₂ = sp-right (∈→◁ s p pos₂)
 
--- reading a tree through a spine position: the tree of `r` that reads the
--- word of `u : U p` at the position `pos`
+-- (purpose): reading a tree through a spine position — the tree of `r`
+--   that reads the word of `u : U p` at the position `pos`
+-- (used in): `pd-cross-positions→Ambig` below
+-- (proof idea): recursion on `_◁_`: wrap with `LeftU`/`RightU` at the
+--   sum branches, stop at the located node
 spine-read : ( r p : RE ) → r ◁ p → U p → U r
 spine-read r p (sp-node .r) u = u
 spine-read (l + s ` loc) p (sp-left pos) u = LeftU {l} {s} {loc} (spine-read l p pos u)
 spine-read (l + s ` loc) p (sp-right pos) u = RightU {l} {s} {loc} (spine-read s p pos u)
 
--- the sum branches do not move words
+-- (purpose): entering a left sum branch does not move a word
+-- (used in): `spine-read-pres-flat` below
+-- (proof idea): `flat` of a branch is defined through a `with` on
+--   `flat u`, so it does not reduce at a variable tree — case-split
+--   `flat u` to expose the pair, then `refl`
 flat∘LeftU : ∀ { l s : RE } { loc : ℕ } ( u : U l )
   → proj₁ (flat { l + s ` loc } (LeftU {l} {s} {loc} u)) ≡ proj₁ (flat {l} u)
 flat∘LeftU {l} {s} {loc} u with flat u
 ...   | ( xs , xs∈ ) = refl
 
+-- (purpose): entering a right sum branch does not move a word
+-- (used in): `spine-read-pres-flat` below
+-- (proof idea): as `flat∘LeftU`
 flat∘RightU : ∀ { l s : RE } { loc : ℕ } ( u : U s )
   → proj₁ (flat { l + s ` loc } (RightU {l} {s} {loc} u)) ≡ proj₁ (flat {s} u)
 flat∘RightU {l} {s} {loc} u with flat u
 ...   | ( xs , xs∈ ) = refl
 
--- reading a position does not move the word
+-- (purpose): reading a position does not move the word
+-- (used in): `pd-cross-positions→Ambig` below
+-- (proof idea): induction on `_◁_`; `refl` at the located node,
+--   `flat∘LeftU`/`flat∘RightU` to step over the sum branches (their
+--   implicits are given explicitly: the goal does not determine them
+--   through the stuck `flat`)
 spine-read-pres-flat : ( r p : RE ) ( pos : r ◁ p ) ( u : U p )
   → proj₁ (flat {r} (spine-read r p pos u)) ≡ proj₁ (flat {p} u)
 spine-read-pres-flat r p (sp-node .r) u = refl
@@ -870,8 +932,13 @@ spine-read-pres-flat (l + s ` loc) p (sp-right pos) u =
   trans (flat∘RightU {l} {s} {loc} (spine-read s p pos u))
         (spine-read-pres-flat s p pos u)
 
--- the record half of the crossing case: two records whose continuations
--- hold trees with one word ⇒ the parent sum is ambiguous
+-- (purpose): the record half of the crossing case — two records whose
+--   continuations hold trees with one word ⇒ the parent sum is ambiguous
+-- (used in): `pd-cross-positions→Ambig` below; §8.1's configuration (a)
+-- (proof idea): the two trees enter `l + s` through *different* branches,
+--   so distinctness is `LeftU≢RightU` — no injectivity of the records is
+--   needed; the word equation runs both records' soundness evidence
+--   through one `c ∷`_ congruence
 pd-fuse-cross→Ambig : ∀ { l s : RE } { loc : ℕ } { c : Char }
   → ( pdi₁ : PDInstance l c ) ( pdi₂ : PDInstance s c )
   → ( u : U (pd-expr pdi₁) ) ( v : U (pd-expr pdi₂) )
@@ -883,11 +950,15 @@ pd-fuse-cross→Ambig {l} {s} {loc} {c} (pdinstance i₁ e₁) (pdinstance i₂ 
     , trans (e₁ u) (trans (cong ( λ z → c ∷ z) word≡) (sym (e₂ v)))
     , LeftU≢RightU (i₁ u) (i₂ v) )
 
--- the crossing case complete: records whose continuations hold `≈₀`-equal
--- alternatives at located positions.  The trees are read out at those
--- positions (`spine-read`), transported by `Cast`, and carried by the two
--- records — the lemma §8.1's configuration (a) reduces to, once the
--- `pdinstance-oplus`/`map` memberships are inverted into pre-fusion records
+-- (purpose): the crossing case complete — records whose continuations
+--   hold `≈₀`-equal alternatives at located positions ⇒ the parent sum is
+--   ambiguous
+-- (used in): `pd-a3-ambiguous-via-positions` below; §8.1's configuration
+--   (a) reduces to this lemma plus the `pdinstance-oplus`/`map`
+--   membership inversion into pre-fusion records
+-- (proof idea): read the two trees at the positions (`spine-read`),
+--   transport one across `≈₀` (`Cast`, word-preserving by
+--   `Cast-pres-flat`), then `pd-fuse-cross→Ambig`
 pd-cross-positions→Ambig : ∀ { l s : RE } { loc : ℕ } { c : Char }
   → ( pdi₁ : PDInstance l c ) ( pdi₂ : PDInstance s c )
   → ( p q : RE )
@@ -903,8 +974,12 @@ pd-cross-positions→Ambig pdi₁ pdi₂ p q pos₁ pos₂ p≈₀q =
                        (Cast p≈₀q (proj₁ (r-∃u p))))
                    (Cast-pres-flat p≈₀q (proj₁ (r-∃u p))))))
 
--- §6.4's general located-position theorem reproduces the §6.2 witness
--- (both continuations are non-sums, so each position is `sp-node`):
+-- (purpose): the general located-position theorem reproduces the §6.2
+--   hand-built witness (both continuations are non-sums, so each
+--   position is `sp-node`)
+-- (used in): the §6.4 prose — checks the closer subsumes the example
+-- (proof idea): `pd-cross-positions→Ambig` at `left-pdi`/`right-pdi`
+--   with the computed `≈₀` of the two continuations
 pd-a3-ambiguous-via-positions : Ambig pd-a3-target
 pd-a3-ambiguous-via-positions =
   pd-cross-positions→Ambig left-pdi right-pdi
@@ -990,10 +1065,13 @@ lift-Ctx-dup→Ambig : ∀ { r p : RE } { w : List Char }
 lift-Ctx-dup→Ambig {p = p} inj ev inj-inj ctx {l} {s} {loc} eq dup =
   lift-Ambig inj ev inj-inj (Ctx-dup→Ambig ctx {l} {s} {loc} p eq dup)
 
--- the context lift on its own: an ambiguity of the hole expression
--- transfers to the filled expression.  `Ctx-dup→Ambig` builds the same
--- witness inline; this is the standalone form, the closer that a located
--- sum-branch pair (§8.1's open step) would compose with
+-- (purpose): the context lift on its own — an ambiguity of the hole
+--   expression transfers to the filled expression
+-- (used in): the §8.1 statement of `star` (the closer a located
+--   sum-branch pair composes with); `Ctx-dup→Ambig` (§4) builds the
+--   same witness inline
+-- (proof idea): `CtxT` embeds the two trees, `CtxT-pres-flat` keeps the
+--   word equation, `CtxT-injective` reflects the disequality
 lift-Ctx : ∀ ( ctx : Ctx ) { s : RE } → Ambig s → Ambig (plug ctx s)
 lift-Ctx ctx ( u , v , word≡ , u≢v ) =
     ( CtxT ctx u

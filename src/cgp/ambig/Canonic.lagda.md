@@ -825,6 +825,123 @@ pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
     with pd-alts∈-inv pdis a a∈ | pd-alts∈-inv pdis b b∈
 ...   | ( z , z∈ , a∈₁ ) | ( z′ , z′∈ , b∈₁ ) =
         ( z , z′ , a , b , ( z∈ , z′∈ , a∈₁ , b∈₁ , a≈₀b ) )
+
+-- a *positioned* duplicate pair inside a list: two occurrences, the
+-- earlier one in a window between `pre` and `post`, the later one after
+-- it.  Unlike `dups-≈₀-witness`'s Σ this keeps the occurrence identity
+-- the scan is built on — two distinct positions, one value pair.
+-- (form: an inductive with the positions as constructor arguments.  A
+--   Σ-alias `Dups-w xs = Σ[...]` does *not* unfold when `xs` is neutral,
+--   and pair construction against the stuck alias fails; the datatype is
+--   rigid and elaborates directly)
+data Dups-w : List RE → Set where
+  dups-at : ∀ { xs : List RE }
+              { pre mid post : List RE } { earlier later : RE }
+    → pre ++ (earlier ∷ (mid ++ (later ∷ post))) ≡ xs
+    → later ≈₀ earlier
+    → Dups-w xs
+
+-- the positioned pair is transportable along list equations
+Dups-w-transp : ( xs ys : List RE ) → xs ≡ ys → Dups-w xs → Dups-w ys
+Dups-w-transp xs .xs refl w = w
+
+-- cast a scan hypothesis along a window equation (the boolean test does
+-- not see how the window list is written)
+dups-≈₀-go-cast : ( kept₁ kept₂ : List RE ) ( xs : List RE )
+  → kept₁ ≡ kept₂ → dups-≈₀-go kept₁ xs ≡ true → dups-≈₀-go kept₂ xs ≡ true
+dups-≈₀-go-cast .k₂ k₂ xs refl h = h
+
+-- a window match located: an `Any` witness names the matched element and
+-- the window split around it.
+-- (purpose): the head branch of `dups-≈₀-go-wp`
+-- (used in): `dups-≈₀-go-wp` below, via `any-≈₀-true`
+-- (proof idea): recursion on the witness; the split is returned as
+--   *equation data* (matching a Σ inside a with would block it)
+any-≈₀-wloc : ( y : RE ) ( kept′ : List RE )
+  → Any ( λ r → y ≈₀ r ) kept′
+  → Σ[ r ∈ RE ] Σ[ pre ∈ List RE ] Σ[ post ∈ List RE ]
+      ( kept′ ≡ pre ++ (r ∷ post) × y ≈₀ r )
+any-≈₀-wloc y [] ()
+any-≈₀-wloc y (z ∷ kept′) (here y≈₀z) = ( z , [] , kept′ , refl , y≈₀z )
+any-≈₀-wloc y (z ∷ kept′) (there p) with any-≈₀-wloc y kept′ p
+...   | ( r , pre , post , eq , y≈₀r ) =
+          ( r , z ∷ pre , post , cong (_∷_ z) eq , y≈₀r )
+
+-- The pair positions in one scanned step.  The window equation
+-- `x ∷ kept ≡ pre ++ (r ∷ post)` from `any-≈₀-wloc` splits the *whole*
+-- window around the matched element `r`; then in the scanned list
+-- `(x ∷ kept) ++ (y ∷ xs)` the earlier occurrence `r` has prefix `pre`,
+-- middle `post` (the window tail), and after the later occurrence `y`
+-- the remainder `xs`.  The one reassociation needed
+-- (`(pre ++ r ∷ post) ++ y ∷ xs ≡ pre ++ r ∷ (post ++ y ∷ xs)`) has
+-- rigid endpoints on both sides — the direct layouts with a cons in the
+-- transport context are NOT definitionally checkable, which is what the
+-- first attempts kept tripping on.
+dups-wp-head : ( x : RE ) ( kept xs : List RE ) ( y : RE )
+  → ( w : Σ[ r ∈ RE ] Σ[ pre ∈ List RE ] Σ[ post ∈ List RE ]
+          ( (x ∷ kept) ≡ pre ++ (r ∷ post) × y ≈₀ r ) )
+  → Dups-w ((x ∷ kept) ++ (y ∷ xs))
+dups-wp-head x kept xs y w =
+    subst Dups-w (sym (cong ( λ K → K ++ (y ∷ xs) ) eqw))
+      (dups-at {xs = (pre ++ (r ∷ post)) ++ (y ∷ xs)}
+         {pre = pre} {mid = post} {post = xs} {earlier = r} {later = y}
+         (sym (++-assoc pre (r ∷ post) (y ∷ xs))) y≈₀r)
+  where
+    r      = proj₁ w
+    pre    = proj₁ (proj₂ w)
+    post   = proj₁ (proj₂ (proj₂ w))
+    eqw    = proj₁ (proj₂ (proj₂ (proj₂ w)))
+    y≈₀r   = proj₂ (proj₂ (proj₂ (proj₂ w)))
+
+dups-≈₀-go-wp : ( x : RE ) ( kept xs : List RE )
+  → dups-≈₀-go (x ∷ kept) xs ≡ true
+  → Dups-w ((x ∷ kept) ++ xs)
+dups-≈₀-go-wp x kept [] ()
+dups-≈₀-go-wp x kept (y ∷ xs) h
+  with dups-≈₀-go-inv-step (x ∷ kept) xs y h
+...   | Sum.inj₁ h₁ =
+          dups-wp-head x kept xs y
+            (any-≈₀-wloc y (x ∷ kept) (any-≈₀-true y (x ∷ kept) h₁))
+...   | Sum.inj₂ h₂ =
+      -- the scan appends the head to the window: `(x ∷ kept) ++ [y]`
+      -- *is* `x ∷ (kept ++ [y])` definitionally, so the recursion keeps
+      -- the one-cons window form; the remainder layouts differ by
+      -- `++-assoc` only
+      Dups-w-transp (x ∷ ((kept ++ (y ∷ [])) ++ xs)) ((x ∷ kept) ++ (y ∷ xs))
+        (trans (cong ( λ K → x ∷ K ) (++-assoc kept (y ∷ []) xs)) refl)
+        (dups-≈₀-go-wp x (kept ++ (y ∷ [])) xs
+           (dups-≈₀-go-cast ((x ∷ kept) ++ (y ∷ [])) (x ∷ (kept ++ (y ∷ [])))
+              xs refl h₂))
+
+-- (purpose): the scan's output read back as positioned occurrences — a
+--   fired `dups-≈₀` names the two positions of the duplicate pair
+-- (used in): the §8.1 `star` hypothesis unpacking, composed with
+--   `pd-Idemp?-witness`; the member-level classification of the pair
+--   relative to `pd-alts` (design note below) is the step that consumes it
+-- (proof idea): through the general-window form `dups-≈₀-go-wp`: the
+--   whole list is the one-element window `[x]` followed by the rest
+dups-≈₀-dups : ( xs : List RE )
+  → dups-≈₀ xs ≡ true
+  → Dups-w xs
+dups-≈₀-dups [] ()
+dups-≈₀-dups (x ∷ xs) eq = dups-≈₀-go-wp x [] xs eq
+
+-- the reflection instantiates on a concrete fired scan (the scan on a
+-- two-element list of `≈₀`-equal letters answers `true` by `refl`)
+dups-w-test : Dups-w (($ 'a' ` 1) ∷ ($ 'a' ` 2) ∷ [])
+dups-w-test = dups-≈₀-dups _ refl
+
+-- What splits a positioned pair along a list cut (`Dups-w (xs ++ ys)`
+-- → both-left ⊎ crossing ⊎ both-right) is mechanical but long: two
+-- applications of the prefix-comparison lemma
+-- `a ++ b ≡ c ++ d → (c ≡ a ++ u) ⊎ (a ≡ c ++ u)` (induction on the
+-- first argument, both sides) plus `++-cancelˡ`, peeling the five
+-- segments of the `dups-at` equation against the two segments of the
+-- cut; every intermediate list is concrete, so the case split is legal
+-- with-agda, but it is a page of plumbing.  It is the remaining piece
+-- between `dups-≈₀-dups` and the member-level classification of §8.1's
+-- configurations (a)/(b); the value-level form of that classification
+-- without position preservation is `pd-Idemp?-member-witness` above.
 ```
 
 Note what is *not* claimed here: the two records may continue at one expression
@@ -1225,24 +1342,31 @@ Caveats (consistent with §6/§7):
   > `star : ∀ { q : RE } { c : Char } → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
 
   Its hypothesis is fully unpacked (§6.3: `pd-Idemp?-witness`,
-  `pd-alts∈-inv`, `pd-Idemp?-member-witness`; `Complete` §23's
-  `pdU-Idemp?-member-witness` adds via `pdU-const` that both values of
-  the pair already sit in the `sum-spine` of a single member's
-  continuation).  The conclusion is produced by the record lifts:
-  §6.4's `pd-fuse-cross→Ambig` for a pair crossing a fused node
-  (no injectivity needed — the pre-fusion records do the transport), or
-  `pd-pairs→Ambig` composed with `lift-Ctx` (§7) for a located pattern.
-  What is open is the *locating* step.  The pair of a fired test sits in
-  one of three configurations: (a) on both sides of a fused member's
-  continuation node — the record half and the position half are §6.4
-  (`pd-cross-positions→Ambig`, via `∈→◁` and `spine-read`); what
-  remains for (a) is the list bookkeeping: inverting the
+  `pd-alts∈-inv`, `pd-Idemp?-member-witness`, and the positioned
+  reflection `dups-≈₀-dups : dups-≈₀ xs ≡ true → Dups-w xs`, which
+  reads a fired scan back as a *positioned* duplicate pair — two list
+  positions, not just two values (the value-only form is too weak: the
+  same value may legitimately occur twice in an unambiguous list);
+  `Complete` §23's `pdU-Idemp?-member-witness` adds via `pdU-const`
+  that both values of the pair already sit in the `sum-spine` of a
+  single member's continuation).  The conclusion is produced by the
+  record lifts: §6.4's `pd-fuse-cross→Ambig` for a pair crossing a fused
+  node (no injectivity needed — the pre-fusion records do the transport),
+  or `pd-pairs→Ambig` composed with `lift-Ctx` (§7) for a located
+  pattern.  What is open is the *classifying* step.  A positioned pair
+  in a concatenation lies both-left, crossing, or both-right of the cut
+  — the split is the mechanical peeling described in the §6.3 design
+  note; composed with it, the pair of a fired test lies in one of three
+  configurations: (a) on both sides of a fused member's continuation
+  node — the record half and the position half are §6.4
+  (`pd-cross-positions→Ambig`, via `∈→◁` and `spine-read`); what remains
+  for (a) is the list bookkeeping: inverting the
   `pdinstance-oplus`/`map`/`concatMap` memberships into the pre-fusion
   records; (b) inside one `sum-spine` — the same §6.4 construction one
   level deeper (the `_◁_` recursion already descends through the inner
-  `+` nodes; what is missing is the pair-at-two-positions analysis
-  inside one spine); (c) in two distinct members' copies — a record
-  distinctness question, record identity being intensional
+  `+` nodes; the pair-at-two-positions analysis inside one spine is
+  `Dups-w` plus the cut-split); (c) in two distinct members' copies — a
+  record distinctness question, record identity being intensional
   (`Complete` §24's residual-tree decision is the tool).  The shape of
   (a)/(b) is an induction over the `pdU` clauses in the style of
   `Complete` §23; the `mkfuseInj` gap of §7 does not arise in (a) — the

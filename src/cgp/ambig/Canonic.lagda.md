@@ -87,7 +87,7 @@ builds the two parse trees directly.
 module cgp.ambig.Canonic where
 
 import cgp.RE as RE
-open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉)
+open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉ ; ε∈ ; ε∈?)
 
 import cgp.ParseTree as ParseTree
 open ParseTree using ( U; EmptyU; LetterU; LeftU; RightU; PairU; ListU ; flat ; r-∃u ; LeftU≢RightU )
@@ -1996,6 +1996,307 @@ member-pair→Ambig : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
   → Ambig q
 member-pair→Ambig {q} {c} z inj-inj d =
   lift-pdinstance {q} {c} z inj-inj (spine-pair→Ambig (pd-expr z) d)
+```
+
+### 8.5. The left branch, closed clause by clause
+
+The classification's left branch names a *member of* `pdU[ q , c ]` whose
+continuation carries the positioned pair.  This section closes it by
+induction along the *clause structure* of `q`, case-splitting the
+membership hypothesis against each `pdU` clause:
+
+* `ε`, `$`: the member list is empty or a single letter record whose
+  continuation is `ε` — a one-element spine carries no positioned pair.
+* `+`: `pdU-+-location` (§8.2) either produces the crossing material,
+  which §6.4's `pd-cross-positions→Ambig` closes at the clause's own sum
+  node, or a subgoal on a branch instance, closed by recursion and
+  re-embedded by `lift-Ctx`.
+* `*`: the member's continuation is `p ● (r * nε \` loc) \` loc` — a
+  non-sum, absurd spine pair (no recursion into `r` is needed).
+* `●` with `ε∉ l`: only the first-factor instances, again non-sum
+  continuations.
+* `●` with `ε∈ l` (the nullable clause): first-factor instances are
+  absurd as before; empty-first-factor instances (`mk-snd-pdi`) continue
+  exactly where their `pdU[ s , c ]` preimage continues, so the pair
+  recurses there; a *fused* member splits at its own sum node — left
+  side absurd, right side recurses, and a crossing pair between the two
+  sides is closed by `pd-cross-●→Ambig` below.
+
+The crossing of the nullable clause needs its own closing lemma: unlike
+§6.4, both records have the *same* input expression `l ● s \` loc`, so
+distinctness cannot come from branch constructors — it comes from the
+words: the first-factor instance's tree pairs a `c ∷ _` tree (the letter
+record's own soundness evidence) with the right factor, while the
+empty-first-factor instance's tree has the empty tree `e` in that
+component (`flat-[]` gives `[]`), and `c ∷ _ ≡ []` is absurd.
+
+```agda
+-- (purpose): a record's soundness evidence as an accessor
+-- (used in): `pd-cross-●→Ambig` below
+-- (proof idea): the record stores the evidence as its second field
+pd-ev : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
+  → ( u : U (pd-expr z) )
+  → proj₁ (flat (pd-inj z refl u)) ≡ c ∷ proj₁ (flat u)
+pd-ev (pdinstance inj ev) = ev
+
+-- (purpose): the crossing case of the nullable-● clause — one
+--   continuation at the whole first-factor instance (its spine is a
+--   singleton) and one inside an empty-first-factor instance make the
+--   concatenation ambiguous
+-- (used in): the `●` clause of `pdU-member-pair→Ambig` below; §8.1's
+--   configuration (c) through the same shape
+-- (proof idea): the trees are the two records' maps applied to trees
+--   read at the positions (word-preserving as in §6.4); the word
+--   equation runs both records' `c ∷`_ evidences; distinctness: at the
+--   first component of the pair node, the letter instance's map gives a
+--   tree of word `c ∷ _` (`ev₁`) while `flat-[]` gives `[]` for `e`
+pd-cross-●→Ambig : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  → ( w₁ : PDInstance l c )
+  → ( ef : Σ[ x ∈ U l ] AllEmpty.Flat-[] l x )
+  → ( z₂ : PDInstance r c )
+  → ( p q : RE )
+  → p ≡ pd-expr w₁ ● r ` loc
+  → ( pd-expr z₂ ) ◁ q
+  → q ≈₀ p
+  → Ambig ( l ● r ` loc )
+pd-cross-●→Ambig {l} {r} {loc} {c} (pdinstance {p₁} i₁ ev₁)
+  ( e , AllEmpty.flat-[] .e fl ) (pdinstance {p₂} i₂ ev₂) p q p≡ pos₂ q≈₀p =
+    let w₁-rec = pdinstance {p₁} i₁ ev₁
+        z₂-rec = pdinstance {p₂} i₂ ev₂
+        u      = proj₁ (r-∃u (pd-expr w₁-rec ● r ` loc))
+        p≈₀q   = ≈₀-sym q≈₀p
+        cast-t = Cast p≈₀q (proj₁ (r-∃u p))
+        v      = spine-read (pd-expr z₂-rec) q pos₂ cast-t
+        x₁     = proj₁ (r-∃u p₁)
+        word≡  = trans (pd-ev (pdinstance-fst {l} {r} {loc} {c} w₁-rec) u)
+                     (trans (cong ( λ xs → c ∷ xs )
+                             (trans (cong ( λ w → proj₁ (flat (proj₁ (r-∃u w))))
+                                            (sym p≡))
+                                    (trans (sym (Cast-pres-flat
+                                            p≈₀q (proj₁ (r-∃u p))))
+                                       (sym (spine-read-pres-flat
+                                              (pd-expr z₂-rec) q pos₂ cast-t)))))
+                        (sym (pd-ev (PDI.mk-snd-pdi {l} {r} {loc} {c}
+                                          ( e , AllEmpty.flat-[] e fl ) z₂-rec) v)))
+      in  ( pd-inj (pdinstance-fst {l} {r} {loc} {c} w₁-rec) refl u
+          , pd-inj (PDI.mk-snd-pdi {l} {r} {loc} {c}
+                      ( e , AllEmpty.flat-[] e fl ) z₂-rec) refl v
+          , word≡
+          , λ trees≡ →
+              let contra : [] ≡ c ∷ proj₁ (flat x₁)
+                  contra = sym (trans (trans (sym (ev₁ x₁))
+                                        (cong ( λ t → proj₁ (flat t))
+                                           (proj₁ (ParseTree.inv-pairU
+                                                    {l} {r} {loc}
+                                                    (i₁ x₁) (proj₁ (r-∃u r))
+                                                    e (i₂ v) trees≡))))
+                                 fl)
+              in  []≢_∷_ contra )
+
+-- (purpose): a member built by `pdinstance-fst` continues at the
+--   non-sum expression `p ● s \` loc` — a one-element spine, so no
+--   positioned pair can lie in it
+-- (used in): the `●` clause of `pdU-member-pair→Ambig`
+-- (proof idea): the continuation equation reduces once the input record
+--   is pattern-matched; transport the pair into the singleton spine and
+--   derive absurdity (`Dups-w-∷[]-absurd`)
+pd-fst-inst→⊥ : ∀ { c : Char } { l s : RE } { loc : ℕ }
+  → ( z : PDInstance ( l ● s ` loc ) c )
+  → Σ[ w₁ ∈ PDInstance l c ]
+      ( (w₁ ∈ PosixPD.pdU[ l , c ])
+      × (pdinstance-fst {l} {s} {loc} {c} w₁ ≡ z) )
+  → Dups-w (sum-spine (pd-expr z))
+  → ⊥
+pd-fst-inst→⊥ {c} {l} {s} {loc} z ( (pdinstance {p₁} i₁ ev₁) , ( w₁∈ , eq₁) ) d =
+  ⊥-elim (Dups-w-∷[]-absurd (p₁ ● s ` loc)
+    (subst Dups-w (cong sum-spine (sym (cong ( λ w → pd-expr w ) eq₁))) d))
+
+-- (purpose): a member built by `pdinstance-star` continues at the
+--   non-sum expression `p ● (r * nε \` loc) \` loc` — no positioned pair
+-- (used in): the `*` clause of `pdU-member-pair→Ambig`)
+pd-star-inst→⊥ : ∀ { c : Char } { r : RE } { nε : ε∉ r } { loc : ℕ }
+  → ( z : PDInstance ( r * nε ` loc ) c )
+  → Σ[ w₁ ∈ PDInstance r c ]
+      ( (w₁ ∈ PosixPD.pdU[ r , c ])
+      × (PDI.pdinstance-star {r} {nε} {loc} {c} w₁ ≡ z) )
+  → Dups-w (sum-spine (pd-expr z))
+  → ⊥
+pd-star-inst→⊥ {c} {r} {nε} {loc} z ( (pdinstance {p₁} i₁ ev₁) , ( w₁∈ , eq₁) ) d =
+  ⊥-elim (Dups-w-∷[]-absurd (p₁ ● (r * nε ` loc) ` loc)
+    (subst Dups-w (cong sum-spine (sym (cong ( λ w → pd-expr w ) eq₁))) d))
+
+-- (purpose): an `mk-snd-pdi` instance continues exactly where its
+--   `pdU[ s , c ]` preimage continues — the empty tree of the nullable
+--   left factor does not change the continuation expression
+-- (used in): `●-snd-subgoal` below
+pd-snd-continues : ∀ { c : Char } { l s : RE } { loc : ℕ }
+  → ( ef : Σ[ x ∈ U l ] AllEmpty.Flat-[] l x )
+  → ( w₁ : PDInstance s c )
+  → ( z : PDInstance ( l ● s ` loc ) c )
+  → PDI.mk-snd-pdi {l} {s} {loc} {c} ef w₁ ≡ z
+  → Dups-w (sum-spine (pd-expr z))
+  → Dups-w (sum-spine (pd-expr w₁))
+pd-snd-continues ( e , AllEmpty.flat-[] .e fl ) (pdinstance {p₂} i₂ ev₂) z eq d =
+  subst Dups-w (cong sum-spine (cong ( λ w → pd-expr w ) (sym eq))) d
+
+-- (purpose): invert a member of the nullable clause's right (empty-tree)
+--   list down to a subgoal on its `pdU[ s , c ]` preimage
+-- (used in): the `●` clause of `pdU-member-pair→Ambig`
+-- (proof idea): `∈-concatMap⁻` names the empty-tree witness, `∈-map⁻`
+--   the preimage record; `pd-snd-continues` transports the pair
+●-snd-subgoal : ∀ { c : Char } { l s : RE } { ε∈l : ε∈ l } { loc : ℕ }
+  → ( z₁ : PDInstance ( l ● s ` loc ) c )
+  → z₁ ∈ PDI.concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c}
+      (PosixPD.pdU[ s , c ])
+  → Dups-w (sum-spine (pd-expr z₁))
+  → Σ[ z₂ ∈ PDInstance s c ]
+      ( (z₂ ∈ PosixPD.pdU[ s , c ]) × Dups-w (sum-spine (pd-expr z₂)) )
+●-snd-subgoal {c} {l} {s} {ε∈l} {loc} z₁ z₁∈ d
+  with ∈-concatMap⁻
+         ( λ x → PDI.pdinstance-snd {l} {s} {loc} {c} x
+             (PosixPD.pdU[ s , c ]) )
+         ( PDI.zip-es-flat-[]-es {l} {ε∈l}
+             (AllEmpty.mkAllEmptyU {l} ε∈l)
+             (AllEmpty.mkAllEmptyU-sound {l} ε∈l) )
+         z₁ z₁∈
+...   | ( ef , ef∈ , z₁∈₂ ) with ef
+...     | ( e , AllEmpty.flat-[] .e fl )
+        with ∈-map⁻ (PDI.mk-snd-pdi {l} {s} {loc} {c}
+                         ( e , AllEmpty.flat-[] e fl ))
+                       (PosixPD.pdU[ s , c ]) z₁ z₁∈₂
+...       | ( z₂ , z₂∈ , eq₂ ) =
+          ( z₂ , z₂∈
+          , pd-snd-continues ( e , AllEmpty.flat-[] e fl ) z₂ z₁ eq₂ d )
+
+-- (purpose): analyze a positioned pair inside the continuation of a
+--   FUSED member of the nullable clause: the pair is either impossible
+--   (first-factor side, a non-sum spine), closes at the fused sum node
+--   (`pd-cross-●→Ambig`), or descends to a subgoal on the right
+--   preimage
+-- (used in): the `●` clause of `pdU-member-pair→Ambig`
+-- (proof idea): invert both memberships to named preimages
+--   (`∈-map⁻`, `∈-concatMap⁻` + witness pattern, `∈-map⁻`), pattern-match
+--   the records so the fused continuation equation reduces
+--   (`pd-expr-fuse`), and cut the spine at the fused node with
+--   `Dups-w-++-split`
+●-fused-case : ∀ { c : Char } { l s : RE } { ε∈l : ε∈ l } { loc : ℕ }
+  → ( z a b : PDInstance ( l ● s ` loc ) c )
+  → a ∈ map (pdinstance-fst {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ])
+  → b ∈ PDI.concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c}
+      (PosixPD.pdU[ s , c ])
+  → z ≡ PosixPD.fuse {l ● s ` loc} {loc} {c} a b
+  → Dups-w (sum-spine (pd-expr z))
+  → Sum._⊎_ (Ambig ( l ● s ` loc ))
+      (Σ[ z₂ ∈ PDInstance s c ]
+        ( (z₂ ∈ PosixPD.pdU[ s , c ]) × Dups-w (sum-spine (pd-expr z₂)) ))
+●-fused-case {c} {l} {s} {ε∈l} {loc} z a b a∈ b∈ z≡ d
+  with ∈-map⁻ (pdinstance-fst {l} {s} {loc} {c})
+         (PosixPD.pdU[ l , c ]) a a∈
+...   | ( w₁ , w₁∈ , eq₁ )
+    with ∈-concatMap⁻
+           ( λ x → PDI.pdinstance-snd {l} {s} {loc} {c} x
+               (PosixPD.pdU[ s , c ]) )
+           ( PDI.zip-es-flat-[]-es {l} {ε∈l}
+               (AllEmpty.mkAllEmptyU {l} ε∈l)
+               (AllEmpty.mkAllEmptyU-sound {l} ε∈l) )
+           b b∈
+...     | ( ef , ef∈ , b∈₂ ) with ef
+...       | ( e , AllEmpty.flat-[] .e fl )
+        with ∈-map⁻ (PDI.mk-snd-pdi {l} {s} {loc} {c}
+                         ( e , AllEmpty.flat-[] e fl ))
+                       (PosixPD.pdU[ s , c ]) b b∈₂
+...         | ( z₂ , z₂∈ , eq₂ ) with w₁ | z₂
+...           | (pdinstance {p₁} i₁ ev₁) | (pdinstance {p₂} i₂ ev₂)
+            with Dups-w-++-split (sum-spine (p₁ ● s ` loc))
+                   (sum-spine p₂)
+                   (subst Dups-w
+                      (cong sum-spine
+                         (trans (cong ( λ w → pd-expr w ) z≡)
+                            (trans (pd-expr-fuse {l ● s ` loc} {loc} {c} a b)
+                               (cong₂ ( λ x y → x + y ` loc )
+                                  (cong ( λ w → pd-expr w ) (sym eq₁))
+                                  (cong ( λ w → pd-expr w ) (sym eq₂))))))
+                      d)
+...             | Sum.inj₁ d₁ =
+                ⊥-elim (Dups-w-∷[]-absurd (p₁ ● s ` loc) d₁)
+...             | Sum.inj₂ (Sum.inj₂ d₂) =
+                Sum.inj₂ ( (pdinstance {p₂} i₂ ev₂) ,
+                  ( subst ( λ w → Any ( _≡_ w )
+                        (PosixPD.pdU[ s , c ]) ) refl z₂∈
+                  , d₂ ) )
+...             | Sum.inj₂ (Sum.inj₁ ( pre , mid₁ , mid₂ , post , p , q
+                                    , ( xs≡ , ys≡ , q≈₀p ) ))
+                with subst ( λ L → p ∈ L ) (sym xs≡)
+                     ( ∈-++ʳ pre (p ∷ mid₁) p (here refl) )
+...               | ( here p≡ ) = Sum.inj₁
+                  ( pd-cross-●→Ambig {l} {s} {loc} {c}
+                      (pdinstance {p₁} i₁ ev₁)
+                      ( e , AllEmpty.flat-[] e fl )
+                      (pdinstance {p₂} i₂ ev₂)
+                      p q p≡
+                      ( ∈→◁ (pd-expr (pdinstance {p₂} i₂ ev₂)) q
+                          ( subst ( λ L → q ∈ L ) (sym ys≡)
+                              ( ∈-++ʳ mid₂ (q ∷ post) q (here refl) ) ) )
+                      q≈₀p )
+...               | ( there () )
+
+-- (purpose): §8.1's classification left branch, closed at pdU members —
+--   a positioned pair inside the continuation of a member of
+--   `pdU[ r , c ]` makes r ambiguous
+-- (used in): `star` of §8.1
+-- (proof idea): the case analysis of the section text above; the
+--   transports between a record's continuation and its builder's input
+--   are the §8.2 equations (`pd-expr-left/right/fuse` and direct
+--   reduction of the `pdinstance-fst`/`mk-snd-pdi`/`pdinstance-star`
+--   builders after pattern-matching their inputs)
+pdU-member-pair→Ambig : ∀ { c : Char } ( r : RE )
+  → ( z : PDInstance r c )
+  → z ∈ PosixPD.pdU[ r , c ]
+  → Dups-w (sum-spine (pd-expr z))
+  → Ambig r
+pdU-member-pair→Ambig {c} ε z () d
+pdU-member-pair→Ambig {c} ( $ c₀ ` loc ) z z∈ d with c₀ Char.≟ c | z∈
+...   | yes refl | here p =
+      ⊥-elim (Dups-w-∷[]-absurd ε
+          (subst Dups-w (cong sum-spine (cong ( λ w → pd-expr w ) p)) d))
+...   | yes refl | there ()
+...   | no  _    | ()
+pdU-member-pair→Ambig {c} ( l + s ` loc ) z z∈ d
+  with pdU-+-location l s loc c z z∈ d
+...   | Sum.inj₁ ( pdi₁ , pdi₂ , p , q , ( pos₁ , pos₂ , p≈₀q ) ) =
+      pd-cross-positions→Ambig pdi₁ pdi₂ p q pos₁ pos₂ p≈₀q
+...   | Sum.inj₂ (Sum.inj₁ ( z₁ , ( z₁∈ , d₁ ) )) =
+      lift-Ctx (Ctx+R 𝟘 s loc) (pdU-member-pair→Ambig l z₁ z₁∈ d₁)
+...   | Sum.inj₂ (Sum.inj₂ ( z₂ , ( z₂∈ , d₂ ) )) =
+      lift-Ctx (L+Ctx l 𝟘 loc) (pdU-member-pair→Ambig s z₂ z₂∈ d₂)
+pdU-member-pair→Ambig {c} ( r * nε ` loc ) z z∈ d
+  = ⊥-elim (pd-star-inst→⊥ z
+      (∈-map⁻ (PDI.pdinstance-star {r} {nε} {loc} {c})
+         (PosixPD.pdU[ r , c ]) z z∈) d)
+pdU-member-pair→Ambig {c} ( l ● s ` loc ) z z∈ d with ε∈? l
+...   | no ¬ε∈l =
+      ⊥-elim (pd-fst-inst→⊥ z (∈-map⁻ (pdinstance-fst {l} {s} {loc} {c})
+                         (PosixPD.pdU[ l , c ]) z z∈) d)
+...   | yes ε∈l with ∈-oplus⁻ {l ● s ` loc} {loc} {c}
+           ( map (pdinstance-fst {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ]) )
+           ( PDI.concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c}
+               (PosixPD.pdU[ s , c ]) )
+           z z∈
+...     | Sum.inj₁ ( z₁ , ( z₁∈ , z≡z₁ ) ) =
+        let ( w₁ , ( w₁∈ , eq₁ ) ) =
+              ∈-map⁻ (pdinstance-fst {l} {s} {loc} {c})
+                     (PosixPD.pdU[ l , c ]) z₁ z₁∈
+        in  ⊥-elim (pd-fst-inst→⊥ z ( w₁ , ( w₁∈ , trans eq₁ (sym z≡z₁) ) ) d)
+...     | Sum.inj₂ (Sum.inj₁ ( z₁ , ( z₁∈ , z≡z₁ ) )) =
+        let ( z₂ , ( z₂∈ , d₂ ) ) = ●-snd-subgoal z₁ z₁∈
+              (subst Dups-w (cong sum-spine
+                         (cong ( λ w → pd-expr w ) z≡z₁)) d)
+        in  lift-Ctx (L●Ctx l 𝟘 loc) (pdU-member-pair→Ambig s z₂ z₂∈ d₂)
+...     | Sum.inj₂ (Sum.inj₂ ( a , b , ( a∈ , b∈ , z≡ ) ))
+        with ●-fused-case z a b a∈ b∈ z≡ d
+...       | Sum.inj₁ amb = amb
+...       | Sum.inj₂ ( z₂ , ( z₂∈ , d₂ ) ) =
+            lift-Ctx (L●Ctx l 𝟘 loc) (pdU-member-pair→Ambig s z₂ z₂∈ d₂)
 ```
 
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)

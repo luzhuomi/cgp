@@ -170,6 +170,19 @@ data _≈₀_ : RE → RE → Set where
 ≈₀-refl (l + s ` loc) = ≈₀-+ (≈₀-refl l) (≈₀-refl s)
 ≈₀-refl (r * nε ` loc) = ≈₀-* (≈₀-refl r)
 
+-- (purpose): `_≈₀_` is symmetric
+-- (used in): `pdU-+-location` below — the §6.3 split carries the pair
+--   as `later ≈₀ earlier` (a positional convention), while
+--   `pd-cross-positions→Ambig` reads `≈₀` left-to-right along the
+--   two branches of the sum
+-- (proof idea): induction on the derivation
+≈₀-sym : ∀ { r s : RE } → s ≈₀ r → r ≈₀ s
+≈₀-sym ≈₀-ε = ≈₀-ε
+≈₀-sym (≈₀-$ c loc₁ loc₂) = ≈₀-$ c loc₂ loc₁
+≈₀-sym (≈₀-● p q) = ≈₀-● (≈₀-sym p) (≈₀-sym q)
+≈₀-sym (≈₀-+ p q) = ≈₀-+ (≈₀-sym p) (≈₀-sym q)
+≈₀-sym (≈₀-* p) = ≈₀-* (≈₀-sym p)
+
 _≟₀_ : ( r s : RE ) → Dec ( r ≈₀ s )
 ε ≟₀ ε = yes ≈₀-ε
 ε ≟₀ ($ d ` loc₂) = no λ()
@@ -1613,6 +1626,187 @@ pd-expr-fuse : ∀ { r : RE } { loc : ℕ } { c : Char }
   → pd-expr (PosixPD.fuse {r} {loc} {c} z z′)
        ≡ pd-expr z + pd-expr z′ ` loc
 pd-expr-fuse (pdinstance {pˡ} inj-l ev-l) (pdinstance {pʳ} inj-r ev-r) = refl
+
+-- the three shapes a member of a `+` clause's list can have: an
+-- unfused left-branch instance, an unfused right-branch instance, or
+-- the fusion of one instance of each branch
+pdU-+-shape : ( l s : RE ) ( loc : ℕ ) ( c : Char )
+  → PDInstance ( l + s ` loc ) c → Set
+pdU-+-shape l s loc c z =
+  Sum._⊎_
+    (Σ[ z₁ ∈ PDInstance l c ]
+      ( (z₁ ∈ PosixPD.pdU[ l , c ])
+      × (z ≡ pdinstance-left {l} {s} {loc} {c} z₁) ))
+    (Sum._⊎_
+      (Σ[ z₂ ∈ PDInstance s c ]
+        ( (z₂ ∈ PosixPD.pdU[ s , c ])
+        × (z ≡ pdinstance-right {l} {s} {loc} {c} z₂) ))
+      (Σ[ pdi₁ ∈ PDInstance l c ] Σ[ pdi₂ ∈ PDInstance s c ]
+        ( (pdi₁ ∈ PosixPD.pdU[ l , c ]) × (pdi₂ ∈ PosixPD.pdU[ s , c ])
+        × (z ≡ PosixPD.fuse {l + s ` loc} {loc} {c}
+                (pdinstance-left {l} {s} {loc} {c} pdi₁)
+                (pdinstance-right {l} {s} {loc} {c} pdi₂)) )))
+
+-- (purpose): a member of `pdU[ l + s ` loc , c ]` has one of the three
+--   shapes, with the branch instances named
+-- (used in): `pdU-+-location` below
+-- (proof idea): `∈-oplus⁻`, then `∈-map⁻` on the branch-list
+--   memberships in the unfused shapes
+pdU-+-shape-of : ( l s : RE ) ( loc : ℕ ) ( c : Char )
+  → ( z : PDInstance ( l + s ` loc ) c )
+  → z ∈ PosixPD.pdU[ l + s ` loc , c ]
+  → pdU-+-shape l s loc c z
+pdU-+-shape-of l s loc c z z∈
+  with ∈-oplus⁻ {l + s ` loc} {loc} {c}
+         ( map (pdinstance-left {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ]) )
+         ( map (pdinstance-right {l} {s} {loc} {c}) (PosixPD.pdU[ s , c ]) )
+         z z∈
+...   | Sum.inj₁ ( z₁ , ( z₁∈ , z≡z₁ ) ) =
+    let ( pdi₁ , pdi₁∈ , eq₁ ) =
+          ∈-map⁻ (pdinstance-left {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ])
+                 z₁ z₁∈
+    in  Sum.inj₁ ( pdi₁ , ( pdi₁∈ , trans z≡z₁ (sym eq₁) ) )
+...   | Sum.inj₂ (Sum.inj₁ ( z₂ , ( z₂∈ , z≡z₂ ) )) =
+    let ( pdi₂ , pdi₂∈ , eq₂ ) =
+          ∈-map⁻ (pdinstance-right {l} {s} {loc} {c}) (PosixPD.pdU[ s , c ])
+                 z₂ z₂∈
+    in  Sum.inj₂ (Sum.inj₁ ( pdi₂ , ( pdi₂∈ , trans z≡z₂ (sym eq₂) ) ))
+...   | Sum.inj₂ (Sum.inj₂ ( a , b , ( a∈ , b∈ , z≡ ) )) =
+    let ( pdi₁ , pdi₁∈ , eq₁ ) =
+          ∈-map⁻ (pdinstance-left {l} {s} {loc} {c}) (PosixPD.pdU[ l , c ])
+                 a a∈
+        ( pdi₂ , pdi₂∈ , eq₂ ) =
+          ∈-map⁻ (pdinstance-right {l} {s} {loc} {c}) (PosixPD.pdU[ s , c ])
+                 b b∈
+    in  Sum.inj₂ (Sum.inj₂
+          ( pdi₁ , pdi₂ , ( pdi₁∈ , pdi₂∈
+                          , trans z≡ (cong₂ (PosixPD.fuse {l + s ` loc} {loc} {c})
+                                            (sym eq₁) (sym eq₂))
+                          ) ) )
+
+-- (purpose): branch location of a `+` clause — a positioned pair placed
+--   by §6.3's classification inside the continuation of one member of
+--   the sum node `l + s ` loc` either has its occurrences on the two
+--   sides of the clause (the A3 pattern: the two branch instances with
+--   the alternatives at positions of their continuations — material
+--   consumed by `pd-cross-positions→Ambig`), or lies inside the spine
+--   of one branch instance (a subgoal on a strictly smaller expression)
+-- (used in): the `star` composition of §8.1 (the `+` clause)
+-- (proof idea): `pdU-+-shape-of` names the branch instances;
+--   `pd-expr-fuse`/`pd-expr-left`/`pd-expr-right` unfold the member's
+--   spine to `sum-spine (pd-expr pdi₁) ++ sum-spine (pd-expr pdi₂)`;
+--   `Dups-w-++-split` cuts at that join.  In the crossing case the
+--   pair's occurrences are recovered at their positions from the
+--   `Dups-w-cross` record's equations (`∈-++ʳ` + `here`) and read as
+--   `_◁_`-positions with `∈→◁`; `≈₀-sym` turns the split's positional
+--   orientation `later ≈₀ earlier` into the left-to-right one
+pdU-+-location : ( l s : RE ) ( loc : ℕ ) ( c : Char )
+  → ( z : PDInstance ( l + s ` loc ) c )
+  → z ∈ PosixPD.pdU[ l + s ` loc , c ]
+  → Dups-w (sum-spine (pd-expr z))
+  → Sum._⊎_
+      (Σ[ pdi₁ ∈ PDInstance l c ] Σ[ pdi₂ ∈ PDInstance s c ]
+        Σ[ p ∈ RE ] Σ[ q ∈ RE ]
+          ( (pd-expr pdi₁ ◁ p) × (pd-expr pdi₂ ◁ q) × (p ≈₀ q) ))
+      (Sum._⊎_
+        (Σ[ z₁ ∈ PDInstance l c ]
+          ( (z₁ ∈ PosixPD.pdU[ l , c ])
+          × Dups-w (sum-spine (pd-expr z₁)) ))
+        (Σ[ z₂ ∈ PDInstance s c ]
+          ( (z₂ ∈ PosixPD.pdU[ s , c ])
+          × Dups-w (sum-spine (pd-expr z₂)) )))
+pdU-+-location l s loc c z z∈ d
+  with pdU-+-shape-of l s loc c z z∈
+...   | Sum.inj₁ ( z₁ , ( z₁∈ , z≡ ) ) =
+        Sum.inj₂ (Sum.inj₁
+          ( z₁ , ( z₁∈ , subst Dups-w
+              (cong sum-spine (trans (cong ( λ w → pd-expr w ) z≡)
+                                     (pd-expr-left {l} {s} {loc} {c} z₁)))
+              d ) ))
+...   | Sum.inj₂ (Sum.inj₁ ( z₂ , ( z₂∈ , z≡ ) )) =
+        Sum.inj₂ (Sum.inj₂
+          ( z₂ , ( z₂∈ , subst Dups-w
+              (cong sum-spine (trans (cong ( λ w → pd-expr w ) z≡)
+                                     (pd-expr-right {l} {s} {loc} {c} z₂)))
+              d ) ))
+...   | Sum.inj₂ (Sum.inj₂ ( pdi₁ , pdi₂ , ( pdi₁∈ , pdi₂∈ , z≡ ) ))
+    with Dups-w-++-split (sum-spine (pd-expr pdi₁)) (sum-spine (pd-expr pdi₂))
+           ( subst Dups-w
+               (trans (trans (cong ( λ w → sum-spine (pd-expr w) ) z≡)
+                             (cong sum-spine
+                                (pd-expr-fuse {l + s ` loc} {loc} {c}
+                                   (pdinstance-left {l} {s} {loc} {c} pdi₁)
+                                   (pdinstance-right {l} {s} {loc} {c} pdi₂))))
+                       (cong sum-spine
+                          (trans (cong ( λ x → x + pd-expr
+                                             (pdinstance-right {l} {s} {loc} {c} pdi₂)
+                                        ` loc)
+                                       (pd-expr-left {l} {s} {loc} {c} pdi₁))
+                                 (cong ( λ y → pd-expr pdi₁ + y ` loc)
+                                       (pd-expr-right {l} {s} {loc} {c} pdi₂)))))
+               d)
+...     | Sum.inj₁ d₁ = Sum.inj₂ (Sum.inj₁ ( pdi₁ , ( pdi₁∈ , d₁ ) ))
+...     | Sum.inj₂ (Sum.inj₂ d₂) = Sum.inj₂ (Sum.inj₂ ( pdi₂ , ( pdi₂∈ , d₂ ) ))
+...     | Sum.inj₂ (Sum.inj₁ ( pre , mid₁ , mid₂ , post , p , q
+                             , ( xs≡ , ys≡ , q≈₀p ) )) =
+            Sum.inj₁ ( pdi₁ , pdi₂ , p , q
+                     , ( ∈→◁ (pd-expr pdi₁) p
+                          ( subst ( λ L → p ∈ L ) (sym xs≡)
+                              ( ∈-++ʳ pre (p ∷ mid₁) p (here refl) ) )
+                     , ∈→◁ (pd-expr pdi₂) q
+                          ( subst ( λ L → q ∈ L ) (sym ys≡)
+                              ( ∈-++ʳ mid₂ (q ∷ post) q (here refl) ) )
+                     , ≈₀-sym q≈₀p ) )
+
+-- the location machinery instantiated at the §6.2 example: the pair of
+-- the fired test, positioned inside the single fused member by §6.3's
+-- chain, located at the target's top sum node — either its two
+-- occurrences on the sides of the top `+`, or inside one branch
+-- instance (the first disjunct is what happens; its consumption is the
+-- existing `pd-a3-ambiguous-via-positions`)
+pd-a3-branch-location :
+  Sum._⊎_
+    (Σ[ pdi₁ ∈ PDInstance ((($ 'a' ` 1) + ($ 'b' ` 2) ` 3) ● ($ 'c' ` 4) ` 5) 'a' ]
+      Σ[ pdi₂ ∈ PDInstance (($ 'a' ` 6) ● ($ 'c' ` 7) ` 8) 'a' ]
+      Σ[ p ∈ RE ] Σ[ q ∈ RE ]
+        ( (pd-expr pdi₁ ◁ p) × (pd-expr pdi₂ ◁ q) × (p ≈₀ q) ))
+    (Sum._⊎_
+      (Σ[ z₁ ∈ PDInstance ((($ 'a' ` 1) + ($ 'b' ` 2) ` 3) ● ($ 'c' ` 4) ` 5) 'a' ]
+        ( (z₁ ∈ PosixPD.pdU[ (($ 'a' ` 1) + ($ 'b' ` 2) ` 3) ● ($ 'c' ` 4) ` 5 , 'a' ])
+        × Dups-w (sum-spine (pd-expr z₁)) ))
+      (Σ[ z₂ ∈ PDInstance (($ 'a' ` 6) ● ($ 'c' ` 7) ` 8) 'a' ]
+        ( (z₂ ∈ PosixPD.pdU[ ($ 'a' ` 6) ● ($ 'c' ` 7) ` 8 , 'a' ])
+        × Dups-w (sum-spine (pd-expr z₂)) )))
+-- the empty list is not a non-empty list (absurd on the index)
+[]≢_∷_ : { A : Set } { x : A } { xs : List A } → [] ≡ x ∷ xs → ⊥
+[]≢_∷_ ()
+
+-- the single member of the a3 derivative list, exactly as `pdU`
+-- computes it.  Naming it by evaluation keeps the smoke test's
+-- membership `here refl`: a hand-built record carries its own
+-- soundness evidence, which is not definitionally equal to the
+-- evidence the `pdU` clause inlines
+pd-a3-member : PDInstance pd-a3-target 'a'
+pd-a3-member = go (PosixPD.pdU[ pd-a3-target , 'a' ]) refl
+  where
+    pds : List (PDInstance pd-a3-target 'a')
+    pds = PosixPD.pdU[ pd-a3-target , 'a' ]
+    go : ( pdis : List (PDInstance pd-a3-target 'a') )
+      → pds ≡ pdis → PDInstance pd-a3-target 'a'
+    go ( z ∷ _ ) eq = z
+    go [] eq = ⊥-elim
+      ([]≢_∷_
+        (trans (sym (cong pd-alts eq)) pd-a3-continuations))
+
+pd-a3-branch-location =
+  pdU-+-location
+    ((($ 'a' ` 1) + ($ 'b' ` 2) ` 3) ● ($ 'c' ` 4) ` 5)
+    (( $ 'a' ` 6) ● ($ 'c' ` 7) ` 8)
+    9 'a'
+    pd-a3-member
+    (here refl)
+    (dups-≈₀-dups (pd-alts (PosixPD.pdU[ pd-a3-target , 'a' ]))
+       pd-a3-Idemp-applied)
 ```
 
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)

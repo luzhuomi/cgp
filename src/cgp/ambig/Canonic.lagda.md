@@ -940,14 +940,95 @@ dups-w-split-test : Sum._⊎_ (Dups-w (($ 'a' ` 1) ∷ []))
              (Dups-w (($ 'a' ` 2) ∷ [])))
 dups-w-split-test = Dups-w-++-split _ _ (dups-≈₀-dups _ refl)
 
--- What remains between `dups-≈₀-dups` / `Dups-w-++-split` and the
--- member-level classification of §8.1's configurations (a)/(b) is the
--- *composition*: running the split along the `pd-alts` cuts by
--- induction over the `pdU` clauses (in the style of `Complete` §23),
--- which needs the list structure each `pdU` clause builds
--- (`concatMap`/`map`/`_++_`).  The value-level form of that
--- classification without position preservation is
--- `pd-Idemp?-member-witness` below.
+-- (purpose): the empty list carries no positioned duplicate pair
+-- (used in): the nil case of `pd-alts-Dups-w-classify` below
+-- (proof idea): the `dups-at` layout always has two cons cells, so its
+--   layout equation against `[]` is impossible for either shape of `pre`
+Dups-w-[] : Dups-w [] → ⊥
+Dups-w-[] (dups-at {xs = []} {pre = []} () l≈₀e)
+Dups-w-[] (dups-at {xs = []} {pre = z ∷ zs} () l≈₀e)
+
+-- (purpose): the member-level classification — a positioned duplicate
+--   pair of the flattened alternative list `pd-alts pdis` either sits at
+--   two positions of *one* member's `sum-spine`, or has its earlier
+--   occurrence in one member's spine and its later occurrence in
+--   another member's spine
+-- (used in): the §8.1 statement of `star` — the classification step of
+--   its hypothesis unpacking; the left branch is the material of
+--   configurations (a)/(b), the right branch of configuration (c)
+-- (proof idea): induction on the member list, cutting
+--   `pd-alts (z ∷ zs) ≡ sum-spine (pd-expr z) ++ pd-alts zs` with
+--   `Dups-w-++-split`: the both-left branch is the goal's left branch
+--   at the head member, the crossing branch names the second member
+--   through `pd-alts∈-inv`, the both-right branch recurses.  The
+--   crossing branch uses a `let`, not a nested `with`: a clause opening
+--   a `with` must come last among its siblings, and the recursive
+--   branch needs one
+pd-alts-Dups-w-classify : ∀ { r : RE } { c : Char }
+  ( pdis : List (PDInstance r c) )
+  → Dups-w (pd-alts pdis)
+  → Sum._⊎_
+      (Σ[ z ∈ PDInstance r c ]
+        ( (z ∈ pdis) × Dups-w (sum-spine (pd-expr z)) ))
+      (Σ[ z ∈ PDInstance r c ] Σ[ z′ ∈ PDInstance r c ]
+        Σ[ earlier ∈ RE ] Σ[ later ∈ RE ]
+          ( (z ∈ pdis) × (z′ ∈ pdis)
+          × (earlier ∈ sum-spine (pd-expr z))
+          × (later ∈ sum-spine (pd-expr z′))
+          × (later ≈₀ earlier) ))
+pd-alts-Dups-w-classify [] dw = ⊥-elim (Dups-w-[] dw)
+pd-alts-Dups-w-classify (z ∷ zs) dw
+  with Dups-w-++-split (sum-spine (pd-expr z)) (pd-alts zs) dw
+...   | Sum.inj₁ d = Sum.inj₁ ( z , ( here refl , d ) )
+...   | Sum.inj₂ (Sum.inj₁ ( pre , mid₁ , mid₂ , post , earlier , later
+                           , ( xs≡ , ys≡ , later≈₀earlier ) )) =
+      let ( z′ , z′∈ , later∈′ ) =
+            pd-alts∈-inv zs later
+              ( subst ( λ L → later ∈ L ) (sym ys≡)
+                  ( ∈-++ʳ mid₂ (later ∷ post) later (here refl) ) )
+      in  Sum.inj₂ ( z , z′ , earlier , later
+                   , ( here refl , there z′∈
+                     , ( subst ( λ L → earlier ∈ L ) (sym xs≡)
+                           ( ∈-++ʳ pre (earlier ∷ mid₁) earlier
+                               (here refl) )
+                     , later∈′ , later≈₀earlier ) ) )
+...   | Sum.inj₂ (Sum.inj₂ d) with pd-alts-Dups-w-classify zs d
+...       | Sum.inj₁ ( z′ , z′∈ , d′ ) = Sum.inj₁ ( z′ , ( there z′∈ , d′ ) )
+...       | Sum.inj₂ ( z′ , z″ , earlier , later
+                     , ( z′∈ , z″∈ , earlier∈ , later∈ , later≈₀earlier ) ) =
+            Sum.inj₂ ( z′ , z″ , earlier , later
+                     , ( there z′∈ , there z″∈ , earlier∈ , later∈
+                       , later≈₀earlier ) )
+
+-- The classification instantiated at the §6.2 example: the fired test
+-- read position-preservingly (`dups-≈₀-dups`), then classified against
+-- the `pdU` member list
+pd-alts-classify-a3 : Sum._⊎_
+  (Σ[ z ∈ PDInstance pd-a3-target 'a' ]
+    ( (z ∈ PosixPD.pdU[ pd-a3-target , 'a' ])
+    × Dups-w (sum-spine (pd-expr z)) ))
+  (Σ[ z ∈ PDInstance pd-a3-target 'a' ]
+    Σ[ z′ ∈ PDInstance pd-a3-target 'a' ]
+    Σ[ earlier ∈ RE ] Σ[ later ∈ RE ]
+      ( (z ∈ PosixPD.pdU[ pd-a3-target , 'a' ])
+      × (z′ ∈ PosixPD.pdU[ pd-a3-target , 'a' ])
+      × (earlier ∈ sum-spine (pd-expr z))
+      × (later ∈ sum-spine (pd-expr z′))
+      × (later ≈₀ earlier) ))
+pd-alts-classify-a3 =
+  pd-alts-Dups-w-classify (PosixPD.pdU[ pd-a3-target , 'a' ])
+    (dups-≈₀-dups (pd-alts (PosixPD.pdU[ pd-a3-target , 'a' ]))
+       pd-a3-Idemp-applied)
+
+-- What remains after the classification is the analysis *inside* the
+-- members, not the placement between them: for the left branch, what a
+-- positioned pair inside one `sum-spine` says about the expression
+-- (configurations (a)/(b) of §8.1; §6.4's `pd-cross-positions→Ambig`
+-- is the tool once the `_◁_` position of the pair is extracted), for
+-- the right branch, whether the two members are distinct records
+-- (configuration (c), `Complete` §24's `diff-records-≟`).  The
+-- value-level form of the classification without position preservation
+-- is `pd-Idemp?-member-witness` below.
 
 -- forgetting the positions of a positioned pair recovers the plain
 -- `≈₀` pair of values.  This is the demoted route: every consumer of
@@ -1422,24 +1503,26 @@ Caveats (consistent with §6/§7):
   record lifts: §6.4's `pd-fuse-cross→Ambig` for a pair crossing a fused
   node (no injectivity needed — the pre-fusion records do the transport),
   or `pd-pairs→Ambig` composed with `lift-Ctx` (§7) for a located
-  pattern.  What is open is the *classifying* step.  A positioned pair
-  in a concatenation lies both-left, crossing, or both-right of the cut
-  (`Dups-w-++-split`, §6.3); what remains is to run the split along the
-  `pd-alts` cuts by induction over the `pdU` clauses, putting the pair
-  of a fired test in one of three
-  configurations: (a) on both sides of a fused member's continuation
+  pattern.  The *classification* is proved (`Dups-w-++-split` +
+  `pd-alts-Dups-w-classify`, §6.3, instantiated at the example by
+  `pd-alts-classify-a3`): the pair of a fired test either sits at two
+  positions of one member's `sum-spine`, or has its earlier occurrence
+  in one member's spine and its later occurrence in another's.  What is
+  open is the analysis *inside* the
+  members: (a) on both sides of a fused member's continuation
   node — the record half and the position half are §6.4
   (`pd-cross-positions→Ambig`, via `∈→◁` and `spine-read`); what remains
   for (a) is the list bookkeeping: inverting the
   `pdinstance-oplus`/`map`/`concatMap` memberships into the pre-fusion
   records; (b) inside one `sum-spine` — the same §6.4 construction one
   level deeper (the `_◁_` recursion already descends through the inner
-  `+` nodes; the pair-at-two-positions analysis inside one spine is
-  `Dups-w` plus the cut-split); (c) in two distinct members' copies — a
-  record distinctness question, record identity being intensional
-  (`Complete` §24's residual-tree decision is the tool).  The shape of
-  (a)/(b) is an induction over the `pdU` clauses in the style of
-  `Complete` §23; the `mkfuseInj` gap of §7 does not arise in (a) — the
+  `+` nodes; the pair-at-two-positions witness inside one spine is
+  supplied by the classification's left branch); (c) in two distinct
+  members' copies — a record distinctness question, record identity
+  being intensional (`Complete` §24's residual-tree decision is the
+  tool).  The member-level placement of (a)/(b) is the `pd-alts`
+  induction `pd-alts-Dups-w-classify`; the `mkfuseInj` gap of §7 does
+  not arise in (a) — the
   branch maps are only used through different parent branches.
 
 For the *criteria* themselves the single-expression form is not needed: the

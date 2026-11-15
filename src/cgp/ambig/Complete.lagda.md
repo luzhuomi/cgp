@@ -1374,9 +1374,10 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --          other way (a real duplicate pair makes the scan answer `true`,
 --          which is what §20/§22's stop needs), and §23's
 --          `pdU-Idemp?-member-witness` collects that pair into the
---          `sum-spine` of *one* member's continuation; what remains open
---          is the branch location — running the cut split
---          `Dups-w-++-split` (Canonic §6.3) along the member/spine cuts
+--          `sum-spine` of *one* member's continuation; the branch
+--          location is proved by `pd-alts-Dups-w-classify` (Canonic
+--          §6.3), leaving only the inside-spine analysis of
+--          configurations (a)/(b) and the record distinctness of (c)
 --          up to the `star` theorem stated in
 --          Canonic §8.1.
 --

@@ -1528,6 +1528,93 @@ Caveats (consistent with §6/§7):
 For the *criteria* themselves the single-expression form is not needed: the
 states are lists of partial derivatives, see §9.
 
+### 8.2. Branch location: inverting the `pdU` clauses
+
+The classification of §6.3 speaks about `pd-alts pdis` for a plain
+member list.  `star` instantiates it at `pdis = PosixPD.pdU[ q , c ]`,
+whose clauses (in `cgp.posix.PartialDerivative`) build their lists with
+`map`, `concatMap` and `pdinstance-oplus`.  This section inverts those
+constructions — the membership shapes first, then the continuations the
+clause maps write into the records.
+
+```agda
+-- (purpose): membership in a mapped list names the preimage
+-- (used in): `∈-oplus⁻` below
+-- (proof idea): induction on the list, reading the `here`/`there` position
+∈-map⁻ : { A B : Set } ( f : A → B ) ( xs : List A ) ( y : B )
+  → y ∈ map f xs
+  → Σ[ x ∈ A ] ( x ∈ xs × f x ≡ y )
+∈-map⁻ f [] y ()
+∈-map⁻ f (x ∷ xs) y (here p) = ( x , here refl , sym p )
+∈-map⁻ f (x ∷ xs) y (there w) with ∈-map⁻ f xs y w
+...   | ( x′ , x∈ , eq ) = ( x′ , there x∈ , eq )
+
+-- (purpose): membership in a concatenated map names the element whose
+--   block carries it
+-- (used in): `∈-oplus⁻` below
+-- (proof idea): induction on the list, splitting each block's `++`
+--   membership with `∈-++-inv`
+∈-concatMap⁻ : { A B : Set } ( f : A → List B ) ( xs : List A ) ( y : B )
+  → y ∈ concatMap f xs
+  → Σ[ x ∈ A ] ( x ∈ xs × y ∈ f x )
+∈-concatMap⁻ f [] y ()
+∈-concatMap⁻ f (x ∷ xs) y y∈ with ∈-++-inv (f x) (concatMap f xs) y∈
+...   | Sum.inj₁ y∈₁ = ( x , here refl , y∈₁ )
+...   | Sum.inj₂ y∈₂ with ∈-concatMap⁻ f xs y y∈₂
+...     | ( x′ , x∈ , y∈′ ) = ( x′ , there x∈ , y∈′ )
+
+-- (purpose): membership in `pdinstance-oplus` resolves to one of its
+--   three shapes: an unfused left-list member, an unfused right-list
+--   member, or the fusion of one member of each list
+-- (used in): the branch location of a `+` clause (below), `star`
+-- (proof idea): case on the two lists; the nil shapes read the
+--   membership off the defining equations directly, the both-non-nil
+--   shape inverts the `concatMap`/`map` structure
+∈-oplus⁻ : ∀ { r : RE } { loc : ℕ } { c : Char }
+  ( xs ys : List (PDInstance r c) ) ( w : PDInstance r c )
+  → w ∈ PosixPD.pdinstance-oplus {r} {loc} {c} xs ys
+  → Sum._⊎_
+      (Σ[ z ∈ PDInstance r c ] ( (z ∈ xs) × (w ≡ z) ))
+      (Sum._⊎_
+        (Σ[ z ∈ PDInstance r c ] ( (z ∈ ys) × (w ≡ z) ))
+        (Σ[ z ∈ PDInstance r c ] Σ[ z′ ∈ PDInstance r c ]
+          ( (z ∈ xs) × (z′ ∈ ys)
+          × (w ≡ PosixPD.fuse {r} {loc} {c} z z′) )))
+∈-oplus⁻ []        ys       w w∈ = Sum.inj₂ (Sum.inj₁ ( w , ( w∈ , refl ) ))
+∈-oplus⁻ (x ∷ xs)  []      w w∈ = Sum.inj₁ ( w , ( w∈ , refl ) )
+∈-oplus⁻ {r} {loc} {c} (x ∷ xs)  (y ∷ ys) w w∈
+  with ∈-concatMap⁻
+         ( λ a → map (PosixPD.fuse {r} {loc} {c} a) (y ∷ ys) ) (x ∷ xs) w w∈
+...   | ( a , a∈ , w∈ₘ ) with ∈-map⁻ (PosixPD.fuse {r} {loc} {c} a) (y ∷ ys) w w∈ₘ
+...     | ( b , b∈ , eq ) = Sum.inj₂ (Sum.inj₂ ( a , b , ( a∈ , b∈ , sym eq ) ))
+
+-- (purpose): the branch maps of a `+` clause write the continuation of
+--   their argument through unchanged
+-- (used in): the branch location of a `+` clause (below)
+-- (proof idea): `pdinstance-left`/`pdinstance-right` keep the implicit
+--   continuation of the record; both equations reduce to `refl` after
+--   splitting the record
+pd-expr-left : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance l c )
+  → pd-expr (pdinstance-left {l} {s} {loc} {c} z) ≡ pd-expr z
+pd-expr-left (pdinstance {p} inj ev) = refl
+
+pd-expr-right : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance s c )
+  → pd-expr (pdinstance-right {l} {s} {loc} {c} z) ≡ pd-expr z
+pd-expr-right (pdinstance {p} inj ev) = refl
+
+-- (purpose): a fused record's continuation is the sum of the two
+--   pre-fusion continuations at the clause's location — this is where
+--   §8.1's configuration (a) gets its inner `+` node
+-- (used in): the branch location of a `+` clause (below)
+-- (proof idea): read off `fuse`'s definition (`pd-expr` reads the
+--   implicit continuation of the produced record)
+pd-expr-fuse : ∀ { r : RE } { loc : ℕ } { c : Char }
+  ( z z′ : PDInstance r c )
+  → pd-expr (PosixPD.fuse {r} {loc} {c} z z′)
+       ≡ pd-expr z + pd-expr z′ ` loc
+pd-expr-fuse (pdinstance {pˡ} inj-l ev-l) (pdinstance {pʳ} inj-r ev-r) = refl
+```
+
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)
 
 An Antimirov state *is* a set of partial derivatives, so the faithful

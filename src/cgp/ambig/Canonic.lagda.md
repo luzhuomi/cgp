@@ -687,7 +687,7 @@ pd-Idemp?-members pdis z z′ z∈ z′∈ z≢z′ eq =
 
 -- (purpose): the reflection of the decision procedure — a `true` of the
 --   boolean test `any-≈₀` always comes from the proposition `Any (≈₀)`
--- (used in): `dups-≈₀-go-witness` below (the head-match branch)
+-- (used in): `dups-≈₀-go-wp` below (the head-match branch)
 -- (proof idea): case-split the decision `r ≟₀ y` against the hypothesis;
 --   `true` can only come from a `yes` cell, whose position is the witness
 any-≈₀-true : ( r : RE ) ( ys : List RE )
@@ -698,21 +698,9 @@ any-≈₀-true r (y ∷ ys) eq with r ≟₀ y | eq
 ...   | yes r≈₀y | _ = here r≈₀y
 ...   | no ¬r≈₀y | h = there (any-≈₀-true r ys h)
 
--- (purpose): an `Any` witness names its element (with its position)
--- (used in): `dups-≈₀-go-witness` below
--- (proof idea): induction on the list — `here` names the head, `there`
---   recurses and shifts the position
-Any-∃ : ∀ { A : Set } ( P : A → Set ) ( ys : List A )
-  → Any P ys
-  → Σ[ b ∈ A ] ( b ∈ ys × P b )
-Any-∃ P [] ()
-Any-∃ P (y ∷ ys) (here p) = ( y , here refl , p )
-Any-∃ P (y ∷ ys) (there w) with Any-∃ P ys w
-...   | ( b , b∈ , pb ) = ( b , there b∈ , pb )
-
 -- (purpose): the scan step inverts — a `true` of `dups-≈₀-go` came
 --   either from the head matching the window or from the tail
--- (used in): `dups-≈₀-go-witness` below
+-- (used in): `dups-≈₀-go-wp` below (the positioned reflection)
 -- (proof idea): case-split on the window decision.  Returning the
 --   disjunction, rather than splitting the goal on it, avoids the
 --   with-abstraction blocking on the non-datatype goal
@@ -723,52 +711,6 @@ dups-≈₀-go-inv-step : ( kept xs : List RE ) ( x : RE )
 dups-≈₀-go-inv-step kept xs x eq with any-≈₀ x kept | eq
 ...   | true  | h = Sum.inj₁ refl
 ...   | false | h = Sum.inj₂ h
-
--- (purpose): the converse direction of this section — a *fired* scan has
---   a located witness: an element `a` of the rest and one `b` of the
---   window (which already holds the scanned prefix) with `a ≈₀ b`
--- (used in): `dups-≈₀-witness`, `pd-Idemp?-witness` below
--- (proof idea): induction on the rest, stepping through
---   `dups-≈₀-go-inv-step`; the head branch reads the match out with
---   `any-≈₀-true` + `Any-∃`, the tail branch recurses with the head
---   added to the window and transports the window membership along
---   `++-assoc`.  It says nothing about where the two alternatives sit in
---   the expressions the records continue at; locating them as the
---   branches of one `+` node is the gap of §8.1
-dups-≈₀-go-witness : ( kept xs : List RE )
-  → dups-≈₀-go kept xs ≡ true
-  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ kept ++ xs × a ≈₀ b )
-dups-≈₀-go-witness kept [] ()
-dups-≈₀-go-witness kept (x ∷ xs) eq with dups-≈₀-go-inv-step kept xs x eq
-...   | Sum.inj₁ x∈ =
-    let ( b , b∈ , x≈₀b ) = Any-∃ ( λ s → x ≈₀ s ) kept (any-≈₀-true x kept x∈)
-    in  ( x , b , here refl , ∈-++ˡ kept (x ∷ xs) b b∈ , x≈₀b )
-...   | Sum.inj₂ h =
-    let ( a , b , a∈ , b∈ , a≈₀b ) =
-          dups-≈₀-go-witness (kept ++ (x ∷ [])) xs h
-    in  ( a , b , there a∈
-        , subst ( λ L → b ∈ L ) (++-assoc kept (x ∷ []) xs) b∈
-        , a≈₀b )
-
--- (purpose): the whole-list form: a fired scan has an `≈₀` pair at two
---   located positions of the list
--- (used in): `pd-Idemp?-witness` below
--- (proof idea): `dups-≈₀-go-witness` with the empty window
-dups-≈₀-witness : ( xs : List RE )
-  → dups-≈₀ xs ≡ true
-  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
-dups-≈₀-witness xs eq = dups-≈₀-go-witness [] xs eq
-
--- (purpose): the test of §6 reflected — a fired `pd-Idemp?` means the
---   flattened alternative list holds an `≈₀` pair at located positions of
---   `pd-alts`
--- (used in): `pd-Idemp?-member-witness` below, and (with
---   `pd-alts∈-inv`) `pdU-Idemp?-member-witness` in `Complete` §23
--- (proof idea): `dups-≈₀-witness` at the list `pd-alts pdis`
-pd-Idemp?-witness : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
-  → pd-Idemp? pdis ≡ true
-  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ pd-alts pdis × b ∈ pd-alts pdis × a ≈₀ b )
-pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
 
 -- (purpose): membership in an appended list resolves to one of the sides
 -- (used in): `pd-alts∈-inv` below, `∈→◁` in §6.4
@@ -800,31 +742,6 @@ pd-alts∈-inv (x ∷ pdis) h h∈
 ...   | Sum.inj₁ h∈₁ = ( x , here refl , h∈₁ )
 ...   | Sum.inj₂ h∈₂ with pd-alts∈-inv pdis h h∈₂
 ...   | ( z , z∈ , h∈₃ ) = ( z , there z∈ , h∈₃ )
-
--- (purpose): the test of §6 reflected *through the member list* — a
---   fired `pd-Idemp?` names two members and one alternative of each,
---   `≈₀`-equal
--- (used in): the §8.1 statement of `star` — the first half of its
---   hypothesis unpacking.  `Complete`'s `pdU-Idemp?-member-witness`
---   adds `pdU-const`'s equation (for a `pdU` list the two members have
---   one continuation, so both alternatives sit in one `sum-spine`) and
---   composes `pd-Idemp?-witness` + `pd-alts∈-inv` directly: this
---   combined Σ passed through a module boundary produced a phantom
---   conversion error, the small-step composition does not
--- (proof idea): `pd-Idemp?-witness`, then `pd-alts∈-inv` at each side
-pd-Idemp?-member-witness : ∀ { r : RE } { c : Char }
-  ( pdis : List (PDInstance r c) )
-  → pd-Idemp? pdis ≡ true
-  → Σ[ z ∈ PDInstance r c ] Σ[ z′ ∈ PDInstance r c ]
-      Σ[ a ∈ RE ] Σ[ b ∈ RE ]
-        ( z ∈ pdis × z′ ∈ pdis
-        × a ∈ sum-spine (pd-expr z) × b ∈ sum-spine (pd-expr z′)
-        × a ≈₀ b )
-pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
-...   | ( a , b , ( a∈ , b∈ , a≈₀b ) )
-    with pd-alts∈-inv pdis a a∈ | pd-alts∈-inv pdis b b∈
-...   | ( z , z∈ , a∈₁ ) | ( z′ , z′∈ , b∈₁ ) =
-        ( z , z′ , a , b , ( z∈ , z′∈ , a∈₁ , b∈₁ , a≈₀b ) )
 
 -- a *positioned* duplicate pair inside a list: two occurrences, the
 -- earlier one in a window between `pre` and `post`, the later one after
@@ -1030,7 +947,70 @@ dups-w-split-test = Dups-w-++-split _ _ (dups-≈₀-dups _ refl)
 -- which needs the list structure each `pdU` clause builds
 -- (`concatMap`/`map`/`_++_`).  The value-level form of that
 -- classification without position preservation is
--- `pd-Idemp?-member-witness` above.
+-- `pd-Idemp?-member-witness` below.
+
+-- forgetting the positions of a positioned pair recovers the plain
+-- `≈₀` pair of values.  This is the demoted route: every consumer of
+-- the old value-level scan witness is now stated through it, so the
+-- one induction over the scan in this module is the positioned one
+Dups-w-→-Σ : ( xs : List RE ) → Dups-w xs
+  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
+Dups-w-→-Σ xs (dups-at {xs = xs} {pre = pre} {mid = mid} {post = post}
+               {earlier = earlier} {later = later} eq later≈₀earlier) =
+    ( later , earlier
+    , ( subst ( λ L → later ∈ L ) eq
+          ( ∈-++ʳ pre (earlier ∷ (mid ++ (later ∷ post))) later
+              ( there (∈-++ʳ mid (later ∷ post) later (here refl)) ) )
+      , subst ( λ L → earlier ∈ L ) eq
+          ( ∈-++ʳ pre (earlier ∷ (mid ++ (later ∷ post))) earlier
+              (here refl) )
+      , later≈₀earlier ) )
+
+-- (purpose): the value-level form of the scan reflection: a fired
+--   scan has an `≈₀` pair of values in the list (positions forgotten)
+-- (used in): `pd-Idemp?-witness` below
+-- (proof idea): the positioned reflection `dups-≈₀-dups` followed by
+--   `Dups-w-→-Σ`
+dups-≈₀-witness : ( xs : List RE )
+  → dups-≈₀ xs ≡ true
+  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
+dups-≈₀-witness xs eq = Dups-w-→-Σ xs (dups-≈₀-dups xs eq)
+
+-- (purpose): the test of §6 reflected — a fired `pd-Idemp?` means the
+--   flattened alternative list holds an `≈₀` pair of values
+-- (used in): `pd-Idemp?-member-witness` below, and (with
+--   `pd-alts∈-inv`) `pdU-Idemp?-member-witness` in `Complete` §23
+-- (proof idea): `dups-≈₀-witness` at the list `pd-alts pdis`
+pd-Idemp?-witness : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
+  → pd-Idemp? pdis ≡ true
+  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ pd-alts pdis × b ∈ pd-alts pdis × a ≈₀ b )
+pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
+
+-- (purpose): the test of §6 reflected *through the member list* — a
+--   fired `pd-Idemp?` names two members and one alternative of each,
+--   `≈₀`-equal
+-- (used in): the §8.1 statement of `star` — the value-level half of its
+--   hypothesis unpacking (the positioned half is `dups-≈₀-dups`).
+--   `Complete`'s `pdU-Idemp?-member-witness` adds `pdU-const`'s
+--   equation (for a `pdU` list the two members have one continuation,
+--   so both alternatives sit in one `sum-spine`) and composes
+--   `pd-Idemp?-witness` + `pd-alts∈-inv` directly: this combined Σ
+--   passed through a module boundary produced a phantom conversion
+--   error, the small-step composition does not
+-- (proof idea): `pd-Idemp?-witness`, then `pd-alts∈-inv` at each side
+pd-Idemp?-member-witness : ∀ { r : RE } { c : Char }
+  ( pdis : List (PDInstance r c) )
+  → pd-Idemp? pdis ≡ true
+  → Σ[ z ∈ PDInstance r c ] Σ[ z′ ∈ PDInstance r c ]
+      Σ[ a ∈ RE ] Σ[ b ∈ RE ]
+        ( z ∈ pdis × z′ ∈ pdis
+        × a ∈ sum-spine (pd-expr z) × b ∈ sum-spine (pd-expr z′)
+        × a ≈₀ b )
+pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
+...   | ( a , b , ( a∈ , b∈ , a≈₀b ) )
+    with pd-alts∈-inv pdis a a∈ | pd-alts∈-inv pdis b b∈
+...   | ( z , z∈ , a∈₁ ) | ( z′ , z′∈ , b∈₁ ) =
+        ( z , z′ , a , b , ( z∈ , z′∈ , a∈₁ , b∈₁ , a≈₀b ) )
 ```
 
 Note what is *not* claimed here: the two records may continue at one expression

@@ -1907,6 +1907,97 @@ pdinj-inj-snd {l} {s} {loc} {c} ( e , AllEmpty.flat-[] .e fl )
       (proj₂ (ParseTree.inv-pairU {l} {s} {loc} e (inj u) e (inj v) eq))
 ```
 
+### 8.4. Configuration (b): a pair inside one member's spine
+
+The left branch of the classification (§6.3) hands over a member whose
+continuation spine *itself* carries the positioned pair.  The pair is
+located by descending the expression: at each `+` node
+`Dups-w-++-split` cuts the spine join, a crossing pair closes at that
+node by the §6.4 construction one level deeper (no records: both trees
+are read at positions of the *same* continuation, and the branch
+constructors keep them apart), a pair wholly on one side recurses and is
+re-embedded by `lift-Ctx`.  Non-sum nodes carry no spine pair at all.
+The resulting ambiguity of the continuation reaches the member's
+expression through the record's own map — §8.3's chain.
+
+```agda
+-- an append whose right half starts with a named element is never []
+-- (both shapes reduce to the absurd `cons ≡ []`)
+++-∷≢[] : ( xs ys : List RE ) ( y : RE ) → xs ++ (y ∷ ys) ≡ [] → ⊥
+++-∷≢[] []       ys y eq = []≢_∷_ (sym eq)
+++-∷≢[] (x ∷ xs) ys y eq = []≢_∷_ (sym eq)
+
+-- (purpose): a one-element list never carries a positioned pair — the
+--   witness always names two positions
+-- (used in): the non-sum clauses of `spine-pair→Ambig` below, the leaf
+--   clauses of the pdU-clause induction
+-- (proof idea): case-split the witness's outer split point; each branch
+--   reduces (with `∷-injectiveʳ` where needed) to `cons ≡ []`
+Dups-w-∷[]-absurd : ( x : RE ) → Dups-w ( x ∷ [] ) → ⊥
+Dups-w-∷[]-absurd
+  x (dups-at {pre = pre} {mid = mid} {post = post}
+              {earlier = earlier} {later = later} eq l≈₀e)
+  with pre
+...   | []         = ++-∷≢[] mid post later (∷-injectiveʳ eq)
+...   | ( p ∷ ps ) = ++-∷≢[] ps (mid ++ (later ∷ post)) earlier
+                       (∷-injectiveʳ eq)
+
+-- (purpose): §8.1 configuration (b) — a positioned pair located anywhere
+--   in the single continuation spine of a sum-bearing expression makes
+--   that expression ambiguous
+-- (used in): `member-pair→Ambig` below
+-- (proof idea): structural recursion on the expression; see the cases
+--   inline
+spine-pair→Ambig : ( r : RE ) → Dups-w ( sum-spine r ) → Ambig r
+spine-pair→Ambig ( l + s ` loc ) w
+  with Dups-w-++-split (sum-spine l) (sum-spine s) w
+...   | Sum.inj₁ d =
+      lift-Ctx (Ctx+R 𝟘 s loc) (spine-pair→Ambig l d)
+...   | Sum.inj₂ (Sum.inj₁ ( pre , mid₁ , mid₂ , post , p , q
+                           , ( xs≡ , ys≡ , q≈₀p ) )) =
+        let u    = proj₁ (r-∃u p)
+            p≈₀q = ≈₀-sym q≈₀p
+            pos₁ = ∈→◁ l p (subst ( λ L → p ∈ L ) (sym xs≡)
+                       ( ∈-++ʳ pre (p ∷ mid₁) p (here refl) ))
+            pos₂ = ∈→◁ s q (subst ( λ L → q ∈ L ) (sym ys≡)
+                       ( ∈-++ʳ mid₂ (q ∷ post) q (here refl) ))
+            t₁   = spine-read l p pos₁ u
+            t₂   = spine-read s q pos₂ (Cast p≈₀q u)
+        in  ( LeftU {l} {s} {loc} t₁
+            , RightU {l} {s} {loc} t₂
+            , trans (flat∘LeftU {l} {s} {loc} t₁)
+                (trans (trans (spine-read-pres-flat l p pos₁ u)
+                               (sym (Cast-pres-flat p≈₀q u)))
+                       (sym (trans (flat∘RightU {l} {s} {loc} t₂)
+                                   (spine-read-pres-flat s q pos₂
+                                      (Cast p≈₀q u)))))
+            , LeftU≢RightU t₁ t₂ )
+...   | Sum.inj₂ (Sum.inj₂ d) =
+      lift-Ctx (L+Ctx l 𝟘 loc) (spine-pair→Ambig s d)
+spine-pair→Ambig ε w = ⊥-elim (Dups-w-∷[]-absurd ε w)
+spine-pair→Ambig ( $ c ` loc ) w = ⊥-elim (Dups-w-∷[]-absurd ( $ c ` loc ) w)
+spine-pair→Ambig ( l ● s ` loc ) w =
+  ⊥-elim (Dups-w-∷[]-absurd ( l ● s ` loc ) w)
+spine-pair→Ambig ( r * nε ` loc ) w =
+  ⊥-elim (Dups-w-∷[]-absurd ( r * nε ` loc ) w)
+
+-- (purpose): configuration (b) at a member record — the pair located
+--   inside the member's continuation closes at the continuation and is
+--   carried to the member's expression by the record's own map
+-- (used in): `star` of §8.1
+-- (proof idea): `spine-pair→Ambig` then `lift-pdinstance` (§8.3); the
+--   map's injectivity comes from the builder chain (an `mkfuseInj` link
+--   never appears: `pdU-+-location` already pushed any pair inside a
+--   fused member to the unfused branch lists)
+member-pair→Ambig : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
+  → ( ∀ ( u v : U (pd-expr z) )
+      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
+  → Dups-w (sum-spine (pd-expr z))
+  → Ambig q
+member-pair→Ambig {q} {c} z inj-inj d =
+  lift-pdinstance {q} {c} z inj-inj (spine-pair→Ambig (pd-expr z) d)
+```
+
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)
 
 An Antimirov state *is* a set of partial derivatives, so the faithful

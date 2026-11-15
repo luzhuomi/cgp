@@ -98,6 +98,8 @@ open AmbigCheck using ( Ambig ; AmbigA1 ; AmbigA2 ; Ctx ; 𝟘 ; Ctx●R ; L●C
 import cgp.PDInstance as PDI
 open PDI using ( PDInstance ; pdinstance ; pdinstance-left ; pdinstance-right ; pdinstance-fst ; PDInstance* ; pdinstance* )
 
+import cgp.empty.AllEmptyParseTree as AllEmpty
+
 import cgp.posix.PartialDerivative as PosixPD
 
 import Data.List as List
@@ -1807,6 +1809,102 @@ pd-a3-branch-location =
     (here refl)
     (dups-≈₀-dups (pd-alts (PosixPD.pdU[ pd-a3-target , 'a' ]))
        pd-a3-Idemp-applied)
+```
+
+### 8.3. Lifting an ambiguity through a record's map
+
+Configuration (b) of §8.1 closes an ambiguity *inside* the continuation
+of a member record of `pdU`; reaching `Ambig q` carries that witness
+through the record's own transition map `pd-inj z : U (pd-expr z) → U q`
+with §7's `lift-Ambig`, which asks for that map's injectivity.  The pd
+builders (`pdinstance-left/right/fst/snd`) preserve injectivity — a chain
+of them composed from the leaf `$` records (whose map is a `LetterU`
+embedding) is injective.  The one exception is the *fused* record's map
+`mkfuseInj`: the two pre-fusion maps both land in `U r` and could
+identify trees, so that link stays a gap.  It is never entered here:
+configuration (a) closes through §6.4 at the sum node of the fused
+continuation itself, and `pdU-+-location` pushes a pair *inside* a fused
+member down to the unfused branch lists, so no lift ever crosses a fused
+record.
+
+```agda
+-- (purpose): one link of the chain — an ambiguity of a member record's
+--   continuation transfers to the record's input expression
+-- (used in): `star` of §8.1 (configuration (b))
+-- (proof idea): `lift-Ambig` at the record's own map, the word [ c ]
+--   and the record's evidence (the record's `c ∷ _` shape is [ c ] ++ _)
+lift-pdinstance : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
+  → ( ∀ ( u v : U (pd-expr z) )
+      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
+  → Ambig (pd-expr z) → Ambig q
+lift-pdinstance {q} {c} (pdinstance {p} inj ev) inj-inj =
+  lift-Ambig {r = q} {p = p} {c ∷ []} inj ev inj-inj
+
+-- (purpose): the `+`-branch builders preserve the injectivity of a
+--   record's transition map
+-- (used in): the chain of §8.1 configuration (b)
+-- (proof idea): the constructed maps reduce to `LeftU ∘ inj` and
+--   `RightU ∘ inj`; `inv-leftU`/`inv-rightU` reflect back through the
+--   constructor
+pdinj-inj-left : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance l c )
+  → ( ∀ ( u v : U (pd-expr z) )
+      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
+  → ( ∀ ( u v : U (pd-expr (pdinstance-left {l} {s} {loc} {c} z)) )
+      → pd-inj (pdinstance-left {l} {s} {loc} {c} z) refl u
+      ≡ pd-inj (pdinstance-left {l} {s} {loc} {c} z) refl v
+      → u ≡ v )
+pdinj-inj-left {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj u v eq =
+  inj-inj u v (ParseTree.inv-leftU {l} {s} {loc} (inj u) (inj v) eq)
+
+pdinj-inj-right : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance s c )
+  → ( ∀ ( u v : U (pd-expr z) )
+      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
+  → ( ∀ ( u v : U (pd-expr (pdinstance-right {l} {s} {loc} {c} z)) )
+      → pd-inj (pdinstance-right {l} {s} {loc} {c} z) refl u
+      ≡ pd-inj (pdinstance-right {l} {s} {loc} {c} z) refl v
+      → u ≡ v )
+pdinj-inj-right {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj u v eq =
+  inj-inj u v (ParseTree.inv-rightU {l} {s} {loc} (inj u) (inj v) eq)
+
+-- (purpose): the `●`-first builder preserves map injectivity
+-- (used in): the chain of §8.1 configuration (b)
+-- (proof idea): the constructed map reduces to `mkinjFst inj`, which
+--   rewrites at a pair tree to `PairU (inj u) v`; `inv-pairU` splits the
+--   equation and the hypothesis reflects the first component
+pdinj-inj-fst : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance l c )
+  → ( ∀ ( u v : U (pd-expr z) )
+      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
+  → ( ∀ ( u v : U (pd-expr (pdinstance-fst {l} {s} {loc} {c} z)) )
+      → pd-inj (pdinstance-fst {l} {s} {loc} {c} z) refl u
+      ≡ pd-inj (pdinstance-fst {l} {s} {loc} {c} z) refl v
+      → u ≡ v )
+pdinj-inj-fst {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj
+  (PairU u₁ u₂) (PairU v₁ v₂) eq
+  with ParseTree.inv-pairU {l} {s} {loc} (inj u₁) u₂ (inj v₁) v₂ eq
+...   | ( head-eq , tail-eq ) =
+      cong₂ ( λ x y → PairU {p} {s} {loc} x y )
+             (inj-inj u₁ v₁ head-eq) tail-eq
+
+-- (purpose): the `●`-second builder (`concatmap-pdinstance-snd` maps
+--   `PDI.mk-snd-pdi` over the empty-tree witnesses) preserves map
+--   injectivity
+-- (used in): the chain of §8.1 configuration (b)
+-- (proof idea): pattern-matching the pair *and* its `Flat-[]` evidence
+--   makes the constructed map reduce to `mkinjSnd inj e` (the pd builder
+--   does not reduce on a variable evidence), which rewrites to
+--   `PairU e (inj u)`; `inv-pairU`'s second component feeds the hypothesis
+pdinj-inj-snd : ∀ { l s : RE } { loc : ℕ } { c : Char }
+  → ( ef : Σ[ x ∈ U l ] AllEmpty.Flat-[] l x ) ( z : PDInstance s c )
+  → ( ∀ ( u v : U (pd-expr z) )
+      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
+  → ( ∀ ( u v : U (pd-expr (PDI.mk-snd-pdi {l} {s} {loc} {c} ef z)) )
+      → pd-inj (PDI.mk-snd-pdi {l} {s} {loc} {c} ef z) refl u
+      ≡ pd-inj (PDI.mk-snd-pdi {l} {s} {loc} {c} ef z) refl v
+      → u ≡ v )
+pdinj-inj-snd {l} {s} {loc} {c} ( e , AllEmpty.flat-[] .e fl )
+  (pdinstance {p} inj ev) inj-inj u v eq =
+    inj-inj u v
+      (proj₂ (ParseTree.inv-pairU {l} {s} {loc} e (inj u) e (inj v) eq))
 ```
 
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)

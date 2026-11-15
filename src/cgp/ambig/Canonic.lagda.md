@@ -103,7 +103,7 @@ import cgp.posix.PartialDerivative as PosixPD
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; map ; concatMap)
 
-open import Data.List.Properties using (++-assoc)
+open import Data.List.Properties using (++-assoc ; ∷-injectiveˡ ; ∷-injectiveʳ)
 
 import Data.List.Relation.Unary.Any as ListAny
 open ListAny using (Any; here; there)
@@ -931,17 +931,106 @@ dups-≈₀-dups (x ∷ xs) eq = dups-≈₀-go-wp x [] xs eq
 dups-w-test : Dups-w (($ 'a' ` 1) ∷ ($ 'a' ` 2) ∷ [])
 dups-w-test = dups-≈₀-dups _ refl
 
--- What splits a positioned pair along a list cut (`Dups-w (xs ++ ys)`
--- → both-left ⊎ crossing ⊎ both-right) is mechanical but long: two
--- applications of the prefix-comparison lemma
--- `a ++ b ≡ c ++ d → (c ≡ a ++ u) ⊎ (a ≡ c ++ u)` (induction on the
--- first argument, both sides) plus `++-cancelˡ`, peeling the five
--- segments of the `dups-at` equation against the two segments of the
--- cut; every intermediate list is concrete, so the case split is legal
--- with-agda, but it is a page of plumbing.  It is the remaining piece
--- between `dups-≈₀-dups` and the member-level classification of §8.1's
--- configurations (a)/(b); the value-level form of that classification
--- without position preservation is `pd-Idemp?-member-witness` above.
+-- two splices of one equation: the longer prefix extends the shorter,
+-- the overlap is the shared middle.  (used by the cut-split below;
+-- proof idea: induction peeling both prefixes, the overlap equation
+-- carried through cons contexts in cong-normal form)
+compare-++ : ( as bs cs ds : List RE )
+  → as ++ bs ≡ cs ++ ds
+  → Sum._⊎_ (Σ[ u ∈ List RE ] ( (cs ≡ as ++ u) × (bs ≡ u ++ ds) ))
+            (Σ[ u ∈ List RE ] ( (as ≡ cs ++ u) × (ds ≡ u ++ bs) ))
+compare-++ []       bs []       ds eq = Sum.inj₁ ( [] , refl , eq )
+compare-++ []       bs (c ∷ cs) ds eq = Sum.inj₁ ( c ∷ cs , refl , eq )
+compare-++ (a ∷ as) bs []       ds eq = Sum.inj₂ ( a ∷ as , refl , sym eq )
+compare-++ (a ∷ as) bs (c ∷ cs) ds eq
+  with compare-++ as bs cs ds (∷-injectiveʳ eq)
+...   | Sum.inj₁ ( u , cs≡ , bs≡ ) =
+          Sum.inj₁ ( u , ( trans (cong ( _∷_ c ) cs≡)
+                               (cong ( λ z → z ∷ (as ++ u) )
+                                     (sym (∷-injectiveˡ eq)))
+                       , bs≡ ) )
+...   | Sum.inj₂ ( u , as≡ , ds≡ ) =
+          Sum.inj₂ ( u , ( trans (cong ( _∷_ a ) as≡)
+                               (cong ( λ z → z ∷ (cs ++ u) )
+                                     (∷-injectiveˡ eq))
+                       , ds≡ ) )
+
+-- the pair straddles the cut: earlier occurrence in the left part at
+-- position `pre`, later occurrence in the right part at position `mid₂`
+Dups-w-cross : ( xs ys : List RE ) → Set
+Dups-w-cross xs ys =
+    Σ[ pre ∈ List RE ] Σ[ mid₁ ∈ List RE ] Σ[ mid₂ ∈ List RE ]
+    Σ[ post ∈ List RE ] Σ[ earlier ∈ RE ] Σ[ later ∈ RE ]
+      ( (xs ≡ pre ++ (earlier ∷ mid₁))
+      × (ys ≡ mid₂ ++ (later ∷ post))
+      × (later ≈₀ earlier) )
+
+-- (purpose): a positioned duplicate pair in a concatenation either has
+--   both occurrences on one side of the cut or one on each side — the
+--   case split that localises a fired test's pair relative to a list
+--   structure
+-- (used in): the member-level classification of the pair of a fired
+--   `pd-Idemp?` against the `pd-alts` cuts (§8.1)
+-- (proof idea): compare the layout prefix `pre` against the left part
+--   `xs` with `compare-++`; in the overlap branch a second comparison
+--   of `mid` against the overlap decides which side holds the later
+--   occurrence.  (Clauses are ordered so each nested `with` comes last:
+--   an outer with-function gets no clauses after an inner one is opened)
+Dups-w-++-split : ( xs ys : List RE )
+  → Dups-w (xs ++ ys)
+  → Sum._⊎_ (Dups-w xs) (Sum._⊎_ (Dups-w-cross xs ys) (Dups-w ys))
+Dups-w-++-split xs ys (dups-at {xs = .(xs ++ ys)} {pre = pre} {mid = mid}
+                     {post = post} {earlier = e} {later = l} eq l≈₀e)
+  with compare-++ pre (e ∷ (mid ++ (l ∷ post))) xs ys eq
+...   | Sum.inj₂ ( u , pre≡ , ys≡ ) = Sum.inj₂ (Sum.inj₂ (dups-at {xs = ys}
+          {pre = u} {mid = mid} {post = post}
+          {earlier = e} {later = l} (sym ys≡) l≈₀e))
+...   | Sum.inj₁ ( u , xs≡ , eq2 ) with u
+...       | [] = Sum.inj₂ (Sum.inj₂ (dups-at {xs = [] ++ ys} {pre = []}
+            {mid = mid} {post = post} {earlier = e} {later = l} eq2 l≈₀e))
+...       | ( z ∷ us) with compare-++ mid (l ∷ post) us ys (∷-injectiveʳ eq2)
+...           | Sum.inj₂ ( v , mid≡ , ys≡ ) = Sum.inj₂ (Sum.inj₁
+                     ( pre , us , v , post , e , l
+                     , ( trans xs≡
+                           (sym (cong ( λ K → pre ++ (K ∷ us) )
+                                      (∷-injectiveˡ eq2)))
+                     , ys≡ , l≈₀e ) ))
+...           | Sum.inj₁ ( v , us≡ , eq3 ) with v
+...               | [] = Sum.inj₂ (Sum.inj₁
+                       ( pre , us , [] , post , e , l
+                       , ( trans xs≡
+                             (sym (cong ( λ K → pre ++ (K ∷ us) )
+                                        (∷-injectiveˡ eq2)))
+                       , sym eq3 , l≈₀e ) ))
+...               | ( w ∷ vs) = Sum.inj₁ (dups-at {xs = xs}
+                    {pre = pre} {mid = mid} {post = vs}
+                    {earlier = e} {later = l} eqGoal l≈₀e)
+                 where
+                   eqGoal : pre ++ (e ∷ (mid ++ (l ∷ vs))) ≡ xs
+                   eqGoal =
+                     trans (cong ( λ K → pre ++ (e ∷ K) )
+                           (trans (cong ( λ z → mid ++ (z ∷ vs) )
+                                        (∷-injectiveˡ eq3))
+                                  (sym us≡)))
+                           (trans (cong ( λ K → pre ++ (K ∷ us) )
+                                        (∷-injectiveˡ eq2))
+                                  (sym xs≡))
+
+-- the split instantiates on the output of a concrete fired scan with a
+-- cut between the two occurrences
+dups-w-split-test : Sum._⊎_ (Dups-w (($ 'a' ` 1) ∷ []))
+    (Sum._⊎_ (Dups-w-cross (($ 'a' ` 1) ∷ []) (($ 'a' ` 2) ∷ []))
+             (Dups-w (($ 'a' ` 2) ∷ [])))
+dups-w-split-test = Dups-w-++-split _ _ (dups-≈₀-dups _ refl)
+
+-- What remains between `dups-≈₀-dups` / `Dups-w-++-split` and the
+-- member-level classification of §8.1's configurations (a)/(b) is the
+-- *composition*: running the split along the `pd-alts` cuts by
+-- induction over the `pdU` clauses (in the style of `Complete` §23),
+-- which needs the list structure each `pdU` clause builds
+-- (`concatMap`/`map`/`_++_`).  The value-level form of that
+-- classification without position preservation is
+-- `pd-Idemp?-member-witness` above.
 ```
 
 Note what is *not* claimed here: the two records may continue at one expression
@@ -1355,8 +1444,9 @@ Caveats (consistent with §6/§7):
   or `pd-pairs→Ambig` composed with `lift-Ctx` (§7) for a located
   pattern.  What is open is the *classifying* step.  A positioned pair
   in a concatenation lies both-left, crossing, or both-right of the cut
-  — the split is the mechanical peeling described in the §6.3 design
-  note; composed with it, the pair of a fired test lies in one of three
+  (`Dups-w-++-split`, §6.3); what remains is to run the split along the
+  `pd-alts` cuts by induction over the `pdU` clauses, putting the pair
+  of a fired test in one of three
   configurations: (a) on both sides of a fused member's continuation
   node — the record half and the position half are §6.4
   (`pd-cross-positions→Ambig`, via `∈→◁` and `spine-read`); what remains

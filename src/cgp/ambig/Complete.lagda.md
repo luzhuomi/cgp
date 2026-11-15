@@ -1375,9 +1375,9 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --          which is what §20/§22's stop needs), and §23's
 --          `pdU-Idemp?-member-witness` collects that pair into the
 --          `sum-spine` of *one* member's continuation; what remains open
---          is the branch location — the case split localising the
---          positioned pair relative to the member/spine cuts (Canonic
---          §6.3 design note) up to the `star` theorem stated in
+--          is the branch location — running the cut split
+--          `Dups-w-++-split` (Canonic §6.3) along the member/spine cuts
+--          up to the `star` theorem stated in
 --          Canonic §8.1.
 --
 -- The `Any ( λ s → s ≡ p ) (pd*-Desc r w′)` membership unfolds to

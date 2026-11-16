@@ -852,7 +852,7 @@ dups-≈₀-go-wp x kept (y ∷ xs) h
 
 -- (purpose): the scan's output read back as positioned occurrences — a
 --   fired `dups-≈₀` names the two positions of the duplicate pair
--- (used in): the §8.1 `star` hypothesis unpacking, composed with
+-- (used in): the §8.1 `pd-Idemp` hypothesis unpacking, composed with
 --   `pd-Idemp?-witness`; the member-level classification of the pair
 --   relative to `pd-alts` (design note below) is the step that consumes it
 -- (proof idea): through the general-window form `dups-≈₀-go-wp`: the
@@ -982,7 +982,7 @@ Dups-w-[] (dups-at {xs = []} {pre = z ∷ zs} () l≈₀e)
 --   two positions of *one* member's `sum-spine`, or has its earlier
 --   occurrence in one member's spine and its later occurrence in
 --   another member's spine
--- (used in): the §8.1 statement of `star` — the classification step of
+-- (used in): the §8.1 statement of `pd-Idemp` — the classification step of
 --   its hypothesis unpacking; the left branch is the material of
 --   configurations (a)/(b), the right branch of configuration (c)
 -- (proof idea): induction on the member list, cutting
@@ -1105,7 +1105,7 @@ pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
 -- (purpose): the test of §6 reflected *through the member list* — a
 --   fired `pd-Idemp?` names two members and one alternative of each,
 --   `≈₀`-equal
--- (used in): the §8.1 statement of `star` — the value-level half of its
+-- (used in): the §8.1 statement of `pd-Idemp` — the value-level half of its
 --   hypothesis unpacking (the positioned half is `dups-≈₀-dups`).
 --   `Complete`'s `pdU-Idemp?-member-witness` adds `pdU-const`'s
 --   equation (for a `pdU` list the two members have one continuation,
@@ -1369,7 +1369,7 @@ lift-Ctx-dup→Ambig {p = p} inj ev inj-inj ctx {l} {s} {loc} eq dup =
 
 -- (purpose): the context lift on its own — an ambiguity of the hole
 --   expression transfers to the filled expression
--- (used in): the §8.1 statement of `star` (the closer a located
+-- (used in): the §8.1 statement of `pd-Idemp` (the closer a located
 --   sum-branch pair composes with); `Ctx-dup→Ambig` (§4) builds the
 --   same witness inline
 -- (proof idea): `CtxT` embeds the two trees, `CtxT-pres-flat` keeps the
@@ -1521,7 +1521,7 @@ Caveats (consistent with §6/§7):
   the A3 *test* is unaffected.
 * The soundness of a fired `A3?` is composed in §8.6, unconditionally:
 
-  > `star : pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
+  > `pd-Idemp : pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
 
   Its test hypothesis is fully unpacked (§6.3: the positioned reflection
   `dups-≈₀-dups : dups-≈₀ xs ≡ true → Dups-w xs` reads a fired scan
@@ -1566,7 +1566,7 @@ states are lists of partial derivatives, see §9.
 ### 8.2. Branch location: inverting the `pdU` clauses
 
 The classification of §6.3 speaks about `pd-alts pdis` for a plain
-member list.  `star` instantiates it at `pdis = PosixPD.pdU[ q , c ]`,
+member list.  `pd-Idemp` instantiates it at `pdis = PosixPD.pdU[ q , c ]`,
 whose clauses (in `cgp.posix.PartialDerivative`) build their lists with
 `map`, `concatMap` and `pdinstance-oplus`.  This section inverts those
 constructions — the membership shapes first, then the continuations the
@@ -1601,7 +1601,7 @@ clause maps write into the records.
 -- (purpose): membership in `pdinstance-oplus` resolves to one of its
 --   three shapes: an unfused left-list member, an unfused right-list
 --   member, or the fusion of one member of each list
--- (used in): the branch location of a `+` clause (below), `star`
+-- (used in): the branch location of a `+` clause (below), `pd-Idemp`
 -- (proof idea): case on the two lists; the nil shapes read the
 --   membership off the defining equations directly, the both-non-nil
 --   shape inverts the `concatMap`/`map` structure
@@ -1713,7 +1713,7 @@ pdU-+-shape-of l s loc c z z∈
 --   the alternatives at positions of their continuations — material
 --   consumed by `pd-cross-positions→Ambig`), or lies inside the spine
 --   of one branch instance (a subgoal on a strictly smaller expression)
--- (used in): the `star` composition of §8.1 (the `+` clause)
+-- (used in): the `pd-Idemp` composition of §8.1 (the `+` clause)
 -- (proof idea): `pdU-+-shape-of` names the branch instances;
 --   `pd-expr-fuse`/`pd-expr-left`/`pd-expr-right` unfold the member's
 --   spine to `sum-spine (pd-expr pdi₁) ++ sum-spine (pd-expr pdi₂)`;
@@ -1850,7 +1850,7 @@ record.
 ```agda
 -- (purpose): one link of the chain — an ambiguity of a member record's
 --   continuation transfers to the record's input expression
--- (used in): `star` of §8.1 (configuration (b))
+-- (used in): `pd-Idemp` of §8.1 (configuration (b))
 -- (proof idea): `lift-Ambig` at the record's own map, the word [ c ]
 --   and the record's evidence (the record's `c ∷ _` shape is [ c ] ++ _)
 lift-pdinstance : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
@@ -2004,7 +2004,7 @@ spine-pair→Ambig ( r * nε ` loc ) w =
 -- (purpose): configuration (b) at a member record — the pair located
 --   inside the member's continuation closes at the continuation and is
 --   carried to the member's expression by the record's own map
--- (used in): `star` of §8.1
+-- (used in): `pd-Idemp` of §8.1
 -- (proof idea): `spine-pair→Ambig` then `lift-pdinstance` (§8.3); the
 --   map's injectivity comes from the builder chain (an `mkfuseInj` link
 --   never appears: `pdU-+-location` already pushed any pair inside a
@@ -2263,7 +2263,7 @@ pd-snd-continues ( e , AllEmpty.flat-[] .e fl ) (pdinstance {p₂} i₂ ev₂) z
 -- (purpose): §8.1's classification left branch, closed at pdU members —
 --   a positioned pair inside the continuation of a member of
 --   `pdU[ r , c ]` makes r ambiguous
--- (used in): `star` of §8.1
+-- (used in): `pd-Idemp` of §8.1
 -- (proof idea): the case analysis of the section text above; the
 --   transports between a record's continuation and its builder's input
 --   are the §8.2 equations (`pd-expr-left/right/fuse` and direct
@@ -2494,7 +2494,7 @@ star-Ambig {r} {nε} {loc} ( u , v , word≡ , u≢v ) =
 -- (purpose): §8.1's configuration (c), closed — a two-member
 --   continuation list of a single-character partial derivative makes
 --   the state ambiguous
--- (used in): `star` below
+-- (used in): `pd-Idemp` below
 -- (proof idea): the case analysis of the section text above; the
 --   multiplicative clauses are decomposed by `pdU-oplus-≥2` /
 --   `pdU-cms-len` / `×-≥2→`, and the ambiguity is carried back by
@@ -2549,7 +2549,7 @@ pdU-2members→Ambig {c} ( l ● s ` loc ) h with (ε∈? l)
 
 -- (purpose): §8.1's goal theorem — the A3-as-test of §8.1, reflected:
 --   a fired `pd-Idemp?` on the `pdU` member list implies ambiguity
--- (used in): `pd-a3-Ambig-via-star` below (the composition check on the
+-- (used in): `pd-a3-Ambig-via-pd-Idemp` below (the composition check on the
 --   §6.2 example)
 -- (proof idea): the hypothesis unpacking of §8.1's text — `dups-≈₀-dups`
 --   reads the fired scan as a positioned pair (`pd-Idemp?` unfolds to
@@ -2557,10 +2557,10 @@ pdU-2members→Ambig {c} ( l ● s ` loc ) h with (ε∈? l)
 --   places it relative to the members, the left branch is closed by
 --   §8.5's `pdU-member-pair→Ambig`, the right branch by
 --   `pdU-2members→Ambig` (the classification hands over the length bound)
-star : ∀ { q : RE } { c : Char }
+pd-Idemp : ∀ { q : RE } { c : Char }
   → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true
   → Ambig q
-star {q} {c} eq
+pd-Idemp {q} {c} eq
   with pd-alts-Dups-w-classify (PosixPD.pdU[ q , c ])
          (dups-≈₀-dups (pd-alts (PosixPD.pdU[ q , c ])) eq)
 ...   | Sum.inj₁ ( z , ( z∈ , d ) ) =
@@ -2570,10 +2570,10 @@ star {q} {c} eq
                    , 2≤len ) ) =
       pdU-2members→Ambig {c} q 2≤len
 
--- the whole composition elaborates on the §6.2 example: applying `star`
+-- the whole composition elaborates on the §6.2 example: applying `pd-Idemp`
 -- to the fired test
-pd-a3-Ambig-via-star : Ambig pd-a3-target
-pd-a3-Ambig-via-star = star {pd-a3-target} {'a'} pd-a3-Idemp-applied
+pd-a3-Ambig-via-pd-Idemp : Ambig pd-a3-target
+pd-a3-Ambig-via-pd-Idemp = pd-Idemp {pd-a3-target} {'a'} pd-a3-Idemp-applied
 ```
 
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)

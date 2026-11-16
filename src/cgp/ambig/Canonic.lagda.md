@@ -31,35 +31,36 @@ needed for criterion **A3** of the Ambiguity Criteria proposition (paper section
    `u ∈ 𝓣 r` is transported to `𝓣 s` for `r ≈₀ s`, preserving `| u |`.
 4. The *statements* the A3 soundness needs: `pd-expr`, `pd-alts`, the
    `Idemp` transition test `pd-Idemp?`, the positioned duplicate witness
-   (`dups-≈₀-dups`) and the member classification (§6.3) — and the
-   `crit` disjunction of the criteria (§10).  The soundness closure
-   itself — `dup-sum→Ambig` / `Ctx-dup→Ambig` (§4), the `a + a`
-   example (§5), and the full `pdU`-clause chain §8.2–§8.6 ending in
+   (`dups-≈₀-dups`) and the member classification (§4.2) — and the
+   `crit` disjunction of the criteria (§8).  The soundness closure
+   itself — `dup-sum→Ambig` / `Ctx-dup→Ambig` (Soundness §1), the
+   `a + a` example (Soundness §2), and the full `pdU`-clause chain
+   Soundness §7–§11 ending in
    `pd-Idemp : pd-Idemp? (pdU[ q , c ]) ≡ true → Ambig q` — lives in
    `cgp.ambig.Soundness`; the converse direction lives in
    `cgp.ambig.Completeness`.  Together with `cgp.ambig.AmbigCheck`
    (`ambiguousSum`, `notA1Sum`, `notA2Sum`) the example shows the A3
    criterion genuinely adds detection power: `a + a` is missed by A1
    and A2 but caught there.
-5. Section 7: the *general* form of the criteria — one master lift
+5. Section 5: the *general* form of the criteria — one master lift
    `lift-Ambig` (an injective path tree map with the soundness evidence of
    a `PDInstance*` transports `Ambig p → Ambig r`), from which
    `lift-A1→Ambig`, `lift-A2→Ambig` and the pd-state corollaries
    `pd*-A1→Ambig`, `pd*-A2→Ambig` factor (`AmbigCheck.A1→Ambig` etc.
    are the `w = []`, `inj = id` instances); the Ctx-dup versions
    `lift-Ctx-dup→Ambig` / `pd*-Ctx-dup→Ambig` travel with
-   `Ctx-dup→Ambig` in `cgp.ambig.Soundness` §7.
-6. Section 8: the paper's `Desc(r)` *as a single expression* via the
+   `Ctx-dup→Ambig` in `cgp.ambig.Soundness` §6.
+6. Section 6: the paper's `Desc(r)` *as a single expression* via the
    `oplus` trick — `derivᵖ r w` re-glues the partial-derivative
    continuations of `pdUMany[ r , w ]` into one state expression, `_∈Desc_`
    states the paper's quantification over realizable states, and `A3?` is
    the paper's A3 test as a computable boolean (verified `true` on the
-   §6.2 example).  This form exists only to state the paper's
-   `canonic(deriv s x)` verbatim; for the tests §9's list form is used.
-7. Section 9: the pd-native states — `pd*-Desc r w` is the Antimirov state
+   §4.1 example).  This form exists only to state the paper's
+   `canonic(deriv s x)` verbatim; for the tests §7's list form is used.
+7. Section 7: the pd-native states — `pd*-Desc r w` is the Antimirov state
    itself (the list of partial-derivative continuations of `pdUMany[ r , w ]`,
    no re-gluing, no `Maybe`) and `A3-state? r w c` applies the A3 test to
-   that list; §7's corollaries then apply to *any* member of the list.
+   that list; §5's corollaries then apply to *any* member of the list.
 
 ## Why the full A3 condition is not stated
 
@@ -79,7 +80,7 @@ Hence the top-level instance ("`Idemp` applies to `r` ⇒ `r` ambiguous") is
 formalized, which is exactly the situation the paper's A3 detects, minus the
 derivative construction.
 
-**However** (section 6 below) the derivative can be *mimicked by partial
+**However** (section 4 below) the derivative can be *mimicked by partial
 derivatives*: `pdU[ r , x ]` (in `cgp.posix.PartialDerivative`, the same
 route as the old `cgp.posix.Related`, now `cgp.relatedwork.RelatedWorkOkuiSuzuki`)
 yields the partial derivatives whose sum denotes `deriv r x`, and each comes
@@ -144,7 +145,8 @@ import Data.Product as Product
 open Product using ( Σ ; Σ-syntax ; _,_ ; _×_ )
 
 import Data.Sum as Sum
--- (not opened: `inj₁`/`inj₂` are used as pattern variables in §6.1)
+-- (not opened: `inj₁`/`inj₂` are pattern variables in
+--   `cgp.ambig.Soundness` §3; the constructors are used qualified here)
 open Σ using (proj₁ ; proj₂)
 
 import Data.Maybe as Maybe
@@ -185,7 +187,7 @@ data _≈₀_ : RE → RE → Set where
 ≈₀-refl (r * nε ` loc) = ≈₀-* (≈₀-refl r)
 
 -- (purpose): `_≈₀_` is symmetric
--- (used in): `pdU-+-location` below — the §6.3 split carries the pair
+-- (used in): `pdU-+-location` below — the §4.2 split carries the pair
 --   as `later ≈₀ earlier` (a positional convention), while
 --   `pd-cross-positions→Ambig` reads `≈₀` left-to-right along the
 --   two branches of the sum
@@ -312,7 +314,7 @@ canonic (l + s ` loc) with canonic l | canonic s
 
 ```
 
-## 6. A3 by mimicking the derivative with partial derivatives
+## 4. A3 by mimicking the derivative with partial derivatives
 
 The paper's `deriv s x` is a single expression; this project computes
 *partial* derivatives instead (`cgp.posix.PartialDerivative.pdU`).
@@ -355,7 +357,7 @@ pd-alts : ∀ { r : RE } { c : Char } → List (PDInstance r c) → List RE
 pd-alts pdis = concatMap ( λ pdi → sum-spine (pd-expr pdi) ) pdis
 
 -- does canonicalizing the sum of the continuations require the Idemp rule?
--- (`dups-≈₀-go` is the scan, hoisted out of a `where` clause so §6.3 can
+-- (`dups-≈₀-go` is the scan, hoisted out of a `where` clause so §4.2 can
 -- reason about it; the equations are the ones `dups-≈₀` had)
 dups-≈₀-go : List RE → List RE → Bool
 dups-≈₀-go kept [] = false
@@ -371,7 +373,7 @@ pd-Idemp? pdis = dups-≈₀ (pd-alts pdis)
 
 ```
 
-### 6.2. Example: the duplicate is *created by the derivative*
+### 4.1. Example: the duplicate is *created by the derivative*
 
 `((a + b) ● c) + (a ● c)` has no duplicate alternatives itself —
 `canonic` reports `Idemp` was **not** applied (the first component below);
@@ -387,7 +389,7 @@ pd-a3-target : RE
 pd-a3-target = ( (($ 'a' ` 1) + ($ 'b' ` 2) ` 3) ● ($ 'c' ` 4) ` 5 )
                + ( ($ 'a' ` 6) ● ($ 'c' ` 7) ` 8 ) ` 9
 
--- the top-level Idemp test does NOT fire (unlike section 5):
+-- the top-level Idemp test does NOT fire (unlike Soundness §2):
 pd-a3-canonic-flag : proj₂ (canonic pd-a3-target) ≡ false
 pd-a3-canonic-flag = refl
 
@@ -407,10 +409,10 @@ pd-a3-Idemp-applied = refl
 
 ```
 
-### 6.3. The test finds the duplicate when there is one
+### 4.2. The test finds the duplicate when there is one
 
 `pd-Idemp?` is defined as a scan, so none of the above says the scan *finds* a
-duplicate that is there.  The instance `cgp.ambig.Completeness` §20's `pick-diff-record-prf` needs is the one
+duplicate that is there.  The instance `cgp.ambig.Completeness` §7's `pick-diff-record-prf` needs is the one
 where `pdU[ r , c ]` holds two **distinct members** continuing at **one**
 expression: flattening then puts the same alternative in the list twice, and the
 scan has to answer `true`.  The two structural facts that make that go —
@@ -565,7 +567,7 @@ pd-Idemp?-members-go kept (x ∷ pdis) z z′ (there z∈) (there z′∈) z≢z
   dups-≈₀-go-++ kept (sum-spine (pd-expr x)) (pd-alts pdis)
     (pd-Idemp?-members-go (kept ++ sum-spine (pd-expr x)) pdis z z′ z∈ z′∈ z≢z′ eq)
 
--- the test of §6 fires on a member list that holds two distinct records with
+-- the test of §4 fires on a member list that holds two distinct records with
 -- one continuation
 pd-Idemp?-members : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   ( z z′ : PDInstance r c )
@@ -603,7 +605,7 @@ dups-≈₀-go-inv-step kept xs x eq with any-≈₀ x kept | eq
 ...   | false | h = Sum.inj₂ h
 
 -- (purpose): membership in an appended list resolves to one of the sides
--- (used in): `pd-alts∈-inv` below, `∈→◁` in Soundness §6.4
+-- (used in): `pd-alts∈-inv` below, `∈→◁` in Soundness §5
 -- (proof idea): induction on the first list: at the head, `here` names
 --   the left side; `there` recurses into the tail
 ∈-++-inv : ∀ { A : Set } ( xs ys : List A ) { x : A }
@@ -619,7 +621,7 @@ dups-≈₀-go-inv-step kept xs x eq with any-≈₀ x kept | eq
 --   belongs to a member: it names a record `z` of the list with the
 --   alternative inside `z`'s `sum-spine`
 -- (used in): `pd-Idemp?-member-witness` below, and `pdU-Idemp?-member-witness`
---   in `Completeness` §23
+--   in `Completeness` §8
 -- (proof idea): induction on the record list, splitting each membership
 --   in the concatenation with `∈-++-inv`
 pd-alts∈-inv : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
@@ -722,7 +724,7 @@ dups-≈₀-go-wp x kept (y ∷ xs) h
 
 -- (purpose): the scan's output read back as positioned occurrences — a
 --   fired `dups-≈₀` names the two positions of the duplicate pair
--- (used in): the §8.1 `pd-Idemp` hypothesis unpacking, composed with
+-- (used in): the §6.1 `pd-Idemp` hypothesis unpacking, composed with
 --   `pd-Idemp?-witness`; the member-level classification of the pair
 --   relative to `pd-alts` (design note below) is the step that consumes it
 -- (proof idea): through the general-window form `dups-≈₀-go-wp`: the
@@ -777,7 +779,7 @@ Dups-w-cross xs ys =
 --   case split that localises a fired test's pair relative to a list
 --   structure
 -- (used in): the member-level classification of the pair of a fired
---   `pd-Idemp?` against the `pd-alts` cuts (§8.1)
+--   `pd-Idemp?` against the `pd-alts` cuts (§6.1)
 -- (proof idea): compare the layout prefix `pre` against the left part
 --   `xs` with `compare-++`; in the overlap branch a second comparison
 --   of `mid` against the overlap decides which side holds the later
@@ -852,7 +854,7 @@ Dups-w-[] (dups-at {xs = []} {pre = z ∷ zs} () l≈₀e)
 --   two positions of *one* member's `sum-spine`, or has its earlier
 --   occurrence in one member's spine and its later occurrence in
 --   another member's spine
--- (used in): the §8.1 statement of `pd-Idemp` — the classification step of
+-- (used in): the §6.1 statement of `pd-Idemp` — the classification step of
 --   its hypothesis unpacking; the left branch is the material of
 --   configurations (a)/(b), the right branch of configuration (c)
 -- (proof idea): induction on the member list, cutting
@@ -902,7 +904,7 @@ pd-alts-Dups-w-classify (z ∷ zs) dw
                      , ( there z′∈ , there z″∈ , earlier∈ , later∈
                        , later≈₀earlier , m≤n⇒m≤1+n 2≤len ) )
 
--- The classification instantiated at the §6.2 example: the fired test
+-- The classification instantiated at the §4.1 example: the fired test
 -- read position-preservingly (`dups-≈₀-dups`), then classified against
 -- the `pdU` member list
 pd-alts-classify-a3 : Sum._⊎_
@@ -927,11 +929,11 @@ pd-alts-classify-a3 =
 -- What remains after the classification is the analysis *inside* the
 -- members: for the left branch, what a positioned pair inside one
 -- `sum-spine` says about the expression (configurations (a)/(b) of
--- §8.1; Soundness §6.4's `pd-cross-positions→Ambig` is the tool once the
+-- §6.1; Soundness §5's `pd-cross-positions→Ambig` is the tool once the
 --   `_◁_`
 -- position of the pair is extracted).  The right branch needs no record
 -- analysis: its witnesses carry `2 ≤ length pdis` (the two members are
--- at distinct list positions), and Soundness §8.6's `pdU-2members→Ambig`
+-- at distinct list positions), and Soundness §11's `pdU-2members→Ambig`
 --   inverts
 -- that length bound through the `pdU` clauses to an A1/A2
 -- configuration.  The value-level form of the classification without
@@ -964,20 +966,20 @@ dups-≈₀-witness : ( xs : List RE )
   → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
 dups-≈₀-witness xs eq = Dups-w-→-Σ xs (dups-≈₀-dups xs eq)
 
--- (purpose): the test of §6 reflected — a fired `pd-Idemp?` means the
+-- (purpose): the test of §4 reflected — a fired `pd-Idemp?` means the
 --   flattened alternative list holds an `≈₀` pair of values
 -- (used in): `pd-Idemp?-member-witness` below, and (with
---   `pd-alts∈-inv`) `pdU-Idemp?-member-witness` in `Completeness` §23
+--   `pd-alts∈-inv`) `pdU-Idemp?-member-witness` in `Completeness` §8
 -- (proof idea): `dups-≈₀-witness` at the list `pd-alts pdis`
 pd-Idemp?-witness : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   → pd-Idemp? pdis ≡ true
   → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ pd-alts pdis × b ∈ pd-alts pdis × a ≈₀ b )
 pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
 
--- (purpose): the test of §6 reflected *through the member list* — a
+-- (purpose): the test of §4 reflected *through the member list* — a
 --   fired `pd-Idemp?` names two members and one alternative of each,
 --   `≈₀`-equal
--- (used in): the §8.1 statement of `pd-Idemp` — the value-level half of its
+-- (used in): the §6.1 statement of `pd-Idemp` — the value-level half of its
 --   hypothesis unpacking (the positioned half is `dups-≈₀-dups`).
 --   `Completeness`'s `pdU-Idemp?-member-witness` adds `pdU-const`'s
 --   equation (for a `pdU` list the two members have one continuation,
@@ -1003,7 +1005,7 @@ pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
 -- (membership inverses for `map`/`concatMap`; the `pdinstance-oplus`
 --   inversion `∈-oplus⁻` lives with the clause analysis in `cgp.ambig.Soundness`)
 -- (purpose): membership in a mapped list names the preimage
--- (used in): `∈-oplus⁻` (Soundness §8.2), `pd-alts-Dups-w-classify` above
+-- (used in): `∈-oplus⁻` (Soundness §7), `pd-alts-Dups-w-classify` above
 -- (proof idea): induction on the list, reading the `here`/`there` position
 ∈-map⁻ : { A B : Set } ( f : A → B ) ( xs : List A ) ( y : B )
   → y ∈ map f xs
@@ -1015,7 +1017,7 @@ pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
 
 -- (purpose): membership in a concatenated map names the element whose
 --   block carries it
--- (used in): `∈-oplus⁻` (Soundness §8.2), `pd-alts-Dups-w-classify` above
+-- (used in): `∈-oplus⁻` (Soundness §7), `pd-alts-Dups-w-classify` above
 -- (proof idea): induction on the list, splitting each block's `++`
 --   membership with `∈-++-inv`
 ∈-concatMap⁻ : { A B : Set } ( f : A → List B ) ( xs : List A ) ( y : B )
@@ -1030,16 +1032,16 @@ pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
 
 Note what is *not* claimed here: the two records may continue at one expression
 without that expression being syntactically a sum, which is why this is stated
-for members and not read off `dups-≈₀`'s definition.  §6.2's `pd-a3-target` is
+for members and not read off `dups-≈₀`'s definition.  §4.1's `pd-a3-target` is
 exactly that shape — `pdU` fuses the two branch instances, and the flattened
 list still contains `ε ● ($ c \` 4) \` 5` twice — and `pd-a3-Idemp-applied` is
 the computation that this section's lemmas now justify.
 
-## 7. Lifting a criterion from a reachable state (the full form of the paper's criteria)
+## 5. Lifting a criterion from a reachable state (the full form of the paper's criteria)
 
 
 `A1→Ambig` / `A2→Ambig` (in `cgp.ambig.AmbigCheck`) and `Ctx-dup→Ambig`
-(`cgp.ambig.Soundness` §4) cover only the initial state `s = r`, i.e. a path
+(`cgp.ambig.Soundness` §1) cover only the initial state `s = r`, i.e. a path
 of length 0.  The
 Ambiguity Criteria proposition of the paper quantifies over *realizable*
 `s ∈ Desc(r)`: if a criterion fires at a state reached after consuming a
@@ -1103,8 +1105,8 @@ lift-A2→Ambig inj ev inj-inj a2 = lift-Ambig inj ev inj-inj (A2→Ambig _ a2)
 
 -- (purpose): the context lift on its own — an ambiguity of the hole
 --   expression transfers to the filled expression
--- (used in): the §8.1 statement of `pd-Idemp` (the closer a located
---   sum-branch pair composes with); `Ctx-dup→Ambig` (Soundness §4) builds the
+-- (used in): the §6.1 statement of `pd-Idemp` (the closer a located
+--   sum-branch pair composes with); `Ctx-dup→Ambig` (Soundness §1) builds the
 --   same witness inline
 -- (proof idea): `CtxT` embeds the two trees, `CtxT-pres-flat` keeps the
 --   word equation, `CtxT-injective` reflects the disequality
@@ -1144,7 +1146,8 @@ Notes:
 * `A1→Ambig` / `A2→Ambig` / `Ctx-dup→Ambig` are the special cases
   `w = []`, `inj = id` (realizability in the paper's sense is automatic
   here: every project `RE` has a parse tree, `r-∃u`).
-* §6's `pd-pairs→Ambig` / `pd*-pairs→Ambig` is an *already lifted* form of
+* `cgp.ambig.Soundness` §3's `pd-pairs→Ambig` / `pd*-pairs→Ambig`
+  is an *already lifted* form of
   A3: the two parse trees are built directly under the injections, so no
   injectivity hypothesis is needed (the pair sits in different sum branches,
   `LeftU≢RightU`).
@@ -1159,7 +1162,7 @@ Notes:
   criterion fires at `r` — a star has a single empty parse tree, and the
   paper's hole contexts have no hole under a star.
 
-## 8. `Desc(r)` — the paper's states, built from partial derivatives
+## 6. `Desc(r)` — the paper's states, built from partial derivatives
 
 The paper's `Desc(r) = { s | r Descendant s }` is defined by the
 Brzozowski derivative, which `cgp` lacks.  The `posix` `pdU` already
@@ -1204,7 +1207,7 @@ s ∈Desc r = Σ[ w ∈ List Char ] ( derivᵖ r w ≡ just s )
 
 ```
 
-### 8.1. A3 stated verbatim for the initial state
+### 6.1. A3 stated verbatim for the initial state
 
 With `derivᵖ`, the paper's A3 condition for the initial state,
 "`lang(canonic(deriv r x)) ≠ {}` and `Idemp` applied", becomes a
@@ -1216,7 +1219,7 @@ A3? r c with derivᵖ r (c ∷ [])
 ...   | nothing = false
 ...   | just s = proj₂ (canonic s)
 
--- the paper's A3 test fires on the §6.2 example:
+-- the paper's A3 test fires on the §4.1 example:
 -- after consuming 'a' the descendant state
 --   (ε ● ($ 'c' ` 4) ` 5) + (ε ● ($ 'c' ` 7) ` 8) ` 0
 -- is reached, and its canonical representative applies Idemp:
@@ -1235,7 +1238,7 @@ letter-A3?-silent = refl
 
 ```
 
-Caveats (consistent with §6/§7):
+Caveats (consistent with §4/§5):
 
 * `derivᵖ r w` is a *witness term* for the derivative (same language),
   not a syntactic replica of Brzozowski's — stars unfold positionally
@@ -1243,35 +1246,35 @@ Caveats (consistent with §6/§7):
   introduces artificial `+` locations.  The paper's own FST quotients by
   similarity anyway, and `≈₀`/`canonic` are location-insensitive, so
   the A3 *test* is unaffected.
-* The soundness of a fired `A3?` is composed in `cgp.ambig.Soundness` §8.6,
+* The soundness of a fired `A3?` is composed in `cgp.ambig.Soundness` §11,
   unconditionally:
 
   > `pd-Idemp : pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
 
-  Its test hypothesis is fully unpacked (§6.3: the positioned reflection
+  Its test hypothesis is fully unpacked (§4.2: the positioned reflection
   `dups-≈₀-dups : dups-≈₀ xs ≡ true → Dups-w xs` reads a fired scan
   back as a *positioned* duplicate pair — two list positions, not just
   two values (the value-only form is too weak: the same value may
   legitimately occur twice in an unambiguous list); the value-level
   forms `pd-Idemp?-witness` / `pd-Idemp?-member-witness` and
-  `Completeness` §23's `pdU-Idemp?-member-witness` remain as demoted
+  `Completeness` §8's `pdU-Idemp?-member-witness` remain as demoted
   records of the same reflection).  The *classification* is proved
-  (`Dups-w-++-split` + `pd-alts-Dups-w-classify`, this module's §6.3,
+  (`Dups-w-++-split` + `pd-alts-Dups-w-classify`, this module's §4.2,
   instantiated at the example by `pd-alts-classify-a3`): the pair of a fired test either
   sits at two positions of one member's `sum-spine`, or has its earlier
   occurrence in one member's spine and its later occurrence in another's.
-  The first branch is closed in full by Soundness §8.5's
+  The first branch is closed in full by Soundness §10's
   `pdU-member-pair→Ambig`,
   an induction along the clauses of the `pdU` definition —
   configurations (a) and (b) through `spine-pair→Ambig` /
-  `member-pair→Ambig` (Soundness §8.4) and the record lifts (Soundness
-  §8.3), the crossings of a `+` clause through Soundness §6.4's
+  `member-pair→Ambig` (Soundness §9) and the record lifts (Soundness
+  §8), the crossings of a `+` clause through Soundness §5's
   `pd-cross-positions→Ambig` and of the nullable-`●` clause through
-  Soundness §8.5's `pd-cross-●→Ambig` (which closes a
+  Soundness §10's `pd-cross-●→Ambig` (which closes a
   first-factor/empty-first-factor pair by *word* distinctness, `c ∷ _`
   versus `[]` via `flat-[]`, the one place where branch-constructor
   injectivity is unavailable because both records share their input
-  expression).  The second branch is closed by Soundness §8.6's
+  expression).  The second branch is closed by Soundness §11's
   `pdU-2members→Ambig`, a second induction along the `pdU` clauses: the
   classification hands over the *length bound* `2 ≤ length (pdU[ q , c ])`
   (the two members sit at distinct positions of the member list), and
@@ -1284,13 +1287,13 @@ Caveats (consistent with §6/§7):
   node (`A2→Ambig`).  No record-distinctness question arises on this
   branch: the ambiguity comes from the clause structure of the member
   list, not from comparing the pair's values.
-  The `mkfuseInj` gap of §7 does not arise in (a) — the
+  The `mkfuseInj` gap of §5 does not arise in (a) — the
   branch maps are only used through different parent branches.
 
 For the *criteria* themselves the single-expression form is not needed: the
-states are lists of partial derivatives, see §9.
+states are lists of partial derivatives, see §7.
 
-## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)
+## 7. `Desc(r)` as a list of partial derivatives (the pd-native form)
 
 An Antimirov state *is* a set of partial derivatives, so the faithful
 formalization of `Desc(r)` keeps the list and drops `sum-build`/`Maybe`:
@@ -1310,13 +1313,13 @@ ss ∈Descᵖ r = Σ[ w ∈ List Char ] ( pd*-Desc r w ≡ ss )
 
 ```
 
-The three criteria are then tests *on the list*, and §7's `lift-Ambig`
+The three criteria are then tests *on the list*, and §5's `lift-Ambig`
 applies componentwise — every element of `pd*-Desc r w` is the continuation
 of some `pdi : PDInstance* r w`, and `pd*-A1→Ambig` / `pd*-A2→Ambig` /
 `pd*-Ctx-dup→Ambig` are universally quantified over such an instance, so a
 criterion firing at *any* member of the state list already gives `Ambig r`
 (the `pd*-Ctx-dup→Ambig` instance travels with `Ctx-dup→Ambig` in
-`cgp.ambig.Soundness` §7).
+`cgp.ambig.Soundness` §6).
 Only A3 needs an additional list-level test, which is exactly `dups-≈₀` —
 no re-glued expression and no artificial `+` locations involved:
 
@@ -1326,9 +1329,9 @@ no re-glued expression and no artificial `+` locations involved:
 A3-list? : ( r : RE ) → ( w : List Char ) → ( c : Char ) → Bool
 A3-list? r w c = dups-≈₀ (pd*-alts (PosixPD.pdUMany[ r , w ++ (c ∷ []) ]))
 
--- the §6.2 example, in list form: after 'a the state is the single fused
+-- the §4.1 example, in list form: after 'a the state is the single fused
 -- instance whose continuation is the sum of the two equal continuations
--- (the ' + ' carries the location 9 of the source expression, §8's
+-- (the ' + ' carries the location 9 of the source expression, §6's
 -- pd-a3-state differs from it only by the artificial location):
 pd-a3-Descᵖ : ( (ε ● ($ 'c' ` 4) ` 5) + ((ε ● ($ 'c' ` 7) ` 8)) ` 9 ) ∷ []
               ∈Descᵖ pd-a3-target
@@ -1349,7 +1352,7 @@ letter-A3-list?-silent = refl
 
 ```
 
-For one step the list form is the same computation as §6's `pd-Idemp?`:
+For one step the list form is the same computation as §4's `pd-Idemp?`:
 `pdUMany[ r , x ∷ [] ]` is `pdU[ r , x ]` composed with the identity path
 map, and `compose-pdi-with` keeps the continuation of its argument
 (`pdinstance* {p}` with the same `p`), so `pd*-alts` of the one-step state
@@ -1362,20 +1365,20 @@ without ever leaving the partial-derivative setting.
 
 
 
-## 10. The diagnosis disjunction `crit`
+## 8. The diagnosis disjunction `crit`
 
 The completeness half (`cgp.ambig.Completeness`) proves "ambiguous ⇒ some
 realizable state fires a criterion"; its diagnosing lemmas and the pd-state
-soundness reading (`cgp.ambig.Soundness` §25) share one codomain, the
+soundness reading (`cgp.ambig.Soundness` §12) share one codomain, the
 disjunction of the paper's criteria at a state.  It is stated here, next to
 the tests it mentions:
 
 ```agda
 -- the diagnosis disjunction: one of the paper's criteria fires at `p`
 -- (purpose): the single codomain every diagnosing lemma targets
--- (used in): `desc-concl`/`Desc-complete` (Completeness §16), `pick-diff-record-prf`
---   (Completeness §20), the `completeness` statement (Completeness §24), and the
---   `soundness` reading (Soundness §25)
+-- (used in): `desc-concl`/`Desc-complete` (Completeness §6), `pick-diff-record-prf`
+--   (Completeness §7), the `completeness` statement (Completeness §9), and the
+--   `soundness` reading (Soundness §12)
 -- (proof idea): definition — A1/A2 from `AmbigCheck`, the duplicate pattern and
 -- the transition `Idemp` test read under a hole context
 crit : RE → Set
@@ -1396,8 +1399,8 @@ crit p = Sum._⊎_
 -- descent: a positive `Idemp` test on the transition out of `r` is a
 -- criterion at `r` itself.
 -- (purpose): the fourth disjunct at the empty context
--- (used in): `pick-diff-record-prf` (Completeness §20), the `soundness` cases
---   (Soundness §25)
+-- (used in): `pick-diff-record-prf` (Completeness §7), the `soundness` cases
+--   (Soundness §12)
 -- (proof idea): by inspection: `𝟘 , r , c` plugs to `r` at `refl`, and the
 --   hypothesis is exactly the fourth component
 crit-A3-test : ∀ ( r : RE ) ( c : Char )

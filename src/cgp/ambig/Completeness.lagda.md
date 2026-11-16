@@ -1,13 +1,13 @@
 # Completeness of the criteria: the injectivity half
 
-`cgp.ambig.Canonic` §7 proves for each criterion of section 6 of
+`cgp.ambig.Canonic` §5 proves for each criterion of section 6 of
 
 > Martin Sulzmann, Kenny Zhuo Ming Lu. *Derivative-Based Diagnosis of Regular
 > Expression Ambiguity.* CIAA 2016.
 
 that a witness *at a pd-state* lifts to an ambiguity of the original expression
-(`pd*-A1→Ambig`, `pd*-A2→Ambig` in `cgp.ambig.Canonic` §7 and `pd*-Ctx-dup→Ambig`
-in `cgp.ambig.Soundness` §7; all three instances of the master lift `lift-Ambig`).  The top-level reading of the converse —
+(`pd*-A1→Ambig`, `pd*-A2→Ambig` in `cgp.ambig.Canonic` §5 and `pd*-Ctx-dup→Ambig`
+in `cgp.ambig.Soundness` §6; all three instances of the master lift `lift-Ambig`).  The top-level reading of the converse —
 "criterion fires at `r` itself" — fails: for `r = ( a + a · a ) ⋆` the word
 `a a` has two parse trees (`ListU [ a , a ]` and `ListU [ a · a ]`), yet no
 criterion fires at `r` itself — a star has exactly one empty parse tree
@@ -24,31 +24,31 @@ its `AllParseFST` construction:
 > that state is ambiguous — and hence (by the soundness proofs in
 > `cgp.ambig.AmbigCheck`/`cgp.ambig.Canonic`) one of the criteria fires there.
 
-This module proves that direction.  Its arc: state the goal (§8), close its
-base case (§9), build the descent's two machineries — the pd-side plumbing
-(§10) and path structures (§12) — name the one-step facts (§13), reduce the
-goal to a single recursion (§16), make the recursion's stop test computable
-(§20), prove the structural fact that collapses the paper's enumeration
-(§23), and run the recursion with a decidable test (§24).
+This module proves that direction.  Its arc: state the goal (§1), close its
+base case (§2), build the descent's two machineries — the pd-side plumbing
+(§3) and path structures (§4) — name the one-step facts (§5), reduce the
+goal to a single recursion (§6), make the recursion's stop test computable
+(§7), prove the structural fact that collapses the paper's enumeration
+(§8), and run the recursion with a decidable test (§9).
 
-* §8 states the goal of the whole arc — the *completeness* direction proper:
+* §1 states the goal of the whole arc — the *completeness* direction proper:
   given distinct parse trees `u ≢ v` of `r` for one word, some pd-descendant
   state reached by a prefix of that word carries a criterion (`crit`, the
   four-branch diagnosis disjunction — A1, A2, the duplicate pattern, the
-  transition `Idemp` test — defined in `cgp.ambig.Canonic` §10).  The goal is stated here and its signature and
-  body are §24's, assembled through §16's `completeness-from-desc`.
-* §9 is the base case of the descent: two distinct parse trees with empty
+  transition `Idemp` test — defined in `cgp.ambig.Canonic` §8).  The goal is stated here and its signature and
+  body are §9's, assembled through §6's `completeness-from-desc`.
+* §2 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
   expression — via `flat`'s language component, `Word.[]∈⟦r⟧→ε∈r` and
   `mkAllEmptyU-complete`.
-* §10 is the descent's pd-side plumbing: `chain*` (advances of a single
+* §3 is the descent's pd-side plumbing: `chain*` (advances of a single
   instance) is `pdUMany-aux` on the singleton list (`chain-aux`); the
   equations the letter step uses (`aux-concatMap`, `concatMap-compose`,
   `concatMap-∷[]-id`, `map-Any`) hold by induction on the run, every
   `pdUMany-aux` case going through `rewrite (++-identityʳ …)`.
-* §12 is the descent's path structure: a `Path` is a chain of letter
+* §4 is the descent's path structure: a `Path` is a chain of letter
   instances carrying their `pdU` memberships as fields — never case-split,
-  which is what sidesteps the stuck-computed-list obstacle of §10 — and its
+  which is what sidesteps the stuck-computed-list obstacle of §3 — and its
   run-lift is proved (`path-chain` composes the steps with
   `compose-pdi-with`, exactly as `advance-pdi*-with-c` does; `path-chain∈`
   puts the composed instance in the `chain*` list that contains it;
@@ -58,25 +58,25 @@ goal to a single recursion (§16), make the recursion's stop test computable
   lists, which *fuses* when both sides derive, so a path below one branch
   does not extend through the sum head — paths are anchored at the state the
   descent stands in.
-* §13 is the one letter step's facts: a member of an instance list with its
+* §5 is the one letter step's facts: a member of an instance list with its
   witness (`pick-Any` — the list must be a parameter, since at the call
   sites it is the stuck `pdU[ r , c ]`), and the residual tree of a
   reconstruction with its forced word (`Recons-residual`, read off the
   instance's own soundness evidence, no `flat∘unflat`).
-* §16 states what is left as one named hypothesis.  `Desc-complete` is the
+* §6 states what is left as one named hypothesis.  `Desc-complete` is the
   single-expression form of the descent (two trees of one `r`, pick-only,
   never asking whether a list is empty), `desc-concl` its conclusion; its
-  base is §9's `base-A1-at-root` (`desc-base`), its one-instance step is
-  proved (`desc-step`, extending the path by `pcons`).  §8's statement then
+  base is §2's `base-A1-at-root` (`desc-base`), its one-instance step is
+  proved (`desc-step`, extending the path by `pcons`).  §1's statement then
   follows from `Desc-complete` through `pdesc` (`completeness-from-desc`):
   the whole completeness direction is reduced to running the recursion.
-* §20 names the recursion's two stop facts: the residual of a
+* §7 names the recursion's two stop facts: the residual of a
   reconstruction as a term (`residual`, `residual-word`), and the A3 rule —
   two *distinct* members of one `pdU[ r , c ]` continuing at one expression
   make the criterion fire at `r` (`pick-diff-record-prf`, via
   `Canonic.pd-Idemp?-members`: the member list then holds two entries with
   one continuation, exactly what `Canonic`'s `Idemp` test reads).
-* §23 proves the structural fact that collapses the paper's enumeration: in
+* §8 proves the structural fact that collapses the paper's enumeration: in
   this formalization *all members of `pdU[ r , c ]` continue at one
   expression* (`pdU-const`, by induction over the `pdU` clauses — each maps
   its sublists through constructor maps that respect continuations
@@ -84,7 +84,7 @@ goal to a single recursion (§16), make the recursion's stop test computable
   POSIX `pdinstance-oplus` only ever joins constant lists (`oplus-const`)).
   Two picks therefore never continue at *different* expressions, and the
   descent is left with one question only: are the two picks *one record*?
-* §24 closes the goal with no postulate: the descent never needs record
+* §9 closes the goal with no postulate: the descent never needs record
   identity — what its two branches use it for is choosing between continuing
   through one shared transition and firing the criterion, and that choice is
   decidable on the *residual trees*: both residuals sit at one expression
@@ -92,14 +92,14 @@ goal to a single recursion (§16), make the recursion's stop test computable
   tree identity there is `ParseTree._⊢_≟_`.  Different residuals: continue
   through one member; equal residuals: the records cannot have been equal
   (one record maps distinct trees to distinct residuals — `diff-records-≟`),
-  which is the A3 configuration closed by §20's `pick-diff-record-prf`.
-  `desc-picks-≟` instantiates §16's `Desc-complete` (`Desc-complete-≟`), and
-  `completeness-from-desc` proves §8's `completeness`.
+  which is the A3 configuration closed by §7's `pick-diff-record-prf`.
+  `desc-picks-≟` instantiates §6's `Desc-complete` (`Desc-complete-≟`), and
+  `completeness-from-desc` proves §1's `completeness`.
 ```agda
 -- `data Path` is strictly positive by inspection (`pcons` carries it only in
 -- argument position), but Agda 2.7.0.1's positivity checker false-positives on
 -- it through the `subst` motive in `path-chain∈`'s type (and the descent's
--- transports in §24) once the module is instantiated (agda/agda#7669, fixed
+-- transports in §9) once the module is instantiated (agda/agda#7669, fixed
 -- in 2.8.0), so the check is off here
 {-# OPTIONS --rewriting --no-positivity-check #-}
 module cgp.ambig.Completeness where
@@ -158,7 +158,7 @@ open import Relation.Nullary using (¬_; Dec ; yes ; no)
 open import Data.Bool using (true)
 ```
 
-## 8. The goal: the completeness direction, stated
+## 1. The goal: the completeness direction, stated
 
 The reading the earlier modules give is the easy direction (`Canonic.lift-Ambig`:
 a criterion at a pd-state lifts to an ambiguity of the original expression).
@@ -167,15 +167,15 @@ What is stated here is the other one — the paper's proposition, section 6:
 > given an ambiguity of `r` — two distinct parse trees for one word — the word
 > has a prefix whose pd-states include one at which a criterion fires.
 
-The diagnosis disjunction is defined once — in `cgp.ambig.Canonic` §10, shared
+The diagnosis disjunction is defined once — in `cgp.ambig.Canonic` §8, shared
 with the soundness reading — since every later section states its result in
 terms of it: the first two disjuncts are the paper's A1 and A2
-(`cgp.ambig.AmbigCheck` §3, §4), the third is the `Idemp` *pattern* (a sum with
+(`cgp.ambig.AmbigCheck` §2, §3), the third is the `Idemp` *pattern* (a sum with
 `≈₀`-equal members under a hole context — the shape `Canonic.Ctx-dup→Ambig`
 consumes), the fourth is A3 proper: the `Idemp` *test* firing on a transition out
 of a state, again read under a hole context, since the paper's criteria range
 over descendants `s ∈ Desc(r)` and a hole context is what this project has of
-that (`cgp.ambig.Canonic`'s `pd-Idemp?`; `cgp.ambig.Canonic` §8 shows that is
+that (`cgp.ambig.Canonic`'s `pd-Idemp?`; `cgp.ambig.Canonic` §6 shows that is
 the right shape and what it fires on).  The stability of the disjuncts under
 plugging a hole context (`A2-Ctx`, `dup-Ctx`, `A3-Ctx`) was developed with the
 split case in the version of this module that included it; nothing below needs
@@ -183,22 +183,22 @@ that transport — the descent always fires the criterion *at the state it stand
 in*.
 
 This disjunction and the empty-context injection `crit-A3-test` live in
-`cgp.ambig.Canonic` §10 (the soundness reading, `cgp.ambig.Soundness` §25,
+`cgp.ambig.Canonic` §8 (the soundness reading, `cgp.ambig.Soundness` §12,
 shares them); they are imported below.
 
 To fill this for an *arbitrary* pair `( u , v )` one has to *find* the
 prefix `w′` — the paper's `AllParseFST` argument over parse trees of the
 word.  It is not formalized here (like the realizable-states / FST side of
-the paper), and this is the actual research gap of the program.  §16 reduces
+the paper), and this is the actual research gap of the program.  §6 reduces
 this statement to one named hypothesis, `Desc-complete`: its two cases are
 `pdesc pnil` at the state itself and `pdesc` of the path the descent returns,
-so nothing else stands between that hypothesis and this statement.  §20 names
-the two facts a run of the descent needs to stop on, §23 shows one of the
+so nothing else stands between that hypothesis and this statement.  §7 names
+the two facts a run of the descent needs to stop on, §8 shows one of the
 two configurations the earlier versions branched on cannot occur at all, and
-§24 supplies the remaining decision as a computation on residuals — the
-signature and the assembled body of `completeness` are at the end of §24.
+§9 supplies the remaining decision as a computation on residuals — the
+signature and the assembled body of `completeness` are at the end of §9.
 
-## 9. Toward the general proof: the base case of the descent
+## 2. Toward the general proof: the base case of the descent
 
 The general `completeness` above is proved by following the two trees through
 their common word letter by letter (the paper's `AllParseFST` argument).  Its
@@ -225,7 +225,7 @@ two-distinct-members→len≥2 [] () _ _
 -- two distinct parse trees of r for the empty word ⇒ A1 fires at r
 -- (purpose): the descent's base case — at a final state, distinct empty trees
 --   *are* an A1 witness, for any expression
--- (used in): `desc-base` (§16), the empty-word clause of the descent
+-- (used in): `desc-base` (§6), the empty-word clause of the descent
 -- (proof idea): the empty word of `r` makes `r` nullable (`Word.[]∈⟦r⟧→ε∈r`);
 --   `mkAllEmptyU` then enumerates *all* empty trees of `r`
 --   (`mkAllEmptyU-complete`), so `u` and `v` are two distinct members of that
@@ -256,13 +256,13 @@ priori the recursion has to run on a pair of states as in the paper's
 whose two sides eventually merge or split (the merge = A1 by the base case
 just proved; a split at a sum or a duplicated subterm = A2 / the `Idemp`
 pattern).  That pair machinery was indeed built once, in the version of this
-module that developed the split case; what §23 shows is that it is *not
+module that developed the split case; what §8 shows is that it is *not
 needed* here: in this formalization every instance of `pdU[ r , c ]`
 continues at one and the same expression, so the two picks never part into
 two states — the descent stays single-state, and only the merge half of the
 pair argument, the base case proved above, is ever reached.
 
-## 10. Walking pd paths (the descent's plumbing)
+## 3. Walking pd paths (the descent's plumbing)
 
 The letter step of the descent reads an IH that lives at a *continuation
 state* and must be heard from the *whole expression*: if the word `pref`
@@ -285,7 +285,7 @@ added as a rewrite rule next to the project-wide `∷ʳ-++`; both are used
 exactly as `pdUMany-aux` itself uses them.  (The transfer from a reachable
 instance to a `pd*-Desc` membership of the concatenation — the lemma this
 section used to state as `chain-in-aux` / `chain-in-pd*-Desc` — survives in
-path form as §12's `pdesc`, which is what the descent actually calls.)
+path form as §4's `pdesc`, which is what the descent actually calls.)
 
 ```agda
 -- concatMap f distributes over ++
@@ -332,7 +332,7 @@ concatMap-∷[]-id : ∀ {A : Set} (ys : List A)
 concatMap-∷[]-id [] = refl
 concatMap-∷[]-id (y ∷ ys) = cong (y ∷_) (concatMap-∷[]-id ys)
 -- (purpose): transport a membership witness through `map`
--- (used in): `path-chain∈` and `pdesc` (§12) — membership of the composed
+-- (used in): `path-chain∈` and `pdesc` (§4) — membership of the composed
 --   path instance in the run list
 -- (proof idea): map the `Any` proof pointwise: `here`/`there` both preserve
 --   position
@@ -366,7 +366,7 @@ aux-concatMap {r} {pref} (c ∷ cs) g zs = trans
               (λ z → refl) ) )
 -- (purpose): advances of a *single* instance over a suffix — the descent's
 --   walk in list form, mirroring `pdUMany-aux`'s recursion
--- (used in): `chain-aux` below, `path-chain∈` and `pdesc` (§12)
+-- (used in): `chain-aux` below, `path-chain∈` and `pdesc` (§4)
 -- (proof idea): definition — unfold `pdUMany-aux`'s clause for one instance
 chain* : ∀ {r : RE} {pref : List Char}
   → ( pdi : PDI.PDInstance* r pref ) → ( suff : List Char )
@@ -379,7 +379,7 @@ chain* {r} {pref} pdi (c ∷ cs)
 -- (purpose): the single-instance chain *is* the multi-instance run on the
 --   singleton list — the equation that turns a path's chain into membership of
 --   the real computed list `pdUMany[ r , w ]`
--- (used in): `pdesc` (§12), via the `subst` over this equation
+-- (used in): `pdesc` (§4), via the `subst` over this equation
 -- (proof idea): induction on the suffix; the empty-suffix case needs
 --   `rewrite (++-identityʳ pref)` because `pdUMany-aux` at `[]` is defined on
 --   the reduct of `pref ++ []`, and the step rewrites the advance list with
@@ -400,18 +400,18 @@ chain-aux {r} {pref} pdi (c ∷ cs) = trans
              (concatMap-∷[]-id (PosixPD.advance-pdi*-with-c {r} {pref} {c} pdi)) ) )
 ```
 
-## 12. Descent paths and their run-lift
+## 4. Descent paths and their run-lift
 
 The conclusion the descent's induction hypothesis hands back is not a bare
 `pd*-Desc` membership but a witness of *how the state was reached*: a
 chain of letter instances carrying their `pdU` memberships as fields.
-That is the `Path` structure below — it sidesteps the §10 stuck-list
+That is the `Path` structure below — it sidesteps the §3 stuck-list
 obstacle entirely, since every transfer along a path is by construction
 and no membership is ever case-split.  The run-lift is proved here:
 `path-chain` composes a path's steps into one `PDInstance*`, `path-chain∈`
-shows the composition is a member of the `chain*` list §10 defined,
+shows the composition is a member of the `chain*` list §3 defined,
 `path-chain-pd` tracks the end state (`pdend`), and `pdesc` turns all of
-it into the `pd*-Desc` membership §16's reduction consumes.  (The `Any`
+it into the `pd*-Desc` membership §6's reduction consumes.  (The `Any`
 combinator lemmas the membership proof runs on — `any-++₂`, `any++₁`,
 `any-concatMap` — are here too.)
 One structural fact shapes how
@@ -435,8 +435,8 @@ that machinery.)
 -- pdU membership as a field (never to be case-split)
 -- (purpose): a *witness of how a state was reached*: a chain of letter
 --   instances, so the descent can transfer conclusions along it without ever
---   splitting a computed `pdU`/`pdUMany` list (the §10 stuck-term obstacle)
--- (used in): `desc-concl`/`desc-step` (§16) carry it; `pdesc` below converts
+--   splitting a computed `pdU`/`pdUMany` list (the §3 stuck-term obstacle)
+-- (used in): `desc-concl`/`desc-step` (§6) carry it; `pdesc` below converts
 --   it to a `pd*-Desc` membership
 -- (proof idea): data — membership is stored at construction, so no lemma ever
 --   has to ask whether a list is empty
@@ -450,7 +450,7 @@ data Path : ( r : RE ) → ( w : List Char ) → Set where
 -- the state a path ends in
 -- (purpose): read the end state off a path
 -- (used in): `pdesc` below (the member it names), `completeness-from-desc`
---   (§16) (the state claimed in the conclusion)
+--   (§6) (the state claimed in the conclusion)
 -- (proof idea): recursion on the path; the equations compose with
 --   `path-chain-pd` below
 pdend : ∀ { r w } → Path r w → RE
@@ -543,11 +543,11 @@ path-chain-pd {r} {pref} (pdinstance* {d} d→r ev)
 
 -- the run-lift bridge in path form: a path from r is a run of r for its
 -- word, so its end state appears in pd*-Desc r w.
--- (purpose): turn the descent's path into the `pd*-Desc` membership §8's
+-- (purpose): turn the descent's path into the `pd*-Desc` membership §1's
 --   conclusion asks for
--- (used in): `completeness-from-desc` (§16) — both of its cases
+-- (used in): `completeness-from-desc` (§6) — both of its cases
 -- (proof idea): the path instance is a member of `chain* hd₀ w` through
---   `path-chain∈`, and `chain-aux` (§10) identifies that singleton run
+--   `path-chain∈`, and `chain-aux` (§3) identifies that singleton run
 --   with `pdUMany[ r , w ]` itself; `path-chain-pd` names the member's
 --   expression.  (The alternative route through a
 --   generic composition-after-a-run operator would first need the syntactic
@@ -567,7 +567,7 @@ pdesc {r} π@(pcons {c = c} {ws = ws} z m q) =
     hd₀ = pdinstance* {r} {r} {[]} injId injId-sound
 ```
 
-## 13. The letter step's facts: picking and residuals
+## 5. The letter step's facts: picking and residuals
 
 Both trees of the pair consume the same first letter, so `pdU-complete`
 turns each of them into a member of *its own* expression's instance list
@@ -581,7 +581,7 @@ word *forced* to be the tail (`Recons-residual`).
 ```agda
 -- (purpose): extract a concrete member of an instance list with its witness
 --   and its membership — the descent's pick
--- (used in): `desc-picks-≟` (§24), on both `pdU-complete` results
+-- (used in): `desc-picks-≟` (§9), on both `pdU-complete` results
 -- (proof idea): recursion on the `Any`, carrying the membership through
 --   `there`.  The list is a
 -- parameter and not the stuck term `pdU[ r , c ]` of the call sites: the
@@ -596,8 +596,8 @@ pick-Any (there {xs = xs} p) with pick-Any p
 -- (purpose): read the *residual tree* off a reconstruction witness — its word
 --   is *forced* to be the tail, because the instance's soundness evidence
 --   prefixes the same letter on both sides
--- (used in): `residual`/`residual-word` (§20), which feed the whole descent
---   of §24
+-- (used in): `residual`/`residual-word` (§7), which feed the whole descent
+--   of §9
 -- (proof idea): `unflat` the word witness from the `Recons` completeness
 --   component; the word equation is `∷-inj` applied to the instance's own
 --   evidence composed with the reconstruction equation.  No `flat∘unflat`
@@ -630,8 +630,8 @@ branch pair in the sum's list and its continuation equation (`pdU∈-⊕`,
 `pd-expr-fuse-⊕`), and the closed split forms firing A1/A3 at sums
 (`split-+-A1`, `crit-ε+`, `crit-+ε`, `crit-$$`) — was developed in the
 split-case half of this module and needed the path anchored at the sum
-itself for exactly this reason.  The single-expression descent of §16 never
-threads between two expressions, so it needs none of them: §23 proves the
+itself for exactly this reason.  The single-expression descent of §6 never
+threads between two expressions, so it needs none of them: §8 proves the
 strictly stronger property — *all* members of `pdU[ r , c ]`, fused or not,
 continue at one expression.)
 
@@ -641,14 +641,14 @@ one member only below a nullable concatenation, where
 left factor — the paper's "these are the only situations" in counting
 form, and the configuration the second criterion exists for.)
 
-## 16. The remaining step, stated exactly
+## 6. The remaining step, stated exactly
 
 The general `completeness` is the case where both trees live in **one**
 expression `r`, so the descent has to stay inside `r`'s own states: at each
 letter it picks *one* member of `pdU[ r , c ]` per tree and recurses at that
 member's continuation — never asking whether a list is empty, never switching
 expressions.  Stating that single-expression recursion as one named
-hypothesis (`Desc-complete`) is the reduction: §8's statement follows from it
+hypothesis (`Desc-complete`) is the reduction: §1's statement follows from it
 by reading the recursion's path as a `pd*-Desc` membership (`pdesc`), and
 everything after this section is about discharging the hypothesis.
 
@@ -657,7 +657,7 @@ everything after this section is about discharging the hypothesis.
 -- (purpose): the descent's codomain — a criterion *here*, or one at the end
 --   of an explicit path, with the word split at the path's length
 -- (used in): `desc-base`/`desc-step` below, `Desc-complete`, and through them
---   the whole of §24
+--   the whole of §9
 -- (proof idea): definition — a sum with the path carried as a field, so no
 --   membership of a computed list ever has to be examined
 desc-concl : ( r : RE ) → ( w : List Char ) → Set
@@ -668,12 +668,12 @@ desc-concl r w = crit r
 -- the single-expression descent, as one named hypothesis: for *one* `r`,
 -- two trees of one word can be walked letter by letter through `r`'s own
 -- states until a criterion is found
--- (purpose): the whole completeness direction in one case — the §8 statement
---   is derived from this alone (§16's reduction)
+-- (purpose): the whole completeness direction in one case — the §1 statement
+--   is derived from this alone (§6's reduction)
 -- (used in): `completeness-from-desc` below; instantiated by
---   `Desc-complete-≟` (§24)
+--   `Desc-complete-≟` (§9)
 -- (proof idea): a recursion on the word; its two structural halves are
---   `desc-base`/`desc-step` below, and §24 supplies the decision the step
+--   `desc-base`/`desc-step` below, and §9 supplies the decision the step
 --   needs
 Desc-complete : Set
 Desc-complete = ∀ ( r : RE ) ( w : List Char ) ( u v : U r )
@@ -683,13 +683,13 @@ Desc-complete = ∀ ( r : RE ) ( w : List Char ) ( u v : U r )
 
 `Desc-complete` is a recursion on the word, and both structural halves of
 that recursion are proved here; what is missing is the decision inside the
-step — which it is discharged by in §23–§24.
+step — which it is discharged by in §8–§9.
 
 ```agda
--- the base: two distinct empty trees of `r` *are* A1 at `r` (§9)
+-- the base: two distinct empty trees of `r` *are* A1 at `r` (§2)
 -- (purpose): the empty-word clause of the descent
--- (used in): `desc-picks-≟` (§24)
--- (proof idea): §9's `base-A1-at-root`, injected twice into `desc-concl`
+-- (used in): `desc-picks-≟` (§9)
+-- (proof idea): §2's `base-A1-at-root`, injected twice into `desc-concl`
 desc-base : ∀ { r : RE } ( u v : U r )
   → proj₁ (flat {r} u) ≡ [] → proj₁ (flat {r} v) ≡ [] → ¬ ( u ≡ v )
   → desc-concl r []
@@ -700,7 +700,7 @@ desc-base u v u≡[] v≡[] u≢v = inj₁ (inj₁ (base-A1-at-root _ u v u≡[]
 -- split by one letter.  Note that it constructs no instance of the
 -- continuation and examines no list.
 -- (purpose): the descent's only recursive clause
--- (used in): `desc-picks-≟` (§24), the different-residuals branch
+-- (used in): `desc-picks-≟` (§9), the different-residuals branch
 -- (proof idea): `pcons` the step's stored membership onto the path the
 --   recursive call returns; the word split moves one letter, and a stop at
 --   the continuation becomes the one-letter prefix `[ c ]`
@@ -731,18 +731,18 @@ with no concatenation in the expression at all — and what saves the argument
 there is that the two derivations differ by an injection through a sum of
 `≈₀`-similar alternatives, exactly the `Idemp`/A3 situation: `crit`'s fourth
 disjunct, the transition test `Canonic.pd-Idemp?`.  So the classification runs
-through that disjunct — and §23 shows the counting guess was in fact the whole
+through that disjunct — and §8 shows the counting guess was in fact the whole
 truth about *continuations*: whatever the multiplicity, all members of
 `pdU[ r , c ]` continue at one expression, so the "different states" case never
 arises.
 
-What is proved is the reduction: the §8 goal is a corollary of `Desc-complete`,
+What is proved is the reduction: the §1 goal is a corollary of `Desc-complete`,
 because a path is a `pd*-Desc` membership (`pdesc`) and the state itself is the
 pd-descendant of the empty prefix.
 
 ```agda
--- (purpose): the reduction — derive §8's goal from `Desc-complete`
--- (used in): `completeness` below (§24)
+-- (purpose): the reduction — derive §1's goal from `Desc-complete`
+-- (used in): `completeness` below (§9)
 -- (proof idea): run the descent on the whole word and read its output: the
 --   criterion-at-state case is `pdesc pnil` at `r` itself, the path case is
 --   `pdesc` of the returned path with `pdend` as the witness state
@@ -758,7 +758,7 @@ completeness-from-desc dc r u v w≡ u≢v with dc r (proj₁ (flat {r} u)) u v 
     = ( w′ , w″ , w≡w′++w″ , ( pdend path , pdesc path , cr ) )
 ```
 
-## 20. The pick test, made computable
+## 7. The pick test, made computable
 
 The one decision the step of the recursion cannot avoid is identity of
 *records*: `pdinstance` stores its transition as a function field
@@ -766,26 +766,26 @@ The one decision the step of the recursion cannot avoid is identity of
 decision is *for*, though, is two stop configurations, and this section names
 both sides of them as terms and as theorems: the residual of a
 reconstruction and its word (`residual`, `residual-word`, read off
-§13's `Recons-residual`), and the fact that the second configuration — two
+§5's `Recons-residual`), and the fact that the second configuration — two
 *distinct* records of `pdU[ r , c ]` continuing at one expression — fires the
 fourth disjunct of `crit` *by computation*
 (`pick-diff-record-prf`, via `Canonic.pd-Idemp?-members`: the member list
 then holds two entries with one continuation, exactly what `Canonic`'s
 `Idemp` test reads).  The first configuration — the two picks continuing at
-*different* expressions — is the one §23 rules out; the record decision
-itself is what §24 replaces by a decidable question.
+*different* expressions — is the one §8 rules out; the record decision
+itself is what §9 replaces by a decidable question.
 
 ```agda
 -- (purpose): the residual tree of a reconstruction, as a term at the
 --   instance's continuation
--- (used in): the test and the recursive call of `desc-picks-≟` (§24)
--- (proof idea): first projection of `Recons-residual` (§13)
+-- (used in): the test and the recursive call of `desc-picks-≟` (§9)
+-- (proof idea): first projection of `Recons-residual` (§5)
 residual : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u : U r }
   → Recons {r} {c} u z → proj₁ (flat {r} u) ≡ c ∷ ws → U (Canonic.pd-expr z)
 residual u∈ u≡ = proj₁ (Recons-residual u∈ u≡)
 
 -- (purpose): the residual's word *is* the tail of the pair's word
--- (used in): the recursive call of `desc-picks-≟` (§24)
+-- (used in): the recursive call of `desc-picks-≟` (§9)
 -- (proof idea): second projection of `Recons-residual`
 residual-word : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u : U r }
   ( u∈ : Recons {r} {c} u z ) ( u≡ : proj₁ (flat {r} u) ≡ c ∷ ws )
@@ -793,7 +793,7 @@ residual-word : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance 
 residual-word u∈ u≡ = proj₂ (Recons-residual u∈ u≡)
 ```
 
-The shape §24's descent takes its branches from: were the record decision
+The shape §9's descent takes its branches from: were the record decision
 available, a `yes` would send the pair through the shared record — one
 `Recons-residual` per tree at one state, and `desc-step` lifting whatever
 the recursion finds there — and a `no` would end the step at one of two
@@ -804,10 +804,10 @@ fourth disjunct, and it is a theorem, not a rule:
 ```agda
 -- (purpose): two *distinct* members of `pdU[ r , c ]` with one continuation
 --   make the fourth disjunct of `crit` fire at `r` — the A3 stop, as a theorem
--- (used in): `desc-picks-≟`'s equal-residuals branch (§24)
+-- (used in): `desc-picks-≟`'s equal-residuals branch (§9)
 -- (proof idea): `Canonic.pd-Idemp?-members` turns two distinct members with
 --   equal continuations into a positive `Idemp` test on the real list, and
---   `crit-A3-test` (§8) injects it
+--   `crit-A3-test` (`cgp.ambig.Canonic` §8) injects it
 pick-diff-record-prf : ∀ { r : RE } { c : Char }
   ( z z′ : PDInstance r c )
   → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
@@ -822,14 +822,14 @@ pick-diff-record-prf {r} {c} z z′ z∈ z′∈ z≢z′ eq =
 The record case — one letter, two members, one continuation — is here made
 precise, and it is a theorem, not a rule: two *distinct* members continuing
 at one expression leave a repeated alternative in the flattened continuations
-(`Canonic.pd-Idemp?-members`, `cgp.ambig.Canonic` §6.3), which is exactly what
+(`Canonic.pd-Idemp?-members`, `cgp.ambig.Canonic` §4.2), which is exactly what
 `Idemp` would merge, and the A3 test fires at *this* transition.  So the only
 part of the step that is not already a computation is the choice *between* the
-continuation cases — and §23 shows the configuration where they genuinely
-differ cannot occur, while §24 discharges the choice itself by a decidable
+continuation cases — and §8 shows the configuration where they genuinely
+differ cannot occur, while §9 discharges the choice itself by a decidable
 test on residuals.
 
-## 23. One continuation per transition
+## 8. One continuation per transition
 
 The descent's step turns on a single property of this project's derivative
 list.  The POSIX merging (`pdinstance-oplus`, applied in the sum clause and in
@@ -839,20 +839,20 @@ only when the transition leaves `l ● s` with nullable `l` — one member per e
 tree of the left factor, which is the second criterion's own configuration —
 and *all members of `pdU[ r , c ]` continue at one and the same
 expression*.  Two picks therefore never continue at *different* expressions,
-and the descent of §20 runs with only the record decision left.  That decision
+and the descent of §7 runs with only the record decision left.  That decision
 is what this section cannot supply — `pdinstance` stores a function field —
-and §24 shows
+and §9 shows
 the descent does not need it: an equivalent question on residual trees is
-decidable.  With it the §8 statement follows through §16's
+decidable.  With it the §1 statement follows through §6's
 `completeness-from-desc`.
 
 The result also places this file precisely against the paper's diagnosis.  The
 proof walks the pair to the state reached by the *whole* word, and there
-§9's `base-A1-at-root` reads the two empty trees as A1: a criterion does fire, at the
+§2's `base-A1-at-root` reads the two empty trees as A1: a criterion does fire, at the
 latest possible state.  The A2/A3 machinery of `cgp.ambig.AmbigCheck` and
 `cgp.ambig.Canonic` is what finds a criterion
 *earlier* — at the transition where the pair first separates, which is what
-the paper's enumeration is for (this module's §20 theorem
+the paper's enumeration is for (this module's §7 theorem
 `pick-diff-record-prf` is one instance of it); it sharpens the diagnosis, and
 the completeness
 direction itself does not depend on it.
@@ -869,7 +869,7 @@ direction itself does not depend on it.
   ( subst ( λ L → y ∈ L ) (sym (cong concat (map-id xss))) y∈ )
 
 -- (purpose): the property "every two members of this list continue at the
---   same expression" — the invariant §23 proves for all `pdU` lists
+--   same expression" — the invariant §8 proves for all `pdU` lists
 -- (used in): every clause of `pdU-const` below
 -- (proof idea): definition — a universal statement over memberships
 PdConst : ( r : RE ) ( c : Char ) → List ( PDInstance r c ) → Set
@@ -1094,7 +1094,7 @@ snd-list-const {l} {s} {ε∈l} {loc} {c} u =
 -- (purpose): THE structural fact: every two members of `pdU[ r , c ]`
 --   continue at the same expression — the transition list behaves like the
 --   paper's single derivative expression `deriv s x`
--- (used in): `desc-picks-≟` and `diff-records-≟` (§24) — it places both
+-- (used in): `desc-picks-≟` and `diff-records-≟` (§9) — it places both
 --   residuals at one expression, where equality is decidable
 -- (proof idea): induction on `r`: each clause maps a constant list or
 --   oplus's two constant lists — constant by `map-const` (the constructor
@@ -1144,7 +1144,7 @@ pdU-const ( l ● s ` loc ) c z z′ z∈ z′∈ with RE.ε∈? l
 --   `≈₀` pair lies inside the `sum-spine` of *one* member's continuation
 --   (Canonic's `pd-Idemp?-member-witness` names two members; `pdU-const`
 --   identifies their continuations, so they are one)
--- (used in): the counterexample remark in `cgp.ambig.Soundness` §25
+-- (used in): the counterexample remark in `cgp.ambig.Soundness` §12
 -- (proof idea): invert the memberships through `Canonic.pd-alts∈-inv`,
 --   transport the second alternative along `pdU-const`'s equation
 pdU-Idemp?-member-witness : ∀ { q : RE } { c : Char }
@@ -1170,9 +1170,9 @@ pdU-Idemp?-member-witness {q} {c} eq
             , a≈₀b ) ) ) )
 ```
 
-## 24. The record decision, computed: the completeness direction, closed
+## 9. The record decision, computed: the completeness direction, closed
 
-The one question §23 leaves is whether the two picks are *one record*.  As
+The one question §8 leaves is whether the two picks are *one record*.  As
 stated that question has no decision procedure — `pdinstance` stores a function
 (`U p → U r`), so record identity is intensional — and a decision would mean
 quotienting instances by pattern (the `Cast`/`≈₀` machinery is the natural
@@ -1185,10 +1185,10 @@ transport along one equation, live at the same expression, and tree identity at
 one expression is decidable (`ParseTree._⊢_≟_`).
 
 - *different residuals*: the descent continues — at the single reached state,
-  through the single member `z`, exactly as §20's `desc-step` does;
+  through the single member `z`, exactly as §7's `desc-step` does;
 - *equal residuals*: the two records cannot have been one: a single record maps
   distinct trees to distinct residuals, so equal residuals mean *two distinct
-  members with one continuation* — the A3 configuration, closed by §20's
+  members with one continuation* — the A3 configuration, closed by §7's
   `pick-diff-record-prf`.
 
 In `diff-records-≟` the claim's two transports cancel in a single clause: the
@@ -1266,20 +1266,20 @@ desc-picks-≟ r (c ∷ ws) u v u≡ v≡ u≢v
           y  = subst ( λ e → U e ) q ( residual rec-r v≡ )
           y≡ = trans (flat-resp q (residual rec-r v≡)) (residual-word rec-r v≡)
 
--- (purpose): discharge §16's hypothesis — the completeness direction, closed
+-- (purpose): discharge §6's hypothesis — the completeness direction, closed
 --   with no postulate at all
 -- (used in): `completeness` below
--- (proof idea): §23's `pdU-const` supplies the shared continuation, the
+-- (proof idea): §8's `pdU-const` supplies the shared continuation, the
 --   residual test replaces the record decision: `desc-picks-≟` *is* a
 --   `Desc-complete`
 Desc-complete-≟ : Desc-complete
 Desc-complete-≟ r w u v = desc-picks-≟ r w u v
 
--- §8's goal, stated here at its proof: given distinct parse trees of one
+-- §1's goal, stated here at its proof: given distinct parse trees of one
 -- word, a pd-descendant state of a prefix carries a criterion.
 -- (purpose): the completeness direction — the module's theorem
 -- (used in): the module's statement
--- (proof idea): §16's `completeness-from-desc` applied to `Desc-complete-≟`
+-- (proof idea): §6's `completeness-from-desc` applied to `Desc-complete-≟`
 completeness : ∀ { r : RE }
   → ( u v : U r )
   → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
@@ -1291,7 +1291,8 @@ completeness : ∀ { r : RE }
 completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v w≡ u≢v
 
 -- What the `crit p` of the conclusion means: each disjunct is the hypothesis
--- of one soundness lemma of `cgp.ambig.Canonic` (§4/§6.1/§7), so the
+-- of one soundness lemma of `cgp.ambig.Soundness` (§1/§3/§6)
+--   or of `cgp.ambig.Canonic` §5, so the
 -- conclusion says "some reachable state satisfies the input condition of a
 -- soundness lift":
 --
@@ -1307,19 +1308,19 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --        → taken by no soundness lemma.  A3's soundness lemma is
 --          pd-pairs→Ambig / pd*-pairs→Ambig: its hypothesis is the *pair of
 --          derivative records* (instances of the two branches of one sum with
---          ≈₀-equal continuations), not the boolean test.  Canonic §6.3
+--          ≈₀-equal continuations), not the boolean test.  Canonic §4.2
 --          reflects the fired scan into an ≈₀ pair at located positions of
 --          `pd-alts` (`pd-Idemp?-witness`, and position-preservingly as
 --          `Dups-w` via `dups-≈₀-dups`), and `pd-Idemp?-members` goes the
 --          other way (a real duplicate pair makes the scan answer `true`,
---          which is what §20/§22's stop needs), and §23's
+--          which is what §7's stop needs), and §8's
 --          `pdU-Idemp?-member-witness` collects that pair into the
 --          `sum-spine` of *one* member's continuation; the branch
---          location is proved by `pd-alts-Dups-w-classify` (Canonic
---          §6.3), leaving only the inside-spine analysis of
+--          location is proved by `pd-alts-Dups-w-classify` (Canonic §4.2),
+--          leaving only the inside-spine analysis of
 --          configurations (a)/(b) and the record distinctness of (c)
---          up to the `star` theorem stated in
---          Canonic §8.1.
+--          up to the `pd-Idemp` theorem (Canonic §6.1's goal,
+--          closed in `cgp.ambig.Soundness` §11).
 --
 -- The `Any ( λ s → s ≡ p ) (pd*-Desc r w′)` membership unfolds to
 -- `pd*-expr pdi ≡ p` for some `pdi : PDInstance* r w′` (the list is

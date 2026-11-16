@@ -5,20 +5,23 @@ whose content is "a fired criterion (or test) implies `Ambig`" — split
 out of `cgp.ambig.Canonic`, which keeps the shared statements: the
 similarity `≈₀` and `canonic`, the tests themselves (`pd-Idemp?`,
 `A3?`, `A3-list?`), the scan correctness and the member classification
-(§6.3), the generic path lifts (§7), the state constructions (§8/§9)
-and the example data of §6.2.  `cgp.ambig.Completeness` holds the
-converse direction.
+(Canonic §4.2), the generic path lifts (Canonic §5),
+the state constructions (Canonic §6/§7) and the
+example data of Canonic §4.1.  `cgp.ambig.Completeness`
+holds the converse direction.
 
-Section numbering *continues* `cgp.ambig.Canonic`: what lives here are
-Canonic §4 (`dup-sum→Ambig` / `Ctx-dup→Ambig`) and §5 (the `a + a`
-example), §6.1 (the continuation-pair closer) and the §6.2 example
-records, §6.4 (inverting the fusion at a `+` clause), the Ctx-dup
-corollaries of §7, and the complete `pdU`-clause inversion chain
-§8.2–§8.6 with the unconditional soundness theorem `pd-Idemp`; the last
-section (§25) is the soundness direction over the pd-states, moved from
-the old `Complete` module.  Names shared with `cgp.ambig.Canonic`
-(`pd-expr`, `sum-spine`, `Dups-w`, `pd-alts-Dups-w-classify`, the
-lifts, …) are imported from there.
+Section numbers are local to this module; references into the other
+modules are qualified by name.  What lives here: §1
+(`dup-sum→Ambig` / `Ctx-dup→Ambig`), §2 (the `a + a`
+example), §3 (the continuation-pair closer) and §4
+(the example records), §5 (inverting the fusion at a `+`
+clause), §6 (the Ctx-dup lifts), §7–§11
+(the complete `pdU`-clause inversion chain, ending in the unconditional
+soundness theorem `pd-Idemp`), and §12 (the soundness
+direction over the pd-states, moved from the old `Complete` module).
+Names shared with `cgp.ambig.Canonic` (`pd-expr`, `sum-spine`,
+`Dups-w`, `pd-alts-Dups-w-classify`, the lifts, …) are imported from
+there.
 
 
 
@@ -77,7 +80,7 @@ import Data.Product as Product
 open Product using ( Σ ; Σ-syntax ; ∃-syntax ; _,_ ; _×_ )
 
 import Data.Sum as Sum
--- (not opened: `inj₁`/`inj₂` are used as pattern variables in §6.1)
+-- (not opened: `inj₁`/`inj₂` are used as pattern variables in §3)
 open Σ using (proj₁ ; proj₂)
 
 import Data.Maybe as Maybe
@@ -101,7 +104,7 @@ open Canonic.Dups-w using ( dups-at )
 ```
 
 
-## 4. Soundness: `Idemp` applied implies ambiguity
+## 1. Soundness: `Idemp` applied implies ambiguity
 
 If a sum contains two `≈₀`-equal alternatives then the expression is
 ambiguous: the same inhabitant tree (all expressions are inhabited,
@@ -134,7 +137,7 @@ Ctx-dup→Ambig ctx {l} {s} {loc} .(plug ctx (l + s ` loc)) refl p =
 
 ```
 
-## 5. The A3 example: `a + a` (missed by A1/A2, caught by Idemp)
+## 2. The A3 example: `a + a` (missed by A1/A2, caught by Idemp)
 
 `cgp.ambig.AmbigCheck` proves that `($ 'a' ` 1) + ($ 'a' ` 2) ` 3` is
 ambiguous (`ambiguousSum`) although it satisfies neither A1 (`notA1Sum`) nor
@@ -177,7 +180,7 @@ a3-nested-ambiguous = Ctx-dup→Ambig (Ctx●R 𝟘 ($ 'b' ` 4) 5) _ refl (≈�
 
 ```
 
-### 6.1. Soundness: a duplicated continuation pair implies ambiguity
+## 3. Soundness: a duplicated continuation pair implies ambiguity
 
 The two injections embed the (equal up to `≈₀`) continuations through
 *different* sum branches, so the transported parse trees are distinct —
@@ -212,9 +215,9 @@ pd*-pairs→Ambig {l} {s} {loc} {w} (pdinstance* {d₁} inj₁ ev₁) (pdinstanc
 
 ```
 
-### 6.2. The example pairs of the Canonic §6.2 state
+## 4. The example pairs of the Canonic §4.1 state
 
-The continuation-level records behind Canonic §6.2's `pd-a3-target`
+The continuation-level records behind Canonic §4.1's `pd-a3-target`
 (the state itself, `pd-a3-Idemp-applied` and the flattened continuations
 stay with the test in `cgp.ambig.Canonic`), and the pair-level ambiguity
 of that state:
@@ -249,7 +252,7 @@ pd-a3-ambiguous = pd-pairs→Ambig left-pdi right-pdi
 ```
 
 
-### 6.4. Inverting the fusion: a crossing configuration
+## 5. Inverting the fusion: a crossing configuration
 
 `fuse` (in `cgp.posix.PartialDerivative`) joins two records into one whose
 continuation is a *sum* of the two continuations: `mkfuseInj` reads
@@ -259,8 +262,8 @@ two spines.  When the pair of a fired test lies on both sides of that
 node, the ambiguity needs no injectivity: each tree travels through its
 own *pre-fusion* record and enters the parent sum through a different
 branch, so distinctness is the node's own (`LeftU≢RightU`).  This is
-§6.1's mechanism with the word-equal tree pair supplied as data instead
-of built from an `≈₀` of the whole continuations — §6.1's
+§3's mechanism with the word-equal tree pair supplied as data instead
+of built from an `≈₀` of the whole continuations — §3's
 `pd-pairs→Ambig` is the special case where the two continuations are
 themselves the pair.
 
@@ -286,7 +289,7 @@ data _◁_ : RE → RE → Set where
 
 -- (purpose): membership in the computed spine gives the structural position
 -- (used in): converting `pd-Idemp?-member-witness` / `pd-alts∈-inv`
---   memberships into `spine-read` inputs (§8.1 configurations (a)/(b))
+--   memberships into `spine-read` inputs (Canonic §6.1 configurations (a)/(b))
 -- (proof idea): induction on the expression; at a sum node expose the
 --   spine head with `sum-spine∷`, split the concatenation with
 --   `∈-++-inv`, and transport the memberships along the head equation
@@ -349,7 +352,7 @@ spine-read-pres-flat (l + s ` loc) p (sp-right pos) u =
 
 -- (purpose): the record half of the crossing case — two records whose
 --   continuations hold trees with one word ⇒ the parent sum is ambiguous
--- (used in): `pd-cross-positions→Ambig` below; §8.1's configuration (a)
+-- (used in): `pd-cross-positions→Ambig` below; Canonic §6.1's configuration (a)
 -- (proof idea): the two trees enter `l + s` through *different* branches,
 --   so distinctness is `LeftU≢RightU` — no injectivity of the records is
 --   needed; the word equation runs both records' soundness evidence
@@ -368,7 +371,7 @@ pd-fuse-cross→Ambig {l} {s} {loc} {c} (pdinstance i₁ e₁) (pdinstance i₂ 
 -- (purpose): the crossing case complete — records whose continuations
 --   hold `≈₀`-equal alternatives at located positions ⇒ the parent sum is
 --   ambiguous
--- (used in): `pd-a3-ambiguous-via-positions` below; §8.1's configuration
+-- (used in): `pd-a3-ambiguous-via-positions` below; Canonic §6.1's configuration
 --   (a) reduces to this lemma plus the `pdinstance-oplus`/`map`
 --   membership inversion into pre-fusion records
 -- (proof idea): read the two trees at the positions (`spine-read`),
@@ -389,10 +392,10 @@ pd-cross-positions→Ambig pdi₁ pdi₂ p q pos₁ pos₂ p≈₀q =
                        (Cast p≈₀q (proj₁ (r-∃u p))))
                    (Cast-pres-flat p≈₀q (proj₁ (r-∃u p))))))
 
--- (purpose): the general located-position theorem reproduces the §6.2
+-- (purpose): the general located-position theorem reproduces the Canonic §4.1
 --   hand-built witness (both continuations are non-sums, so each
 --   position is `sp-node`)
--- (used in): the §6.4 prose — checks the closer subsumes the example
+-- (used in): the §5 prose — checks the closer subsumes the example
 -- (proof idea): `pd-cross-positions→Ambig` at `left-pdi`/`right-pdi`
 --   with the computed `≈₀` of the two continuations
 pd-a3-ambiguous-via-positions : Ambig pd-a3-target
@@ -403,10 +406,10 @@ pd-a3-ambiguous-via-positions =
     (≈₀-● (≈₀-ε) (≈₀-$ 'c' 4 7))
 ```
 
-## 7. (cont.) The Ctx-dup lifts (continuing Canonic §7)
+## 6. The Ctx-dup lifts (continuing Canonic §5)
 
 `lift-Ctx-dup→Ambig` and `pd*-Ctx-dup→Ambig` compose the generic lifts of
-`cgp.ambig.Canonic` §7 with this module's §4 `Ctx-dup→Ambig`; the
+`cgp.ambig.Canonic` §5 with this module's §1 `Ctx-dup→Ambig`; the
 A1/A2 lifts stay with the shared statement.
 
 ```agda
@@ -432,9 +435,9 @@ pd*-Ctx-dup→Ambig pdi inj-inj ctx eq dup =
   pd*-Ambig→Ambig pdi inj-inj (Ctx-dup→Ambig ctx (pd*-expr pdi) eq dup)
 
 ```
-### 8.2. Branch location: inverting the `pdU` clauses
+## 7. Branch location: inverting the `pdU` clauses
 
-The classification of §6.3 speaks about `pd-alts pdis` for a plain
+The classification of Canonic §4.2 speaks about `pd-alts pdis` for a plain
 member list.  `pd-Idemp` instantiates it at `pdis = PosixPD.pdU[ q , c ]`,
 whose clauses (in `cgp.posix.PartialDerivative`) build their lists with
 `map`, `concatMap` and `pdinstance-oplus`.  This section inverts those
@@ -484,7 +487,7 @@ pd-expr-right (pdinstance {p} inj ev) = refl
 
 -- (purpose): a fused record's continuation is the sum of the two
 --   pre-fusion continuations at the clause's location — this is where
---   §8.1's configuration (a) gets its inner `+` node
+--   Canonic §6.1's configuration (a) gets its inner `+` node
 -- (used in): the branch location of a `+` clause (below)
 -- (proof idea): read off `fuse`'s definition (`pd-expr` reads the
 --   implicit continuation of the produced record)
@@ -552,13 +555,13 @@ pdU-+-shape-of l s loc c z z∈
                           ) ) )
 
 -- (purpose): branch location of a `+` clause — a positioned pair placed
---   by §6.3's classification inside the continuation of one member of
+--   by Canonic §4.2's classification inside the continuation of one member of
 --   the sum node `l + s ` loc` either has its occurrences on the two
 --   sides of the clause (the A3 pattern: the two branch instances with
 --   the alternatives at positions of their continuations — material
 --   consumed by `pd-cross-positions→Ambig`), or lies inside the spine
 --   of one branch instance (a subgoal on a strictly smaller expression)
--- (used in): the `pd-Idemp` composition of §8.1 (the `+` clause)
+-- (used in): the `pd-Idemp` composition of §11 (the `+` clause)
 -- (proof idea): `pdU-+-shape-of` names the branch instances;
 --   `pd-expr-fuse`/`pd-expr-left`/`pd-expr-right` unfold the member's
 --   spine to `sum-spine (pd-expr pdi₁) ++ sum-spine (pd-expr pdi₂)`;
@@ -625,8 +628,8 @@ pdU-+-location l s loc c z z∈ d
                               ( ∈-++ʳ mid₂ (q ∷ post) q (here refl) ) )
                      , ≈₀-sym q≈₀p ) )
 
--- the location machinery instantiated at the §6.2 example: the pair of
--- the fired test, positioned inside the single fused member by §6.3's
+-- the location machinery instantiated at the Canonic §4.1 example: the pair of
+-- the fired test, positioned inside the single fused member by Canonic §4.2's
 -- chain, located at the target's top sum node — either its two
 -- occurrences on the sides of the top `+`, or inside one branch
 -- instance (the first disjunct is what happens; its consumption is the
@@ -676,18 +679,18 @@ pd-a3-branch-location =
        pd-a3-Idemp-applied)
 ```
 
-### 8.3. Lifting an ambiguity through a record's map
+## 8. Lifting an ambiguity through a record's map
 
-Configuration (b) of §8.1 closes an ambiguity *inside* the continuation
+Configuration (b) of Canonic §6.1 closes an ambiguity *inside* the continuation
 of a member record of `pdU`; reaching `Ambig q` carries that witness
 through the record's own transition map `pd-inj z : U (pd-expr z) → U q`
-with §7's `lift-Ambig`, which asks for that map's injectivity.  The pd
+with Canonic §5's `lift-Ambig`, which asks for that map's injectivity.  The pd
 builders (`pdinstance-left/right/fst/snd`) preserve injectivity — a chain
 of them composed from the leaf `$` records (whose map is a `LetterU`
 embedding) is injective.  The one exception is the *fused* record's map
 `mkfuseInj`: the two pre-fusion maps both land in `U r` and could
 identify trees, so that link stays a gap.  It is never entered here:
-configuration (a) closes through §6.4 at the sum node of the fused
+configuration (a) closes through §5 at the sum node of the fused
 continuation itself, and `pdU-+-location` pushes a pair *inside* a fused
 member down to the unfused branch lists, so no lift ever crosses a fused
 record.
@@ -695,7 +698,7 @@ record.
 ```agda
 -- (purpose): one link of the chain — an ambiguity of a member record's
 --   continuation transfers to the record's input expression
--- (used in): `pd-Idemp` of §8.1 (configuration (b))
+-- (used in): `pd-Idemp` of §11 (configuration (b))
 -- (proof idea): `lift-Ambig` at the record's own map, the word [ c ]
 --   and the record's evidence (the record's `c ∷ _` shape is [ c ] ++ _)
 lift-pdinstance : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
@@ -707,7 +710,7 @@ lift-pdinstance {q} {c} (pdinstance {p} inj ev) inj-inj =
 
 -- (purpose): the `+`-branch builders preserve the injectivity of a
 --   record's transition map
--- (used in): the chain of §8.1 configuration (b)
+-- (used in): the chain of Canonic §6.1 configuration (b)
 -- (proof idea): the constructed maps reduce to `LeftU ∘ inj` and
 --   `RightU ∘ inj`; `inv-leftU`/`inv-rightU` reflect back through the
 --   constructor
@@ -732,7 +735,7 @@ pdinj-inj-right {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj u v eq =
   inj-inj u v (ParseTree.inv-rightU {l} {s} {loc} (inj u) (inj v) eq)
 
 -- (purpose): the `●`-first builder preserves map injectivity
--- (used in): the chain of §8.1 configuration (b)
+-- (used in): the chain of Canonic §6.1 configuration (b)
 -- (proof idea): the constructed map reduces to `mkinjFst inj`, which
 --   rewrites at a pair tree to `PairU (inj u) v`; `inv-pairU` splits the
 --   equation and the hypothesis reflects the first component
@@ -753,7 +756,7 @@ pdinj-inj-fst {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj
 -- (purpose): the `●`-second builder (`concatmap-pdinstance-snd` maps
 --   `PDI.mk-snd-pdi` over the empty-tree witnesses) preserves map
 --   injectivity
--- (used in): the chain of §8.1 configuration (b)
+-- (used in): the chain of Canonic §6.1 configuration (b)
 -- (proof idea): pattern-matching the pair *and* its `Flat-[]` evidence
 --   makes the constructed map reduce to `mkinjSnd inj e` (the pd builder
 --   does not reduce on a variable evidence), which rewrites to
@@ -772,18 +775,18 @@ pdinj-inj-snd {l} {s} {loc} {c} ( e , AllEmpty.flat-[] .e fl )
       (proj₂ (ParseTree.inv-pairU {l} {s} {loc} e (inj u) e (inj v) eq))
 ```
 
-### 8.4. Configuration (b): a pair inside one member's spine
+## 9. Configuration (b): a pair inside one member's spine
 
-The left branch of the classification (§6.3) hands over a member whose
+The left branch of the classification (Canonic §4.2) hands over a member whose
 continuation spine *itself* carries the positioned pair.  The pair is
 located by descending the expression: at each `+` node
 `Dups-w-++-split` cuts the spine join, a crossing pair closes at that
-node by the §6.4 construction one level deeper (no records: both trees
+node by the §5 construction one level deeper (no records: both trees
 are read at positions of the *same* continuation, and the branch
 constructors keep them apart), a pair wholly on one side recurses and is
 re-embedded by `lift-Ctx`.  Non-sum nodes carry no spine pair at all.
 The resulting ambiguity of the continuation reaches the member's
-expression through the record's own map — §8.3's chain.
+expression through the record's own map — §8's chain.
 
 ```agda
 -- an append whose right half starts with a named element is never []
@@ -807,7 +810,7 @@ Dups-w-∷[]-absurd
 ...   | ( p ∷ ps ) = ++-∷≢[] ps (mid ++ (later ∷ post)) earlier
                        (∷-injectiveʳ eq)
 
--- (purpose): §8.1 configuration (b) — a positioned pair located anywhere
+-- (purpose): Canonic §6.1 configuration (b) — a positioned pair located anywhere
 --   in the single continuation spine of a sum-bearing expression makes
 --   that expression ambiguous
 -- (used in): `member-pair→Ambig` below
@@ -849,8 +852,8 @@ spine-pair→Ambig ( r * nε ` loc ) w =
 -- (purpose): configuration (b) at a member record — the pair located
 --   inside the member's continuation closes at the continuation and is
 --   carried to the member's expression by the record's own map
--- (used in): `pd-Idemp` of §8.1
--- (proof idea): `spine-pair→Ambig` then `lift-pdinstance` (§8.3); the
+-- (used in): `pd-Idemp` of §11
+-- (proof idea): `spine-pair→Ambig` then `lift-pdinstance` (§8); the
 --   map's injectivity comes from the builder chain (an `mkfuseInj` link
 --   never appears: `pdU-+-location` already pushed any pair inside a
 --   fused member to the unfused branch lists)
@@ -863,7 +866,7 @@ member-pair→Ambig {q} {c} z inj-inj d =
   lift-pdinstance {q} {c} z inj-inj (spine-pair→Ambig (pd-expr z) d)
 ```
 
-### 8.5. The left branch, closed clause by clause
+## 10. The left branch, closed clause by clause
 
 The classification's left branch names a *member of* `pdU[ q , c ]` whose
 continuation carries the positioned pair.  This section closes it by
@@ -872,8 +875,8 @@ membership hypothesis against each `pdU` clause:
 
 * `ε`, `$`: the member list is empty or a single letter record whose
   continuation is `ε` — a one-element spine carries no positioned pair.
-* `+`: `pdU-+-location` (§8.2) either produces the crossing material,
-  which §6.4's `pd-cross-positions→Ambig` closes at the clause's own sum
+* `+`: `pdU-+-location` (§7) either produces the crossing material,
+  which §5's `pd-cross-positions→Ambig` closes at the clause's own sum
   node, or a subgoal on a branch instance, closed by recursion and
   re-embedded by `lift-Ctx`.
 * `*`: the member's continuation is `p ● (r * nε \` loc) \` loc` — a
@@ -888,7 +891,7 @@ membership hypothesis against each `pdU` clause:
   sides is closed by `pd-cross-●→Ambig` below.
 
 The crossing of the nullable clause needs its own closing lemma: unlike
-§6.4, both records have the *same* input expression `l ● s \` loc`, so
+§5, both records have the *same* input expression `l ● s \` loc`, so
 distinctness cannot come from branch constructors — it comes from the
 words: the first-factor instance's tree pairs a `c ∷ _` tree (the letter
 record's own soundness evidence) with the right factor, while the
@@ -908,10 +911,10 @@ pd-ev (pdinstance inj ev) = ev
 --   continuation at the whole first-factor instance (its spine is a
 --   singleton) and one inside an empty-first-factor instance make the
 --   concatenation ambiguous
--- (used in): the `●` clause of `pdU-member-pair→Ambig` below; §8.1's
+-- (used in): the `●` clause of `pdU-member-pair→Ambig` below; Canonic §6.1's
 --   configuration (c) through the same shape
 -- (proof idea): the trees are the two records' maps applied to trees
---   read at the positions (word-preserving as in §6.4); the word
+--   read at the positions (word-preserving as in §5); the word
 --   equation runs both records' `c ∷`_ evidences; distinctness: at the
 --   first component of the pair node, the letter instance's map gives a
 --   tree of word `c ∷ _` (`ev₁`) while `flat-[]` gives `[]` for `e`
@@ -1105,13 +1108,13 @@ pd-snd-continues ( e , AllEmpty.flat-[] .e fl ) (pdinstance {p₂} i₂ ev₂) z
                       q≈₀p )
 ...               | ( there () )
 
--- (purpose): §8.1's classification left branch, closed at pdU members —
+-- (purpose): Canonic §6.1's classification left branch, closed at pdU members —
 --   a positioned pair inside the continuation of a member of
 --   `pdU[ r , c ]` makes r ambiguous
--- (used in): `pd-Idemp` of §8.1
+-- (used in): `pd-Idemp` of §11
 -- (proof idea): the case analysis of the section text above; the
 --   transports between a record's continuation and its builder's input
---   are the §8.2 equations (`pd-expr-left/right/fuse` and direct
+--   are the §7 equations (`pd-expr-left/right/fuse` and direct
 --   reduction of the `pdinstance-fst`/`mk-snd-pdi`/`pdinstance-star`
 --   builders after pattern-matching their inputs)
 pdU-member-pair→Ambig : ∀ { c : Char } ( r : RE )
@@ -1164,12 +1167,12 @@ pdU-member-pair→Ambig {c} ( l ● s ` loc ) z z∈ d with ε∈? l
             lift-Ctx (L●Ctx l 𝟘 loc) (pdU-member-pair→Ambig s z₂ z₂∈ d₂)
 ```
 
-### 8.6. The soundness theorem, composed
+## 11. The soundness theorem, composed
 
-The pieces assembled: the scan reflection, the classification, §8.5's
+The pieces assembled: the scan reflection, the classification, §10's
 closure of the left branch, and the closure of configuration (c) proved
 here.  The classification's second branch now also hands over
-`2 ≤ length pdis` (§6.3: the two members are at distinct positions of
+`2 ≤ length pdis` (Canonic §4.2: the two members are at distinct positions of
 the list), and the *length* alone is enough: inverting the `pdU` clause
 structure along the member list, a list of two members can only come
 from a `+`/`●` node with an already-long branch list (the recursion
@@ -1336,7 +1339,7 @@ star-Ambig {r} {nε} {loc} ( u , v , word≡ , u≢v ) =
     eq₃ : proj₁ (flat v) ≡ proj₁ (flat (ListU {r} {nε} {loc} (v ∷ [])))
     eq₃ = sym (++-identityʳ (proj₁ (flat v)))
 
--- (purpose): §8.1's configuration (c), closed — a two-member
+-- (purpose): Canonic §6.1's configuration (c), closed — a two-member
 --   continuation list of a single-character partial derivative makes
 --   the state ambiguous
 -- (used in): `pd-Idemp` below
@@ -1392,15 +1395,15 @@ pdU-2members→Ambig {c} ( l ● s ` loc ) h with (ε∈? l)
 ...       | Sum.inj₂ h₃ = lift-Ctx (L●Ctx l 𝟘 loc)
           (pdU-2members→Ambig {c} s h₃)
 
--- (purpose): §8.1's goal theorem — the A3-as-test of §8.1, reflected:
+-- (purpose): the Canonic §6.1 goal theorem — its A3-as-test, reflected:
 --   a fired `pd-Idemp?` on the `pdU` member list implies ambiguity
 -- (used in): `pd-a3-Ambig-via-pd-Idemp` below (the composition check on the
---   §6.2 example)
--- (proof idea): the hypothesis unpacking of §8.1's text — `dups-≈₀-dups`
+--   Canonic §4.1 example)
+-- (proof idea): the hypothesis unpacking of Canonic §6.1's text — `dups-≈₀-dups`
 --   reads the fired scan as a positioned pair (`pd-Idemp?` unfolds to
 --   `dups-≈₀ ∘ pd-alts` definitionally), `pd-alts-Dups-w-classify`
 --   places it relative to the members, the left branch is closed by
---   §8.5's `pdU-member-pair→Ambig`, the right branch by
+--   §10's `pdU-member-pair→Ambig`, the right branch by
 --   `pdU-2members→Ambig` (the classification hands over the length bound)
 pd-Idemp : ∀ { q : RE } { c : Char }
   → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true
@@ -1415,13 +1418,13 @@ pd-Idemp {q} {c} eq
                    , 2≤len ) ) =
       pdU-2members→Ambig {c} q 2≤len
 
--- the whole composition elaborates on the §6.2 example: applying `pd-Idemp`
+-- the whole composition elaborates on the Canonic §4.1 example: applying `pd-Idemp`
 -- to the fired test
 pd-a3-Ambig-via-pd-Idemp : Ambig pd-a3-target
 pd-a3-Ambig-via-pd-Idemp = pd-Idemp {pd-a3-target} {'a'} pd-a3-Idemp-applied
 ```
 
-## 25. The soundness direction over the pd-states
+## 12. The soundness direction over the pd-states
 
 The attempt to state the converse direction *about a given tree* —
 
@@ -1439,7 +1442,7 @@ witness at a state twins only the word `w₁` (its state trees read `ε`), and
 A1 at a state does not make every word of that state ambiguous —
 `( ε + ε ) + ( b ● c )` has two ε-trees and a unique `b c`-tree.  What is
 provable is the existential form at the end of this section, for the first
-three disjuncts of `crit` — the fourth is sound too (this module's §8.6
+three disjuncts of `crit` — the fourth is sound too (this module's §11
 `pd-Idemp` closes it on the `pdU` states; what the counterexample below shows
 is that the *twin-of-a-fixed-`u`* form fails, not the criterion), with the
 lift's injectivity hypothesis made explicit.
@@ -1477,7 +1480,7 @@ fail-Desc : Any ( λ s → s ≡ fail-r ) (Canonic.pd*-Desc fail-r [])
 fail-Desc = here refl
 
 -- (purpose): the twin-of-u form above, refuted
--- (used in): the §25 prose
+-- (used in): the §12 prose
 -- (proof idea): instantiate at `fail-r`, `u = fail-u`, `p = fail-r`; the
 --   conclusion's `v` would be a second `b`-tree, and `fail-unique` forces
 --   `v ≡ fail-u`, contradicting `¬ ( u ≡ v )`
@@ -1493,7 +1496,7 @@ soundness-fails h
 ...   | ( v , ( word≡ , u≢v ) ) = u≢v (sym (fail-unique v (sym word≡)))
 
 -- the first three disjuncts of `crit` — the ones whose soundness lifts
--- exist unconditionally (the fourth is closed by `pd-Idemp` §8.6)
+-- exist unconditionally (the fourth is closed by `pd-Idemp` §11)
 crit-3 : RE → Set
 crit-3 p = Sum._⊎_
       (AmbigCheck.AmbigA1 p)
@@ -1505,7 +1508,7 @@ crit-3 p = Sum._⊎_
 
 -- (purpose): the soundness direction read over the pd-states — a criterion
 --   at a reached state lifts to an ambiguity of `r`
--- (used in): the §25 prose
+-- (used in): the §12 prose
 -- (proof idea): case-split on the disjunction; each branch is the matching
 --   `Canonic` lift (`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`)
 --   under the lift's injectivity hypothesis

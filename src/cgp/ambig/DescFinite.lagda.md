@@ -550,7 +550,7 @@ formalized here.
 ## 5. Relation with the paper's statement
 
 * The paper's states are single expressions obtained by re-gluing the partial
-  derivatives (`derivᵖ r w` of `cgp.ambig.Canonic` §8); `canonic` then
+  derivatives (`derivᵖ r w` of `cgp.ambig.Canonic` §6); `canonic` then
   quotients them by similarity.  Quotienting can only shrink the set, so the
   bound above bounds the paper's `Desc(r)` as well.
 * The paper's proof of finiteness is by induction on the structure of `r`
@@ -570,7 +570,7 @@ supply can be *computed* (by saturation) and its closedness *checked* (by
 `refl` proofs only succeed if the computation really says yes.
 
 ```agda
--- the paper's A3 example of cgp.ambig.Canonic §6: ((a + b) · c) + (a · c)
+-- the paper's A3 example of cgp.ambig.Canonic §4.1: ((a + b) · c) + (a · c)
 a3-r : RE
 a3-r = Canonic.pd-a3-target
 

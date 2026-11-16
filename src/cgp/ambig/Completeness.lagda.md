@@ -6,8 +6,8 @@
 > Expression Ambiguity.* CIAA 2016.
 
 that a witness *at a pd-state* lifts to an ambiguity of the original expression
-(`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`; all three are instances
-of the master lift `lift-Ambig`).  The top-level reading of the converse —
+(`pd*-A1→Ambig`, `pd*-A2→Ambig` in `cgp.ambig.Canonic` §7 and `pd*-Ctx-dup→Ambig`
+in `cgp.ambig.Soundness` §7; all three instances of the master lift `lift-Ambig`).  The top-level reading of the converse —
 "criterion fires at `r` itself" — fails: for `r = ( a + a · a ) ⋆` the word
 `a a` has two parse trees (`ListU [ a , a ]` and `ListU [ a · a ]`), yet no
 criterion fires at `r` itself — a star has exactly one empty parse tree
@@ -34,8 +34,8 @@ goal to a single recursion (§16), make the recursion's stop test computable
 * §8 states the goal of the whole arc — the *completeness* direction proper:
   given distinct parse trees `u ≢ v` of `r` for one word, some pd-descendant
   state reached by a prefix of that word carries a criterion (`crit`, the
-  four-branch diagnosis disjunction: A1, A2, the duplicate pattern, the
-  transition `Idemp` test).  The goal is stated here and its signature and
+  four-branch diagnosis disjunction — A1, A2, the duplicate pattern, the
+  transition `Idemp` test — defined in `cgp.ambig.Canonic` §10).  The goal is stated here and its signature and
   body are §24's, assembled through §16's `completeness-from-desc`.
 * §9 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
@@ -102,7 +102,7 @@ goal to a single recursion (§16), make the recursion's stop test computable
 -- transports in §24) once the module is instantiated (agda/agda#7669, fixed
 -- in 2.8.0), so the check is off here
 {-# OPTIONS --rewriting --no-positivity-check #-}
-module cgp.ambig.Complete where
+module cgp.ambig.Completeness where
 
 import cgp.RE as RE
 open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉ ; ε∈ ; ε∉$ ; ε∉fst ; ε∉snd ; ε∉_+_)
@@ -133,6 +133,7 @@ import cgp.ambig.AmbigCheck as AmbigCheck
 open AmbigCheck using ( Ambig )
 
 import cgp.ambig.Canonic as Canonic
+open Canonic using ( crit ; crit-A3-test ; ∈-map⁻ ; ∈-concatMap⁻ )
 
 import cgp.Recons as Recons
 open Recons using ( Recons ; recons )
@@ -143,7 +144,7 @@ open import Data.Nat using (ℕ; _≟_ ; suc ; zero ; _≤_ ; _+_ ; s≤s ; z≤
 import Data.Nat.Properties as NatProperties
 open NatProperties using ( ≤-refl ; ≤-reflexive ; ≤-trans ; m≤m+n ; m≤n+m ; n≤1+n )
 open import Data.List using (List; _∷_; _∷ʳ_; []; _++_; map; concat; concatMap; [_]; length)
-open import Data.List.Properties using (++-cancelˡ ; ++-identityʳ ; ++-assoc ; length-map ; length-++ )
+open import Data.List.Properties using (++-cancelˡ ; ++-identityʳ ; ++-assoc ; length-map ; length-++ ; map-id )
 {-# REWRITE ++-identityʳ #-}
 open import Data.List.Relation.Unary.Any using (Any; here; there)
 open import Data.List.Membership.Propositional using (_∈_)
@@ -166,8 +167,9 @@ What is stated here is the other one — the paper's proposition, section 6:
 > given an ambiguity of `r` — two distinct parse trees for one word — the word
 > has a prefix whose pd-states include one at which a criterion fires.
 
-The diagnosis disjunction is named once, here, since every later section states
-its result in terms of it: the first two disjuncts are the paper's A1 and A2
+The diagnosis disjunction is defined once — in `cgp.ambig.Canonic` §10, shared
+with the soundness reading — since every later section states its result in
+terms of it: the first two disjuncts are the paper's A1 and A2
 (`cgp.ambig.AmbigCheck` §3, §4), the third is the `Idemp` *pattern* (a sum with
 `≈₀`-equal members under a hole context — the shape `Canonic.Ctx-dup→Ambig`
 consumes), the fourth is A3 proper: the `Idemp` *test* firing on a transition out
@@ -180,44 +182,9 @@ split case in the version of this module that included it; nothing below needs
 that transport — the descent always fires the criterion *at the state it stands
 in*.
 
-```agda
--- the diagnosis disjunction: one of the paper's criteria fires at `p`
--- (purpose): the single codomain every diagnosing lemma in this module targets
--- (used in): `desc-concl`/`Desc-complete` (§16), `pick-diff-record-prf` (§20),
---   the `completeness` statement (§24)
--- (proof idea): definition — A1/A2 from `AmbigCheck`, the duplicate pattern and
--- the transition `Idemp` test from `Canonic`, the last two read under a hole
--- context
-crit : RE → Set
-crit p = AmbigCheck.AmbigA1 p
-       ⊎ AmbigCheck.AmbigA2 p
-       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ s ∈ RE ] Σ[ loc ∈ ℕ ]
-             ( ( AmbigCheck.plug ctx ( l + s ` loc ) ≡ p )
-             × ( Canonic._≈₀_ l s ) )
-       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ q ∈ RE ] Σ[ c ∈ Char ]
-             ( ( AmbigCheck.plug ctx q ≡ p )
-             × ( Canonic.pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true ) )
-
--- (the signature of `completeness` is stated at the head of §24, next to its
--- body: the proof needs `Desc-complete` (§16) and the descent `desc-picks-≟`,
--- both defined below)
-```
-
-The fourth disjunct is worth naming outright at the empty context, since it is a
-decidable test on the transition out of the state and needs no descent to be
-applied at the state itself:
-
-```agda
--- (purpose): a positive `Idemp` test on the transition out of `r` is a
---   criterion at `r` itself — the fourth disjunct at the empty context
--- (used in): `pick-diff-record-prf` (§20), which is §24's A3 stop
--- (proof idea): by inspection: `𝟘 , r , c` plugs to `r` at `refl`, and the
---   hypothesis is exactly the fourth component
-crit-A3-test : ∀ ( r : RE ) ( c : Char )
-  → Canonic.pd-Idemp? (PosixPD.pdU[ r , c ]) ≡ true
-  → crit r
-crit-A3-test r c p≡true = inj₂ (inj₂ (inj₂ ( AmbigCheck.𝟘 , r , c , ( refl , p≡true ) )))
-```
+This disjunction and the empty-context injection `crit-A3-test` live in
+`cgp.ambig.Canonic` §10 (the soundness reading, `cgp.ambig.Soundness` §25,
+shares them); they are imported below.
 
 To fill this for an *arbitrary* pair `( u , v )` one has to *find* the
 prefix `w′` — the paper's `AllParseFST` argument over parse trees of the
@@ -891,43 +858,15 @@ the completeness
 direction itself does not depend on it.
 
 ```agda
--- every element of a `map`/`concatMap` comes from an element of the argument
--- (purpose): pull a membership back through `map`, with the defining equation
--- (used in): `map-const`, `concatMap-hyp` below
--- (proof idea): induction on the list, reading the `here`/`there` position
-∈-map⁻ : {A B : Set} ( f : A → B ) ( xs : List A ) ( y : B )
-  → y ∈ map f xs → Σ[ x ∈ A ] ( x ∈ xs × f x ≡ y )
-∈-map⁻ f [] y ()
-∈-map⁻ f (x ∷ xs) y (here p) = ( x , here refl , sym p )
-∈-map⁻ f (x ∷ xs) y (there w) with ∈-map⁻ f xs y w
-...   | ( x₂ , x∈ , eq ) = ( x₂ , there x∈ , eq )
 
--- (purpose): split a membership at an append
--- (used in): `∈-concat-dest` below
--- (proof idea): induction counting skipped elements with `there`
-∈-++-dest : {A : Set} ( xs ys : List A ) ( y : A )
-  → y ∈ xs ++ ys → ( y ∈ xs ) ⊎ ( y ∈ ys )
-∈-++-dest [] ys y w = inj₂ w
-∈-++-dest (x ∷ xs) ys y (here q) = inj₁ (here q)
-∈-++-dest (x ∷ xs) ys y (there w) with ∈-++-dest xs ys y w
-...   | inj₁ u = inj₁ (there u)
-...   | inj₂ v = inj₂ v
-
--- (purpose): find the block a member of a `concat` lives in.  The element
---   lists must be matched in constructor form, hence the `[] ∷ `_`_` patterns
+-- (purpose): find the block a member of a `concat` lives in — Canonic's
+--   `∈-concatMap⁻` at the identity mapping, reached through `concat ≡
+--   concatMap id` (`map-id`)
 -- (used in): `concat-const` below
--- (proof idea): induction on the block list, splitting inner memberships with
---   `∈-++-dest`
-∈-concat-dest : {A : Set} ( xss : List ( List A ) ) ( y : A )
+∈-concat⁻ : { A : Set } ( xss : List ( List A ) ) ( y : A )
   → y ∈ concat xss → Σ[ xs ∈ List A ] ( xs ∈ xss × y ∈ xs )
-∈-concat-dest [] y ()
-∈-concat-dest ([] ∷ xss) y z∈ with ∈-concat-dest xss y z∈
-...   | ( xs₂ , xs∈ , q ) = ( xs₂ , there xs∈ , q )
-∈-concat-dest ((x ∷ xs) ∷ xss) y (here q) = ( x ∷ xs , here refl , here q )
-∈-concat-dest ((x ∷ xs) ∷ xss) y (there w) with ∈-++-dest xs (concat xss) y w
-...   | inj₁ u = ( x ∷ xs , here refl , there u )
-...   | inj₂ v with ∈-concat-dest xss y v
-...     | ( xs₂ , xs∈ , q ) = ( xs₂ , there xs∈ , q )
+∈-concat⁻ xss y y∈ = ∈-concatMap⁻ ( λ x → x ) xss y
+  ( subst ( λ L → y ∈ L ) (sym (cong concat (map-id xss))) y∈ )
 
 -- (purpose): the property "every two members of this list continue at the
 --   same expression" — the invariant §23 proves for all `pdU` lists
@@ -960,7 +899,8 @@ map-const r s c f resp xs u z z′ z∈ z′∈
 --   with each other
 -- (used in): `concatMap-const` below (and through it the concatenation
 --   clauses of `pdU-const`)
--- (proof idea): locate both members' blocks with `∈-concat-dest` and apply
+-- (proof idea): locate both members' blocks with `∈-concatMap⁻` (identity
+--   mapping) and apply
 --   the cross-block hypothesis
 concat-const : ( s : RE ) ( c : Char )
   → ( xss : List ( List ( PDInstance s c ) ) )
@@ -968,7 +908,7 @@ concat-const : ( s : RE ) ( c : Char )
        → ( z z′ : PDInstance s c ) → z ∈ xs → z′ ∈ xs′
        → Canonic.pd-expr z ≡ Canonic.pd-expr z′)
   → PdConst s c (concat xss)
-concat-const s c xss hyp z z′ z∈ z′∈ with ∈-concat-dest xss z z∈ | ∈-concat-dest xss z′ z′∈
+concat-const s c xss hyp z z′ z∈ z′∈ with ∈-concat⁻ xss z z∈ | ∈-concat⁻ xss z′ z′∈
 ...   | ( xs , x∈ , q ) | ( xs′ , x′∈ , q′ ) = hyp xs xs′ x∈ x′∈ z z′ q q′
 
 -- (purpose): the cross-block hypothesis `concat-const` needs, discharged from
@@ -1204,7 +1144,7 @@ pdU-const ( l ● s ` loc ) c z z′ z∈ z′∈ with RE.ε∈? l
 --   `≈₀` pair lies inside the `sum-spine` of *one* member's continuation
 --   (Canonic's `pd-Idemp?-member-witness` names two members; `pdU-const`
 --   identifies their continuations, so they are one)
--- (used in): the §25 remark on the open fourth disjunct
+-- (used in): the counterexample remark in `cgp.ambig.Soundness` §25
 -- (proof idea): invert the memberships through `Canonic.pd-alts∈-inv`,
 --   transport the second alternative along `pdU-const`'s equation
 pdU-Idemp?-member-witness : ∀ { q : RE } { c : Char }
@@ -1387,101 +1327,4 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 -- lifts quantify over; only their injectivity hypothesis is not supplied —
 -- and not needed here, since `u ≢ v` is already given: running a lift after
 -- the fact certifies the diagnosis, it produces no new witness.
-```
-
-## 25. The soundness direction over the pd-states
-
-The attempt to state the converse direction *about a given tree* —
-
-> `∀ { r } { w₁ w₂ } ( u : U r ) → proj₁ (flat {r} u) ≡ w₁ ++ w₂`
-> `→ ( p : RE ) → crit p → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)`
-> `→ ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) ) × ¬ ( u ≡ v )`
-
-— is false, and the counterexample is small: `r = ( ε + ε ) + b` has two
-ε-trees, so A1 (hence `crit`) fires at the state `r` itself, which `[]`
-reaches; but the word `b` has exactly one parse tree — take it for `u` and
-no `v ≢ u` exists.  Nothing in the statement ties `u` to the state `p`: the
-criterion's witness may live in a part of `r` the parse of `u` never
-traverses.  Constraining `u` would not repair the *shape* either: an A1
-witness at a state twins only the word `w₁` (its state trees read `ε`), and
-A1 at a state does not make every word of that state ambiguous —
-`( ε + ε ) + ( b ● c )` has two ε-trees and a unique `b c`-tree.  What is
-provable is the existential form at the end of this section, for the first
-three disjuncts of `crit` (the fourth is the locating gap of `Canonic`
-§8.1), with the lift's injectivity hypothesis made explicit.
-
-```agda
--- the counterexample expression: A1 fires at the top, `b` is unambiguous
-fail-r : RE
-fail-r = ( ( ε + ε ` 1 ) + ( $ 'b' ` 2 ) ` 3 )
-
-fail-u : U fail-r
-fail-u = RightU (LetterU 'b')
-
--- (purpose): the word `b` has exactly one parse tree in `fail-r` — the
---   conclusion of the twin-of-u form is uninhabited for this `u`
--- (used in): `soundness-fails`
--- (proof idea): case on `v`: the left branch of the sum can only read `ε`
---   (the equation then has type `[] ≡ 'b' ∷ []`, absurd), and the letter
---   node is determined by its letter (the index pins it to `'b'`)
-fail-unique : ( v : U fail-r ) → proj₁ (flat {fail-r} v) ≡ 'b' ∷ [] → v ≡ fail-u
-fail-unique (LeftU (LeftU EmptyU)) ()
-fail-unique (LeftU (RightU EmptyU)) ()
-fail-unique (RightU (LetterU 'b')) refl = refl
-
--- (purpose): A1 fires at `fail-r` — two ε-trees through the `ε + ε` branch
--- (used in): `soundness-fails`
--- (proof idea): computed nullability (left summand, right non-nullable) and
---   `mkAllEmptyU` listing two trees, so `2 ≤ 2`
-fail-A1 : AmbigCheck.AmbigA1 fail-r
-fail-A1 = ( RE.ε∈_<+_ (RE.ε∈_+_ RE.ε∈ε RE.ε∈ε) ε∉$ , s≤s (s≤s ≤-refl) )
-
--- (purpose): the state `fail-r` is reached by `[]`
--- (used in): `soundness-fails`
--- (proof idea): §12's `pdesc` of the empty path
-fail-Desc : Any ( λ s → s ≡ fail-r ) (Canonic.pd*-Desc fail-r [])
-fail-Desc = pdesc pnil
-
--- (purpose): the twin-of-u form above, refuted
--- (used in): the §25 prose
--- (proof idea): instantiate at `fail-r`, `u = fail-u`, `p = fail-r`; the
---   conclusion's `v` would be a second `b`-tree, and `fail-unique` forces
---   `v ≡ fail-u`, contradicting `¬ ( u ≡ v )`
-soundness-fails : ¬ ( ∀ { r : RE } { w₁ w₂ : List Char }
-    ( u : U r )
-    → proj₁ (flat {r} u) ≡ w₁ ++ w₂
-    → ( p : RE )
-    → crit p
-    → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)
-    → ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) ) × ( ¬ ( u ≡ v ) ) )
-soundness-fails h
-  with h {fail-r} {[]} { 'b' ∷ [] } fail-u refl fail-r (inj₁ fail-A1) fail-Desc
-...   | ( v , ( word≡ , u≢v ) ) = u≢v (sym (fail-unique v (sym word≡)))
-
--- the first three disjuncts of `crit` — the ones whose soundness lifts
--- exist unconditionally (the fourth is `Canonic` §8.1's open step)
-crit-3 : RE → Set
-crit-3 p = AmbigCheck.AmbigA1 p
-       ⊎ AmbigCheck.AmbigA2 p
-       ⊎ Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ l′ ∈ RE ] Σ[ loc ∈ ℕ ]
-             ( ( AmbigCheck.plug ctx ( l + l′ ` loc ) ≡ p )
-             × ( Canonic._≈₀_ l l′ ) )
-
--- (purpose): the soundness direction read over the pd-states — a criterion
---   at a reached state lifts to an ambiguity of `r`
--- (used in): the §25 prose
--- (proof idea): case-split on the disjunction; each branch is the matching
---   `Canonic` lift (`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`)
---   under the lift's injectivity hypothesis
-soundness : ∀ { r : RE } { w : List Char }
-  → ( pdi : PDInstance* r w )
-  → ( ∀ ( x y : U (Canonic.pd*-expr pdi) )
-        → Canonic.pd*-inj pdi x ≡ Canonic.pd*-inj pdi y → x ≡ y )
-  → crit-3 (Canonic.pd*-expr pdi)
-  → ∃[ u′ ] ∃[ v′ ]
-      ( proj₁ (flat {r} u′) ≡ proj₁ (flat {r} v′) × ¬ ( u′ ≡ v′ ) )
-soundness pdi inj-inj (inj₁ a1) = Canonic.pd*-A1→Ambig pdi inj-inj a1
-soundness pdi inj-inj (inj₂ (inj₁ a2)) = Canonic.pd*-A2→Ambig pdi inj-inj a2
-soundness pdi inj-inj (inj₂ (inj₂ (ctx , l , l′ , loc , ( eq , dup )))) =
-  Canonic.pd*-Ctx-dup→Ambig pdi inj-inj ctx eq dup
 ```

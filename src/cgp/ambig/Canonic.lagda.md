@@ -90,7 +90,7 @@ import cgp.RE as RE
 open RE using (RE; ε; $_`_; _●_`_; _+_`_; _*_`_; ε∉ ; ε∈ ; ε∈?)
 
 import cgp.ParseTree as ParseTree
-open ParseTree using ( U; EmptyU; LetterU; LeftU; RightU; PairU; ListU ; flat ; r-∃u ; LeftU≢RightU )
+open ParseTree using ( U; EmptyU; LetterU; LeftU; RightU; PairU; ListU ; unListU ; flat ; r-∃u ; LeftU≢RightU )
 
 import cgp.ambig.AmbigCheck as AmbigCheck
 open AmbigCheck using ( Ambig ; AmbigA1 ; AmbigA2 ; Ctx ; 𝟘 ; Ctx●R ; L●Ctx ; Ctx+R ; L+Ctx ; plug ; CtxT ; CtxT-pres-flat ; CtxT-injective ; A1→Ambig ; A2→Ambig )
@@ -103,9 +103,9 @@ import cgp.empty.AllEmptyParseTree as AllEmpty
 import cgp.posix.PartialDerivative as PosixPD
 
 import Data.List as List
-open List using (List ; _∷_ ; [] ; _++_ ; map ; concatMap)
+open List using (List ; _∷_ ; [] ; _++_ ; map ; concatMap ; length)
 
-open import Data.List.Properties using (++-assoc ; ∷-injectiveˡ ; ∷-injectiveʳ)
+open import Data.List.Properties using (++-assoc ; ∷-injectiveˡ ; ∷-injectiveʳ ; length-map ; length-++ ; ∷-injective ; ++-identityʳ)
 
 import Data.List.Relation.Unary.Any as ListAny
 open ListAny using (Any; here; there)
@@ -123,7 +123,12 @@ import Data.Char as Char
 open Char using (Char)
 
 import Data.Nat as Nat
-open Nat using ( ℕ ; zero )
+open Nat using ( ℕ ; zero ; suc ; _≤_ ; z≤n ; s≤s )
+
+import Data.Nat.Properties as NatProperties
+open NatProperties using ( ≤-refl ; ≤-trans ; m≤n⇒m≤1+n )
+
+import Data.List.Relation.Unary.All as ListAll
 
 import Relation.Binary.PropositionalEquality as Eq
 open Eq using (_≡_; refl; trans; cong; sym; cong₂; subst)
@@ -955,6 +960,15 @@ dups-w-split-test : Sum._⊎_ (Dups-w (($ 'a' ` 1) ∷ []))
              (Dups-w (($ 'a' ` 2) ∷ [])))
 dups-w-split-test = Dups-w-++-split _ _ (dups-≈₀-dups _ refl)
 
+-- (purpose): an inhabitant of a list forces its length to be at least 1
+-- (used in): the crossing branch of `pd-alts-Dups-w-classify` below
+-- (proof idea): induction on the membership witness; `here` reads the
+--   cons cell, `there` weakens the bound along `_≤_`
+x∈xs→1≤length : ∀ { a : Set } { xs : List a } { x : a }
+  → x ∈ xs → suc zero ≤ length xs
+x∈xs→1≤length (here refl) = s≤s z≤n
+x∈xs→1≤length (there xs∈) = m≤n⇒m≤1+n (x∈xs→1≤length xs∈)
+
 -- (purpose): the empty list carries no positioned duplicate pair
 -- (used in): the nil case of `pd-alts-Dups-w-classify` below
 -- (proof idea): the `dups-at` layout always has two cons cells, so its
@@ -990,7 +1004,8 @@ pd-alts-Dups-w-classify : ∀ { r : RE } { c : Char }
           ( (z ∈ pdis) × (z′ ∈ pdis)
           × (earlier ∈ sum-spine (pd-expr z))
           × (later ∈ sum-spine (pd-expr z′))
-          × (later ≈₀ earlier) ))
+          × (later ≈₀ earlier)
+          × ( suc (suc zero) ≤ length pdis ) ))
 pd-alts-Dups-w-classify [] dw = ⊥-elim (Dups-w-[] dw)
 pd-alts-Dups-w-classify (z ∷ zs) dw
   with Dups-w-++-split (sum-spine (pd-expr z)) (pd-alts zs) dw
@@ -1006,14 +1021,16 @@ pd-alts-Dups-w-classify (z ∷ zs) dw
                      , ( subst ( λ L → earlier ∈ L ) (sym xs≡)
                            ( ∈-++ʳ pre (earlier ∷ mid₁) earlier
                                (here refl) )
-                     , later∈′ , later≈₀earlier ) ) )
+                     , later∈′ , later≈₀earlier
+                     , s≤s (x∈xs→1≤length z′∈) ) ) )
 ...   | Sum.inj₂ (Sum.inj₂ d) with pd-alts-Dups-w-classify zs d
 ...       | Sum.inj₁ ( z′ , z′∈ , d′ ) = Sum.inj₁ ( z′ , ( there z′∈ , d′ ) )
 ...       | Sum.inj₂ ( z′ , z″ , earlier , later
-                     , ( z′∈ , z″∈ , earlier∈ , later∈ , later≈₀earlier ) ) =
+                     , ( z′∈ , z″∈ , earlier∈ , later∈ , later≈₀earlier
+                       , 2≤len ) ) =
             Sum.inj₂ ( z′ , z″ , earlier , later
                      , ( there z′∈ , there z″∈ , earlier∈ , later∈
-                       , later≈₀earlier ) )
+                       , later≈₀earlier , m≤n⇒m≤1+n 2≤len ) )
 
 -- The classification instantiated at the §6.2 example: the fired test
 -- read position-preservingly (`dups-≈₀-dups`), then classified against
@@ -1029,21 +1046,24 @@ pd-alts-classify-a3 : Sum._⊎_
       × (z′ ∈ PosixPD.pdU[ pd-a3-target , 'a' ])
       × (earlier ∈ sum-spine (pd-expr z))
       × (later ∈ sum-spine (pd-expr z′))
-      × (later ≈₀ earlier) ))
+      × (later ≈₀ earlier)
+      × ( suc (suc zero)
+        ≤ length (PosixPD.pdU[ pd-a3-target , 'a' ]) ) ))
 pd-alts-classify-a3 =
   pd-alts-Dups-w-classify (PosixPD.pdU[ pd-a3-target , 'a' ])
     (dups-≈₀-dups (pd-alts (PosixPD.pdU[ pd-a3-target , 'a' ]))
        pd-a3-Idemp-applied)
 
 -- What remains after the classification is the analysis *inside* the
--- members, not the placement between them: for the left branch, what a
--- positioned pair inside one `sum-spine` says about the expression
--- (configurations (a)/(b) of §8.1; §6.4's `pd-cross-positions→Ambig`
--- is the tool once the `_◁_` position of the pair is extracted), for
--- the right branch, whether the two members are distinct records
--- (configuration (c), `Complete` §24's `diff-records-≟`).  The
--- value-level form of the classification without position preservation
--- is `pd-Idemp?-member-witness` below.
+-- members: for the left branch, what a positioned pair inside one
+-- `sum-spine` says about the expression (configurations (a)/(b) of
+-- §8.1; §6.4's `pd-cross-positions→Ambig` is the tool once the `_◁_`
+-- position of the pair is extracted).  The right branch needs no record
+-- analysis: its witnesses carry `2 ≤ length pdis` (the two members are
+-- at distinct list positions), and §8.6's `pdU-2members→Ambig` inverts
+-- that length bound through the `pdU` clauses to an A1/A2
+-- configuration.  The value-level form of the classification without
+-- position preservation is `pd-Idemp?-member-witness` below.
 
 -- forgetting the positions of a positioned pair recovers the plain
 -- `≈₀` pair of values.  This is the demoted route: every consumer of
@@ -1499,10 +1519,9 @@ Caveats (consistent with §6/§7):
   introduces artificial `+` locations.  The paper's own FST quotients by
   similarity anyway, and `≈₀`/`canonic` are location-insensitive, so
   the A3 *test* is unaffected.
-* The soundness of a fired `A3?` is composed in §8.6, stated with one
-  named hypothesis for the configuration that remains open:
+* The soundness of a fired `A3?` is composed in §8.6, unconditionally:
 
-  > `star : Config-c q c → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
+  > `star : pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true → Ambig q`
 
   Its test hypothesis is fully unpacked (§6.3: the positioned reflection
   `dups-≈₀-dups : dups-≈₀ xs ≡ true → Dups-w xs` reads a fired scan
@@ -1525,13 +1544,20 @@ Caveats (consistent with §6/§7):
   first-factor/empty-first-factor pair by *word* distinctness, `c ∷ _`
   versus `[]` via `flat-[]`, the one place where branch-constructor
   injectivity is unavailable because both records share their input
-  expression).  What remains open is configuration (c) — the pair's
-  occurrences living in *two members' copies*: `Config-c` (§8.6) is its
-  closure principle, a record-distinctness question since record
-  identity is intensional; `Complete` §24's `diff-records-≟` and §20's
-  `pick-diff-record-prf` are the tools on the record side, and
-  discharging it would mean a second clause-structure inversion
-  mirroring §8.5.  The `mkfuseInj` gap of §7 does not arise in (a) — the
+  expression).  The second branch is closed by §8.6's
+  `pdU-2members→Ambig`, a second induction along the `pdU` clauses: the
+  classification hands over the *length bound* `2 ≤ length (pdU[ q , c ])`
+  (the two members sit at distinct positions of the member list), and
+  that bound alone suffices — each clause either factors it through a
+  branch list (`length-map`, `pdU-oplus-≥2`, `pdU-cms-len`, `×-≥2→`) and
+  lifts the resulting ambiguity back through the sum/consumption contexts
+  (`lift-Ctx`, `star-Ambig`), or ends at the empty-tree factor of the
+  nullable-`●` clause, where `≥ 2` empty parse trees of the left factor
+  is exactly the A2 criterion record at the clause's own concatenation
+  node (`A2→Ambig`).  No record-distinctness question arises on this
+  branch: the ambiguity comes from the clause structure of the member
+  list, not from comparing the pair's values.
+  The `mkfuseInj` gap of §7 does not arise in (a) — the
   branch maps are only used through different parent branches.
 
 For the *criteria* themselves the single-expression form is not needed: the
@@ -2296,64 +2322,258 @@ pdU-member-pair→Ambig {c} ( l ● s ` loc ) z z∈ d with ε∈? l
 ### 8.6. The soundness theorem, composed
 
 The pieces assembled: the scan reflection, the classification, §8.5's
-closure of the left branch — and one named hypothesis, `Config-c`, for
-configuration (c), whose record half is `Complete` §20/§24's material
-and whose remaining half would be a clause-structure inversion mirroring
-§8.5.
+closure of the left branch, and the closure of configuration (c) proved
+here.  The classification's second branch now also hands over
+`2 ≤ length pdis` (§6.3: the two members are at distinct positions of
+the list), and the *length* alone is enough: inverting the `pdU` clause
+structure along the member list, a list of two members can only come
+from a `+`/`●` node with an already-long branch list (the recursion
+lifts the ambiguity back through the sum/consumption contexts), from a
+`*` clause (the continuation copies are `r * ε∉r \` loc`-wrapped, and
+`star-Ambig` embeds two trees into the star), or from the nullable-`●`
+clause's cross product `| mkAllEmptyU l | × | pdU[ s , c ] |` — where a
+factor `≥ 2` is either the recursion into `s` or *the empty-tree list of
+`l` itself*, whose `≥ 2` record is exactly the A2 criterion at the
+clause's own concatenation node.
 
 ```agda
--- (purpose): the closure principle for configuration (c) — when the
---   classification's right branch occurs, the pair's two members imply
---   the ambiguity of the state
--- (used in): `star` below; discharging it is the open question
--- (proof idea): none yet.  The word half is automatic: reading trees at
---   the pair's positions through §6.4's `spine-read` preserves words and
---   `≈₀` preserves the matched sub-word, so the two images into q have
---   one word; what is missing is that they are *distinct* trees, a
---   record-distinctness question (record identity is intensional).
---   `Complete` §24's `diff-records-≟` and §20's `pick-diff-record-prf`
---   decide the record side once the continuations are known equal
-Config-c : ( q : RE ) ( c : Char ) → Set
-Config-c q c =
-    ∀ { z z′ : PDInstance q c } { earlier later : RE }
-    → ( z∈ : z ∈ PosixPD.pdU[ q , c ] )
-    → ( z′∈ : z′ ∈ PosixPD.pdU[ q , c ] )
-    → ( earlier∈ : earlier ∈ sum-spine (pd-expr z) )
-    → ( later∈ : later ∈ sum-spine (pd-expr z′) )
-    → ( later≈₀earlier : later ≈₀ earlier )
-    → Ambig q
+-- (purpose): right unit of addition on natural numbers
+-- (used in): `×-≥2→` and `pdU-2members→Ambig` below
+n+0 : ( n : ℕ ) → n Nat.+ zero ≡ n
+n+0 zero = refl
+n+0 (suc n) = cong suc (n+0 n)
+
+-- (purpose): the letter clause of `pdU` has at most one member
+-- (used in): the `$` clause of `pdU-2members→Ambig` below
+-- (proof idea): the clause's own `Char.≟` decides between a singleton
+--   and the empty list
+pdU-$-len : ∀ { c c₀ : Char } { loc : ℕ }
+  → length (PosixPD.pdU[ $ c₀ ` loc , c ]) ≤ suc zero
+pdU-$-len {c} {c₀} with (c₀ Char.≟ c)
+...   | yes refl = ≤-refl
+...   | no  _    = z≤n
+
+-- (purpose): no number is both ≥ 2 and ≤ 1
+-- (used in): the `ε` and `$` clauses of `pdU-2members→Ambig` below
+¬2≤n≤1→ : ∀ { n : ℕ } → suc (suc zero) ≤ n → n ≤ suc zero → ⊥
+¬2≤n≤1→ {n} h q with (≤-trans h q)
+...   | s≤s ()
+
+-- (purpose): a product of lengths ≥ 2 already has a factor ≥ 2
+-- (used in): `pdU-2members→Ambig` below (the multiplicative clauses)
+-- (proof idea): split the left factor at 0/1/≥ 2; the 0 case is absurd,
+--   the 1 case leaves the other factor (after `n+0`), the ≥ 2 case is
+--   `2 ≤ 2 + m` (induction with `m≤n⇒m≤1+n`)
+2≤2+m : ∀ { m : ℕ } → suc (suc zero) ≤ suc (suc m)
+2≤2+m {zero} = ≤-refl
+2≤2+m {suc m} = m≤n⇒m≤1+n 2≤2+m
+
+×-≥2→ : ∀ { m n : ℕ }
+  → suc (suc zero) ≤ m Nat.* n
+  → Sum._⊎_ (suc (suc zero) ≤ m) (suc (suc zero) ≤ n)
+×-≥2→ {zero} {n} ()
+×-≥2→ {suc zero} {n} h =
+  Sum.inj₂ (subst ( λ k → suc (suc zero) ≤ k ) (n+0 n) h)
+×-≥2→ {suc (suc m)} {n} h = Sum.inj₁ 2≤2+m
+
+-- (purpose): one `pdinstance-snd` call maps its right argument through
+--   unchanged in length
+-- (used in): `len-cms` below
+-- (proof idea): `pdinstance-snd` reduces to `List.map (mk-snd-pdi …)`
+--   at the pair argument; `length-map` closes the goal
+len-pdsnd : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  ( pdis : List (PDInstance r c) )
+  ( ef : Σ[ e ∈ U l ] AllEmpty.Flat-[] l e )
+  → length (PDI.pdinstance-snd {l} {r} {loc} {c} ef pdis) ≡ length pdis
+len-pdsnd {l} {r} {loc} {c} pdis ( x , x∈ ) =
+  length-map (PDI.mk-snd-pdi {l} {r} {loc} {c} ( x , x∈ )) pdis
+
+-- (purpose): `zip-es-flat-[]-es` is length preserving
+-- (used in): `pdU-cms-len` below
+len-zip : ∀ { l : RE } { ε∈l : ε∈ l }
+  ( es : List (U l) )
+  ( allfl : ListAll.All (AllEmpty.Flat-[] l) es )
+  → length (PDI.zip-es-flat-[]-es {l} {ε∈l} es allfl) ≡ length es
+len-zip {l} {ε∈l} [] ListAll.[] = refl
+len-zip {l} {ε∈l} ( e ∷ es ) ( ListAll._∷_ x∈ allfl ) =
+  cong suc (len-zip {l} {ε∈l} es allfl)
+
+-- (purpose): concatenating the copies of `pdis` indexed by a witness
+--   list gives the product of the lengths
+-- (used in): `pdU-cms-len` below
+-- (proof idea): induction on the witness list; each cell contributes
+--   `length pdis` (`len-pdsnd`) and `_×_` is defined by recursion on
+--   the left factor
+len-cms : ∀ { l r : RE } { loc : ℕ } { c : Char }
+  ( pdis : List (PDInstance r c) )
+  ( ws : List ( Σ[ e ∈ U l ] AllEmpty.Flat-[] l e ) )
+  → length ( List.concatMap
+               ( λ x → PDI.pdinstance-snd {l} {r} {loc} {c} x pdis ) ws )
+      ≡ length ws Nat.* length pdis
+len-cms pdis [] = refl
+len-cms {l} {r} {loc} {c} pdis ( x ∷ ws ) =
+  trans (length-++ (PDI.pdinstance-snd {l} {r} {loc} {c} x pdis))
+        (trans (cong ( λ k → length (PDI.pdinstance-snd {l} {r} {loc} {c} x pdis) Nat.+ k)
+                     (len-cms {l} {r} {loc} {c} pdis ws))
+               (trans (cong ( λ k → k Nat.+ length ws Nat.* length pdis )
+                            (len-pdsnd {l} {r} {loc} {c} pdis x))
+                      refl))
+
+-- (purpose): the length of the nullable clause's empty-tree copy list
+--   is the product of the empty-tree count and the right member count
+-- (used in): the `●` clause of `pdU-2members→Ambig` below
+-- (proof idea): `concatmap-pdinstance-snd` unfolds to `len-cms` at the
+--   witness zip, whose length is `length (mkAllEmptyU …)` (`len-zip`)
+pdU-cms-len : ∀ { l r : RE } { ε∈l : ε∈ l } { loc : ℕ } { c : Char }
+  ( pdis : List (PDInstance r c) )
+  → length (PDI.concatmap-pdinstance-snd {l} {r} {ε∈l} {loc} {c} pdis)
+      ≡ length (AllEmpty.mkAllEmptyU {l} ε∈l) Nat.* length pdis
+pdU-cms-len {l} {r} {ε∈l} pdis =
+  trans (len-cms pdis
+          (PDI.zip-es-flat-[]-es {l} {ε∈l}
+             (AllEmpty.mkAllEmptyU {l} ε∈l)
+             (AllEmpty.mkAllEmptyU-sound {l} ε∈l)))
+        (cong ( λ k → k Nat.* length pdis )
+              (len-zip {l} {ε∈l}
+                 (AllEmpty.mkAllEmptyU {l} ε∈l)
+                 (AllEmpty.mkAllEmptyU-sound {l} ε∈l)))
+
+-- (purpose): concatenating copies of a fixed-length list keeps the
+--   product of the lengths
+-- (used in): `pdU-oplus-≥2` below
+len-concatMap-const : ∀ { A B : Set }
+  ( xs : List A ) ( ys : List B ) ( g : A → List B )
+  → ( ∀ x → length (g x) ≡ length ys )
+  → length (List.concatMap g xs) ≡ length xs Nat.* length ys
+len-concatMap-const [] ys g len-g = refl
+len-concatMap-const ( x ∷ xs ) ys g len-g =
+  trans (length-++ (g x))
+        (trans (cong ( λ k → length (g x) Nat.+ k )
+                     (len-concatMap-const xs ys g len-g))
+               (trans (cong ( λ k → k Nat.+ length xs Nat.* length ys ) (len-g x))
+                      refl))
+
+-- (purpose): a fired ≥ 2 bound on an `pdinstance-oplus` already holds
+--   of one of its input lists
+-- (used in): the `+` and `●` clauses of `pdU-2members→Ambig` below
+-- (proof idea): the two pass-through clauses keep one side's length;
+--   the cross clause is `len-concatMap-const` at per-element maps
+--   (`length-map`), and `×-≥2→` splits the product
+pdU-oplus-≥2 : ∀ { r : RE } { loc : ℕ } { c : Char }
+  ( pdis qs : List (PDInstance r c) )
+  → suc (suc zero) ≤ length (PosixPD.pdinstance-oplus {r} {loc} {c} pdis qs)
+  → Sum._⊎_ (suc (suc zero) ≤ length pdis) (suc (suc zero) ≤ length qs)
+pdU-oplus-≥2 [] qs h = Sum.inj₂ h
+pdU-oplus-≥2 (pdiˡ ∷ pdisˡ) [] h = Sum.inj₁ h
+pdU-oplus-≥2 {r} {loc} {c} (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ) h =
+  ×-≥2→ {length (pdiˡ ∷ pdisˡ)} {length (pdiʳ ∷ pdisʳ)}
+    (subst ( λ k → suc (suc zero) ≤ k )
+       (len-concatMap-const (pdiˡ ∷ pdisˡ) (pdiʳ ∷ pdisʳ)
+          ( λ pdiˡ₁ → List.map (PosixPD.fuse {r} {loc} {c} pdiˡ₁)
+                                (pdiʳ ∷ pdisʳ) )
+          ( λ x → length-map (PosixPD.fuse {r} {loc} {c} x) (pdiʳ ∷ pdisʳ)))
+       h)
+
+-- (purpose): ambiguity of `r` persists under Kleene star
+-- (used in): the `*` clause of `pdU-2members→Ambig` below
+-- (proof idea): `ListU [ u ]` / `ListU [ v ]` flatten to
+--   `flat u ++ []` and `flat v ++ []` (`++-identityʳ`); `unListU`
+--   reads the component list back off the singleton
+star-Ambig : ∀ { r : RE } { nε : ε∉ r } { loc : ℕ }
+  → Ambig r → Ambig ( r * nε ` loc )
+star-Ambig {r} {nε} {loc} ( u , v , word≡ , u≢v ) =
+  ( ListU ( u ∷ [] ) , ListU ( v ∷ [] ) ,
+    trans eq₁ (trans word≡ eq₃) ,
+    λ trees≡ → u≢v (proj₁ (∷-injective (cong unListU trees≡))) )
+  where
+    eq₁ : proj₁ (flat (ListU {r} {nε} {loc} (u ∷ []))) ≡ proj₁ (flat u)
+    eq₁ = ++-identityʳ (proj₁ (flat u))
+    eq₃ : proj₁ (flat v) ≡ proj₁ (flat (ListU {r} {nε} {loc} (v ∷ [])))
+    eq₃ = sym (++-identityʳ (proj₁ (flat v)))
+
+-- (purpose): §8.1's configuration (c), closed — a two-member
+--   continuation list of a single-character partial derivative makes
+--   the state ambiguous
+-- (used in): `star` below
+-- (proof idea): the case analysis of the section text above; the
+--   multiplicative clauses are decomposed by `pdU-oplus-≥2` /
+--   `pdU-cms-len` / `×-≥2→`, and the ambiguity is carried back by
+--   `lift-Ctx` (the sum/consumption contexts), `star-Ambig`, or — for
+--   the empty-tree factor — the A2 criterion record itself
+pdU-2members→Ambig : ∀ { c : Char } ( q : RE )
+  → suc (suc zero) ≤ length (PosixPD.pdU[ q , c ])
+  → Ambig q
+pdU-2members→Ambig {c} ε ()
+pdU-2members→Ambig {c} ( $ c₀ ` loc ) h =
+  ⊥-elim (¬2≤n≤1→ h (pdU-$-len {c} {c₀} {loc}))
+pdU-2members→Ambig {c} ( l + s ` loc ) h
+  with pdU-oplus-≥2 {l + s ` loc} {loc} {c}
+         ( List.map pdinstance-left (PosixPD.pdU[ l , c ]) )
+         ( List.map pdinstance-right (PosixPD.pdU[ s , c ]) ) h
+...   | Sum.inj₁ h₂ = lift-Ctx (Ctx+R 𝟘 s loc)
+          (pdU-2members→Ambig {c} l
+            (subst ( λ k → suc (suc zero) ≤ k )
+               (length-map pdinstance-left (PosixPD.pdU[ l , c ])) h₂))
+...   | Sum.inj₂ h₂ = lift-Ctx (L+Ctx l 𝟘 loc)
+          (pdU-2members→Ambig {c} s
+            (subst ( λ k → suc (suc zero) ≤ k )
+               (length-map pdinstance-right (PosixPD.pdU[ s , c ])) h₂))
+pdU-2members→Ambig {c} ( r * nε ` loc ) h =
+  star-Ambig (pdU-2members→Ambig {c} r
+    (subst ( λ k → suc (suc zero) ≤ k )
+       (length-map PDI.pdinstance-star (PosixPD.pdU[ r , c ])) h))
+pdU-2members→Ambig {c} ( l ● s ` loc ) h with (ε∈? l)
+...   | no ¬ε∈l = lift-Ctx (Ctx●R 𝟘 s loc)
+          (pdU-2members→Ambig {c} l
+            (subst ( λ k → suc (suc zero) ≤ k )
+               (length-map pdinstance-fst (PosixPD.pdU[ l , c ])) h))
+...   | yes ε∈l
+    with pdU-oplus-≥2 {l ● s ` loc} {loc} {c}
+           ( List.map pdinstance-fst (PosixPD.pdU[ l , c ]) )
+           ( PDI.concatmap-pdinstance-snd {l} {s} {ε∈l} {loc} {c}
+               (PosixPD.pdU[ s , c ]) ) h
+...     | Sum.inj₁ h₂ = lift-Ctx (Ctx●R 𝟘 s loc)
+          (pdU-2members→Ambig {c} l
+            (subst ( λ k → suc (suc zero) ≤ k )
+               (length-map pdinstance-fst (PosixPD.pdU[ l , c ])) h₂))
+...     | Sum.inj₂ h₂
+      with ×-≥2→ {length (AllEmpty.mkAllEmptyU {l} ε∈l)}
+                  {length (PosixPD.pdU[ s , c ])}
+                  (subst ( λ k → suc (suc zero) ≤ k )
+                     (pdU-cms-len {l} {s} {ε∈l} {loc} {c}
+                        (PosixPD.pdU[ s , c ])) h₂)
+...       | Sum.inj₁ h₃ = A2→Ambig ( l ● s ` loc )
+          ( 𝟘 , l , s , loc , ( refl , ( ε∈l , h₃ ) ) )
+...       | Sum.inj₂ h₃ = lift-Ctx (L●Ctx l 𝟘 loc)
+          (pdU-2members→Ambig {c} s h₃)
 
 -- (purpose): §8.1's goal theorem — the A3-as-test of §8.1, reflected:
---   a fired `pd-Idemp?` on the `pdU` member list implies ambiguity,
---   with configuration (c)'s closure as its only remaining hypothesis
+--   a fired `pd-Idemp?` on the `pdU` member list implies ambiguity
 -- (used in): `pd-a3-Ambig-via-star` below (the composition check on the
 --   §6.2 example)
 -- (proof idea): the hypothesis unpacking of §8.1's text — `dups-≈₀-dups`
 --   reads the fired scan as a positioned pair (`pd-Idemp?` unfolds to
 --   `dups-≈₀ ∘ pd-alts` definitionally), `pd-alts-Dups-w-classify`
 --   places it relative to the members, the left branch is closed by
---   §8.5's `pdU-member-pair→Ambig`, the right branch is the hypothesis
+--   §8.5's `pdU-member-pair→Ambig`, the right branch by
+--   `pdU-2members→Ambig` (the classification hands over the length bound)
 star : ∀ { q : RE } { c : Char }
-  → Config-c q c
   → pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true
   → Ambig q
-star {q} {c} config-c eq
+star {q} {c} eq
   with pd-alts-Dups-w-classify (PosixPD.pdU[ q , c ])
          (dups-≈₀-dups (pd-alts (PosixPD.pdU[ q , c ])) eq)
 ...   | Sum.inj₁ ( z , ( z∈ , d ) ) =
       pdU-member-pair→Ambig q z z∈ d
 ...   | Sum.inj₂ ( z , z′ , earlier , later
-                 , ( z∈ , z′∈ , earlier∈ , later∈ , later≈₀earlier ) ) =
-      config-c z∈ z′∈ earlier∈ later∈ later≈₀earlier
+                 , ( z∈ , z′∈ , earlier∈ , later∈ , later≈₀earlier
+                   , 2≤len ) ) =
+      pdU-2members→Ambig {c} q 2≤len
 
 -- the whole composition elaborates on the §6.2 example: applying `star`
--- to the fired test, with the gap hypothesis instantiated at a3 by
--- §6.2's own `pd-a3-ambiguous` (the independent `pd-pairs→Ambig` proof)
-pd-a3-Config-c : Config-c pd-a3-target 'a'
-pd-a3-Config-c z∈ z′∈ earlier∈ later∈ later≈₀earlier = pd-a3-ambiguous
-
+-- to the fired test
 pd-a3-Ambig-via-star : Ambig pd-a3-target
-pd-a3-Ambig-via-star = star pd-a3-Config-c pd-a3-Idemp-applied
+pd-a3-Ambig-via-star = star {pd-a3-target} {'a'} pd-a3-Idemp-applied
 ```
 
 ## 9. `Desc(r)` as a list of partial derivatives (the pd-native form)

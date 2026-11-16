@@ -1441,11 +1441,11 @@ traverses.  Constraining `u` would not repair the *shape* either: an A1
 witness at a state twins only the word `w₁` (its state trees read `ε`), and
 A1 at a state does not make every word of that state ambiguous —
 `( ε + ε ) + ( b ● c )` has two ε-trees and a unique `b c`-tree.  What is
-provable is the existential form at the end of this section, for the first
-three disjuncts of `crit` — the fourth is sound too (this module's §11
-`pd-Idemp` closes it on the `pdU` states; what the counterexample below shows
-is that the *twin-of-a-fixed-`u`* form fails, not the criterion), with the
-lift's injectivity hypothesis made explicit.
+provable is the existential form at the end of this section, and it holds
+for all four disjuncts of `crit` — the fourth closes through the context
+lift with this module's §11 `pd-Idemp`; what the counterexample below
+shows is that the *twin-of-a-fixed-`u`* form fails, not the criterion —
+with the lift's injectivity hypothesis made explicit.
 
 ```agda
 -- the counterexample expression: A1 fires at the top, `b` is unambiguous
@@ -1495,32 +1495,29 @@ soundness-fails h
   with h {fail-r} {[]} { 'b' ∷ [] } fail-u refl fail-r (Sum.inj₁ fail-A1) fail-Desc
 ...   | ( v , ( word≡ , u≢v ) ) = u≢v (sym (fail-unique v (sym word≡)))
 
--- the first three disjuncts of `crit` — the ones whose soundness lifts
--- exist unconditionally (the fourth is closed by `pd-Idemp` §11)
-crit-3 : RE → Set
-crit-3 p = Sum._⊎_
-      (AmbigCheck.AmbigA1 p)
-      (Sum._⊎_
-        (AmbigCheck.AmbigA2 p)
-        ( Σ[ ctx ∈ AmbigCheck.Ctx ] Σ[ l ∈ RE ] Σ[ l′ ∈ RE ] Σ[ loc ∈ ℕ ]
-            ( ( AmbigCheck.plug ctx ( l + l′ ` loc ) ≡ p )
-            × ( Canonic._≈₀_ l l′ ) ) ))
-
 -- (purpose): the soundness direction read over the pd-states — a criterion
 --   at a reached state lifts to an ambiguity of `r`
 -- (used in): the §12 prose
 -- (proof idea): case-split on the disjunction; each branch is the matching
 --   `Canonic` lift (`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`)
---   under the lift's injectivity hypothesis
+--   under the lift's injectivity hypothesis; the fourth branch runs
+--   `pd-Idemp` (§11) at the disjunct's own transition and transports the
+--   result through the hole context (`lift-Ctx`) and the state map
+--   (`pd*-Ambig→Ambig`)
 soundness : ∀ { r : RE } { w : List Char }
   → ( pdi : PDInstance* r w )
   → ( ∀ ( x y : U (Canonic.pd*-expr pdi) )
         → Canonic.pd*-inj pdi x ≡ Canonic.pd*-inj pdi y → x ≡ y )
-  → crit-3 (Canonic.pd*-expr pdi)
+  → crit (Canonic.pd*-expr pdi)
   → ∃[ u′ ] ∃[ v′ ]
       ( proj₁ (flat {r} u′) ≡ proj₁ (flat {r} v′) × ¬ ( u′ ≡ v′ ) )
 soundness pdi inj-inj (Sum.inj₁ a1) = Canonic.pd*-A1→Ambig pdi inj-inj a1
 soundness pdi inj-inj (Sum.inj₂ (Sum.inj₁ a2)) = Canonic.pd*-A2→Ambig pdi inj-inj a2
-soundness pdi inj-inj (Sum.inj₂ (Sum.inj₂ (ctx , l , l′ , loc , ( eq , dup )))) =
+soundness pdi inj-inj
+  (Sum.inj₂ (Sum.inj₂ (Sum.inj₁ ( ctx , l , l′ , loc , ( eq , dup ) )))) =
   pd*-Ctx-dup→Ambig pdi inj-inj ctx eq dup
+soundness pdi inj-inj
+  (Sum.inj₂ (Sum.inj₂ (Sum.inj₂ ( ctx , q , c , ( eq , test ) )))) =
+  pd*-Ambig→Ambig pdi inj-inj
+    (subst Ambig eq (lift-Ctx ctx (pd-Idemp {q} {c} test)))
 ```

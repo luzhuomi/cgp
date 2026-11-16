@@ -1305,7 +1305,8 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --        → Ctx-dup→Ambig (no lift needed) / pd*-Ctx-dup→Ambig (asks injective)
 --   4  ctx , q , c ,
 --      plug ctx q ≡ p × pd-Idemp? (pdU[ q , c ]) ≡ true
---        → taken by no soundness lemma.  A3's soundness lemma is
+--        → taken by `cgp.ambig.Soundness` §12's `soundness` through its §11
+--          `pd-Idemp`.  A3's pair-level lemma is
 --          pd-pairs→Ambig / pd*-pairs→Ambig: its hypothesis is the *pair of
 --          derivative records* (instances of the two branches of one sum with
 --          ≈₀-equal continuations), not the boolean test.  Canonic §4.2
@@ -1317,10 +1318,10 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --          `pdU-Idemp?-member-witness` collects that pair into the
 --          `sum-spine` of *one* member's continuation; the branch
 --          location is proved by `pd-alts-Dups-w-classify` (Canonic §4.2),
---          leaving only the inside-spine analysis of
---          configurations (a)/(b) and the record distinctness of (c)
---          up to the `pd-Idemp` theorem (Canonic §6.1's goal,
---          closed in `cgp.ambig.Soundness` §11).
+--          and the inside-spine analysis of
+--          configurations (a)/(b) and the record distinctness of (c) is
+--          what the `pd-Idemp` theorem closes (Canonic §6.1's goal,
+--          Soundness §11).
 --
 -- The `Any ( λ s → s ≡ p ) (pd*-Desc r w′)` membership unfolds to
 -- `pd*-expr pdi ≡ p` for some `pdi : PDInstance* r w′` (the list is

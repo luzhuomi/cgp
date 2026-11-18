@@ -1317,58 +1317,11 @@ A1 at a state does not make every word of that state ambiguous —
 `( ε + ε ) + ( b ● c )` has two ε-trees and a unique `b c`-tree.  What is
 provable is the existential form at the end of this section, and it holds
 for all four disjuncts of `crit` — the fourth closes through the context
-lift with this module's §11 `pd-Idemp`; what the counterexample below
-shows is that the *twin-of-a-fixed-`u`* form fails, not the criterion —
+lift with this module's §11 `pd-Idemp`; the example above only
+shows that the *twin-of-a-fixed-`u`* form fails, not the criterion —
 with the lift's injectivity hypothesis made explicit.
 
 ```agda
--- the counterexample expression: A1 fires at the top, `b` is unambiguous
-fail-r : RE
-fail-r = ( ( ε + ε ` 1 ) + ( $ 'b' ` 2 ) ` 3 )
-
-fail-u : U fail-r
-fail-u = RightU (LetterU 'b')
-
--- (purpose): the word `b` has exactly one parse tree in `fail-r` — the
---   conclusion of the twin-of-u form is uninhabited for this `u`
--- (used in): `soundness-fails`
--- (proof idea): case on `v`: the left branch of the sum can only read `ε`
---   (the equation then has type `[] ≡ 'b' ∷ []`, absurd), and the letter
---   node is determined by its letter (the index pins it to `'b'`)
-fail-unique : ( v : U fail-r ) → proj₁ (flat {fail-r} v) ≡ 'b' ∷ [] → v ≡ fail-u
-fail-unique (LeftU (LeftU EmptyU)) ()
-fail-unique (LeftU (RightU EmptyU)) ()
-fail-unique (RightU (LetterU 'b')) refl = refl
-
--- (purpose): A1 fires at `fail-r` — two ε-trees through the `ε + ε` branch
--- (used in): `soundness-fails`
--- (proof idea): computed nullability (left summand, right non-nullable) and
---   `mkAllEmptyU` listing two trees, so `2 ≤ 2`
-fail-A1 : AmbigCheck.AmbigA1 fail-r
-fail-A1 = ( RE.ε∈_<+_ (RE.ε∈_+_ RE.ε∈ε RE.ε∈ε) ε∉$ , s≤s (s≤s ≤-refl) )
-
--- (purpose): the state `fail-r` is reached by `[]`
--- (used in): `soundness-fails`
--- (proof idea): `pd*-Desc fail-r []` computes to the singleton `fail-r ∷ []`
-fail-Desc : Any ( λ s → s ≡ fail-r ) (Canonic.pd*-Desc fail-r [])
-fail-Desc = here refl
-
--- (purpose): the twin-of-u form above, refuted
--- (used in): the §12 prose
--- (proof idea): instantiate at `fail-r`, `u = fail-u`, `p = fail-r`; the
---   conclusion's `v` would be a second `b`-tree, and `fail-unique` forces
---   `v ≡ fail-u`, contradicting `¬ ( u ≡ v )`
-soundness-fails : ¬ ( ∀ { r : RE } { w₁ w₂ : List Char }
-    ( u : U r )
-    → proj₁ (flat {r} u) ≡ w₁ ++ w₂
-    → ( p : RE )
-    → crit p
-    → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)
-    → ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) ) × ( ¬ ( u ≡ v ) ) )
-soundness-fails h
-  with h {fail-r} {[]} { 'b' ∷ [] } fail-u refl fail-r (Sum.inj₁ fail-A1) fail-Desc
-...   | ( v , ( word≡ , u≢v ) ) = u≢v (sym (fail-unique v (sym word≡)))
-
 -- (purpose): the soundness direction read over the pd-states — a criterion
 --   at a reached state lifts to an ambiguity of `r`
 -- (used in): the §12 prose

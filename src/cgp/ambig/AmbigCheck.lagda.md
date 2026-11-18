@@ -36,14 +36,26 @@ Notes on the correspondence:
    * plus the lemma `NoDup-mkAllEmptyU` which certifies that the syntactic test
      `length (mkAllEmptyU ε∈r) > 1` faithfully reflects `| allEps r | > 1`
      (distinct list positions give distinct parse trees).
-3. **A3 is not formalized**: it refers to canonical representatives under the
-   similarity relation `≈` (paper Definitions `canonical representative` and
-   `Similarity with Parse Tree Transformation`), which has no counterpart in the
-   current partial-derivative based formalism (the only expression rewriting
-   formalized in the project is `assoc` in `cgp.PDInstance`). To justify that a
-   criterion like A3 is *required*, we exhibit a concrete ambiguous expression that
-   satisfies neither A1 nor A2 (`ambiguousSum`, `notA1Sum`, `notA2Sum`). This is
-   exactly the situation the paper catches with the `Idemp` rule (A3).
+3. **A3 is formalized in adjusted form**, as the third and fourth disjuncts of
+   the diagnosis disjunction `crit` (§13).  The paper's FST machinery is not
+   reproduced: there is no `φ`, and the `oplus`-fold over descendants is turned
+   back into a *list* of partial derivatives.  The paper's similarity `≈`
+   (Definitions `canonical representative` and `Similarity with Parse Tree
+   Transformation`) has as counterpart the similarity `_≈₀_` — equality modulo
+   AST source locations (§6) — driven by `canonic`/`dedup` (§8).
+   * the third disjunct is the **top-level A3**: some choice sub-expression
+     `l + s` sitting in a context of `p` has its left and right alternatives
+     `≈₀`-similar;
+   * the fourth disjunct is the **descendant version**: some sub-expression
+     `q` of `p` has a partial-derivative list `pdU[ q , c ]` whose flattened
+     alternatives (`pd-alts`, each member's `sum-spine`) hold an `≈₀`-pair —
+     the decidable scan `pd-Idemp?` (§9).
+   What is *not* stated verbatim is the quantification over FST states
+   `s ∈ Desc(r)` (see "Why the full A3 condition is not stated").  That A1
+   and A2 alone do not suffice is witnessed by `ambiguousSum` — ambiguous yet
+   refuting both criteria (`notA1Sum`, `notA2Sum`) — exactly the situation
+   the paper catches with `Idemp`; §9.1's `pd-a3-target` adds the case where
+   the duplicate is *created by the derivative*.
 
 The full equivalence (the "only if" direction, quantifying over realizable states
 `Desc(r)` and transitions) requires the FST construction of paper section 4, which

@@ -1301,6 +1301,18 @@ without ever leaving the partial-derivative setting.
 
 ## 8. The diagnosis disjunction `crit`
 
+This `crit` defines the ambiguity check criteria. The first two disjuncts
+correspond to the A1 and A2 criteria in the CIAA 2016 paper section 6.
+The third and the fourth correspond to the A3 criteria with the adjustment to
+current project formlation, i.e. no phi, folding oplus over a list partial derivatives.
+The third disjunct says that there exists some choice sub expressions whose left and right
+alts are similar _≈₀_ (eq modulo AST source locations), i.e. the top level A3.
+The fourth disjunct says that there eixsts some sub expression q, whose derivative (pd via oplus)
+descendant have two similar spine members, i.e. reverse the folding with oplus back to a list of
+partial derivatives, and in the list we find two similar partial derivatives, i.e. it is the
+descendant version of the A3.
+
+
 The completeness half (`cgp.ambig.Completeness`) proves "ambiguous ⇒ some
 realizable state fires a criterion"; its diagnosing lemmas and the pd-state
 soundness reading (`cgp.ambig.Soundness` §12) share one codomain, the

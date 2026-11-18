@@ -144,3 +144,12 @@ parseAll-head-isMax r w u u-is-head with head-just→∷ (parseAll[ r , w ]) u-i
     ...   | Sum.inj₂ v∈t = lookup-All maxAll v∈t
 
 ```
+
+
+```agda
+
+_⊢_≥_ : (r : RE) → U r → U r → Set
+_⊢_≥_ r u v = (r ⊢ u > v) ⊎  ( u ≡ v  )
+
+
+```

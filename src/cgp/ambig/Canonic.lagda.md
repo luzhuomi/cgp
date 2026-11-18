@@ -434,7 +434,6 @@ Dec→true (no ¬p) p = ⊥-elim (¬p p)
 ∨-true true = refl
 ∨-true false = refl
 
--- [KL] : is this a converse of any-≈₀-true? 
 any-≈₀-witness : ( r : RE ) ( rs : List RE )
   → Any ( λ s → r ≈₀ s ) rs
   → any-≈₀ r rs ≡ true

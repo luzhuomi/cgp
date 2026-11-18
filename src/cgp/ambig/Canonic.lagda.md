@@ -419,6 +419,8 @@ scan has to answer `true`.  The two structural facts that make that go —
 scanning more list never loses a `true`, and a value already in the scan's window
 that occurs again in the rest fires it — are worth having in general.
 
+[KL] can we double-check some of the following are indeed not defined in the standard library, e.g. Dec→true and ∨-true and ∈-++-inv
+
 ```agda
 ≈₀-refl-≡ : ∀ { r s : RE } → r ≡ s → r ≈₀ s
 ≈₀-refl-≡ {r} refl = ≈₀-refl r
@@ -432,6 +434,7 @@ Dec→true (no ¬p) p = ⊥-elim (¬p p)
 ∨-true true = refl
 ∨-true false = refl
 
+-- [KL] : is this a converse of any-≈₀-true? 
 any-≈₀-witness : ( r : RE ) ( rs : List RE )
   → Any ( λ s → r ≈₀ s ) rs
   → any-≈₀ r rs ≡ true
@@ -479,14 +482,17 @@ dups-≈₀-go-head kept r rs eq with any-≈₀ r kept | eq
 -- membership of `h` in a list, transported along `y ≡ h`, gives an
 -- `≈₀`-witness for `y`
 ∈-≈₀ : ( kept : List RE ) { y h : RE }
-  → y ≡ h → h ∈ kept → Any ( λ s → y ≈₀ s ) kept
+  → y ≡ h
+  → h ∈ kept
+  → Any ( λ s → y ≈₀ s ) kept
 ∈-≈₀ [] q ()
 ∈-≈₀ (z ∷ kept) q (here p) = here (≈₀-refl-≡ (trans q p))
 ∈-≈₀ (z ∷ kept) q (there w) = there (∈-≈₀ kept q w)
 
 -- the window holds `h` and the rest contains `h` again: the test fires
 dups-≈₀-go-repeat : ( kept ys : List RE ) ( h : RE )
-  → h ∈ kept → h ∈ ys
+  → h ∈ kept
+  → h ∈ ys
   → dups-≈₀-go kept ys ≡ true
 dups-≈₀-go-repeat kept [] h h∈ ()
 dups-≈₀-go-repeat kept (y ∷ ys) h h∈ (here q) =
@@ -524,7 +530,8 @@ sum-spine∷ ( l * n ` loc ) = ( l * n ` loc , [] , refl )
 -- an alternative of a member is an alternative of the state
 pd-alts∈ : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   ( z : PDInstance r c ) ( h : RE )
-  → z ∈ pdis → h ∈ sum-spine (pd-expr z)
+  → z ∈ pdis
+  → h ∈ sum-spine (pd-expr z)
   → h ∈ pd-alts pdis
 pd-alts∈ [] z h ()
 pd-alts∈ (x ∷ pdis) z h (here p) h∈ with p | sum-spine∷ (pd-expr x)
@@ -553,7 +560,9 @@ dups-≈₀-alts-head {r} {c} kept x z′ pdis eq z′∈ with sum-spine∷ (pd-
 
 pd-Idemp?-members-go : ∀ { r : RE } { c : Char } ( kept : List RE )
   ( pdis : List (PDInstance r c) ) ( z z′ : PDInstance r c )
-  → z ∈ pdis → z′ ∈ pdis → ¬ ( z ≡ z′ )
+  → z ∈ pdis
+  → z′ ∈ pdis
+  → ¬ ( z ≡ z′ )
   → pd-expr z ≡ pd-expr z′
   → dups-≈₀-go kept (pd-alts pdis) ≡ true
 pd-Idemp?-members-go kept [] z z′ ()
@@ -571,7 +580,9 @@ pd-Idemp?-members-go kept (x ∷ pdis) z z′ (there z∈) (there z′∈) z≢z
 -- one continuation
 pd-Idemp?-members : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
   ( z z′ : PDInstance r c )
-  → z ∈ pdis → z′ ∈ pdis → ¬ ( z ≡ z′ )
+  → z ∈ pdis
+  → z′ ∈ pdis
+  → ¬ ( z ≡ z′ )
   → pd-expr z ≡ pd-expr z′
   → pd-Idemp? pdis ≡ true
 pd-Idemp?-members pdis z z′ z∈ z′∈ z≢z′ eq =

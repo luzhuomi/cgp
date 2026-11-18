@@ -29,6 +29,12 @@ criteria of `cgp.ambig.AmbigCheck` §13 (`crit`). Four layers:
    static search (subterm `Ctx`/`plug` patterns à la `crit` §13, with the
    shifted-split emptiness test at a concatenation boundary) that fires
    for *every* non-robust regex — see the note after §4.
+5. The investigation of that bounded search: the two order rule sets
+   differ ONLY at choice-node guards, so every divergent pair has the
+   shifted-split shape (a bounded position search generates all of
+   them); but `OrderDiverge` does NOT imply `NonRobust` — the formal
+   `sepx` regex is `Robust` while firing a divergent pair — so a
+   dominance side condition is provably required.
 
 Why a `crit`-style test can never be A1/A3-shaped: at equal word length
 the two orders coincide at every choice node (`choice-lr` fires on both
@@ -286,12 +292,16 @@ The two inclusions are strict in the interesting direction:
 `NonRobust → OrderDiverge → Ambig` holds, but not converses.
 `a + a` (`Robust.lagda.md` §"the converse does not hold") is ambiguous
 with *no* divergent pair. Conversely an `OrderDiverge` pair can sit
-*below* a shared maximum and robustness survives: e.g. with
-`((a●(a●a) + a) + (a●a)) ● b` the word `aab` has three trees `M, t₂, t₃`;
-both orders put `M` first (greedy `choice-lr`, posix `len->` 3 > 2) while
-`t₂ / t₃` flip direction (`choice-lr` vs `choice-rl`). So a criterion
-targeting `NonRobust` must be about *deciding the fiber*, not merely
-about firing.
+*below* a shared maximum and robustness survives — the `sepx` regex of
+§5 is a fully formalized instance: the two `robex` trees of `aab` are
+divergent there, but the third tree (the literal branch `a ● a ● b`)
+beats both in both orders at the higher choice node (`choice-lr` on
+both sides, equal lengths), and `sepx` is `Robust`. (A pattern that
+merely puts a longer alternative first does NOT work: with a fixed
+continuation like `● b` all branches read the same prefix, so no
+divergent pair exists at all — the dominating branch must *duplicate*
+the pattern's word.) So a criterion targeting `NonRobust` must be about
+*deciding the fiber*, not merely about firing.
 
 ## 3. The semidecision procedure `headEq?`
 
@@ -536,6 +546,259 @@ pattern reduces to the fact that context filling embeds both orders
 `A2→Ambig` machinery) and reflects maximality under unambiguous
 siblings. The completeness direction — every `NonRobust` regex fires a
 *bounded* pattern — would need the descent argument of
-`cgp.ambig.Completeness`; it is open here, and the `t₂ / t₃`-under-a
-dominating maximum shape (§2) shows the dominance condition is real
-proof content, not a technicality.
+`cgp.ambig.Completeness`; it is open here, and the `sepx` regex of §5
+shows the dominance condition is real proof content, not a technicality.
+
+## 5. Investigation: can the static search be dominance-free?
+
+The remaining open half is the bounded static search (position search +
+shifted-overlap test + dominance). This section investigates how much
+of it is forced by the shape of the two orders. Two findings:
+
+**Finding 1 (the pattern shape is forced — pair generation is bounded).**
+Comparing the two rule sets (`cgp.greedy.Order` / `cgp.posix.Order`):
+for two trees of a *common word* the top levels are equivalent wrappers
+(greedy `sub` versus posix `len-≡` at equal lengths — `len->` can never
+fire inside one fiber), and the descent rules are *identical*:
+`seq₁`/`seq₂` (lexicographic — the `seq₁` sibling is unconstrained),
+`choice-ll`/`choice-rr`, and the three star rules. The only
+difference is the guard at choice occurrences: greedy `choice-lr` is
+unconditional (left always beats right), while posix `choice-lr`
+requires |left reading| ≥ |right reading| and has `choice-rl` only for
+a *strictly longer* right reading. Any derivation for a fixed tree pair
+follows the structure of the pair (each shape admits one rule family),
+and both orders follow it identically until the first choice occurrence
+where the trees pick different branches. Hence: an `OrderDiverge` pair
+can only exist with the shape — a shared spine down to a choice
+occurrence `(l + s)` in `r`, one tree taking `LeftU` reading `a ∈ ⟦l⟧`,
+the other `RightU` reading `c ∈ ⟦s⟧`, with `|c| > |a|`, and continuations
+below making both trees read one word (`a·x ≡ c·y` — the shifted split;
+`robex` above is the minimal instance). So a bounded subterm position
+search is structurally complete for *generating divergent pairs*: no
+unbounded pattern family is needed for that half. (This paragraph is a
+reading of the two inductive definitions, not a formalized inversion
+lemma.)
+
+**Finding 2 (dominance is NOT eliminable — formal counterexample).**
+The natural hope was that a fired pattern might already imply
+`NonRobust` — i.e. `OrderDiverge r → NonRobust r`: if a pair `u >ᵍ v`,
+`v >ᵖ u` exists, perhaps the two maxima could never coincide, because
+transitivity would force the maxima to differ wherever the pair differs.
+This is false. `sepx` below is the literal word `a ● a ● b` as a choice
+*branch* next to the `robex` shape: at the word `aab` the two divergent
+`robex` trees still exist, but the third tree (the literal branch)
+beats *both* of them in *both* orders at the higher choice node
+(`choice-lr` both sides, equal lengths), so both parsers agree there.
+Formally: `OrderDiverge sepx` holds while `Robust sepx` holds (via
+`¬ NonRobust sepx` and §1's `¬nonrobust→robust`). A static criterion
+must therefore decide the *fiber* — the dominance/maximality side
+condition cannot be dropped. (Nor can it be replaced by `RobustCrit`
+tightness: adding a duplicate continuation branch inside `m`, e.g.
+`(a + aa) ● ((ab + b) + (a ● b))`, makes the two maxima share a
+3-tree fiber — the maxima are not tight — informally observed, not
+formalized.)
+
+```agda
+-- Purpose: OrderDiverge but Robust: the literal word aab as a choice
+--   branch beside the robex shape.
+-- Used by: sepx-diverge, ¬NonRobust-sepx, robust-sepx.
+-- Proof idea: N/A (definition).
+sepx : RE
+sepx = ( ( ($ 'a' ` 21) ● ( ($ 'a' ` 22) ● ($ 'b' ` 23) ` 24 ) ` 25 )
+       + ( ( ($ 'a' ` 26) + ( ($ 'a' ` 27) ● ($ 'a' ` 28) ` 29 ) ` 30 )
+         ● ( ( ($ 'a' ` 31) ● ($ 'b' ` 32) ` 33 ) + ( $ 'b' ` 34 ) ` 35 )
+         ` 36 )
+       ` 37 )
+
+-- the unique tree of the literal branch, reading "aab"
+sepx-m : U sepx
+sepx-m = LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+
+-- robex trees of "aab": (a · ab) and (aa · b)
+sepx-t1 : U sepx
+sepx-t1 = RightU (PairU (LeftU (LetterU 'a'))
+                         (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+
+sepx-t4 : U sepx
+sepx-t4 = RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a')))
+                        (RightU (LetterU 'b')))
+
+-- the other two robex trees (singleton fibers: "ab" and "aaab")
+sepx-t2 : U sepx
+sepx-t2 = RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+
+sepx-t3 : U sepx
+sepx-t3 = RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a')))
+                        (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+
+-- Purpose: sepx fires the divergence pair (the robex pair, unchanged).
+-- Used by: Finding 2.
+-- Proof idea: choice-rr descends to the robex prefix sum; greedy
+--   choice-lr there, posix len-> (2 > 1) — the robex argument.
+sepx-diverge : OrderDiverge sepx
+sepx-diverge = sepx-t1 , sepx-t4 , ( refl
+  , ( GreedyOrder.sub (GreedyOrder.choice-rr
+        (GreedyOrder.sub (GreedyOrder.seq₁
+          (GreedyOrder.sub GreedyOrder.choice-lr))))
+    , ( PosixOrder.len-≡ refl (PosixOrder.choice-rr
+        (PosixOrder.len-≡ refl (PosixOrder.seq₁
+          (PosixOrder.len-> (Nat.s≤s (Nat.s≤s Nat.z≤n))))))) ) )
+
+-- Purpose: the literal branch beats the divergent trees in both orders
+--   (their comparison ends at the top choice; the guards fail).
+-- Used by: ¬NonRobust-sepx.
+-- Proof idea: no rule derives RightU > LeftU in the greedy inner order;
+--   posix choice-rl needs 3 > 3; len-> needs 3 > 3; equality is absurd.
+-- 4 ≤ 3: the guard that both length guards above reduce to (all three
+--   trees read "aab", so every strict-length guard here is 3 > 3).
+-- Used by: not-t1≥ᵖm, not-t4≥ᵖm.
+¬4≤3 : ¬ ( suc (suc (suc (suc zero))) Nat.≤ (suc (suc (suc zero))) )
+¬4≤3 (Nat.s≤s (Nat.s≤s (Nat.s≤s ())))
+
+not-t1≥ᵖm : ¬ ( PosixMax._⊢_≥_ sepx sepx-t1 sepx-m )
+not-t1≥ᵖm (inj₁ (PosixOrder.len-> n)) = ¬4≤3 n
+not-t1≥ᵖm (inj₁ (PosixOrder.len-≡ refl (PosixOrder.choice-rl q))) = ¬4≤3 q
+not-t1≥ᵖm (inj₂ ())
+
+not-t4≥ᵖm : ¬ ( PosixMax._⊢_≥_ sepx sepx-t4 sepx-m )
+not-t4≥ᵖm (inj₁ (PosixOrder.len-> n)) = ¬4≤3 n
+not-t4≥ᵖm (inj₁ (PosixOrder.len-≡ refl (PosixOrder.choice-rl q))) = ¬4≤3 q
+not-t4≥ᵖm (inj₂ ())
+
+not-t1≥ᵍm : ¬ ( GreedyMax._⊢_≥_ sepx sepx-t1 sepx-m )
+not-t1≥ᵍm (inj₁ (GreedyOrder.sub ()))
+not-t1≥ᵍm (inj₂ ())
+
+not-t4≥ᵍm : ¬ ( GreedyMax._⊢_≥_ sepx sepx-t4 sepx-m )
+not-t4≥ᵍm (inj₁ (GreedyOrder.sub ()))
+not-t4≥ᵍm (inj₂ ())
+
+-- Purpose: two trees with different words cannot both read the word w.
+-- Used by: ¬NonRobust-sepx (the word-mismatch clauses).
+-- Proof idea: transitivity gives word ≡ word, refuted term-level by
+--   the concrete list disequality (absurd λ () — kernel evaluation).
+wmismatch : { u v : U sepx } { w : List Char }
+  → proj₁ (flat u) ≡ w → proj₁ (flat v) ≡ w
+  → ¬ ( proj₁ (flat u) ≡ proj₁ (flat v) )
+  → ⊥
+wmismatch p q ¬eq = ¬eq (trans p (sym q))
+
+-- Purpose: sepx is not NonRobust: every candidate pair of its nine
+--   trees is killed — different fibers by word mismatch; the shared
+--   fiber at "aab" has literal maximum sepx-m in both orders, and a
+--   right-branch tree is never ≥ the literal tree (the guards fail).
+-- Used by: robust-sepx.
+-- Proof idea: case analysis on the two tree shapes (five forms each);
+--   equal trees contradict u≢v; the (m, t1), (m, t4), (t1, ·), (t4, ·)
+--   same-fiber cases apply a maximality field to sepx-m, contradicting
+--   the guard lemmas; all other pairs read different words (wmismatch,
+--   discharged by kernel evaluation of the two words).
+¬NonRobust-sepx : ¬ NonRobust sepx
+¬NonRobust-sepx (u , v , w , ( ≥-maxᵍ .w u u≡w cmpᵍ ,
+  ( ≥-maxᵖ .w v v≡w cmᵖ , u≢v ) )) with u | v
+... | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    = u≢v refl
+... | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (not-t1≥ᵖm (cmᵖ sepx-m u≡w))
+... | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-m} {v = sepx-t2} u≡w v≡w λ ())
+... | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (wmismatch {u = sepx-m} {v = sepx-t3} u≡w v≡w λ ())
+... | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    = ⊥-elim (not-t4≥ᵖm (cmᵖ sepx-m u≡w))
+... | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    = ⊥-elim (not-t1≥ᵍm (cmpᵍ sepx-m v≡w))
+... | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = u≢v refl
+... | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-t1} {v = sepx-t2} u≡w v≡w λ ())
+... | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (wmismatch {u = sepx-t1} {v = sepx-t3} u≡w v≡w λ ())
+... | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    = ⊥-elim (not-t1≥ᵍm (cmpᵍ sepx-m v≡w))
+... | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-t2} {v = sepx-m} u≡w v≡w λ ())
+... | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (wmismatch {u = sepx-t2} {v = sepx-t1} u≡w v≡w λ ())
+... | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    = u≢v refl
+... | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (wmismatch {u = sepx-t2} {v = sepx-t3} u≡w v≡w λ ())
+... | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-t2} {v = sepx-t4} u≡w v≡w λ ())
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-t3} {v = sepx-m} u≡w v≡w λ ())
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (wmismatch {u = sepx-t3} {v = sepx-t1} u≡w v≡w λ ())
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-t3} {v = sepx-t2} u≡w v≡w λ ())
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = u≢v refl
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-t3} {v = sepx-t4} u≡w v≡w λ ())
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    | LeftU (PairU (LetterU 'a') (PairU (LetterU 'a') (LetterU 'b')))
+    = ⊥-elim (not-t4≥ᵍm (cmpᵍ sepx-m v≡w))
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    | RightU (PairU (LeftU (LetterU 'a')) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (not-t4≥ᵍm (cmpᵍ sepx-m v≡w))
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    | RightU (PairU (LeftU (LetterU 'a')) (RightU (LetterU 'b')))
+    = ⊥-elim (wmismatch {u = sepx-t4} {v = sepx-t2} u≡w v≡w λ ())
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (LeftU (PairU (LetterU 'a') (LetterU 'b'))))
+    = ⊥-elim (wmismatch {u = sepx-t4} {v = sepx-t3} u≡w v≡w λ ())
+... | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    | RightU (PairU (RightU (PairU (LetterU 'a') (LetterU 'a'))) (RightU (LetterU 'b')))
+    = u≢v refl
+
+-- Purpose: sepx IS robust — the fired divergence pair decides nothing.
+-- Used by: Finding 2 (OrderDiverge ↛ NonRobust).
+-- Proof idea: ¬ NonRobust-sepx through §1's completeness half.
+robust-sepx : Robust sepx
+robust-sepx = ¬nonrobust→robust sepx ¬NonRobust-sepx
+
+-- Purpose: concrete witness of the agreement at the shared fiber.
+-- Used by: Finding 2.
+-- Proof idea: kernel computation of both parseAll lists (heads equal).
+sepx-heads-agree : headEq? sepx ( 'a' ∷ 'a' ∷ 'b' ∷ [] ) ≡ true
+sepx-heads-agree = refl
+```
+
+Consequences for the criteria design:
+
+- `NonRobust ↔ OrderDiverge ↔ ∃ position (shifted overlap witnessed)`
+  are *not* equivalent: `NonRobust → OrderDiverge` holds (§2) but the
+  converse fails at `sepx`; and every divergent pair has the
+  shifted-split shape, so `OrderDiverge` is exactly what a bounded
+  position search can certify.
+- The open half is now precisely: find a *decidable dominance*
+  condition — static (no word quantifier) per fired position — such
+  that fired + dominant ⇒ the pair are the two fiber maxima. At a
+  fixed word, maximality is checkable by `headEq?`/list membership
+  (§3, §4 tightness); making it word-free is the remaining gap, and
+  the `sepx` shape shows any such condition must rule out a
+  higher choice node whose reading outranks both pattern trees — a
+  question about the *complement* of the pattern (all other readings
+  of the context), which is exactly where the pd-list machinery of
+  `AmbigCheck` §13 would have to be extended.

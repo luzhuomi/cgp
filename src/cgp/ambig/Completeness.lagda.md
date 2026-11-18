@@ -1,12 +1,12 @@
 # Completeness of the criteria: the injectivity half
 
-`cgp.ambig.Canonic` §5 proves for each criterion of section 6 of
+`cgp.ambig.AmbigCheck` §10 proves for each criterion of section 6 of
 
 > Martin Sulzmann, Kenny Zhuo Ming Lu. *Derivative-Based Diagnosis of Regular
 > Expression Ambiguity.* CIAA 2016.
 
 that a witness *at a pd-state* lifts to an ambiguity of the original expression
-(`pd*-A1→Ambig`, `pd*-A2→Ambig` in `cgp.ambig.Canonic` §5 and `pd*-Ctx-dup→Ambig`
+(`pd*-A1→Ambig`, `pd*-A2→Ambig` in `cgp.ambig.AmbigCheck` §10 and `pd*-Ctx-dup→Ambig`
 in `cgp.ambig.Soundness` §6; all three instances of the master lift `lift-Ambig`).  The top-level reading of the converse —
 "criterion fires at `r` itself" — fails: for `r = ( a + a · a ) ⋆` the word
 `a a` has two parse trees (`ListU [ a , a ]` and `ListU [ a · a ]`), yet no
@@ -22,7 +22,7 @@ its `AllParseFST` construction:
 > if `u ≢ v` are parse trees of `r` for the same word, then for the pd-state
 > reached by that word the transition tree map identifies two distinct trees —
 > that state is ambiguous — and hence (by the soundness proofs in
-> `cgp.ambig.AmbigCheck`/`cgp.ambig.Canonic`) one of the criteria fires there.
+> `cgp.ambig.AmbigCheck`/`cgp.ambig.AmbigCheck`) one of the criteria fires there.
 
 This module proves that direction.  Its arc: state the goal (§1), close its
 base case (§2), build the descent's two machineries — the pd-side plumbing
@@ -35,7 +35,7 @@ goal to a single recursion (§6), make the recursion's stop test computable
   given distinct parse trees `u ≢ v` of `r` for one word, some pd-descendant
   state reached by a prefix of that word carries a criterion (`crit`, the
   four-branch diagnosis disjunction — A1, A2, the duplicate pattern, the
-  transition `Idemp` test — defined in `cgp.ambig.Canonic` §8).  The goal is stated here and its signature and
+  transition `Idemp` test — defined in `cgp.ambig.AmbigCheck` §13).  The goal is stated here and its signature and
   body are §9's, assembled through §6's `completeness-from-desc`.
 * §2 is the base case of the descent: two distinct parse trees with empty
   word force `AmbigA1` at the state (`base-A1-at-root`), for any
@@ -74,8 +74,8 @@ goal to a single recursion (§6), make the recursion's stop test computable
   reconstruction as a term (`residual`, `residual-word`), and the A3 rule —
   two *distinct* members of one `pdU[ r , c ]` continuing at one expression
   make the criterion fire at `r` (`pick-diff-record-prf`, via
-  `Canonic.pd-Idemp?-members`: the member list then holds two entries with
-  one continuation, exactly what `Canonic`'s `Idemp` test reads).
+  `AmbigCheck.pd-Idemp?-members`: the member list then holds two entries with
+  one continuation, exactly what `AmbigCheck`'s `Idemp` test reads).
 * §8 proves the structural fact that collapses the paper's enumeration: in
   this formalization *all members of `pdU[ r , c ]` continue at one
   expression* (`pdU-const`, by induction over the `pdU` clauses — each maps
@@ -127,13 +127,10 @@ import cgp.posix.PartialDerivative as PosixPD
 open PosixPD using ( mkfuseInj ; fuse ; pdinstance-oplus ; injId ; injId-sound ; pdU-complete ; pdUMany-complete )
 
 import cgp.Utils as Utils
-open Utils using ( ∷-inj )
+open Utils using ( ∷-inj ; ∈-map⁻ ; ∈-concatMap⁻ )
 
 import cgp.ambig.AmbigCheck as AmbigCheck
-open AmbigCheck using ( Ambig )
-
-import cgp.ambig.Canonic as Canonic
-open Canonic using ( crit ; crit-A3-test ; ∈-map⁻ ; ∈-concatMap⁻ )
+open AmbigCheck using ( Ambig ; crit ; crit-A3-test )
 
 import cgp.Recons as Recons
 open Recons using ( Recons ; recons )
@@ -160,22 +157,22 @@ open import Data.Bool using (true)
 
 ## 1. The goal: the completeness direction, stated
 
-The reading the earlier modules give is the easy direction (`Canonic.lift-Ambig`:
+The reading the earlier modules give is the easy direction (`AmbigCheck.lift-Ambig`:
 a criterion at a pd-state lifts to an ambiguity of the original expression).
 What is stated here is the other one — the paper's proposition, section 6:
 
 > given an ambiguity of `r` — two distinct parse trees for one word — the word
 > has a prefix whose pd-states include one at which a criterion fires.
 
-The diagnosis disjunction is defined once — in `cgp.ambig.Canonic` §8, shared
+The diagnosis disjunction is defined once — in `cgp.ambig.AmbigCheck` §13, shared
 with the soundness reading — since every later section states its result in
 terms of it: the first two disjuncts are the paper's A1 and A2
 (`cgp.ambig.AmbigCheck` §2, §3), the third is the `Idemp` *pattern* (a sum with
-`≈₀`-equal members under a hole context — the shape `Canonic.Ctx-dup→Ambig`
+`≈₀`-equal members under a hole context — the shape `AmbigCheck.Ctx-dup→Ambig`
 consumes), the fourth is A3 proper: the `Idemp` *test* firing on a transition out
 of a state, again read under a hole context, since the paper's criteria range
 over descendants `s ∈ Desc(r)` and a hole context is what this project has of
-that (`cgp.ambig.Canonic`'s `pd-Idemp?`; `cgp.ambig.Canonic` §6 shows that is
+that (`cgp.ambig.AmbigCheck`'s `pd-Idemp?`; `cgp.ambig.AmbigCheck` §11 shows that is
 the right shape and what it fires on).  The stability of the disjuncts under
 plugging a hole context (`A2-Ctx`, `dup-Ctx`, `A3-Ctx`) was developed with the
 split case in the version of this module that included it; nothing below needs
@@ -183,7 +180,7 @@ that transport — the descent always fires the criterion *at the state it stand
 in*.
 
 This disjunction and the empty-context injection `crit-A3-test` live in
-`cgp.ambig.Canonic` §8 (the soundness reading, `cgp.ambig.Soundness` §12,
+`cgp.ambig.AmbigCheck` §13 (the soundness reading, `cgp.ambig.Soundness` §12,
 shares them); they are imported below.
 
 To fill this for an *arbitrary* pair `( u , v )` one has to *find* the
@@ -270,8 +267,8 @@ reaches the instance `pdi` of `r` (`pdi ∈ pdUMany[ r , pref ]`) and from
 `pdi` the suffix `suff` reaches the state `p`, then `p` is a pd-descendant of
 `r` for the concatenated word —
 
-> `pdi ∈ pdUMany[ r , pref ]` and `p ∈ Canonic.pd*-Desc (pd r pref) suff`
-> together imply `p ∈ Canonic.pd*-Desc r (pref ++ suff)` .
+> `pdi ∈ pdUMany[ r , pref ]` and `p ∈ AmbigCheck.pd*-Desc (pd r pref) suff`
+> together imply `p ∈ AmbigCheck.pd*-Desc r (pref ++ suff)` .
 
 Formally: a chain of advances `chain*` from a single instance — the same
 recursion as `pdUMany-aux` but started from one instance — *is* `pdUMany-aux`
@@ -444,7 +441,7 @@ data Path : ( r : RE ) → ( w : List Char ) → Set where
   pnil  : ∀ { r } → Path r []
   pcons : ∀ { r c ws } ( z : PDInstance r c )
     → z ∈ PosixPD.pdU[ r , c ]
-    → Path (Canonic.pd-expr z) ws
+    → Path (AmbigCheck.pd-expr z) ws
     → Path r (c ∷ ws)
 
 -- the state a path ends in
@@ -500,7 +497,7 @@ any-concatMap g {xs = x ∷ xs} (there m) =
 -- through the matched constructor — a `with`-abstraction leaves `z :
 -- PDInstance (pd*-expr hd) c` stuck on the un-reduced projection.)
 path-chain : ∀ { r pref ws } ( hd : PDInstance* r pref )
-  → Path (Canonic.pd*-expr hd) ws
+  → Path (AmbigCheck.pd*-expr hd) ws
   → PDInstance* r (pref ++ ws)
 path-chain {r} {pref} hd pnil = hd
 path-chain {r} {pref} (pdinstance* {d} d→r ev)
@@ -515,7 +512,7 @@ path-chain {r} {pref} (pdinstance* {d} d→r ev)
 --   step's stored membership), which `any-concatMap` lifts into the `chain*`
 --   unfold
 path-chain∈ : ∀ { r pref ws } ( hd : PDInstance* r pref )
-  ( π : Path (Canonic.pd*-expr hd) ws )
+  ( π : Path (AmbigCheck.pd*-expr hd) ws )
   → path-chain hd π ∈ chain* {r} {pref} hd ws
 path-chain∈ hd pnil = here refl
 path-chain∈ {r} {pref} (pdinstance* {d} d→r ev)
@@ -534,8 +531,8 @@ path-chain∈ {r} {pref} (pdinstance* {d} d→r ev)
 -- (proof idea): recursion on the path, `refl` at the end — `compose-pdi-with`
 --   builds the pattern field exactly as `pdend` reads it
 path-chain-pd : ∀ { r pref ws } ( hd : PDInstance* r pref )
-  ( π : Path (Canonic.pd*-expr hd) ws )
-  → Canonic.pd*-expr (path-chain hd π) ≡ pdend π
+  ( π : Path (AmbigCheck.pd*-expr hd) ws )
+  → AmbigCheck.pd*-expr (path-chain hd π) ≡ pdend π
 path-chain-pd hd pnil = refl
 path-chain-pd {r} {pref} (pdinstance* {d} d→r ev)
                        (pcons {c = c} {ws = ws} z@(pdinstance {p} p→d evz) m q) =
@@ -555,11 +552,11 @@ path-chain-pd {r} {pref} (pdinstance* {d} d→r ev)
 --   give; `compose-pdi-with` builds the instance in the very shape of the
 --   list that contains it.)
 pdesc : ∀ { r w } ( π : Path r w )
-  → Any ( λ x → x ≡ pdend π ) (Canonic.pd*-Desc r w)
+  → Any ( λ x → x ≡ pdend π ) (AmbigCheck.pd*-Desc r w)
 pdesc pnil = here refl
 pdesc {r} π@(pcons {c = c} {ws = ws} z m q) =
-  map-Any Canonic.pd*-expr
-    ( λ a eq → trans ( cong Canonic.pd*-expr ( sym eq ) ) ( path-chain-pd hd₀ π ) )
+  map-Any AmbigCheck.pd*-expr
+    ( λ a eq → trans ( cong AmbigCheck.pd*-expr ( sym eq ) ) ( path-chain-pd hd₀ π ) )
     ( subst ( λ L → path-chain hd₀ π ∈ L ) ( chain-aux hd₀ (c ∷ ws) )
         ( path-chain∈ hd₀ π ) )
   where
@@ -605,7 +602,7 @@ pick-Any (there {xs = xs} p) with pick-Any p
 Recons-residual : ∀ { r : RE } { c : Char } { pdi : PDInstance r c } { u : U r } { ws : List Char }
   → Recons {r} {c} u pdi
   → proj₁ (flat {r} u) ≡ c ∷ ws
-  → Σ[ x ∈ U (Canonic.pd-expr pdi) ] ( proj₁ (flat {Canonic.pd-expr pdi} x) ≡ ws )
+  → Σ[ x ∈ U (AmbigCheck.pd-expr pdi) ] ( proj₁ (flat {AmbigCheck.pd-expr pdi} x) ≡ ws )
 Recons-residual {pdi = pdinstance {p} inj ev} (recons _ ( w∈ , eq )) u≡cw =
   ( unflat w∈
   , proj₂ (∷-inj (trans (sym (ev (unflat w∈))) (trans (cong ( λ z → proj₁ (flat z) ) eq) u≡cw))) )
@@ -706,7 +703,7 @@ desc-base u v u≡[] v≡[] u≢v = inj₁ (inj₁ (base-A1-at-root _ u v u≡[]
 --   the continuation becomes the one-letter prefix `[ c ]`
 desc-step : ∀ { r : RE } { c : Char } { ws : List Char }
   ( z : PDInstance r c ) → z ∈ PosixPD.pdU[ r , c ]
-  → desc-concl (Canonic.pd-expr z) ws → desc-concl r (c ∷ ws)
+  → desc-concl (AmbigCheck.pd-expr z) ws → desc-concl r (c ∷ ws)
 desc-step {r} {c} {ws} z z∈ (inj₁ cr) =
   inj₂ ( [ c ] , ws , refl , ( pcons z z∈ pnil , cr ) )
 desc-step {r} {c} {ws} z z∈ (inj₂ ( w′ , w″ , w≡w′++w″ , path , cr )) =
@@ -730,7 +727,7 @@ tree through the branch injection and through the fused member `pdU` computes,
 with no concatenation in the expression at all — and what saves the argument
 there is that the two derivations differ by an injection through a sum of
 `≈₀`-similar alternatives, exactly the `Idemp`/A3 situation: `crit`'s fourth
-disjunct, the transition test `Canonic.pd-Idemp?`.  So the classification runs
+disjunct, the transition test `AmbigCheck.pd-Idemp?`.  So the classification runs
 through that disjunct — and §8 shows the counting guess was in fact the whole
 truth about *continuations*: whatever the multiplicity, all members of
 `pdU[ r , c ]` continue at one expression, so the "different states" case never
@@ -751,7 +748,7 @@ completeness-from-desc : ( dc : Desc-complete )
   → proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) → ¬ ( u ≡ v )
   → ∃[ w′ ] ∃[ w″ ]
       ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
-      × ∃[ p ] ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′) × crit p ) )
+      × ∃[ p ] ( Any ( λ s → s ≡ p ) (AmbigCheck.pd*-Desc r w′) × crit p ) )
 completeness-from-desc dc r u v w≡ u≢v with dc r (proj₁ (flat {r} u)) u v refl (sym w≡) u≢v
 ... | inj₁ cr = ( [] , proj₁ (flat {r} u) , refl , ( r , pdesc pnil , cr ) )
 ... | inj₂ ( w′ , w″ , w≡w′++w″ , ( path , cr ) )
@@ -769,8 +766,8 @@ reconstruction and its word (`residual`, `residual-word`, read off
 §5's `Recons-residual`), and the fact that the second configuration — two
 *distinct* records of `pdU[ r , c ]` continuing at one expression — fires the
 fourth disjunct of `crit` *by computation*
-(`pick-diff-record-prf`, via `Canonic.pd-Idemp?-members`: the member list
-then holds two entries with one continuation, exactly what `Canonic`'s
+(`pick-diff-record-prf`, via `AmbigCheck.pd-Idemp?-members`: the member list
+then holds two entries with one continuation, exactly what `AmbigCheck`'s
 `Idemp` test reads).  The first configuration — the two picks continuing at
 *different* expressions — is the one §8 rules out; the record decision
 itself is what §9 replaces by a decidable question.
@@ -781,7 +778,7 @@ itself is what §9 replaces by a decidable question.
 -- (used in): the test and the recursive call of `desc-picks-≟` (§9)
 -- (proof idea): first projection of `Recons-residual` (§5)
 residual : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u : U r }
-  → Recons {r} {c} u z → proj₁ (flat {r} u) ≡ c ∷ ws → U (Canonic.pd-expr z)
+  → Recons {r} {c} u z → proj₁ (flat {r} u) ≡ c ∷ ws → U (AmbigCheck.pd-expr z)
 residual u∈ u≡ = proj₁ (Recons-residual u∈ u≡)
 
 -- (purpose): the residual's word *is* the tail of the pair's word
@@ -789,7 +786,7 @@ residual u∈ u≡ = proj₁ (Recons-residual u∈ u≡)
 -- (proof idea): second projection of `Recons-residual`
 residual-word : ∀ { r : RE } { c : Char } { ws : List Char } { z : PDInstance r c } { u : U r }
   ( u∈ : Recons {r} {c} u z ) ( u≡ : proj₁ (flat {r} u) ≡ c ∷ ws )
-  → proj₁ (flat {Canonic.pd-expr z} (residual u∈ u≡)) ≡ ws
+  → proj₁ (flat {AmbigCheck.pd-expr z} (residual u∈ u≡)) ≡ ws
 residual-word u∈ u≡ = proj₂ (Recons-residual u∈ u≡)
 ```
 
@@ -805,24 +802,24 @@ fourth disjunct, and it is a theorem, not a rule:
 -- (purpose): two *distinct* members of `pdU[ r , c ]` with one continuation
 --   make the fourth disjunct of `crit` fire at `r` — the A3 stop, as a theorem
 -- (used in): `desc-picks-≟`'s equal-residuals branch (§9)
--- (proof idea): `Canonic.pd-Idemp?-members` turns two distinct members with
+-- (proof idea): `AmbigCheck.pd-Idemp?-members` turns two distinct members with
 --   equal continuations into a positive `Idemp` test on the real list, and
---   `crit-A3-test` (`cgp.ambig.Canonic` §8) injects it
+--   `crit-A3-test` (`cgp.ambig.AmbigCheck` §13) injects it
 pick-diff-record-prf : ∀ { r : RE } { c : Char }
   ( z z′ : PDInstance r c )
   → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
   → ¬ ( z ≡ z′ )
-  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
   → crit r
 pick-diff-record-prf {r} {c} z z′ z∈ z′∈ z≢z′ eq =
   crit-A3-test r c
-    (Canonic.pd-Idemp?-members (PosixPD.pdU[ r , c ]) z z′ z∈ z′∈ z≢z′ eq)
+    (AmbigCheck.pd-Idemp?-members (PosixPD.pdU[ r , c ]) z z′ z∈ z′∈ z≢z′ eq)
 ```
 
 The record case — one letter, two members, one continuation — is here made
 precise, and it is a theorem, not a rule: two *distinct* members continuing
 at one expression leave a repeated alternative in the flattened continuations
-(`Canonic.pd-Idemp?-members`, `cgp.ambig.Canonic` §4.2), which is exactly what
+(`AmbigCheck.pd-Idemp?-members`, `cgp.ambig.AmbigCheck` §9.2), which is exactly what
 `Idemp` would merge, and the A3 test fires at *this* transition.  So the only
 part of the step that is not already a computation is the choice *between* the
 continuation cases — and §8 shows the configuration where they genuinely
@@ -850,7 +847,7 @@ The result also places this file precisely against the paper's diagnosis.  The
 proof walks the pair to the state reached by the *whole* word, and there
 §2's `base-A1-at-root` reads the two empty trees as A1: a criterion does fire, at the
 latest possible state.  The A2/A3 machinery of `cgp.ambig.AmbigCheck` and
-`cgp.ambig.Canonic` is what finds a criterion
+`cgp.ambig.AmbigCheck` is what finds a criterion
 *earlier* — at the transition where the pair first separates, which is what
 the paper's enumeration is for (this module's §7 theorem
 `pick-diff-record-prf` is one instance of it); it sharpens the diagnosis, and
@@ -859,7 +856,7 @@ direction itself does not depend on it.
 
 ```agda
 
--- (purpose): find the block a member of a `concat` lives in — Canonic's
+-- (purpose): find the block a member of a `concat` lives in — AmbigCheck's
 --   `∈-concatMap⁻` at the identity mapping, reached through `concat ≡
 --   concatMap id` (`map-id`)
 -- (used in): `concat-const` below
@@ -874,7 +871,7 @@ direction itself does not depend on it.
 -- (proof idea): definition — a universal statement over memberships
 PdConst : ( r : RE ) ( c : Char ) → List ( PDInstance r c ) → Set
 PdConst r c xs = ∀ ( z z′ : PDInstance r c )
-  → z ∈ xs → z′ ∈ xs → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → z ∈ xs → z′ ∈ xs → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
 
 -- (purpose): constancy is preserved by maps that send equal continuations to
 --   equal continuations — which is what the `pdinstance-*` constructors do,
@@ -886,14 +883,14 @@ PdConst r c xs = ∀ ( z z′ : PDInstance r c )
 --   responsiveness hypothesis
 map-const : ( r s : RE ) ( c : Char ) ( f : PDInstance r c → PDInstance s c )
   → ( resp : ( x x₂ : PDInstance r c )
-        → Canonic.pd-expr x ≡ Canonic.pd-expr x₂
-        → Canonic.pd-expr (f x) ≡ Canonic.pd-expr (f x₂) )
+        → AmbigCheck.pd-expr x ≡ AmbigCheck.pd-expr x₂
+        → AmbigCheck.pd-expr (f x) ≡ AmbigCheck.pd-expr (f x₂) )
   → ( xs : List ( PDInstance r c ) ) → PdConst r c xs → PdConst s c (map f xs)
 map-const r s c f resp xs u z z′ z∈ z′∈
   with ∈-map⁻ f xs z z∈ | ∈-map⁻ f xs z′ z′∈
 ...   | ( x , x∈ , eq ) | ( x₂ , x₂∈ , eq₂ ) =
-    trans (sym (cong Canonic.pd-expr eq))
-      (trans (resp x x₂ (u x x₂ x∈ x₂∈)) (cong Canonic.pd-expr eq₂))
+    trans (sym (cong AmbigCheck.pd-expr eq))
+      (trans (resp x x₂ (u x x₂ x∈ x₂∈)) (cong AmbigCheck.pd-expr eq₂))
 
 -- (purpose): a `concat` of blocks is constant when the blocks are constant
 --   with each other
@@ -906,7 +903,7 @@ concat-const : ( s : RE ) ( c : Char )
   → ( xss : List ( List ( PDInstance s c ) ) )
   → (∀ ( xs xs′ : List ( PDInstance s c ) ) → xs ∈ xss → xs′ ∈ xss
        → ( z z′ : PDInstance s c ) → z ∈ xs → z′ ∈ xs′
-       → Canonic.pd-expr z ≡ Canonic.pd-expr z′)
+       → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′)
   → PdConst s c (concat xss)
 concat-const s c xss hyp z z′ z∈ z′∈ with ∈-concat⁻ xss z z∈ | ∈-concat⁻ xss z′ z′∈
 ...   | ( xs , x∈ , q ) | ( xs′ , x′∈ , q′ ) = hyp xs xs′ x∈ x′∈ z z′ q q′
@@ -919,11 +916,11 @@ concat-const s c xss hyp z z′ z∈ z′∈ with ∈-concat⁻ xss z z∈ | ∈
 concatMap-hyp : { A : Set } ( s : RE ) ( c : Char )
   → ( f : A → List ( PDInstance s c ) ) → ( xs : List A )
   → (∀ ( x x′ : A ) → x ∈ xs → x′ ∈ xs → ( y y′ : PDInstance s c )
-        → y ∈ f x → y′ ∈ f x′ → Canonic.pd-expr y ≡ Canonic.pd-expr y′)
+        → y ∈ f x → y′ ∈ f x′ → AmbigCheck.pd-expr y ≡ AmbigCheck.pd-expr y′)
   → ( xs₁ xs₂ : List ( PDInstance s c ) )
   → xs₁ ∈ map f xs → xs₂ ∈ map f xs
   → ( z z′ : PDInstance s c ) → z ∈ xs₁ → z′ ∈ xs₂
-  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
 concatMap-hyp s c f xs hyp xs₁ xs₂ m₁ m₂ z z′ q q′
   with ∈-map⁻ f xs xs₁ m₁ | ∈-map⁻ f xs xs₂ m₂
 ...   | ( x , x∈ , eq ) | ( x₂ , x₂∈ , eq₂ ) =
@@ -939,7 +936,7 @@ concatMap-hyp s c f xs hyp xs₁ xs₂ m₁ m₂ z z′ q q′
 concatMap-const : ( s : RE ) ( c : Char ) { A : Set }
   → ( f : A → List ( PDInstance s c ) ) → ( xs : List A )
   → (∀ ( x x′ : A ) → x ∈ xs → x′ ∈ xs → ( y y′ : PDInstance s c )
-        → y ∈ f x → y′ ∈ f x′ → Canonic.pd-expr y ≡ Canonic.pd-expr y′)
+        → y ∈ f x → y′ ∈ f x′ → AmbigCheck.pd-expr y ≡ AmbigCheck.pd-expr y′)
   → PdConst s c (concatMap f xs)
 concatMap-const s c f xs hyp =
   concat-const s c (map f xs)
@@ -953,8 +950,8 @@ concatMap-const s c f xs hyp =
 --   built by the same expression
 pd-expr∘fuse : ( r : RE ) ( c : Char ) ( loc : ℕ )
   ( x y : PDInstance r c )
-  → Canonic.pd-expr (fuse {r} {loc} {c} x y)
-    ≡ Canonic.pd-expr x + Canonic.pd-expr y ` loc
+  → AmbigCheck.pd-expr (fuse {r} {loc} {c} x y)
+    ≡ AmbigCheck.pd-expr x + AmbigCheck.pd-expr y ` loc
 pd-expr∘fuse r c loc (pdinstance {pˡ} injˡ evˡ) (pdinstance {pʳ} injʳ evʳ) = refl
 
 -- (purpose): the nullable-concatenation second-factor instance continues
@@ -964,7 +961,7 @@ pd-expr∘fuse r c loc (pdinstance {pˡ} injˡ evˡ) (pdinstance {pʳ} injʳ ev�
 --   evidence
 pd-expr∘snd : ∀ { l r : RE } { loc : ℕ } { c : Char }
   → ( ex : Σ[ e ∈ U l ] ( AllEmpty.Flat-[] l e ) ) ( y : PDInstance r c )
-  → Canonic.pd-expr (mk-snd-pdi {l} {r} {loc} {c} ex y) ≡ Canonic.pd-expr y
+  → AmbigCheck.pd-expr (mk-snd-pdi {l} {r} {loc} {c} ex y) ≡ AmbigCheck.pd-expr y
 pd-expr∘snd ( e , flat-[] .e eq ) (pdinstance {p} inj ev) = refl
 
 -- the `pdU` constructor maps respect continuations: each computes the new
@@ -975,18 +972,18 @@ pd-expr∘snd ( e , flat-[] .e eq ) (pdinstance {p} inj ev) = refl
 -- (used in): the `+` clause of `pdU-const` below (via `map-const`)
 -- (proof idea): the stored equation, after destructuring both records
 pd-expr-resp∘left : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  ( z z′ : PDInstance l c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
-  → Canonic.pd-expr (pdinstance-left {l} {r} {loc} {c} z)
-    ≡ Canonic.pd-expr (pdinstance-left {l} {r} {loc} {c} z′)
+  ( z z′ : PDInstance l c ) → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
+  → AmbigCheck.pd-expr (pdinstance-left {l} {r} {loc} {c} z)
+    ≡ AmbigCheck.pd-expr (pdinstance-left {l} {r} {loc} {c} z′)
 pd-expr-resp∘left (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq = eq
 
 -- (purpose): the sum-right injection keeps the continuation
 -- (used in): the `+` clause of `pdU-const` below (via `map-const`)
 -- (proof idea): the stored equation, after destructuring both records
 pd-expr-resp∘right : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  ( z z′ : PDInstance r c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
-  → Canonic.pd-expr (pdinstance-right {l} {r} {loc} {c} z)
-    ≡ Canonic.pd-expr (pdinstance-right {l} {r} {loc} {c} z′)
+  ( z z′ : PDInstance r c ) → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
+  → AmbigCheck.pd-expr (pdinstance-right {l} {r} {loc} {c} z)
+    ≡ AmbigCheck.pd-expr (pdinstance-right {l} {r} {loc} {c} z′)
 pd-expr-resp∘right (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq = eq
 
 -- (purpose): the concatenation first-factor injection puts the continuation
@@ -994,9 +991,9 @@ pd-expr-resp∘right (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq
 -- (used in): the `●` clauses of `pdU-const` below (via `map-const`)
 -- (proof idea): `cong` of the context, after destructuring both records
 pd-expr-resp∘fst : ∀ { l r : RE } { loc : ℕ } { c : Char }
-  ( z z′ : PDInstance l c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
-  → Canonic.pd-expr (pdinstance-fst {l} {r} {loc} {c} z)
-    ≡ Canonic.pd-expr (pdinstance-fst {l} {r} {loc} {c} z′)
+  ( z z′ : PDInstance l c ) → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
+  → AmbigCheck.pd-expr (pdinstance-fst {l} {r} {loc} {c} z)
+    ≡ AmbigCheck.pd-expr (pdinstance-fst {l} {r} {loc} {c} z′)
 pd-expr-resp∘fst {l} {r} {loc} {c}
   (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq =
     cong ( λ q → q ● r ` loc ) eq
@@ -1006,9 +1003,9 @@ pd-expr-resp∘fst {l} {r} {loc} {c}
 -- (used in): the `⋆` clause of `pdU-const` below (via `map-const`)
 -- (proof idea): `cong` of the context, after destructuring both records
 pd-expr-resp∘star : ∀ { r : RE } { ε∉r : ε∉ r } { loc : ℕ } { c : Char }
-  ( z z′ : PDInstance r c ) → Canonic.pd-expr z ≡ Canonic.pd-expr z′
-  → Canonic.pd-expr (pdinstance-star {r} {ε∉r} {loc} {c} z)
-    ≡ Canonic.pd-expr (pdinstance-star {r} {ε∉r} {loc} {c} z′)
+  ( z z′ : PDInstance r c ) → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
+  → AmbigCheck.pd-expr (pdinstance-star {r} {ε∉r} {loc} {c} z)
+    ≡ AmbigCheck.pd-expr (pdinstance-star {r} {ε∉r} {loc} {c} z′)
 pd-expr-resp∘star {r} {ε∉r} {loc} {c}
   (pdinstance {p} inj ev) (pdinstance {p₂} inj′ ev′) eq =
     cong ( λ q → q ● (r * ε∉r ` loc) ` loc ) eq
@@ -1021,18 +1018,18 @@ pd-expr-resp∘star {r} {ε∉r} {loc} {c}
 --   the block constancy plus the left instances' equation
 fuse-pair-const : ( r : RE ) ( c : Char ) ( loc : ℕ )
   → ( ys : List ( PDInstance r c ) ) → PdConst r c ys
-  → ( x₁ x₂ : PDInstance r c ) → Canonic.pd-expr x₁ ≡ Canonic.pd-expr x₂
+  → ( x₁ x₂ : PDInstance r c ) → AmbigCheck.pd-expr x₁ ≡ AmbigCheck.pd-expr x₂
   → ( z z′ : PDInstance r c )
   → z ∈ map (fuse {r} {loc} {c} x₁) ys → z′ ∈ map (fuse {r} {loc} {c} x₂) ys
-  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
 fuse-pair-const r c loc ys uy x₁ x₂ x₁≡x₂ z z′ q q₂
   with ∈-map⁻ (fuse {r} {loc} {c} x₁) ys z q | ∈-map⁻ (fuse {r} {loc} {c} x₂) ys z′ q₂
 ...   | ( w , w∈ , eq ) | ( w₂ , w₂∈ , eq₂ ) =
-    trans (sym (cong Canonic.pd-expr eq))
+    trans (sym (cong AmbigCheck.pd-expr eq))
       (trans (pd-expr∘fuse r c loc x₁ w)
         (trans (cong₂ ( λ a b → a + b ` loc ) x₁≡x₂ (uy w w₂ w∈ w₂∈))
                (trans (sym (pd-expr∘fuse r c loc x₂ w₂))
-                      (cong Canonic.pd-expr eq₂))))
+                      (cong AmbigCheck.pd-expr eq₂))))
 
 -- (purpose): `pdinstance-oplus` of two constant lists is constant — its
 --   members are the pairwise fusions, each continuing at the sum of one pair
@@ -1064,15 +1061,15 @@ snd-pair-const : ∀ { l s : RE } { loc : ℕ } { c : Char }
   → ( y y′ : PDInstance ( l ● s ` loc ) c )
   → y ∈ PDI.pdinstance-snd {l} {s} {loc} {c} ex (PosixPD.pdU[ s , c ])
   → y′ ∈ PDI.pdinstance-snd {l} {s} {loc} {c} ex′ (PosixPD.pdU[ s , c ])
-  → Canonic.pd-expr y ≡ Canonic.pd-expr y′
+  → AmbigCheck.pd-expr y ≡ AmbigCheck.pd-expr y′
 snd-pair-const {l} {s} {loc} {c} ex ex′ u y y′ q q₂
   with ∈-map⁻ (mk-snd-pdi {l} {s} {loc} {c} ex) (PosixPD.pdU[ s , c ]) y q
     | ∈-map⁻ (mk-snd-pdi {l} {s} {loc} {c} ex′) (PosixPD.pdU[ s , c ]) y′ q₂
 ...   | ( w , w∈ , eq ) | ( w₂ , w₂∈ , eq₂ ) =
-    trans (sym (cong Canonic.pd-expr eq))
+    trans (sym (cong AmbigCheck.pd-expr eq))
       (trans (pd-expr∘snd ex w)
         (trans (u w w₂ w∈ w₂∈)
-          (trans (sym (pd-expr∘snd ex′ w₂)) (cong Canonic.pd-expr eq₂))))
+          (trans (sym (pd-expr∘snd ex′ w₂)) (cong AmbigCheck.pd-expr eq₂))))
 
 -- (purpose): the whole nullable-concatenation second-side list — one instance
 --   per empty tree of the left factor — is constant
@@ -1102,10 +1099,10 @@ snd-list-const {l} {s} {ε∈l} {loc} {c} u =
 --   clause discharges its right side with `snd-list-const`
 pdU-const : ( r : RE ) ( c : Char ) ( z z′ : PDInstance r c )
   → z ∈ PosixPD.pdU[ r , c ] → z′ ∈ PosixPD.pdU[ r , c ]
-  → Canonic.pd-expr z ≡ Canonic.pd-expr z′
+  → AmbigCheck.pd-expr z ≡ AmbigCheck.pd-expr z′
 pdU-const ε c z z′ ()
 pdU-const ( $ c₀ ` loc ) c z z′ z∈ z′∈ with c₀ Char.≟ c | z∈ | z′∈
-...   | yes refl | here p | here q = cong Canonic.pd-expr (trans p (sym q))
+...   | yes refl | here p | here q = cong AmbigCheck.pd-expr (trans p (sym q))
 ...   | yes refl | here p | there ()
 ...   | yes refl | there () | _
 ...   | no ¬c | () | _
@@ -1191,7 +1188,7 @@ diff-records-≟ : ∀ { r : RE } { c : Char } { ws : List Char } { u v : U r }
   ( z z′ : PDInstance r c )
   ( rec-l : Recons {r} {c} u z ) ( rec-r : Recons {r} {c} v z′ )
   ( u≡ : proj₁ (flat {r} u) ≡ c ∷ ws ) ( v≡ : proj₁ (flat {r} v) ≡ c ∷ ws )
-  ( q : Canonic.pd-expr z′ ≡ Canonic.pd-expr z )
+  ( q : AmbigCheck.pd-expr z′ ≡ AmbigCheck.pd-expr z )
   → residual rec-l u≡ ≡ subst ( λ e → U e ) q ( residual rec-r v≡ )
   → ¬ ( u ≡ v )
   → ¬ ( z ≡ z′ )
@@ -1219,7 +1216,7 @@ desc-picks-≟ r (c ∷ ws) u v u≡ v≡ u≢v
   with pick-Any (PosixPD.pdU-complete {r} {c} u u≡)
 ... | ( z , rec-l , z∈ ) with pick-Any (PosixPD.pdU-complete {r} {c} v v≡)
 ...   | ( z′ , rec-r , z′∈ )
-      with (ParseTree._⊢_≟_ (Canonic.pd-expr z) (residual rec-l u≡)
+      with (ParseTree._⊢_≟_ (AmbigCheck.pd-expr z) (residual rec-l u≡)
              ( subst ( λ e → U e ) (sym (pdU-const r c z z′ z∈ z′∈))
                (residual rec-r v≡) ))
 ...     | yes eq =
@@ -1229,7 +1226,7 @@ desc-picks-≟ r (c ∷ ws) u v u≡ v≡ u≢v
                   (pdU-const r c z z′ z∈ z′∈))
 ...     | no x≢y =
           desc-step z z∈
-            (desc-picks-≟ (Canonic.pd-expr z) ws x y x≡ y≡ x≢y)
+            (desc-picks-≟ (AmbigCheck.pd-expr z) ws x y x≡ y≡ x≢y)
         where
           q  = sym (pdU-const r c z z′ z∈ z′∈)
           x  = residual rec-l u≡
@@ -1257,13 +1254,13 @@ completeness : ∀ { r : RE }
   → ∃[ w′ ] ∃[ w″ ]
       ( ( proj₁ (flat {r} u) ≡ w′ ++ w″ )
       × ∃[ p ]
-          ( Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w′)
+          ( Any ( λ s → s ≡ p ) (AmbigCheck.pd*-Desc r w′)
           × crit p ) )
 completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v w≡ u≢v
 
 -- What the `crit p` of the conclusion means: each disjunct is the hypothesis
 -- of one soundness lemma of `cgp.ambig.Soundness` (§1/§3/§6)
---   or of `cgp.ambig.Canonic` §5, so the
+--   or of `cgp.ambig.AmbigCheck` §10, so the
 -- conclusion says "some reachable state satisfies the input condition of a
 -- soundness lift":
 --
@@ -1280,15 +1277,15 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --          `pd-Idemp`.  A3's pair-level lemma is
 --          pd-pairs→Ambig / pd*-pairs→Ambig: its hypothesis is the *pair of
 --          derivative records* (instances of the two branches of one sum with
---          ≈₀-equal continuations), not the boolean test.  Canonic §4.2
+--          ≈₀-equal continuations), not the boolean test.  AmbigCheck §9.2
 --          reflects the fired scan into an ≈₀ pair at located positions of
 --          `pd-alts` (`Dups-w` via `dups-≈₀-dups`), and `pd-Idemp?-members`
 --          goes the other way (a real duplicate pair makes the scan answer
 --          `true`, which is what §7's stop needs); the branch
---          location is proved by `pd-alts-Dups-w-classify` (Canonic §4.2),
+--          location is proved by `pd-alts-Dups-w-classify` (AmbigCheck §9.2),
 --          and the inside-spine analysis of
 --          configurations (a)/(b) and the record distinctness of (c) is
---          what the `pd-Idemp` theorem closes (Canonic §6.1's goal,
+--          what the `pd-Idemp` theorem closes (AmbigCheck §11.1's goal,
 --          Soundness §11).
 --
 -- The `Any ( λ s → s ≡ p ) (pd*-Desc r w′)` membership unfolds to

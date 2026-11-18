@@ -52,8 +52,12 @@ open import Function using (_∘_ ; flip ; case_of_ )
 import Relation.Nullary as Nullary 
 open Nullary using (¬_ ; contraposition)
 
-open import Relation.Nullary.Decidable using (Dec ; yes ; no)
+open import Relation.Nullary.Decidable using (Dec ; yes ; no ; ⌊_⌋)
 open import Data.Empty using (⊥ ; ⊥-elim)
+import Data.Bool.Base as Bool
+open Bool using (Bool; true; false; _∨_)
+import Data.List.Membership.Propositional.Properties as ListMem
+import Data.List.Relation.Unary.Any as AnyMod
 
 ```
 
@@ -713,4 +717,120 @@ suc-∸-1 ( suc m ) = trans ( cong ( λ x → x ∸ 1 ) ( sym ( +-1≡suc ( suc 
       k ∸ ( i + 1 )                ≡⟨ cong ( λ x → x ∸ ( i + 1 ) ) ( sym ( m+[n∸m]≡n i≤k ) ) ⟩
       ( i + ( k ∸ i ) ) ∸ ( i + 1 ) ≡⟨ [m+n]∸[m+o]≡n∸o i ( k ∸ i ) 1 ⟩
       ( k ∸ i ) ∸ 1                ∎
+```
+
+## Generic membership / duplicate-free helpers (shared by `cgp.ambig`)
+
+Collected here per the `[KL]` review of `cgp/ambig/AmbigCheck.lagda.md`
+(with its merged-in content from the removed `cgp/ambig/Canonic.lagda.md`): generic (not `RE`, not `U RE`) list lemmas.
+Checked against the standard library (2.1): `∈-++-inv` is the standard-library
+`∈-++⁻` with explicit arguments, and `Dec→true` is its `dec-true` spelled with
+`⌊_⌋` — the thin forms below keep the argument order this project pattern-matches
+against. `∈-map⁻` exists in the library with the equation the other way round
+(`y ≡ f x`); the form here (`f x ≡ y`) is the one used at the call sites.
+`∈-concatMap⁻`, `∨-true`, `∈-∷-++ʳ`, and the `NoDup` package have no
+standard-library equivalent. `++-idʳ` is *not* duplicated: use
+`Data.List.Properties.++-identityʳ` directly.
+
+```agda
+-- a decision procedure answers `true` wherever the proposition holds
+-- (standard library: Relation.Nullary.Decidable.dec-true, with `does` spelling)
+Dec→true : ∀ { p : Set } ( d : Dec p ) → p → ⌊ d ⌋ ≡ true
+Dec→true (yes _) _ = refl
+Dec→true (no ¬p) p = ⊥-elim (¬p p)
+
+∨-true : ( b : Bool ) → b ∨ true ≡ true
+∨-true true = refl
+∨-true false = refl
+
+-- membership in an appended list resolves to one of the sides
+-- (standard library: Data.List.Membership.Propositional.Properties.∈-++⁻)
+∈-++-inv : ∀ { A : Set } ( xs ys : List A ) { x : A }
+  → x ∈ xs ++ ys
+  → Sum._⊎_ (x ∈ xs) (x ∈ ys)
+∈-++-inv [] ys {x} x∈ = Sum.inj₂ x∈
+∈-++-inv (z ∷ xs) ys {x} (here p) = Sum.inj₁ (here p)
+∈-++-inv (z ∷ xs) ys {x} (there x∈) with ∈-++-inv xs ys x∈
+...   | Sum.inj₁ y = Sum.inj₁ (there y)
+...   | Sum.inj₂ y = Sum.inj₂ y
+
+-- membership of either side survives the append
+∈-++ˡ : ∀ { A : Set } ( kept ys : List A ) ( x : A ) → x ∈ kept → x ∈ kept ++ ys
+∈-++ˡ [] ys x ()
+∈-++ˡ (z ∷ kept) ys x (here p) = here p
+∈-++ˡ (z ∷ kept) ys x (there x∈) = there (∈-++ˡ kept ys x x∈)
+
+∈-++ʳ : ∀ { A : Set } ( t ys : List A ) ( x : A ) → x ∈ ys → x ∈ t ++ ys
+∈-++ʳ [] ys x x∈ = x∈
+∈-++ʳ (z ∷ t) ys x x∈ = there (∈-++ʳ t ys x x∈)
+
+-- the value just added to the end is a member of the extended list
+∈-∷-++ʳ : ∀ { A : Set } ( kept : List A ) ( x : A ) → x ∈ kept ++ (x ∷ [])
+∈-∷-++ʳ [] x = here refl
+∈-∷-++ʳ (z ∷ kept) x = there (∈-∷-++ʳ kept x)
+
+-- membership in a mapped list names the preimage
+-- (standard library ∈-map⁻ has the equation reversed: y ≡ f x)
+∈-map⁻ : { A B : Set } ( f : A → B ) ( xs : List A ) ( y : B )
+  → y ∈ List.map f xs
+  → Σ[ x ∈ A ] ( x ∈ xs × f x ≡ y )
+∈-map⁻ f [] y ()
+∈-map⁻ f (x ∷ xs) y (here p) = ( x , here refl , sym p )
+∈-map⁻ f (x ∷ xs) y (there w) with ∈-map⁻ f xs y w
+...   | ( x′ , x∈ , eq ) = ( x′ , there x∈ , eq )
+
+-- membership in a concatenated map names the element whose block carries it
+-- (not in the standard library)
+∈-concatMap⁻ : { A B : Set } ( f : A → List B ) ( xs : List A ) ( y : B )
+  → y ∈ concatMap f xs
+  → Σ[ x ∈ A ] ( x ∈ xs × y ∈ f x )
+∈-concatMap⁻ f [] y ()
+∈-concatMap⁻ f (x ∷ xs) y y∈ with ∈-++-inv (f x) (concatMap f xs) y∈
+...   | Sum.inj₁ y∈₁ = ( x , here refl , y∈₁ )
+...   | Sum.inj₂ y∈₂ with ∈-concatMap⁻ f xs y y∈₂
+...     | ( x′ , x∈ , y∈′ ) = ( x′ , there x∈ , y∈′ )
+
+-- duplicate-free lists (no standard-library equivalent; the paper's
+--   length tests on `mkAllEmptyU`-style listings are faithful through these)
+data NoDup { a : Set } : List a → Set where
+  nd[] : NoDup {a} []
+  nd∷ : ∀ { x : a } { xs : List a }
+    → ( ¬ ( Any ( _≡_ x ) xs ) )
+    → NoDup {a} xs
+    → NoDup {a} (x ∷ xs)
+
+-- membership inversion helper for All
+lookup-All : ∀ { a : Set } { P : a → Set } { x : a } { xs : List a }
+  → All P xs
+  → Any ( _≡_ x ) xs
+  → P x
+lookup-All {P = P} {x} (p ∷ ps) (here eq) = subst P (sym eq) p
+lookup-All (p ∷ ps) (there x∈) = lookup-All ps x∈
+
+nd-++ : ∀ { a : Set } { xs ys : List a }
+  → NoDup {a} xs
+  → (∀ { x y } → x ∈ xs → y ∈ ys → ¬ (x ≡ y))
+  → NoDup {a} ys
+  → NoDup {a} (xs ++ ys)
+nd-++ nd[] disj ndys = ndys
+nd-++ {xs = x ∷ xs} {ys = ys} (nd∷ x∉ ndxs) disj ndys = nd∷ (λ x∈xs++ys → ⊥-help x∈xs++ys) (nd-++ ndxs disj′ ndys)
+  where
+    disj′ : ∀ { z y } → z ∈ xs → y ∈ ys → ¬ (z ≡ y)
+    disj′ z∈ y∈ = disj (there z∈) y∈
+    ⊥-help : Any ( _≡_ x ) (xs ++ ys) → ⊥
+    ⊥-help x∈xs++ys with ListMem.∈-++⁻ xs x∈xs++ys
+    ...   | inj₁ x∈xs = x∉ x∈xs
+    ...   | inj₂ x∈ys = disj (here refl) x∈ys refl
+
+nd-map : ∀ { a b : Set } ( f : a → b )
+  → (∀ { x y } → f x ≡ f y → x ≡ y)
+  → ∀ { xs : List a }
+  → NoDup {a} xs
+  → NoDup {b} (List.map f xs)
+nd-map f f-inj nd[] = nd[]
+nd-map {a} {b} f f-inj {x ∷ xs} (nd∷ x∉ ndxs) = nd∷ (λ f-x∈map → ⊥-help f-x∈map) (nd-map f f-inj ndxs)
+  where
+    ⊥-help : Any ( _≡_ (f x)) (List.map f xs) → ⊥
+    ⊥-help f-x∈map with ListMem.∈-map⁻ f f-x∈map
+    ...   | w , w∈xs , f-x≡f-w = x∉ (AnyMod.map (λ eq → trans (f-inj f-x≡f-w) eq) w∈xs)
 ```

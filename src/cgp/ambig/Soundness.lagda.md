@@ -2,12 +2,12 @@
 
 This module holds the *soundness* half of the A3 mechanism — the lemmas
 whose content is "a fired criterion (or test) implies `Ambig`" — split
-out of `cgp.ambig.Canonic`, which keeps the shared statements: the
+out of `cgp.ambig.AmbigCheck`, which keeps the shared statements: the
 similarity `≈₀` and `canonic`, the tests themselves (`pd-Idemp?`,
 `A3?`, `A3-list?`), the scan correctness and the member classification
-(Canonic §4.2), the generic path lifts (Canonic §5),
-the state constructions (Canonic §6/§7) and the
-example data of Canonic §4.1.  `cgp.ambig.Completeness`
+(AmbigCheck §9.2), the generic path lifts (AmbigCheck §10),
+the state constructions (AmbigCheck §11/§12) and the
+example data of AmbigCheck §9.1.  `cgp.ambig.Completeness`
 holds the converse direction.
 
 Section numbers are local to this module; references into the other
@@ -19,7 +19,7 @@ clause), §6 (the Ctx-dup lifts), §7–§11
 (the complete `pdU`-clause inversion chain, ending in the unconditional
 soundness theorem `pd-Idemp`), and §12 (the soundness
 direction over the pd-states, moved from the old `Complete` module).
-Names shared with `cgp.ambig.Canonic` (`pd-expr`, `sum-spine`,
+Names shared with `cgp.ambig.AmbigCheck` (`pd-expr`, `sum-spine`,
 `Dups-w`, `pd-alts-Dups-w-classify`, the lifts, …) are imported from
 there.
 
@@ -92,15 +92,17 @@ open Nullary using (¬_)
 import Relation.Nullary.Decidable as Decidable
 open Decidable using ( Dec; yes; no; ⌊_⌋)
 
-import cgp.ambig.Canonic as Canonic
-open Canonic using ( _≈₀_ ; ≈₀-sym ; Cast ; Cast-pres-flat ; canonic ; sum-spine ; sum-spine∷
+open AmbigCheck using ( _≈₀_ ; ≈₀-sym ; Cast ; Cast-pres-flat ; canonic ; sum-spine ; sum-spine∷
   ; pd-expr ; pd-inj ; pd*-expr ; pd-alts ; dups-≈₀ ; pd-Idemp? ; pd-alts∈ ; pd-alts∈-inv
-  ; ∈-++-inv ; ∈-++ʳ ; ∈-map⁻ ; ∈-concatMap⁻ ; dups-≈₀-dups ; Dups-w ; Dups-w-++-split
+  ; dups-≈₀-dups ; Dups-w ; Dups-w-++-split
   ; Dups-w-cross ; pd-alts-Dups-w-classify ; pd-a3-target
   ; pd-a3-Idemp-applied ; pd-a3-continuations ; lift-Ambig ; lift-Ctx ; pd*-inj ; pd*-Desc
   ; pd*-Ambig→Ambig ; pd*-A1→Ambig ; pd*-A2→Ambig ; crit ; crit-A3-test )
-open Canonic._≈₀_ using ( ≈₀-ε ; ≈₀-$ ; ≈₀-● ; ≈₀-+ ; ≈₀-* )
-open Canonic.Dups-w using ( dups-at )
+open AmbigCheck._≈₀_ using ( ≈₀-ε ; ≈₀-$ ; ≈₀-● ; ≈₀-+ ; ≈₀-* )
+open AmbigCheck.Dups-w using ( dups-at )
+
+import cgp.Utils as Utils
+open Utils using ( ∈-++-inv ; ∈-++ʳ ; ∈-map⁻ ; ∈-concatMap⁻ )
 ```
 
 
@@ -215,11 +217,11 @@ pd*-pairs→Ambig {l} {s} {loc} {w} (pdinstance* {d₁} inj₁ ev₁) (pdinstanc
 
 ```
 
-## 4. The example pairs of the Canonic §4.1 state
+## 4. The example pairs of the AmbigCheck §9.1 state
 
-The continuation-level records behind Canonic §4.1's `pd-a3-target`
+The continuation-level records behind AmbigCheck §9.1's `pd-a3-target`
 (the state itself, `pd-a3-Idemp-applied` and the flattened continuations
-stay with the test in `cgp.ambig.Canonic`), and the pair-level ambiguity
+stay with the test in `cgp.ambig.AmbigCheck`), and the pair-level ambiguity
 of that state:
 
 ```agda
@@ -290,7 +292,7 @@ data _◁_ : RE → RE → Set where
 -- (purpose): membership in the computed spine gives the structural position
 -- (used in): converting the spine memberships of `pdU-+-location` /
 --   `pdU-+-shape-of` (§7) and `●-fused-case` (§10) into `spine-read`
---   inputs (Canonic §6.1 configurations (a)/(b))
+--   inputs (AmbigCheck §11.1 configurations (a)/(b))
 -- (proof idea): induction on the expression; at a sum node expose the
 --   spine head with `sum-spine∷`, split the concatenation with
 --   `∈-++-inv`, and transport the memberships along the head equation
@@ -353,7 +355,7 @@ spine-read-pres-flat (l + s ` loc) p (sp-right pos) u =
 
 -- (purpose): the record half of the crossing case — two records whose
 --   continuations hold trees with one word ⇒ the parent sum is ambiguous
--- (used in): `pd-cross-positions→Ambig` below; Canonic §6.1's configuration (a)
+-- (used in): `pd-cross-positions→Ambig` below; AmbigCheck §11.1's configuration (a)
 -- (proof idea): the two trees enter `l + s` through *different* branches,
 --   so distinctness is `LeftU≢RightU` — no injectivity of the records is
 --   needed; the word equation runs both records' soundness evidence
@@ -372,7 +374,7 @@ pd-fuse-cross→Ambig {l} {s} {loc} {c} (pdinstance i₁ e₁) (pdinstance i₂ 
 -- (purpose): the crossing case complete — records whose continuations
 --   hold `≈₀`-equal alternatives at located positions ⇒ the parent sum is
 --   ambiguous
--- (used in): `pd-a3-ambiguous-via-positions` below; Canonic §6.1's configuration
+-- (used in): `pd-a3-ambiguous-via-positions` below; AmbigCheck §11.1's configuration
 --   (a) reduces to this lemma plus the `pdinstance-oplus`/`map`
 --   membership inversion into pre-fusion records
 -- (proof idea): read the two trees at the positions (`spine-read`),
@@ -393,7 +395,7 @@ pd-cross-positions→Ambig pdi₁ pdi₂ p q pos₁ pos₂ p≈₀q =
                        (Cast p≈₀q (proj₁ (r-∃u p))))
                    (Cast-pres-flat p≈₀q (proj₁ (r-∃u p))))))
 
--- (purpose): the general located-position theorem reproduces the Canonic §4.1
+-- (purpose): the general located-position theorem reproduces the AmbigCheck §9.1
 --   hand-built witness (both continuations are non-sums, so each
 --   position is `sp-node`)
 -- (used in): the §5 prose — checks the closer subsumes the example
@@ -407,10 +409,10 @@ pd-a3-ambiguous-via-positions =
     (≈₀-● (≈₀-ε) (≈₀-$ 'c' 4 7))
 ```
 
-## 6. The Ctx-dup lifts (continuing Canonic §5)
+## 6. The Ctx-dup lifts (continuing AmbigCheck §10)
 
 `lift-Ctx-dup→Ambig` and `pd*-Ctx-dup→Ambig` compose the generic lifts of
-`cgp.ambig.Canonic` §5 with this module's §1 `Ctx-dup→Ambig`; the
+`cgp.ambig.AmbigCheck` §10 with this module's §1 `Ctx-dup→Ambig`; the
 A1/A2 lifts stay with the shared statement.
 
 ```agda
@@ -438,7 +440,7 @@ pd*-Ctx-dup→Ambig pdi inj-inj ctx eq dup =
 ```
 ## 7. Branch location: inverting the `pdU` clauses
 
-The classification of Canonic §4.2 speaks about `pd-alts pdis` for a plain
+The classification of AmbigCheck §9.2 speaks about `pd-alts pdis` for a plain
 member list.  `pd-Idemp` instantiates it at `pdis = PosixPD.pdU[ q , c ]`,
 whose clauses (in `cgp.posix.PartialDerivative`) build their lists with
 `map`, `concatMap` and `pdinstance-oplus`.  This section inverts those
@@ -488,7 +490,7 @@ pd-expr-right (pdinstance {p} inj ev) = refl
 
 -- (purpose): a fused record's continuation is the sum of the two
 --   pre-fusion continuations at the clause's location — this is where
---   Canonic §6.1's configuration (a) gets its inner `+` node
+--   AmbigCheck §11.1's configuration (a) gets its inner `+` node
 -- (used in): the branch location of a `+` clause (below)
 -- (proof idea): read off `fuse`'s definition (`pd-expr` reads the
 --   implicit continuation of the produced record)
@@ -556,7 +558,7 @@ pdU-+-shape-of l s loc c z z∈
                           ) ) )
 
 -- (purpose): branch location of a `+` clause — a positioned pair placed
---   by Canonic §4.2's classification inside the continuation of one member of
+--   by AmbigCheck §9.2's classification inside the continuation of one member of
 --   the sum node `l + s ` loc` either has its occurrences on the two
 --   sides of the clause (the A3 pattern: the two branch instances with
 --   the alternatives at positions of their continuations — material
@@ -629,8 +631,8 @@ pdU-+-location l s loc c z z∈ d
                               ( ∈-++ʳ mid₂ (q ∷ post) q (here refl) ) )
                      , ≈₀-sym q≈₀p ) )
 
--- the location machinery instantiated at the Canonic §4.1 example: the pair of
--- the fired test, positioned inside the single fused member by Canonic §4.2's
+-- the location machinery instantiated at the AmbigCheck §9.1 example: the pair of
+-- the fired test, positioned inside the single fused member by AmbigCheck §9.2's
 -- chain, located at the target's top sum node — either its two
 -- occurrences on the sides of the top `+`, or inside one branch
 -- instance (the first disjunct is what happens; its consumption is the
@@ -682,10 +684,10 @@ pd-a3-branch-location =
 
 ## 8. Lifting an ambiguity through a record's map
 
-Configuration (b) of Canonic §6.1 can also be closed at the *record*
+Configuration (b) of AmbigCheck §11.1 can also be closed at the *record*
 level: an ambiguity inside a member record's continuation carries to
 `Ambig q` through the record's own transition map
-`pd-inj z : U (pd-expr z) → U q` with Canonic §5's `lift-Ambig`, which
+`pd-inj z : U (pd-expr z) → U q` with AmbigCheck §10's `lift-Ambig`, which
 asks for that map's injectivity.  The pd builders
 (`pdinstance-left/right/fst/snd`) preserve injectivity — a chain of
 them composed from the leaf `$` records (whose map is a `LetterU`
@@ -699,13 +701,13 @@ record.
 
 That record-level route is not the one this file ends up using: §10
 discharges every member-record goal by induction along the `pdU` clause
-structure, re-embedding through Canonic's `lift-Ctx` and never applying
+structure, re-embedding through AmbigCheck's `lift-Ctx` and never applying
 a record's map — so the record lift `lift-pdinstance` and the builder
 injectivity chain are not developed here.
 
 ## 9. Configuration (b): the non-sum leaves are absurd
 
-The left branch of the classification (Canonic §4.2) hands over a member
+The left branch of the classification (AmbigCheck §9.2) hands over a member
 whose continuation spine *itself* carries the positioned pair.  §10
 closes that configuration by induction along the `pdU` clause structure:
 `Dups-w-++-split` cuts each spine join, a crossing pair closes at the
@@ -785,7 +787,7 @@ pd-ev (pdinstance inj ev) = ev
 --   continuation at the whole first-factor instance (its spine is a
 --   singleton) and one inside an empty-first-factor instance make the
 --   concatenation ambiguous
--- (used in): the `●` clause of `pdU-member-pair→Ambig` below; Canonic §6.1's
+-- (used in): the `●` clause of `pdU-member-pair→Ambig` below; AmbigCheck §11.1's
 --   configuration (c) through the same shape
 -- (proof idea): the trees are the two records' maps applied to trees
 --   read at the positions (word-preserving as in §5); the word
@@ -982,7 +984,7 @@ pd-snd-continues ( e , AllEmpty.flat-[] .e fl ) (pdinstance {p₂} i₂ ev₂) z
                       q≈₀p )
 ...               | ( there () )
 
--- (purpose): Canonic §6.1's classification left branch, closed at pdU members —
+-- (purpose): AmbigCheck §11.1's classification left branch, closed at pdU members —
 --   a positioned pair inside the continuation of a member of
 --   `pdU[ r , c ]` makes r ambiguous
 -- (used in): `pd-Idemp` of §11
@@ -1046,7 +1048,7 @@ pdU-member-pair→Ambig {c} ( l ● s ` loc ) z z∈ d with ε∈? l
 The pieces assembled: the scan reflection, the classification, §10's
 closure of the left branch, and the closure of configuration (c) proved
 here.  The classification's second branch now also hands over
-`2 ≤ length pdis` (Canonic §4.2: the two members are at distinct positions of
+`2 ≤ length pdis` (AmbigCheck §9.2: the two members are at distinct positions of
 the list), and the *length* alone is enough: inverting the `pdU` clause
 structure along the member list, a list of two members can only come
 from a `+`/`●` node with an already-long branch list (the recursion
@@ -1213,7 +1215,7 @@ star-Ambig {r} {nε} {loc} ( u , v , word≡ , u≢v ) =
     eq₃ : proj₁ (flat v) ≡ proj₁ (flat (ListU {r} {nε} {loc} (v ∷ [])))
     eq₃ = sym (++-identityʳ (proj₁ (flat v)))
 
--- (purpose): Canonic §6.1's configuration (c), closed — a two-member
+-- (purpose): AmbigCheck §11.1's configuration (c), closed — a two-member
 --   continuation list of a single-character partial derivative makes
 --   the state ambiguous
 -- (used in): `pd-Idemp` below
@@ -1269,11 +1271,11 @@ pdU-2members→Ambig {c} ( l ● s ` loc ) h with (ε∈? l)
 ...       | Sum.inj₂ h₃ = lift-Ctx (L●Ctx l 𝟘 loc)
           (pdU-2members→Ambig {c} s h₃)
 
--- (purpose): the Canonic §6.1 goal theorem — its A3-as-test, reflected:
+-- (purpose): the AmbigCheck §11.1 goal theorem — its A3-as-test, reflected:
 --   a fired `pd-Idemp?` on the `pdU` member list implies ambiguity
 -- (used in): `pd-a3-Ambig-via-pd-Idemp` below (the composition check on the
---   Canonic §4.1 example)
--- (proof idea): the hypothesis unpacking of Canonic §6.1's text — `dups-≈₀-dups`
+--   AmbigCheck §9.1 example)
+-- (proof idea): the hypothesis unpacking of AmbigCheck §11.1's text — `dups-≈₀-dups`
 --   reads the fired scan as a positioned pair (`pd-Idemp?` unfolds to
 --   `dups-≈₀ ∘ pd-alts` definitionally), `pd-alts-Dups-w-classify`
 --   places it relative to the members, the left branch is closed by
@@ -1292,7 +1294,7 @@ pd-Idemp {q} {c} eq
                    , 2≤len ) ) =
       pdU-2members→Ambig {c} q 2≤len
 
--- the whole composition elaborates on the Canonic §4.1 example: applying `pd-Idemp`
+-- the whole composition elaborates on the AmbigCheck §9.1 example: applying `pd-Idemp`
 -- to the fired test
 pd-a3-Ambig-via-pd-Idemp : Ambig pd-a3-target
 pd-a3-Ambig-via-pd-Idemp = pd-Idemp {pd-a3-target} {'a'} pd-a3-Idemp-applied
@@ -1307,20 +1309,20 @@ The main lemma
 --   at a reached state lifts to an ambiguity of `r`
 -- (used in): the §12 prose
 -- (proof idea): case-split on the disjunction; each branch is the matching
---   `Canonic` lift (`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`)
+--   `AmbigCheck` lift (`pd*-A1→Ambig`, `pd*-A2→Ambig`, `pd*-Ctx-dup→Ambig`)
 --   under the lift's injectivity hypothesis; the fourth branch runs
 --   `pd-Idemp` (§11) at the disjunct's own transition and transports the
 --   result through the hole context (`lift-Ctx`) and the state map
 --   (`pd*-Ambig→Ambig`)
 soundness : ∀ { r : RE } { w : List Char }
   → ( pdi : PDInstance* r w )
-  → ( ∀ ( x y : U (Canonic.pd*-expr pdi) )
-        → Canonic.pd*-inj pdi x ≡ Canonic.pd*-inj pdi y → x ≡ y )
-  → crit (Canonic.pd*-expr pdi)
+  → ( ∀ ( x y : U (AmbigCheck.pd*-expr pdi) )
+        → AmbigCheck.pd*-inj pdi x ≡ AmbigCheck.pd*-inj pdi y → x ≡ y )
+  → crit (AmbigCheck.pd*-expr pdi)
   → ∃[ u′ ] ∃[ v′ ]
       ( proj₁ (flat {r} u′) ≡ proj₁ (flat {r} v′) × ¬ ( u′ ≡ v′ ) )
-soundness pdi inj-inj (Sum.inj₁ a1) = Canonic.pd*-A1→Ambig pdi inj-inj a1
-soundness pdi inj-inj (Sum.inj₂ (Sum.inj₁ a2)) = Canonic.pd*-A2→Ambig pdi inj-inj a2
+soundness pdi inj-inj (Sum.inj₁ a1) = AmbigCheck.pd*-A1→Ambig pdi inj-inj a1
+soundness pdi inj-inj (Sum.inj₂ (Sum.inj₁ a2)) = AmbigCheck.pd*-A2→Ambig pdi inj-inj a2
 soundness pdi inj-inj
   (Sum.inj₂ (Sum.inj₂ (Sum.inj₁ ( ctx , l , l′ , loc , ( eq , dup ) )))) =
   pd*-Ctx-dup→Ambig pdi inj-inj ctx eq dup

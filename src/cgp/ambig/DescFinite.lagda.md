@@ -7,7 +7,7 @@ The paper's Proposition `Finite Dissimilar Canonical Descendants`
 > is finite.
 
 In this formalization a descendant *state* is a list of partial derivatives
-(`cgp.ambig.Canonic.pd*-Desc r w`), so the statement becomes: for a fixed `r`
+(`cgp.ambig.AmbigCheck.pd*-Desc r w`), so the statement becomes: for a fixed `r`
 there is a **finite list** `L` such that every expression occurring in every
 state is a member of `L` — and consequently every state itself is a member of
 the finite list of all lists over `L` of the appropriate length.
@@ -83,8 +83,8 @@ open PDI using ( PDInstance ; pdinstance ; PDInstance* ; pdinstance* )
 
 import cgp.posix.PartialDerivative as PosixPD
 
-import cgp.ambig.Canonic as Canonic
-open Canonic using ( pd-expr ; pd*-expr ; pd*-Desc )
+import cgp.ambig.AmbigCheck as AmbigCheck
+open AmbigCheck using ( pd-expr ; pd*-expr ; pd*-Desc )
 
 import Data.List as List
 open List using (List ; _∷_ ; [] ; _++_ ; [_] ; _∷ʳ_ ; map ; concatMap ; length)
@@ -134,11 +134,11 @@ open Nullary using (¬_ ; Dec ; yes ; no)
 
 Locations and the nullability evidence of a star are part of an `RE` value, so
 two expressions are equal when their locations and their evidence arguments are.
-The similarity `_≈₀_` of `cgp.ambig.Canonic` is the coarser,
+The similarity `_≈₀_` of `cgp.ambig.AmbigCheck` is the coarser,
 location-insensitive relation of the paper; it is not needed for the finiteness
 argument (a bound for the fine equality implies one for the quotient), but it
 means the computed supplies contain location-variants of the same expression —
-`a3-supply` of §6 has several of them, and `Canonic.dedup` is the operation
+`a3-supply` of §6 has several of them, and `AmbigCheck.dedup` is the operation
 that merges them.
 
 ```agda
@@ -543,14 +543,14 @@ need a bound on the length of the states; that fails for these un-quotiented
 lists (§7) and is exactly what the paper's quotient by similarity buys.  What
 *is* independent of the word is the bound on the expressions occurring in the
 states (`Desc⊆`): the paper's descendants are assembled by gluing precisely
-these continuations (`sum-build` of `cgp.ambig.Canonic`), so `L` bounds the
+these continuations (`sum-build` of `cgp.ambig.AmbigCheck`), so `L` bounds the
 material every one of them is made of.  The quotienting step itself is not
 formalized here.
 
 ## 5. Relation with the paper's statement
 
 * The paper's states are single expressions obtained by re-gluing the partial
-  derivatives (`derivᵖ r w` of `cgp.ambig.Canonic` §6); `canonic` then
+  derivatives (`derivᵖ r w` of `cgp.ambig.AmbigCheck` §11); `canonic` then
   quotients them by similarity.  Quotienting can only shrink the set, so the
   bound above bounds the paper's `Desc(r)` as well.
 * The paper's proof of finiteness is by induction on the structure of `r`
@@ -570,9 +570,9 @@ supply can be *computed* (by saturation) and its closedness *checked* (by
 `refl` proofs only succeed if the computation really says yes.
 
 ```agda
--- the paper's A3 example of cgp.ambig.Canonic §4.1: ((a + b) · c) + (a · c)
+-- the paper's A3 example of cgp.ambig.AmbigCheck §9.1: ((a + b) · c) + (a · c)
 a3-r : RE
-a3-r = Canonic.pd-a3-target
+a3-r = AmbigCheck.pd-a3-target
 
 a3-al : List Char
 a3-al = charsOf a3-r
@@ -741,7 +741,7 @@ after two rounds of saturation for exactly that reason.
 `(ε + ε) · a` has two empty parse trees), so a state *list* keeps
 duplicates.  A bound on the *expressions* of the states therefore does not
 bound their lengths — this is exactly what the paper's quotient by similarity
-removes (`canonic` of `cgp.ambig.Canonic`, whose `dedup` drops later
+removes (`canonic` of `cgp.ambig.AmbigCheck`, whose `dedup` drops later
 `≈₀`-duplicates of a `+` spine).
 
 ```agda
@@ -765,7 +765,7 @@ dual-state-a³-len : length (pd*-Desc dual-r ( 'a' ∷ 'a' ∷ 'a' ∷ [] )) ≡
 dual-state-a³-len = refl
 
 -- removing the duplicates (the similarity quotient) leaves one element
-dual-state-a-dedup : Canonic.dedup (pd*-Desc dual-r ( 'a' ∷ [] ))
+dual-state-a-dedup : AmbigCheck.dedup (pd*-Desc dual-r ( 'a' ∷ [] ))
   ≡ ( ( ε ● dual-r ` 3 ) ∷ [] , true )
 dual-state-a-dedup = refl
 

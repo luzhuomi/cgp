@@ -114,6 +114,29 @@ iso→robust r (iso iso-ev) = robust {r} ev
 unambig→robust : ∀ { r : RE }
   → UnAmbig r
   → Robust r
-unambig→robust = ? 
+unambig→robust {r} unambig = robust {r} ev
+  where
+    ev : ( w : List Char ) → ( v : U r )
+      → ( ≥-Maxᵍ {r} w v → ≥-Maxᵖ {r} w v )
+      × ( ≥-Maxᵖ {r} w v → ≥-Maxᵍ {r} w v )
+    ev w v = to-ev , from-ev
+      where
+        -- an unambiguous r has at most one tree per word: any two trees
+        -- reading the same word are identical, so the comparison field of
+        -- a maximality proof always holds on its equality side
+        eq-side : ( v' u : U r ) ( w' : List Char )
+          → proj₁ (flat {r} v') ≡ w' → proj₁ (flat {r} u) ≡ w'
+          → v' ≡ u
+        eq-side v' u w' v'≡w' u≡w' = unambig v' u (trans v'≡w' (sym u≡w'))
+
+        to-ev : ≥-Maxᵍ {r} w v → ≥-Maxᵖ {r} w v
+        to-ev (GreedyMax.≥-max w' v' flat-v'≡w' _) =
+          PosixMax.≥-max w' v' flat-v'≡w'
+            (λ u flat-u≡w' → inj₂ (eq-side v' u w' flat-v'≡w' flat-u≡w'))
+
+        from-ev : ≥-Maxᵖ {r} w v → ≥-Maxᵍ {r} w v
+        from-ev (PosixMax.≥-max w' v' flat-v'≡w' _) =
+          GreedyMax.≥-max w' v' flat-v'≡w'
+            (λ u flat-u≡w' → inj₂ (eq-side v' u w' flat-v'≡w' flat-u≡w'))
 
 ```

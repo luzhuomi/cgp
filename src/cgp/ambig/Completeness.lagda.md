@@ -1139,36 +1139,6 @@ pdU-const ( l ● s ` loc ) c z z′ z∈ z′∈ with RE.ε∈? l
             (PosixPD.pdU[ l , c ]) (pdU-const l c) )
         ( snd-list-const {l} {s} {ε∈l} {loc} {c} (pdU-const s c) )
         z z′ z∈ z′∈
-
--- (purpose): the full information content of a fired A3 test — the scan's
---   `≈₀` pair lies inside the `sum-spine` of *one* member's continuation
---   (Canonic's `pd-Idemp?-member-witness` names two members; `pdU-const`
---   identifies their continuations, so they are one)
--- (used in): no code consumer — like Canonic's value-level forms it remains
---   as a demoted record of a fired A3 test (Canonic §6.1)
--- (proof idea): invert the memberships through `Canonic.pd-alts∈-inv`,
---   transport the second alternative along `pdU-const`'s equation
-pdU-Idemp?-member-witness : ∀ { q : RE } { c : Char }
-  → Canonic.pd-Idemp? (PosixPD.pdU[ q , c ]) ≡ true
-  → Σ[ z ∈ PDInstance q c ]
-      ( z ∈ PosixPD.pdU[ q , c ]
-      × Σ[ a ∈ RE ] Σ[ b ∈ RE ]
-          ( a ∈ Canonic.sum-spine (Canonic.pd-expr z)
-          × b ∈ Canonic.sum-spine (Canonic.pd-expr z)
-          × Canonic._≈₀_ a b ) )
-pdU-Idemp?-member-witness {q} {c} eq
-  with Canonic.pd-Idemp?-witness (PosixPD.pdU[ q , c ]) eq
-...   | ( a , b , ( a∈ , b∈ , a≈₀b ) )
-    with Canonic.pd-alts∈-inv (PosixPD.pdU[ q , c ]) a a∈
-       | Canonic.pd-alts∈-inv (PosixPD.pdU[ q , c ]) b b∈
-...   | ( z , z∈ , a∈₁ ) | ( z′ , z′∈ , b∈₁ ) =
-      ( z
-      , ( z∈
-        , ( a , b
-          , ( a∈₁
-            , subst ( λ e → b ∈ Canonic.sum-spine e )
-                (sym (pdU-const q c z z′ z∈ z′∈)) b∈₁
-            , a≈₀b ) ) ) )
 ```
 
 ## 9. The record decision, computed: the completeness direction, closed
@@ -1312,12 +1282,9 @@ completeness {r} u v w≡ u≢v = completeness-from-desc Desc-complete-≟ r u v
 --          derivative records* (instances of the two branches of one sum with
 --          ≈₀-equal continuations), not the boolean test.  Canonic §4.2
 --          reflects the fired scan into an ≈₀ pair at located positions of
---          `pd-alts` (`pd-Idemp?-witness`, and position-preservingly as
---          `Dups-w` via `dups-≈₀-dups`), and `pd-Idemp?-members` goes the
---          other way (a real duplicate pair makes the scan answer `true`,
---          which is what §7's stop needs), and §8's
---          `pdU-Idemp?-member-witness` collects that pair into the
---          `sum-spine` of *one* member's continuation; the branch
+--          `pd-alts` (`Dups-w` via `dups-≈₀-dups`), and `pd-Idemp?-members`
+--          goes the other way (a real duplicate pair makes the scan answer
+--          `true`, which is what §7's stop needs); the branch
 --          location is proved by `pd-alts-Dups-w-classify` (Canonic §4.2),
 --          and the inside-spine analysis of
 --          configurations (a)/(b) and the record distinctness of (c) is

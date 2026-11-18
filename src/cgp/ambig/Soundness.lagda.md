@@ -96,7 +96,7 @@ import cgp.ambig.Canonic as Canonic
 open Canonic using ( _≈₀_ ; ≈₀-sym ; Cast ; Cast-pres-flat ; canonic ; sum-spine ; sum-spine∷
   ; pd-expr ; pd-inj ; pd*-expr ; pd-alts ; dups-≈₀ ; pd-Idemp? ; pd-alts∈ ; pd-alts∈-inv
   ; ∈-++-inv ; ∈-++ʳ ; ∈-map⁻ ; ∈-concatMap⁻ ; dups-≈₀-dups ; Dups-w ; Dups-w-++-split
-  ; Dups-w-cross ; pd-alts-Dups-w-classify ; pd-Idemp?-member-witness ; pd-a3-target
+  ; Dups-w-cross ; pd-alts-Dups-w-classify ; pd-a3-target
   ; pd-a3-Idemp-applied ; pd-a3-continuations ; lift-Ambig ; lift-Ctx ; pd*-inj ; pd*-Desc
   ; pd*-Ambig→Ambig ; pd*-A1→Ambig ; pd*-A2→Ambig ; crit ; crit-A3-test )
 open Canonic._≈₀_ using ( ≈₀-ε ; ≈₀-$ ; ≈₀-● ; ≈₀-+ ; ≈₀-* )
@@ -289,8 +289,8 @@ data _◁_ : RE → RE → Set where
 
 -- (purpose): membership in the computed spine gives the structural position
 -- (used in): converting the spine memberships of `pdU-+-location` /
---   `pdU-+-shape-of` (§7), `spine-pair→Ambig` (§9) and `●-fused-case` (§10)
---   into `spine-read` inputs (Canonic §6.1 configurations (a)/(b))
+--   `pdU-+-shape-of` (§7) and `●-fused-case` (§10) into `spine-read`
+--   inputs (Canonic §6.1 configurations (a)/(b))
 -- (proof idea): induction on the expression; at a sum node expose the
 --   spine head with `sum-spine∷`, split the concatenation with
 --   `∈-++-inv`, and transport the memberships along the head equation
@@ -682,12 +682,13 @@ pd-a3-branch-location =
 
 ## 8. Lifting an ambiguity through a record's map
 
-Configuration (b) of Canonic §6.1 closes an ambiguity *inside* the continuation
-of a member record of `pdU`; reaching `Ambig q` carries that witness
-through the record's own transition map `pd-inj z : U (pd-expr z) → U q`
-with Canonic §5's `lift-Ambig`, which asks for that map's injectivity.  The pd
-builders (`pdinstance-left/right/fst/snd`) preserve injectivity — a chain
-of them composed from the leaf `$` records (whose map is a `LetterU`
+Configuration (b) of Canonic §6.1 can also be closed at the *record*
+level: an ambiguity inside a member record's continuation carries to
+`Ambig q` through the record's own transition map
+`pd-inj z : U (pd-expr z) → U q` with Canonic §5's `lift-Ambig`, which
+asks for that map's injectivity.  The pd builders
+(`pdinstance-left/right/fst/snd`) preserve injectivity — a chain of
+them composed from the leaf `$` records (whose map is a `LetterU`
 embedding) is injective.  The one exception is the *fused* record's map
 `mkfuseInj`: the two pre-fusion maps both land in `U r` and could
 identify trees, so that link stays a gap.  It is never entered here:
@@ -696,104 +697,26 @@ continuation itself, and `pdU-+-location` pushes a pair *inside* a fused
 member down to the unfused branch lists, so no lift ever crosses a fused
 record.
 
-```agda
--- (purpose): one link of the chain — an ambiguity of a member record's
---   continuation transfers to the record's input expression
--- (used in): `pd-Idemp` of §11 (configuration (b))
--- (proof idea): `lift-Ambig` at the record's own map, the word [ c ]
---   and the record's evidence (the record's `c ∷ _` shape is [ c ] ++ _)
-lift-pdinstance : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
-  → ( ∀ ( u v : U (pd-expr z) )
-      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
-  → Ambig (pd-expr z) → Ambig q
-lift-pdinstance {q} {c} (pdinstance {p} inj ev) inj-inj =
-  lift-Ambig {r = q} {p = p} {c ∷ []} inj ev inj-inj
+That record-level route is not the one this file ends up using: §10
+discharges every member-record goal by induction along the `pdU` clause
+structure, re-embedding through Canonic's `lift-Ctx` and never applying
+a record's map — so the record lift `lift-pdinstance` and the builder
+injectivity chain are not developed here.
 
--- (purpose): the `+`-branch builders preserve the injectivity of a
---   record's transition map
--- (used in): no code consumer — the §9/§10 closings use `lift-Ctx` and the
---   `pdU` clause analysis instead of the record lift, so this builder
---   injectivity chain (Canonic §6.1 configuration (b)) stands as a record
--- (proof idea): the constructed maps reduce to `LeftU ∘ inj` and
---   `RightU ∘ inj`; `inv-leftU`/`inv-rightU` reflect back through the
---   constructor
-pdinj-inj-left : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance l c )
-  → ( ∀ ( u v : U (pd-expr z) )
-      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
-  → ( ∀ ( u v : U (pd-expr (pdinstance-left {l} {s} {loc} {c} z)) )
-      → pd-inj (pdinstance-left {l} {s} {loc} {c} z) refl u
-      ≡ pd-inj (pdinstance-left {l} {s} {loc} {c} z) refl v
-      → u ≡ v )
-pdinj-inj-left {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj u v eq =
-  inj-inj u v (ParseTree.inv-leftU {l} {s} {loc} (inj u) (inj v) eq)
+## 9. Configuration (b): the non-sum leaves are absurd
 
-pdinj-inj-right : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance s c )
-  → ( ∀ ( u v : U (pd-expr z) )
-      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
-  → ( ∀ ( u v : U (pd-expr (pdinstance-right {l} {s} {loc} {c} z)) )
-      → pd-inj (pdinstance-right {l} {s} {loc} {c} z) refl u
-      ≡ pd-inj (pdinstance-right {l} {s} {loc} {c} z) refl v
-      → u ≡ v )
-pdinj-inj-right {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj u v eq =
-  inj-inj u v (ParseTree.inv-rightU {l} {s} {loc} (inj u) (inj v) eq)
-
--- (purpose): the `●`-first builder preserves map injectivity
--- (used in): no code consumer — the §9/§10 closings use `lift-Ctx` and the
---   `pdU` clause analysis instead of the record lift, so this builder
---   injectivity chain (Canonic §6.1 configuration (b)) stands as a record
--- (proof idea): the constructed map reduces to `mkinjFst inj`, which
---   rewrites at a pair tree to `PairU (inj u) v`; `inv-pairU` splits the
---   equation and the hypothesis reflects the first component
-pdinj-inj-fst : ∀ { l s : RE } { loc : ℕ } { c : Char } ( z : PDInstance l c )
-  → ( ∀ ( u v : U (pd-expr z) )
-      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
-  → ( ∀ ( u v : U (pd-expr (pdinstance-fst {l} {s} {loc} {c} z)) )
-      → pd-inj (pdinstance-fst {l} {s} {loc} {c} z) refl u
-      ≡ pd-inj (pdinstance-fst {l} {s} {loc} {c} z) refl v
-      → u ≡ v )
-pdinj-inj-fst {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj
-  (PairU u₁ u₂) (PairU v₁ v₂) eq
-  with ParseTree.inv-pairU {l} {s} {loc} (inj u₁) u₂ (inj v₁) v₂ eq
-...   | ( head-eq , tail-eq ) =
-      cong₂ ( λ x y → PairU {p} {s} {loc} x y )
-             (inj-inj u₁ v₁ head-eq) tail-eq
-
--- (purpose): the `●`-second builder (`concatmap-pdinstance-snd` maps
---   `PDI.mk-snd-pdi` over the empty-tree witnesses) preserves map
---   injectivity
--- (used in): no code consumer — the §9/§10 closings use `lift-Ctx` and the
---   `pdU` clause analysis instead of the record lift, so this builder
---   injectivity chain (Canonic §6.1 configuration (b)) stands as a record
--- (proof idea): pattern-matching the pair *and* its `Flat-[]` evidence
---   makes the constructed map reduce to `mkinjSnd inj e` (the pd builder
---   does not reduce on a variable evidence), which rewrites to
---   `PairU e (inj u)`; `inv-pairU`'s second component feeds the hypothesis
-pdinj-inj-snd : ∀ { l s : RE } { loc : ℕ } { c : Char }
-  → ( ef : Σ[ x ∈ U l ] AllEmpty.Flat-[] l x ) ( z : PDInstance s c )
-  → ( ∀ ( u v : U (pd-expr z) )
-      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
-  → ( ∀ ( u v : U (pd-expr (PDI.mk-snd-pdi {l} {s} {loc} {c} ef z)) )
-      → pd-inj (PDI.mk-snd-pdi {l} {s} {loc} {c} ef z) refl u
-      ≡ pd-inj (PDI.mk-snd-pdi {l} {s} {loc} {c} ef z) refl v
-      → u ≡ v )
-pdinj-inj-snd {l} {s} {loc} {c} ( e , AllEmpty.flat-[] .e fl )
-  (pdinstance {p} inj ev) inj-inj u v eq =
-    inj-inj u v
-      (proj₂ (ParseTree.inv-pairU {l} {s} {loc} e (inj u) e (inj v) eq))
-```
-
-## 9. Configuration (b): a pair inside one member's spine
-
-The left branch of the classification (Canonic §4.2) hands over a member whose
-continuation spine *itself* carries the positioned pair.  The pair is
-located by descending the expression: at each `+` node
-`Dups-w-++-split` cuts the spine join, a crossing pair closes at that
-node by the §5 construction one level deeper (no records: both trees
-are read at positions of the *same* continuation, and the branch
-constructors keep them apart), a pair wholly on one side recurses and is
-re-embedded by `lift-Ctx`.  Non-sum nodes carry no spine pair at all.
-The resulting ambiguity of the continuation reaches the member's
-expression through the record's own map — §8's chain.
+The left branch of the classification (Canonic §4.2) hands over a member
+whose continuation spine *itself* carries the positioned pair.  §10
+closes that configuration by induction along the `pdU` clause structure:
+`Dups-w-++-split` cuts each spine join, a crossing pair closes at the
+§5 constructions, a pair wholly on one side recurses and is re-embedded
+by `lift-Ctx`.  The leaves where the continuation is *not* a sum (`ε`,
+`$`, `⋆`, and the non-nullable `●` clauses) have spines of the shape
+`x ∷ []`, which never carry a positioned pair — that absurd fact is this
+section's lemma.  (An earlier record-level version of this section —
+locating the pair inside one spine by structural recursion and carrying
+it across the record map through §8 — was superseded by §10's clause
+induction and is not developed.)
 
 ```agda
 -- an append whose right half starts with a named element is never []
@@ -804,8 +727,7 @@ expression through the record's own map — §8's chain.
 
 -- (purpose): a one-element list never carries a positioned pair — the
 --   witness always names two positions
--- (used in): the non-sum clauses of `spine-pair→Ambig` below, the leaf
---   clauses of the pdU-clause induction
+-- (used in): the non-sum leaf clauses of the pdU-clause induction (§10)
 -- (proof idea): case-split the witness's outer split point; each branch
 --   reduces (with `∷-injectiveʳ` where needed) to `cons ≡ []`
 Dups-w-∷[]-absurd : ( x : RE ) → Dups-w ( x ∷ [] ) → ⊥
@@ -816,63 +738,6 @@ Dups-w-∷[]-absurd
 ...   | []         = ++-∷≢[] mid post later (∷-injectiveʳ eq)
 ...   | ( p ∷ ps ) = ++-∷≢[] ps (mid ++ (later ∷ post)) earlier
                        (∷-injectiveʳ eq)
-
--- (purpose): Canonic §6.1 configuration (b) — a positioned pair located anywhere
---   in the single continuation spine of a sum-bearing expression makes
---   that expression ambiguous
--- (used in): `member-pair→Ambig` below
--- (proof idea): structural recursion on the expression; see the cases
---   inline
-spine-pair→Ambig : ( r : RE ) → Dups-w ( sum-spine r ) → Ambig r
-spine-pair→Ambig ( l + s ` loc ) w
-  with Dups-w-++-split (sum-spine l) (sum-spine s) w
-...   | Sum.inj₁ d =
-      lift-Ctx (Ctx+R 𝟘 s loc) (spine-pair→Ambig l d)
-...   | Sum.inj₂ (Sum.inj₁ ( pre , mid₁ , mid₂ , post , p , q
-                           , ( xs≡ , ys≡ , q≈₀p ) )) =
-        let u    = proj₁ (r-∃u p)
-            p≈₀q = ≈₀-sym q≈₀p
-            pos₁ = ∈→◁ l p (subst ( λ L → p ∈ L ) (sym xs≡)
-                       ( ∈-++ʳ pre (p ∷ mid₁) p (here refl) ))
-            pos₂ = ∈→◁ s q (subst ( λ L → q ∈ L ) (sym ys≡)
-                       ( ∈-++ʳ mid₂ (q ∷ post) q (here refl) ))
-            t₁   = spine-read l p pos₁ u
-            t₂   = spine-read s q pos₂ (Cast p≈₀q u)
-        in  ( LeftU {l} {s} {loc} t₁
-            , RightU {l} {s} {loc} t₂
-            , trans (flat∘LeftU {l} {s} {loc} t₁)
-                (trans (trans (spine-read-pres-flat l p pos₁ u)
-                               (sym (Cast-pres-flat p≈₀q u)))
-                       (sym (trans (flat∘RightU {l} {s} {loc} t₂)
-                                   (spine-read-pres-flat s q pos₂
-                                      (Cast p≈₀q u)))))
-            , LeftU≢RightU t₁ t₂ )
-...   | Sum.inj₂ (Sum.inj₂ d) =
-      lift-Ctx (L+Ctx l 𝟘 loc) (spine-pair→Ambig s d)
-spine-pair→Ambig ε w = ⊥-elim (Dups-w-∷[]-absurd ε w)
-spine-pair→Ambig ( $ c ` loc ) w = ⊥-elim (Dups-w-∷[]-absurd ( $ c ` loc ) w)
-spine-pair→Ambig ( l ● s ` loc ) w =
-  ⊥-elim (Dups-w-∷[]-absurd ( l ● s ` loc ) w)
-spine-pair→Ambig ( r * nε ` loc ) w =
-  ⊥-elim (Dups-w-∷[]-absurd ( r * nε ` loc ) w)
-
--- (purpose): configuration (b) at a member record — the pair located
---   inside the member's continuation closes at the continuation and is
---   carried to the member's expression by the record's own map
--- (used in): no code consumer — §10's `pdU-member-pair→Ambig` replaces it,
---   closing the same configuration by induction along the `pdU` clause
---   structure (that is what §11's `pd-Idemp` calls)
--- (proof idea): `spine-pair→Ambig` then `lift-pdinstance` (§8); the
---   map's injectivity comes from the builder chain (an `mkfuseInj` link
---   never appears: `pdU-+-location` already pushed any pair inside a
---   fused member to the unfused branch lists)
-member-pair→Ambig : ∀ { q : RE } { c : Char } ( z : PDInstance q c )
-  → ( ∀ ( u v : U (pd-expr z) )
-      → pd-inj z refl u ≡ pd-inj z refl v → u ≡ v )
-  → Dups-w (sum-spine (pd-expr z))
-  → Ambig q
-member-pair→Ambig {q} {c} z inj-inj d =
-  lift-pdinstance {q} {c} z inj-inj (spine-pair→Ambig (pd-expr z) d)
 ```
 
 ## 10. The left branch, closed clause by clause

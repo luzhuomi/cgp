@@ -44,9 +44,9 @@ needed for criterion **A3** of the Ambiguity Criteria proposition (paper section
    and A2 but caught there.
 5. Section 5: the *general* form of the criteria — one master lift
    `lift-Ambig` (an injective path tree map with the soundness evidence of
-   a `PDInstance*` transports `Ambig p → Ambig r`), from which
-   `lift-A1→Ambig`, `lift-A2→Ambig` and the pd-state corollaries
-   `pd*-A1→Ambig`, `pd*-A2→Ambig` factor (`AmbigCheck.A1→Ambig` etc.
+   a `PDInstance*` transports `Ambig p → Ambig r`), from which the
+   pd-state corollaries `pd*-A1→Ambig`, `pd*-A2→Ambig` factor
+   (`AmbigCheck.A1→Ambig` etc.
    are the `w = []`, `inj = id` instances); the Ctx-dup versions
    `lift-Ctx-dup→Ambig` / `pd*-Ctx-dup→Ambig` travel with
    `Ctx-dup→Ambig` in `cgp.ambig.Soundness` §6.
@@ -631,8 +631,8 @@ dups-≈₀-go-inv-step kept xs x eq with any-≈₀ x kept | eq
 -- (purpose): the inverse of `pd-alts∈` — an alternative of the state
 --   belongs to a member: it names a record `z` of the list with the
 --   alternative inside `z`'s `sum-spine`
--- (used in): `pd-Idemp?-member-witness` below, and `pdU-Idemp?-member-witness`
---   in `Completeness` §8
+-- (used in): `pd-alts-Dups-w-classify` below (the member-level placement
+--   of the positioned pair)
 -- (proof idea): induction on the record list, splitting each membership
 --   in the concatenation with `∈-++-inv`
 pd-alts∈-inv : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
@@ -648,8 +648,8 @@ pd-alts∈-inv (x ∷ pdis) h h∈
 
 -- a *positioned* duplicate pair inside a list: two occurrences, the
 -- earlier one in a window between `pre` and `post`, the later one after
--- it.  Unlike `dups-≈₀-witness`'s Σ this keeps the occurrence identity
--- the scan is built on — two distinct positions, one value pair.
+-- it.  This keeps the occurrence identity the scan is built on — two
+-- distinct positions, one value pair — where a bare Σ of values would not.
 -- (form: an inductive with the positions as constructor arguments.  A
 --   Σ-alias `Dups-w xs = Σ[...]` does *not* unfold when `xs` is neutral,
 --   and pair construction against the stuck alias fails; the datatype is
@@ -735,9 +735,9 @@ dups-≈₀-go-wp x kept (y ∷ xs) h
 
 -- (purpose): the scan's output read back as positioned occurrences — a
 --   fired `dups-≈₀` names the two positions of the duplicate pair
--- (used in): the §6.1 `pd-Idemp` hypothesis unpacking, composed with
---   `pd-Idemp?-witness`; the member-level classification of the pair
---   relative to `pd-alts` (design note below) is the step that consumes it
+-- (used in): the §6.1 `pd-Idemp` hypothesis unpacking; the member-level
+--   classification of the pair relative to `pd-alts` (design note below)
+--   is the step that consumes it
 -- (proof idea): through the general-window form `dups-≈₀-go-wp`: the
 --   whole list is the one-element window `[x]` followed by the rest
 dups-≈₀-dups : ( xs : List RE )
@@ -947,72 +947,7 @@ pd-alts-classify-a3 =
 -- at distinct list positions), and Soundness §11's `pdU-2members→Ambig`
 --   inverts
 -- that length bound through the `pdU` clauses to an A1/A2
--- configuration.  The value-level form of the classification without
--- position preservation is `pd-Idemp?-member-witness` below.
-
--- forgetting the positions of a positioned pair recovers the plain
--- `≈₀` pair of values.  This is the demoted route: every consumer of
--- the old value-level scan witness is now stated through it, so the
--- one induction over the scan in this module is the positioned one
-Dups-w-→-Σ : ( xs : List RE ) → Dups-w xs
-  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
-Dups-w-→-Σ xs (dups-at {xs = xs} {pre = pre} {mid = mid} {post = post}
-               {earlier = earlier} {later = later} eq later≈₀earlier) =
-    ( later , earlier
-    , ( subst ( λ L → later ∈ L ) eq
-          ( ∈-++ʳ pre (earlier ∷ (mid ++ (later ∷ post))) later
-              ( there (∈-++ʳ mid (later ∷ post) later (here refl)) ) )
-      , subst ( λ L → earlier ∈ L ) eq
-          ( ∈-++ʳ pre (earlier ∷ (mid ++ (later ∷ post))) earlier
-              (here refl) )
-      , later≈₀earlier ) )
-
--- (purpose): the value-level form of the scan reflection: a fired
---   scan has an `≈₀` pair of values in the list (positions forgotten)
--- (used in): `pd-Idemp?-witness` below
--- (proof idea): the positioned reflection `dups-≈₀-dups` followed by
---   `Dups-w-→-Σ`
-dups-≈₀-witness : ( xs : List RE )
-  → dups-≈₀ xs ≡ true
-  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ xs × b ∈ xs × a ≈₀ b )
-dups-≈₀-witness xs eq = Dups-w-→-Σ xs (dups-≈₀-dups xs eq)
-
--- (purpose): the test of §4 reflected — a fired `pd-Idemp?` means the
---   flattened alternative list holds an `≈₀` pair of values
--- (used in): `pd-Idemp?-member-witness` below, and (with
---   `pd-alts∈-inv`) `pdU-Idemp?-member-witness` in `Completeness` §8
--- (proof idea): `dups-≈₀-witness` at the list `pd-alts pdis`
-pd-Idemp?-witness : ∀ { r : RE } { c : Char } ( pdis : List (PDInstance r c) )
-  → pd-Idemp? pdis ≡ true
-  → Σ[ a ∈ RE ] Σ[ b ∈ RE ] ( a ∈ pd-alts pdis × b ∈ pd-alts pdis × a ≈₀ b )
-pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
-
--- (purpose): the test of §4 reflected *through the member list* — a
---   fired `pd-Idemp?` names two members and one alternative of each,
---   `≈₀`-equal
--- (used in): no code consumer — like `pd-Idemp?-witness` this is a demoted
---   record of the §6.1 reflection; the §6.1 statement of `pd-Idemp`
---   unpacks its hypothesis through the position-preserving
---   `dups-≈₀-dups` instead.  `Completeness`'s `pdU-Idemp?-member-witness`
---   adds `pdU-const`'s equation (for a `pdU` list the two members have
---   one continuation, so both alternatives sit in one `sum-spine`) but
---   composes `pd-Idemp?-witness` + `pd-alts∈-inv` directly: this combined
---   Σ passed through a module boundary produced a phantom conversion
---   error, the small-step composition does not
--- (proof idea): `pd-Idemp?-witness`, then `pd-alts∈-inv` at each side
-pd-Idemp?-member-witness : ∀ { r : RE } { c : Char }
-  ( pdis : List (PDInstance r c) )
-  → pd-Idemp? pdis ≡ true
-  → Σ[ z ∈ PDInstance r c ] Σ[ z′ ∈ PDInstance r c ]
-      Σ[ a ∈ RE ] Σ[ b ∈ RE ]
-        ( z ∈ pdis × z′ ∈ pdis
-        × a ∈ sum-spine (pd-expr z) × b ∈ sum-spine (pd-expr z′)
-        × a ≈₀ b )
-pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
-...   | ( a , b , ( a∈ , b∈ , a≈₀b ) )
-    with pd-alts∈-inv pdis a a∈ | pd-alts∈-inv pdis b b∈
-...   | ( z , z∈ , a∈₁ ) | ( z′ , z′∈ , b∈₁ ) =
-        ( z , z′ , a , b , ( z∈ , z′∈ , a∈₁ , b∈₁ , a≈₀b ) )
+-- configuration.
 
 -- (membership inverses for `map`/`concatMap`; the `pdinstance-oplus`
 --   inversion `∈-oplus⁻` lives with the clause analysis in `cgp.ambig.Soundness`)
@@ -1103,32 +1038,14 @@ lift-Ambig {r} {p} {w} inj ev inj-inj (u , v , w≡ , u≢v) =
     , trans (trans (ev u) (cong ( λ z → w ++ z) w≡)) (sym (ev v))
     , λ trees≡ → u≢v (inj-inj u v trees≡) )
 
--- A1 at the state ⇒ r ambiguous
-lift-A1→Ambig : ∀ { r p : RE } { w : List Char }
-  → ( inj : U p → U r )
-  → ( ev : ∀ ( u : U p ) → proj₁ (flat {r} (inj u)) ≡ w ++ proj₁ (flat {p} u) )
-  → ( inj-inj : ∀ ( u v : U p ) → inj u ≡ inj v → u ≡ v )
-  → AmbigA1 p
-  → Ambig r
-lift-A1→Ambig inj ev inj-inj a1 = lift-Ambig inj ev inj-inj (A1→Ambig _ a1)
-
--- A2 at the state ⇒ r ambiguous
-lift-A2→Ambig : ∀ { r p : RE } { w : List Char }
-  → ( inj : U p → U r )
-  → ( ev : ∀ ( u : U p ) → proj₁ (flat {r} (inj u)) ≡ w ++ proj₁ (flat {p} u) )
-  → ( inj-inj : ∀ ( u v : U p ) → inj u ≡ inj v → u ≡ v )
-  → AmbigA2 p
-  → Ambig r
-lift-A2→Ambig inj ev inj-inj a2 = lift-Ambig inj ev inj-inj (A2→Ambig _ a2)
-
 -- (purpose): the context lift on its own — an ambiguity of the hole
 --   expression transfers to the filled expression
--- (used in): the re-embedding clauses of `spine-pair→Ambig` (Soundness §9)
---   and of the pdU clause analysis (`pdU-member-pair→Ambig`,
---   `pdU-2members→Ambig`, Soundness §10); through the latter the §6.1
---   closer `pd-Idemp` (Soundness §11) composes it, and so does the
---   `soundness` statement (Soundness §12, fourth disjunct);
---   `Ctx-dup→Ambig` (Soundness §1) builds the same witness inline
+-- (used in): the re-embedding clauses of the pdU clause analysis
+--   (`pdU-member-pair→Ambig`, `pdU-2members→Ambig`, Soundness §10);
+--   through the latter the §6.1 closer `pd-Idemp` (Soundness §11)
+--   composes it, and so does the `soundness` statement (Soundness §12,
+--   fourth disjunct); `Ctx-dup→Ambig` (Soundness §1) builds the same
+--   witness inline
 -- (proof idea): `CtxT` embeds the two trees, `CtxT-pres-flat` keeps the
 --   word equation, `CtxT-injective` reflects the disequality
 lift-Ctx : ∀ ( ctx : Ctx ) { s : RE } → Ambig s → Ambig (plug ctx s)
@@ -1276,10 +1193,7 @@ Caveats (consistent with §4/§5):
   `dups-≈₀-dups : dups-≈₀ xs ≡ true → Dups-w xs` reads a fired scan
   back as a *positioned* duplicate pair — two list positions, not just
   two values (the value-only form is too weak: the same value may
-  legitimately occur twice in an unambiguous list); the value-level
-  forms `pd-Idemp?-witness` / `pd-Idemp?-member-witness` and
-  `Completeness` §8's `pdU-Idemp?-member-witness` remain as demoted
-  records of the same reflection).  The *classification* is proved
+  legitimately occur twice in an unambiguous list).  The *classification* is proved
   (`Dups-w-++-split` + `pd-alts-Dups-w-classify`, this module's §4.2,
   instantiated at the example by `pd-alts-classify-a3`): the pair of a fired test either
   sits at two positions of one member's `sum-spine`, or has its earlier
@@ -1287,9 +1201,8 @@ Caveats (consistent with §4/§5):
   The first branch is closed in full by Soundness §10's
   `pdU-member-pair→Ambig`,
   an induction along the clauses of the `pdU` definition —
-  configurations (a) and (b) through `spine-pair→Ambig` /
-  `member-pair→Ambig` (Soundness §9) and the record lifts (Soundness
-  §8), the crossings of a `+` clause through Soundness §5's
+  configurations (a) and (b) closed by that same induction (its non-sum
+  leaves through Soundness §9's `Dups-w-∷[]-absurd`), the crossings of a `+` clause through Soundness §5's
   `pd-cross-positions→Ambig` and of the nullable-`●` clause through
   Soundness §10's `pd-cross-●→Ambig` (which closes a
   first-factor/empty-first-factor pair by *word* distinctness, `c ∷ _`

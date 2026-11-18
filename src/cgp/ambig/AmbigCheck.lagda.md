@@ -57,9 +57,16 @@ Notes on the correspondence:
    the paper catches with `Idemp`; §9.1's `pd-a3-target` adds the case where
    the duplicate is *created by the derivative*.
 
-The full equivalence (the "only if" direction, quantifying over realizable states
-`Desc(r)` and transitions) requires the FST construction of paper section 4, which
-is future work.
+The full equivalence is established over the *pd-native states* of §12:
+`cgp.ambig.Soundness` §12 derives, from a fired `crit` at any member
+`pdi` of the state list `pd*-Desc r w`, two distinct trees of `r` reading
+one word; `cgp.ambig.Completeness` §9 recovers, from any two distinct
+trees of `r` reading one word, a prefix `w` and a member `p` of
+`pd*-Desc r w` at which a criterion fires.  What is *not* connected is
+the FST construction of paper section 4: the paper's states `Desc(r)`
+(realizable FST states) and the pd-native `pd*-Desc` are never shown to
+coincide, so the equivalence is not derived in the paper's *verbatim*
+form.
 
 ```agda
 {-# OPTIONS --rewriting #-}
@@ -368,9 +375,14 @@ A2→Ambig r (ctx , l , t , loc , (eq , (ε∈l , len≥2))) rewrite sym eq with
 
 A3 of the paper fires when building the canonical representative of a derivative
 applies the similarity rule `Idemp` (merging duplicated alternatives).  The
-project's partial-derivative construction (e.g. `cgp.lne.PartialDerivative.pdU`)
-does not merge alternatives, i.e. the `Idemp` rule and `canonic` have no
-counterpart here; hence A3 cannot be stated for an arbitrary expression yet.
+partial-derivative construction (e.g. `cgp.posix.PartialDerivative.pdU`) never
+merges alternatives — no `Idemp` step runs inside differentiation — so this
+module supplies the counterpart machinery instead: `canonic`/`dedup` (§8)
+detect a duplicate already present in an expression, and `pd-Idemp?` (§9)
+applies the `Idemp` detection *after* differentiating, scanning the
+alternative lists of the derivative for an `≈₀`-pair.  A3 is therefore
+statable for an arbitrary expression — as the decidable test `pd-Idemp?`,
+and as the third/fourth disjunct of `crit` (§13).
 
 The following example (the simplest instance of the paper's A3 situation:
 `deriv (x + x) x = (ε + φ) + (ε + φ)` requires `Idemp`) shows that A1 and A2

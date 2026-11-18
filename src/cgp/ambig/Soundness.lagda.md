@@ -1300,26 +1300,7 @@ pd-a3-Ambig-via-pd-Idemp = pd-Idemp {pd-a3-target} {'a'} pd-a3-Idemp-applied
 
 ## 12. The soundness direction over the pd-states
 
-The attempt to state the converse direction *about a given tree* —
-
-> `∀ { r } { w₁ w₂ } ( u : U r ) → proj₁ (flat {r} u) ≡ w₁ ++ w₂`
-> `→ ( p : RE ) → crit p → Any ( λ s → s ≡ p ) (Canonic.pd*-Desc r w₁)`
-> `→ ∃[ v ] ( proj₁ (flat {r} u) ≡ proj₁ (flat {r} v) ) × ¬ ( u ≡ v )`
-
-— is false, and the counterexample is small: `r = ( ε + ε ) + b` has two
-ε-trees, so A1 (hence `crit`) fires at the state `r` itself, which `[]`
-reaches; but the word `b` has exactly one parse tree — take it for `u` and
-no `v ≢ u` exists.  Nothing in the statement ties `u` to the state `p`: the
-criterion's witness may live in a part of `r` the parse of `u` never
-traverses.  Constraining `u` would not repair the *shape* either: an A1
-witness at a state twins only the word `w₁` (its state trees read `ε`), and
-A1 at a state does not make every word of that state ambiguous —
-`( ε + ε ) + ( b ● c )` has two ε-trees and a unique `b c`-tree.  What is
-provable is the existential form at the end of this section, and it holds
-for all four disjuncts of `crit` — the fourth closes through the context
-lift with this module's §11 `pd-Idemp`; the example above only
-shows that the *twin-of-a-fixed-`u`* form fails, not the criterion —
-with the lift's injectivity hypothesis made explicit.
+The main lemma
 
 ```agda
 -- (purpose): the soundness direction read over the pd-states — a criterion

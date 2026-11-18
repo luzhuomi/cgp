@@ -290,7 +290,7 @@ path form as §4's `pdesc`, which is what the descent actually calls.)
 ```agda
 -- concatMap f distributes over ++
 -- (purpose): the basic list law the descent's run equations rewrite with
--- (used in): `concatMap-compose` here, `aux-concatMap` below
+-- (used in): `concatMap-compose` below
 -- (proof idea): induction on the first list; the step is `cong` of the
 --   recursive equation plus symmetry of `++`-assoc
 concatMap-++ : ∀ {A B : Set} (f : A → List B) (xs ys : List A)
@@ -1144,7 +1144,8 @@ pdU-const ( l ● s ` loc ) c z z′ z∈ z′∈ with RE.ε∈? l
 --   `≈₀` pair lies inside the `sum-spine` of *one* member's continuation
 --   (Canonic's `pd-Idemp?-member-witness` names two members; `pdU-const`
 --   identifies their continuations, so they are one)
--- (used in): the counterexample remark in `cgp.ambig.Soundness` §12
+-- (used in): no code consumer — like Canonic's value-level forms it remains
+--   as a demoted record of a fired A3 test (Canonic §6.1)
 -- (proof idea): invert the memberships through `Canonic.pd-alts∈-inv`,
 --   transport the second alternative along `pdU-const`'s equation
 pdU-Idemp?-member-witness : ∀ { q : RE } { c : Char }

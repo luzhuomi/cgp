@@ -990,13 +990,14 @@ pd-Idemp?-witness pdis eq = dups-≈₀-witness (pd-alts pdis) eq
 -- (purpose): the test of §4 reflected *through the member list* — a
 --   fired `pd-Idemp?` names two members and one alternative of each,
 --   `≈₀`-equal
--- (used in): the §6.1 statement of `pd-Idemp` — the value-level half of its
---   hypothesis unpacking (the positioned half is `dups-≈₀-dups`).
---   `Completeness`'s `pdU-Idemp?-member-witness` adds `pdU-const`'s
---   equation (for a `pdU` list the two members have one continuation,
---   so both alternatives sit in one `sum-spine`) and composes
---   `pd-Idemp?-witness` + `pd-alts∈-inv` directly: this combined Σ
---   passed through a module boundary produced a phantom conversion
+-- (used in): no code consumer — like `pd-Idemp?-witness` this is a demoted
+--   record of the §6.1 reflection; the §6.1 statement of `pd-Idemp`
+--   unpacks its hypothesis through the position-preserving
+--   `dups-≈₀-dups` instead.  `Completeness`'s `pdU-Idemp?-member-witness`
+--   adds `pdU-const`'s equation (for a `pdU` list the two members have
+--   one continuation, so both alternatives sit in one `sum-spine`) but
+--   composes `pd-Idemp?-witness` + `pd-alts∈-inv` directly: this combined
+--   Σ passed through a module boundary produced a phantom conversion
 --   error, the small-step composition does not
 -- (proof idea): `pd-Idemp?-witness`, then `pd-alts∈-inv` at each side
 pd-Idemp?-member-witness : ∀ { r : RE } { c : Char }
@@ -1016,7 +1017,11 @@ pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
 -- (membership inverses for `map`/`concatMap`; the `pdinstance-oplus`
 --   inversion `∈-oplus⁻` lives with the clause analysis in `cgp.ambig.Soundness`)
 -- (purpose): membership in a mapped list names the preimage
--- (used in): `∈-oplus⁻` (Soundness §7), `pd-alts-Dups-w-classify` above
+-- (used in): `∈-oplus⁻` and the `+` shape lemmas of Soundness §7
+--   (`pdU-+-shape`, `pdU-+-shape-of`), the `●` clause lemmas of the pdU
+--   clause analysis (Soundness §10: `pd-snd-continues`, `●-snd-subgoal`,
+--   `pdU-member-pair→Ambig`), the constancy package of Completeness §5
+--   (`map-const`, `concatMap-hyp`, `fuse-pair-const`, `snd-pair-const`)
 -- (proof idea): induction on the list, reading the `here`/`there` position
 ∈-map⁻ : { A B : Set } ( f : A → B ) ( xs : List A ) ( y : B )
   → y ∈ map f xs
@@ -1028,7 +1033,9 @@ pd-Idemp?-member-witness pdis eq with pd-Idemp?-witness pdis eq
 
 -- (purpose): membership in a concatenated map names the element whose
 --   block carries it
--- (used in): `∈-oplus⁻` (Soundness §7), `pd-alts-Dups-w-classify` above
+-- (used in): `∈-oplus⁻` (Soundness §7), the `●` clause lemmas of the pdU
+--   clause analysis (Soundness §10: `pd-snd-continues`, `●-snd-subgoal`,
+--   `●-fused-case`), `∈-concat⁻` (Completeness §5)
 -- (proof idea): induction on the list, splitting each block's `++`
 --   membership with `∈-++-inv`
 ∈-concatMap⁻ : { A B : Set } ( f : A → List B ) ( xs : List A ) ( y : B )
@@ -1116,9 +1123,12 @@ lift-A2→Ambig inj ev inj-inj a2 = lift-Ambig inj ev inj-inj (A2→Ambig _ a2)
 
 -- (purpose): the context lift on its own — an ambiguity of the hole
 --   expression transfers to the filled expression
--- (used in): the §6.1 statement of `pd-Idemp` (the closer a located
---   sum-branch pair composes with); `Ctx-dup→Ambig` (Soundness §1) builds the
---   same witness inline
+-- (used in): the re-embedding clauses of `spine-pair→Ambig` (Soundness §9)
+--   and of the pdU clause analysis (`pdU-member-pair→Ambig`,
+--   `pdU-2members→Ambig`, Soundness §10); through the latter the §6.1
+--   closer `pd-Idemp` (Soundness §11) composes it, and so does the
+--   `soundness` statement (Soundness §12, fourth disjunct);
+--   `Ctx-dup→Ambig` (Soundness §1) builds the same witness inline
 -- (proof idea): `CtxT` embeds the two trees, `CtxT-pres-flat` keeps the
 --   word equation, `CtxT-injective` reflects the disequality
 lift-Ctx : ∀ ( ctx : Ctx ) { s : RE } → Ambig s → Ambig (plug ctx s)
@@ -1410,8 +1420,7 @@ crit p = Sum._⊎_
 -- descent: a positive `Idemp` test on the transition out of `r` is a
 -- criterion at `r` itself.
 -- (purpose): the fourth disjunct at the empty context
--- (used in): `pick-diff-record-prf` (Completeness §7), the `soundness` cases
---   (Soundness §12)
+-- (used in): `pick-diff-record-prf` (Completeness §7)
 -- (proof idea): by inspection: `𝟘 , r , c` plugs to `r` at `refl`, and the
 --   hypothesis is exactly the fourth component
 crit-A3-test : ∀ ( r : RE ) ( c : Char )

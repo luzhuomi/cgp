@@ -288,8 +288,9 @@ data _◁_ : RE → RE → Set where
   sp-right : ∀ { l s p : RE } { loc : ℕ } → s ◁ p → ( l + s ` loc ) ◁ p
 
 -- (purpose): membership in the computed spine gives the structural position
--- (used in): converting `pd-Idemp?-member-witness` / `pd-alts∈-inv`
---   memberships into `spine-read` inputs (Canonic §6.1 configurations (a)/(b))
+-- (used in): converting the spine memberships of `pdU-+-location` /
+--   `pdU-+-shape-of` (§7), `spine-pair→Ambig` (§9) and `●-fused-case` (§10)
+--   into `spine-read` inputs (Canonic §6.1 configurations (a)/(b))
 -- (proof idea): induction on the expression; at a sum node expose the
 --   spine head with `sum-spine∷`, split the concatenation with
 --   `∈-++-inv`, and transport the memberships along the head equation
@@ -710,7 +711,9 @@ lift-pdinstance {q} {c} (pdinstance {p} inj ev) inj-inj =
 
 -- (purpose): the `+`-branch builders preserve the injectivity of a
 --   record's transition map
--- (used in): the chain of Canonic §6.1 configuration (b)
+-- (used in): no code consumer — the §9/§10 closings use `lift-Ctx` and the
+--   `pdU` clause analysis instead of the record lift, so this builder
+--   injectivity chain (Canonic §6.1 configuration (b)) stands as a record
 -- (proof idea): the constructed maps reduce to `LeftU ∘ inj` and
 --   `RightU ∘ inj`; `inv-leftU`/`inv-rightU` reflect back through the
 --   constructor
@@ -735,7 +738,9 @@ pdinj-inj-right {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj u v eq =
   inj-inj u v (ParseTree.inv-rightU {l} {s} {loc} (inj u) (inj v) eq)
 
 -- (purpose): the `●`-first builder preserves map injectivity
--- (used in): the chain of Canonic §6.1 configuration (b)
+-- (used in): no code consumer — the §9/§10 closings use `lift-Ctx` and the
+--   `pdU` clause analysis instead of the record lift, so this builder
+--   injectivity chain (Canonic §6.1 configuration (b)) stands as a record
 -- (proof idea): the constructed map reduces to `mkinjFst inj`, which
 --   rewrites at a pair tree to `PairU (inj u) v`; `inv-pairU` splits the
 --   equation and the hypothesis reflects the first component
@@ -756,7 +761,9 @@ pdinj-inj-fst {l} {s} {loc} {c} (pdinstance {p} inj ev) inj-inj
 -- (purpose): the `●`-second builder (`concatmap-pdinstance-snd` maps
 --   `PDI.mk-snd-pdi` over the empty-tree witnesses) preserves map
 --   injectivity
--- (used in): the chain of Canonic §6.1 configuration (b)
+-- (used in): no code consumer — the §9/§10 closings use `lift-Ctx` and the
+--   `pdU` clause analysis instead of the record lift, so this builder
+--   injectivity chain (Canonic §6.1 configuration (b)) stands as a record
 -- (proof idea): pattern-matching the pair *and* its `Flat-[]` evidence
 --   makes the constructed map reduce to `mkinjSnd inj e` (the pd builder
 --   does not reduce on a variable evidence), which rewrites to
@@ -852,7 +859,9 @@ spine-pair→Ambig ( r * nε ` loc ) w =
 -- (purpose): configuration (b) at a member record — the pair located
 --   inside the member's continuation closes at the continuation and is
 --   carried to the member's expression by the record's own map
--- (used in): `pd-Idemp` of §11
+-- (used in): no code consumer — §10's `pdU-member-pair→Ambig` replaces it,
+--   closing the same configuration by induction along the `pdU` clause
+--   structure (that is what §11's `pd-Idemp` calls)
 -- (proof idea): `spine-pair→Ambig` then `lift-pdinstance` (§8); the
 --   map's injectivity comes from the builder chain (an `mkfuseInj` link
 --   never appears: `pdU-+-location` already pushed any pair inside a

@@ -1113,7 +1113,7 @@ parseAllU r [a] = app buildU pdU[ r . a ]
 ## Update on 24 July 2026
 
 1. Completed proving Okui and Suzuki's formation is correspondent to our POSIX ordering.
-   1. refer to `src/cgp/posix/RelatedWorkOkuiSuzuki.lagda.md` lemma `¬v≺u→r⇒u` .
+   1. refer to `src/cgp/relatedwork/RelatedWorkOkuiSuzuki.lagda.md` lemma `¬v≺u→r⇒u` .
    
    
 
@@ -1123,3 +1123,148 @@ parseAllU r [a] = app buildU pdU[ r . a ]
 1. Completed proving 2-level modular LNE (Left Non Empty)  order is well-founded (i.e. total and maximal exists). 
 1. Completed proving the first parse tree produced by our parseAll algorithm using Antimirov's partial derivative operation w/o associative and distributivity law is maximal w.r.t to LNE order.
    1. refer to `src/cgp/lne/MaxWord.lagda.md` theorem `first-parseAll-isMax`
+
+
+## Update on 18 Nov 2026
+
+
+1. Completed porting the CIAA 2016 paper's ambiguity check to partial derivative (derivative with oplus).
+1. A1 and A2 criteria are the same
+1. A3 criterion is adapted to the partial drivative style, e.g. we have to apply the inverse of the oplus operation to the derivative to obtain the list of partial derivatives and check any of them are similar, (i.e. Idemp rule a + a ==> a can be applied)
+1. The soundness and completeness results are proven. 
+   1. refer to `src/cgp/ambig/AmbigCheck.lagda.md`, `src/cgp/ambig/Soundness.lagda.md` and `src/cgp/ambig/Completeness.lagda.md`
+1. Show that Umambiguity implies Robustness 
+   1. refer to `src/cgp/robust/greedyposix/Robust.lagda.md`
+   
+   
+   
+## Update on 20 Nov 2026
+
+1. Formulating Mamoura's greedy order and posix order, which is different from what we defined in this project
+   
+   1. Mamouras' matching / inhabitance relation 
+         Let r₁ = (a + b + a●b)* 
+		     w = ab
+		 in Mamouras' system  r , i , j ⊨ w establishes the 
+		 range in-habitance relation, e.g. 
+		   r₁ , 0 , 0  ⊨ w 
+		   r₁ , 0 , 1  ⊨ w 
+		   r₁ , 0 , 2  ⊨ w 
+	     are all valid, because partial matching is allowed.
+		 
+		  ε , i , i ⊨ w    (MMInhabiteps)
+		  
+		  w[i] ≡  c 
+          ---------------------- (MMInhabitletter)
+          c , i , i + 1  ⊨ w
+		  
+		  l , i , j ⊨ w
+          ---------------------  (MMInhabitchoice-left)
+          ( l + r ) , i , j ⊨ w 
+		 
+		 
+		  r , i , j ⊨ w
+          ---------------------  (MMInhabitchoice-right)
+          ( l + r ) , i , j ⊨ w 
+		  
+		  i ≤ j ≤ k   
+          ( l , i , j ⊨ w )
+          ( r , j , k ⊨ w )
+          ----------------------- (MMInhabit-pair)
+          ( l ● r ) , i , k ⊨ w 
+		  		  
+
+		  ( r * ) , i , i ⊨ w      (MMInhabit-nilStar)
+		  
+		  
+          ∃ j s.t. ( i < j ) and ( j ≤ k ) and ( r , i , j ⊨ w ) and (( r * ) , j , k  ⊨ w )
+          ----------------------------------------- (MMInhabit-consStar)
+          ( r * ) , i , k ⊨ w 
+   
+   1. Mamoura's greedy and posix order are single-range-based ordering ignore the parse tree, e.g. 
+   
+         1. Mamoura's greedy order (refer to related/RelatedworkMamaourasBase.lagda.md r ∣ w ∣ i ⊢ j < j' )
+			note: the version in the agda is the unabridged version, the rules include the inhabitance evidences as premises. This is not mentioned (is omitted?) in Mamoura's paper.,
+			
+			
+			
+			t₁ = l + r , i , j  ⊨ w
+			t₂ = l + r , i , j' ⊨ w 
+			⊢⁺ min-parse-tree (l + r) w i j t₁ < min-parse-tree (l + r) w i j' t₂
+		    ------------------------------------------------------------------- (MMGreedychoice)
+			l + r | w | i ⊢ j < j' 
+			
+
+
+			t₁ = l ● r , i , j  ⊨ w
+			t₂ = l ● r , i , j' ⊨ w 
+			⊢● min-parse-tree (l ● r) w i j t₁ < min-parse-tree (l ● r) w i j' t₂
+		    ------------------------------------------------------------------- (MMGreedySeq)
+			l ● r | w | i ⊢ j < j' 
+
+
+
+			t₁ = r* , i , j  ⊨ w
+			t₂ = r* , i , j' ⊨ w 
+			⊢* min-parse-tree (r*) w i j t₁ < min-parse-tree (r*) w i j' t₂
+		    ------------------------------------------------------------------- (MMGreedyStar)
+			r * | w | i ⊢ j < j' 
+
+            There is no greedy order < between Epsilon and Letter, because the ranges always equal.
+		    (min-parse-tree r w i j t) function is indexed by the regular expresion, and finding the 
+			least inhabited evidence in the range of w[i , j] (which might or might not be t). 
+			Note that the detailed of min-parse-tree is defined in  related/RelatedworkMamaourasBase.lagda.md
+			which is omitted in Mamoura's paper.
+
+    	    According to the Mamouras' greedy order  MMGreedyStar rule
+			 r₁ ∣ w ∣ 0 ⊢ 2 < 0 because r₁ = (a + b + a●b)*
+		     the min-parse-tree of r₁ w 0 2 is [ L L 'a', L R 'b']
+		     the min-parse-tree of r₁ w 0 0 is [] 
+		     then comparing the two above via ⊢⋆_<_.*-cons-nil 
+		   
+             r₁ ∣ w ∣ 0 ⊢ 2 < 1 because r₁ = (a + b + a●b)*
+		     the min-parse-tree of r₁ w 0 2 is [ L L 'a', L R 'b']
+		     the min-parse-tree of r₁ w 0 1 is [ L L 'a' ]  			 
+		     then comparing the two above via ⊢⋆_<_.*-tail,since the head are the same, 
+		     and tails are compared using .*-cons-nil 
+
+
+		 1. Mamoura's posix order (refer to related/RelatedworkMamaourasBase.lagda.md  
+		      r ∣ w ∣ i ⊩ j < j' and r ∣ w  ⊩ i , j < i' , j' )
+		 
+			r , i , j  ⊨ w
+			r , i , j' ⊨ w 		 
+		    j > j'
+		    -------------------------------------- (MMPosixLeftLong)
+            r ∣ w ∣ i ⊩ j < j'
+			
+			
+            r , i , j  ⊨ w 
+            r , i' , j' ⊨ w  
+            i < i'
+            ---------------------------------------------------- (MMPosixFst)
+            r ∣ w ⊩ i , j < i' , j'			
+			
+			
+
+            r , i , j  ⊨ w 
+            r , i , j' ⊨ w  
+            r ∣ w ∣ i ⊩ j <  j' 
+            ---------------------------------------------------- (MMPosixSnd)
+            r ∣ w ⊩ i , j < i , j'			
+
+
+		    According to Marmours's posix order MMPosixleftlong rule
+		 
+			 r₁ ∣ w ∣ 0 ⊩ 2 < 0 , because 2 Nat.> 0
+			 
+             and 
+			 r₁ ∣ w ∣ 0 ⊩ 2 < 1 , because 2 Nat.> 1
+
+
+
+	1. In short, when w is fully matched by r (i.e. no partial substring in w that matched by r), Marmoura's greedy and posix match w.r.t r and w always agree.  (refer to related/RelatedworkMamaourasBase.lagda.md _∣_∣_⊢_<_)
+       Mamoura's robustness check is only applicable when w is not fully matched by r. 
+	   e.g. 
+       In other words, we can only compare our robustness check (if it exists) if we can support look-around (regex anchors) 
+       

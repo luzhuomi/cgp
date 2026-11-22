@@ -72,6 +72,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - `./src/cgp/greedy/*.lagda.md`: Greedy order proof
 - `./src/cgp/lne/*.lagda.md`: Single level LNE order proof
 - `./src/cgp/lnegen/*.lagda.md`: Two level LNE order proof 
+- `./src/cgp/relatedwork/*.lagda.md`: Reproductions of related work ( Castro-Urban , Mamouras , Okui-Suzuki )
 
 
 ## 7. Workflow

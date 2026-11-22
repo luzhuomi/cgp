@@ -3478,6 +3478,179 @@ data _∣_⊩_,_<_,_ : ∀ ( q :  RE ) → ( w : List Char ) → ( i j : ℕ ) �
 
 
 
+```
+
+
+### examples
+
+
+```agda
+
+r₁ : RE
+r₁ = ( ( ( $ 'a' ` 1 ) + ( $ 'b'  ` 2 ) ` 3 ) + ( ( $ 'a' ` 4) ● ( $ 'b' ` 5) ` 6 ) ` 7 ) * (ε∉_+_ (ε∉_+_ ε∉$ ε∉$) (ε∉snd ε∉$)) ` 8 
+
+
+
+w : List Char 
+w = 'a' ∷ 'b' ∷ []
+
+
+
+inhr₁-00 :  r₁ , 0 , 0  ⊨ w
+inhr₁-00 = ⊨[]
+            ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7)
+            (ε∉_+_ (ε∉_+_ ε∉$ ε∉$) (ε∉snd ε∉$)) 8 w 0 
+
+inhr₁-01 :  r₁ , 0 , 1  ⊨ w
+inhr₁-01 = ⊨∷
+            ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7)
+            (ε∉_+_ (ε∉_+_ ε∉$ ε∉$) (ε∉snd ε∉$)) 8 w 0 1
+            (1 ,
+             s≤s z≤n ,
+             s≤s z≤n ,
+             ⊨inl (($ 'a' ` 1) + $ 'b' ` 2 ` 3) (($ 'a' ` 4) ● $ 'b' ` 5 ` 6) 7
+             0 1 w (⊨inl ($ 'a' ` 1) ($ 'b' ` 2) 3 0 1 w (⊨$ 'a' 1 0 w refl))
+             ,
+             ⊨[]
+             ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7)
+             (ε∉_+_ (ε∉_+_ ε∉$ ε∉$) (ε∉snd ε∉$)) 8 w 1) 
+
+inhr₁-02 :  r₁ , 0 , 2  ⊨ w
+inhr₁-02 = ⊨∷
+        ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7)
+        (ε∉_+_ (ε∉_+_ ε∉$ ε∉$) (ε∉snd ε∉$))  8 w 0 2
+        (2 ,
+         s≤s z≤n ,
+         s≤s (s≤s z≤n) ,
+         ⊨inr (($ 'a' ` 1) + $ 'b' ` 2 ` 3) (($ 'a' ` 4) ● $ 'b' ` 5 ` 6) 7
+         0 2 w
+         (⊨● ($ 'a' ` 4) ($ 'b' ` 5) 6 0 2 w 1 z≤n (s≤s z≤n) (⊨$ 'a' 4 0 w refl)
+          (⊨$ 'b' 5 1 w refl))
+         ,
+         ⊨[]
+         ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7)
+         (ε∉_+_ (ε∉_+_ ε∉$ ε∉$) (ε∉snd ε∉$)) 8 w 2)
+
+
+-- The inner regex and non-empty witness of r₁ = r₁-inner * nε₁ ` 8 ,
+-- spelled exactly as in inhr₁-02 so they unify with its inferred regex.
+r₁-inner : RE
+r₁-inner = ((($ 'a' ` 1) + $ 'b' ` 2 ` 3) + ($ 'a' ` 4) ● $ 'b' ` 5 ` 6 ` 7)
+
+nε₁ : ε∉ r₁-inner
+nε₁ = (ε∉_+_ (ε∉_+_ ε∉$ ε∉$) (ε∉snd ε∉$))
+
+-- r₁ ∣ w ∣ 0 ⊢ 2 < 0 : the non-empty match ( 0 , 2 ) is below the empty
+-- match ( 0 , 0 ).  r₁ is a star, so the only constructor is star ; its
+-- premise is a ⊢⋆ between the canonical minimal evidences.  The empty one
+-- ( find-<-Min* on inhr₁-00 = ⊨[] ) reduces to ⊨[] ; the non-empty one
+-- reduces to a ⊨∷ ( its head is the order-minimal one found by the closed
+-- search , not inhr₁-02's literal payload ) , so we inspect find-<-Min* and
+-- transport *-cons-nil ( every ⊨∷ is below ⊨[] ) onto it with subst₂-style
+-- subst on the first index ( cf. decide-⊢< , * case ) .
+r₁|w|0⊢2<0 : r₁ ∣ w ∣ 0 ⊢ 2 < 0
+r₁|w|0⊢2<0 with find-<-Min* r₁-inner nε₁ 8 w 0 2 inhr₁-02
+          | inspect (find-<-Min* r₁-inner nε₁ 8 w 0 2) inhr₁-02
+... | ( ⊨∷ .r₁-inner .nε₁ 8 w 0 2 ( j , i<j , j≤2 , t₁ , t₂ ) , _ ) | [ eq ] =
+  star 0 2 0 inhr₁-02 inhr₁-00
+    ( subst ( λ x → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r₁-inner nε₁ 8 w 0 2 0 x
+                              ( proj₁ ( find-<-Min* r₁-inner nε₁ 8 w 0 0 inhr₁-00 ) ) )
+            ( sym ( cong proj₁ eq ) )
+            ( *-cons-nil 0 j 2 i<j j≤2 t₁ t₂ ) )
+
+
+
+-- r₁ ∣ w ∣ 0 ⊢ 2 < 1 : the non-empty match ( 0 , 2 ) below the non-empty
+-- match ( 0 , 1 ).  Both canonical forms ( find-<-Min* ) are ⊨∷ with the
+-- SAME head ( 1 ) , so the ⊢⋆ is *-tail : it reduces to the base order on
+-- the tails , r₁ ∣ w ∣ 1 ⊢ 2 < 1 , which is the non-empty match ( 1 , 2 )
+-- below the empty match ( 1 , 1 ) = *-cons-nil ( the ( 0 , 2 ) case above ,
+-- shifted to start 1 , on the tails tl₂ / tl₁ bound by the inspection ) .
+r₁|w|0⊢2<1 : r₁ ∣ w ∣ 0 ⊢ 2 < 1
+r₁|w|0⊢2<1 with find-<-Min* r₁-inner nε₁ 8 w 0 2 inhr₁-02
+          | inspect (find-<-Min* r₁-inner nε₁ 8 w 0 2) inhr₁-02
+          | find-<-Min* r₁-inner nε₁ 8 w 0 1 inhr₁-01
+          | inspect (find-<-Min* r₁-inner nε₁ 8 w 0 1) inhr₁-01
+... | ( ⊨∷ .r₁-inner .nε₁ 8 w 0 2 ( 1 , b₂₁ , b₂₂ , h₂ , tl₂ ) , _ ) | [ eq₂ ]
+    | ( ⊨∷ .r₁-inner .nε₁ 8 w 0 1 ( 1 , b₁₁ , b₁₂ , h₁ , tl₁ ) , _ ) | [ eq₁ ] =
+  star 0 2 1 inhr₁-02 inhr₁-01
+    ( subst₂ ( λ x y → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r₁-inner nε₁ 8 w 0 2 1 x y )
+              ( sym ( cong proj₁ eq₂ ) ) ( sym ( cong proj₁ eq₁ ) )
+              ( *-tail 0 1 1 2 1 b₂₁ b₂₂ b₁₁ b₁₂ h₂ tl₂ h₁ tl₁ refl tail-ev ) )
+  where
+    tail-ev : r₁ ∣ w ∣ 1 ⊢ 2 < 1
+    tail-ev with find-<-Min* r₁-inner nε₁ 8 w 1 2 tl₂ | inspect (find-<-Min* r₁-inner nε₁ 8 w 1 2) tl₂
+    ... | ( ⊨∷ .r₁-inner .nε₁ 8 w 1 2 ( k , c₁ , c₂ , g₂ , tg₂ ) , _ ) | [ eqt ] =
+      star 1 2 1 tl₂ tl₁
+        ( subst₂ ( λ x y → _∣_∣_∣_∣_∣_∣_⊢⋆_<_ r₁-inner nε₁ 8 w 1 2 1 x y )
+                  ( sym ( cong proj₁ eqt ) )
+                  ( sym ( find-<-Min*-canon r₁-inner nε₁ 8 w 1 1 tl₁
+                                          ( ⊨[] r₁-inner nε₁ 8 w 1 ) ) )
+                  ( *-cons-nil 1 k 2 c₁ c₂ g₂ tg₂ ) )
+```
+
+
+
+Lemma: when w is fully matched by r, Marmoura's greedy order and posix agree
+
+```agda
+
+-- UNPROVABLE : Mamouras's greedy order prefers the LEFT alternative ( ⊨inl <
+-- ⊨inr ) , not the longest match , so a fully-matched regex can still have a
+-- strictly-smaller shorter match .  The statement is refuted by the concrete
+-- counterexample below ( r-cx fully matches w-cx = "ab" at ( 0 , 2 ) via the
+-- right branch m2-cx , yet i = 1 with r-cx ∣ w-cx ∣ 0 ⊢ 1 < 2 is inhabited by
+-- cx-witness , so the ¬∃ conclusion fails ) .
+--
+-- fully-matched→greedy-is-longest : ∀ { r : RE } { w : List Char }
+--   →  r , 0 , length w  ⊨ w
+--   →  ¬ ( ∃[ i ] ( ( i < length w ) × ( r ∣ w ∣ 0 ⊢ i < length w ) ) )
+-- fully-matched→greedy-is-longest = {!!}
+
+-- UNPROVABLE : Mamouras's greedy order prefers the LEFT alternative ( ⊨inl <
+-- ⊨inr ) , not the longest match.  Counterexample : r-cx = a ∣ ( a ● b ) fully
+-- matches w-cx = "ab" at ( 0 , 2 ) via the right branch ( m2-cx ) , yet the
+-- shorter match ( 0 , 1 ) via the left branch ( m1-cx ) is strictly below it
+-- ( choice + inlinr ) , so the ∃ is inhabited and the conclusion fails.
+r-cx : RE
+r-cx = ( $ 'a' ` 1 ) + ( ( $ 'a' ` 2 ) ● ( $ 'b' ` 3 ) ` 5 ) ` 4
+
+w-cx : List Char
+w-cx = 'a' ∷ 'b' ∷ []
+
+m1-cx : r-cx , 0 , 1 ⊨ w-cx
+m1-cx = ⊨inl ( $ 'a' ` 1 ) ( ( $ 'a' ` 2 ) ● ( $ 'b' ` 3 ) ` 5 ) 4 0 1 w-cx
+          ( ⊨$ 'a' 1 0 w-cx refl )
+
+m2-cx : r-cx , 0 , length w-cx ⊨ w-cx
+m2-cx = ⊨inr ( $ 'a' ` 1 ) ( ( $ 'a' ` 2 ) ● ( $ 'b' ` 3 ) ` 5 ) 4 0 2 w-cx
+          ( ⊨● ( $ 'a' ` 2 ) ( $ 'b' ` 3 ) 5 0 2 w-cx 1 z≤n ( s≤s z≤n )
+              ( ⊨$ 'a' 2 0 w-cx refl ) ( ⊨$ 'b' 3 1 w-cx refl ) )
+
+cx-witness : ∃[ i ] ( ( i < length w-cx ) × ( r-cx ∣ w-cx ∣ 0 ⊢ i < length w-cx ) )
+cx-witness = 1 , ( s≤s ( s≤s z≤n )
+  , choice 0 1 2 m1-cx m2-cx
+      ( inlinr 0 1 2 ( ⊨$ 'a' 1 0 w-cx refl )
+          ( ⊨● ( $ 'a' ` 2 ) ( $ 'b' ` 3 ) 5 0 2 w-cx 1 z≤n ( s≤s z≤n )
+              ( ⊨$ 'a' 2 0 w-cx refl ) ( ⊨$ 'b' 3 1 w-cx refl ) ) ) )
+
+```
+
+Lemma : no partial inhabitance implies no partial greedier match.
+
+Collorary when w is fully matched by r, Marmoura's greedy and posix match w.r.t r and w always agree.
+
+```agda
+no-partial-match→greedy-is-longest : ∀ { r : RE } { w : List Char }
+   →  ¬ ( ∃[ j ] ( ( j < length w ) ) × ( r , 0 , j  ⊨ w ) )
+   →  ¬ ( ∃[ i ] ( ( i < length w ) × ( r ∣ w ∣ 0 ⊢ i < length w ) ) )
+-- Proof : a base-order step r ∣ w ∣ 0 ⊢ i < length w carries a match of the
+-- shorter span , r , 0 , i ⊨ w ( ⊢-t₁ ) .  So any i < length w ordered below
+-- the full match is a partial match , which the no-partial-match hypothesis
+-- rules out .
+no-partial-match→greedy-is-longest {r} {w} ¬partial ( i , i<len , order ) =
+  ¬partial ( i , i<len , ⊢-t₁ r w 0 i ( length w ) order )
 
 
 ```
+

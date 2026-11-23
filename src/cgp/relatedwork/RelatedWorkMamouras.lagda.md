@@ -66,7 +66,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   _⊢_>ⁱ_ ; seq₁ ; seq₂ ;
   choice-ll ; choice-rr ;
   choice-lr ;
-  choice-rl ; star-head ; star-cons-nil ; star-tail ;
+  star-head ; star-cons-nil ; star-tail ;
   >→¬≡
   )
 

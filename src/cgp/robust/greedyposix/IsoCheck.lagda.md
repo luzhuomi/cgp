@@ -85,10 +85,11 @@ Contents:
    now-identical inner rule sets let `NonIso₁`/`NonIso₂` be reduced to
    pure length arithmetic (`ShortPair`/`LongPair` normal forms).
 
-What is NOT connected: the decision procedure itself, and the
-completeness direction (every `¬Iso` regex fires one of the families).
-Neither is claimed; §4 states precisely what each side would need.
-(§5 updates the status of these open halves.)
+What is NOT connected: the completeness direction (every `¬Iso` regex
+fires one of the families). Neither is claimed; §4 states precisely what
+each side would need. (§5 updates the status of these open halves; the
+decision procedure for STAR-FREE regexes has since been built in
+`cgp.robust.greedyposix.StarFreeDecide`.)
 
 ## 1. Pair-form failure and the four meta-facts
 
@@ -878,11 +879,15 @@ Consequences for the static criterion (updating §4):
   value (`ShortPair`), or the length-differences of NOT-greedy-related
   pairs contain a positive one (`LongPair`). This is arithmetic over
   the tree pairs of a regex — no words, no pd machinery.
-- For a STAR-FREE regex both questions are decidable directly: greedy
-  derivations and pair shapes are finite skeletons (list arguments
-  force no recursion), each skeleton fixes its length pair (every letter
-  leaf contributes 1, character choice is irrelevant), so brute-force
-  skeleton enumeration decides `Iso`.
+- For a STAR-FREE regex both questions are decidable directly, and
+  this is built in `cgp.robust.greedyposix.StarFreeDecide`: with a
+  `StarFree r` witness, `dec-ᵍ`/`dec-ᵖ` decide the two orders by
+  structural recursion on `r` (greedy derivations and pair shapes are
+  finite skeletons — list arguments force no recursion — each skeleton
+  fixes its length pair, character choice is irrelevant), and
+  `dec-Iso r sf : Dec (Iso r)` aggregates the pointwise decisions.
+  `check-Iso?` recomputes the §2/§3 answers by `refl`
+  (`aa`, `maskC` → `false`; `b₁`, `b+b` → `true`).
 - With stars the per-skeleton length pairs range over unbounded sums
   (`ListU` lists of arbitrary length), so the questions become
   Presburger-style emptiness problems over semilinear length sets —

@@ -145,11 +145,12 @@ unambig→robust {r} unambig = robust {r} ev
 `Robust r` compares the two maximality notions *within* one word's trees.
 For `r = a + a` the two orders coincide on all of `U r`: the only trees are
 `L = LeftU (LetterU a)` and `R = RightU (LetterU a)`; greedy's `choice-lr`
-proves `L >ᵍ R` and posix matches with `len-≡`/`choice-lr` (its length side
-condition `1 ≥ 1` holds); `L > L` and `R > R` fail in both orders (the
+proves `L >ᵍ R` and posix matches with `len-≡`/`choice-lr` (its `choice-lr`
+rule is now unguarded); `L > L` and `R > R` fail in both orders (the
 comparison recurses to a letter, where no rule applies); and `R > L` fails
-in both orders (greedy has no right-branch-first rule, and posix's `len->`
-and `choice-rl` side conditions demand the absurd `1 > 1`). Hence
+in both orders (greedy has no right-branch-first rule, and posix has none
+either: with no `choice-rl` rule `RightU >ⁱ LeftU` is unprovable, so the only
+top-level route left, `len->`, demands the absurd `1 > 1`). Hence
 `Iso aa-r` holds and `Robust aa-r` follows through `iso→robust` — while
 `a + a` is ambiguous. So `Robust r` does not imply `UnAmbig r`.
 
@@ -198,7 +199,6 @@ iso-aa = iso ev
     ¬RR>ᵖ (PosixOrder.len-> d) = ¬1>1 d
 
     ¬RL>ᵖ : ¬ ( aa-r ⊢ R >ᵖ L )
-    ¬RL>ᵖ (PosixOrder.len-≡ _ (PosixOrder.choice-rl d)) = ¬1>1 d
     ¬RL>ᵖ (PosixOrder.len-> d) = ¬1>1 d
 
     -- the three pairs without L > R have no order proof either way,
@@ -219,13 +219,13 @@ iso-aa = iso ev
     fRLᵖ x = ⊥-elim (¬RL>ᵖ x)
 
     -- the only pair with order proofs both ways: greedy choice-lr and
-    -- posix len-≡/choice-lr (side condition 1 ≥ 1)
+    -- posix len-≡/choice-lr (both now unguarded)
     fLRᵍ : aa-r ⊢ L >ᵍ R → aa-r ⊢ L >ᵖ R
     fLRᵍ (GreedyOrder.sub (GreedyOrder.choice-lr)) =
-      PosixOrder.len-≡ refl (PosixOrder.choice-lr (Nat.s≤s Nat.z≤n))
+      PosixOrder.len-≡ refl PosixOrder.choice-lr
 
     fLRᵖ : aa-r ⊢ L >ᵖ R → aa-r ⊢ L >ᵍ R
-    fLRᵖ (PosixOrder.len-≡ _ (PosixOrder.choice-lr _)) =
+    fLRᵖ (PosixOrder.len-≡ _ PosixOrder.choice-lr) =
       GreedyOrder.sub GreedyOrder.choice-lr
     fLRᵖ (PosixOrder.len-> d) = ⊥-elim (¬1>1 d)
 

@@ -67,7 +67,7 @@ open PosixOrder using ( _⊢_>_ ; len-≡ ; len-> ;
   _⊢_>ⁱ_ ; seq₁ ; seq₂ ;
   choice-ll ; choice-rr ;
   choice-lr ;
-  choice-rl ; star-head ; star-cons-nil ; star-tail ; 
+  star-head ; star-cons-nil ; star-tail ; 
   >-sorted ; >-nil ; >-cons ; concat-sorted ; 
   mkAllEmptyU-sorted ;
   >-maybe ; >-nothing ; >-just ;
@@ -958,7 +958,7 @@ map-fuse-+-ex-maximal {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁
               inject₁rightu₁>inject₂rightu₂ rewrite inject₁rightu₁≡rightinju₁ | inject₂rightu₂≡rightinj'u₂  = choice-rr  (v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ u₁ u₂ u₁>u₂) 
 
 
-          prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) =  inject₁left-u₁>inject₂right-u₂
+          prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) =  inject₁left-u₁>inject₂right-u₂
             -- from prf₂ we have inject₁ (LeftU u₁) ≥ inject₂ (LeftU u₁)
 
             -- from >-inc pdi₂, we have inject₂ (LeftU u₁) > inject₂ (RightU u₂), because p₁ + p₂  ⊢  (LeftU u₁) >  (RightU u₂)
@@ -973,13 +973,13 @@ map-fuse-+-ex-maximal {l} {r} {loc} {c}  pdi₁@(pdinstance {p₁} {l} {c} in₁
                 PosixOrder.>-inc-fuse-left-right pdi₁ qdi (PosixOrder.>-inc-left {l} {r} {loc} {c} (pdinstance in₁ s-ev₁) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)) (PosixOrder.>-inc-right {l} {r} {loc} {c} (pdinstance in₂' s-ev₂') (>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ) 
               inject₂left-u₁>inject₂right-u₂ : l + r ` loc  ⊢ inject₂ (LeftU u₁) > inject₂ (RightU u₂)
               inject₂left-u₁>inject₂right-u₂ with >-inc-fuse-in₁-in₂'
-              ... | >-inc v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂  = v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) 
+              ... | >-inc v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂  = v₁→v₂→v₁>v₂→inject₂v₁>inject₂v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) 
               inject₁left-u₁>inject₂right-u₂ : l + r ` loc  ⊢ inject₁ (LeftU u₁) > inject₂ (RightU u₂)
               inject₁left-u₁>inject₂right-u₂ with  inject₁left-u₁≥inject₂left-u₁
               ... | inj₂ inject₁-left-u₁≡inject₂left-u₁ rewrite inject₁-left-u₁≡inject₂left-u₁ =  inject₂left-u₁>inject₂right-u₂
               ... | inj₁ inject₁-left-u₁>inject₂left-u₁ = >-trans inject₁-left-u₁>inject₂left-u₁ inject₂left-u₁>inject₂right-u₂
 
-          prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
+          
 
 -- 38.10
 oplus-+-ex-maximal : ∀ { l r : RE } {loc : ℕ } { c : Char }
@@ -1089,7 +1089,7 @@ oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
             injectrightu₁>inject'rightu₂ : l + r ` loc  ⊢ inject (RightU u₁) >ⁱ inject' (RightU u₂)
             injectrightu₁>inject'rightu₂ rewrite injectrightu₁≡rightin₂u₁ | inject'rightu₂≡rightin₂'u₂  = choice-rr  (v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ u₁ u₂ u₁>u₂) 
 
-        prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) =  injectleft-u₁>inject'right-u₂
+        prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) =  injectleft-u₁>inject'right-u₂
           -- from prf₂ we have inject₁ (LeftU u₁) ≥ inject₂ (LeftU u₁)
 
           -- from >-inc qdi, we have inject₂ (LeftU u₁) > inject₂ (RightU u₂), because p₁ + p₂  ⊢  (LeftU u₁) >  (RightU u₂)
@@ -1104,13 +1104,13 @@ oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
               PosixOrder.>-inc-fuse-left-right pdi₁ qdi (PosixOrder.>-inc-left {l} {r} {loc} {c} (pdinstance in₁ s-ev₁) (>-inc v₁→v₂→v₁>v₂→in₁v₁>in₁v₂)) (PosixOrder.>-inc-right {l} {r} {loc} {c} (pdinstance in₂' s-ev₂') (>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ) 
             inject'left-u₁>inject'right-u₂ : l + r ` loc  ⊢ inject' (LeftU u₁) > inject' (RightU u₂)
             inject'left-u₁>inject'right-u₂ with >-inc-fuse-in₁-in₂'
-            ... | >-inc v₁→v₂→v₁>v₂→inject'v₁>inject'v₂  = v₁→v₂→v₁>v₂→inject'v₁>inject'v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) 
+            ... | >-inc v₁→v₂→v₁>v₂→inject'v₁>inject'v₂  = v₁→v₂→v₁>v₂→inject'v₁>inject'v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) 
             injectleft-u₁>inject'right-u₂ : l + r ` loc  ⊢ inject (LeftU u₁) > inject' (RightU u₂)
             injectleft-u₁>inject'right-u₂ with  injectleft-u₁≥inject'left-u₁
             ... | inj₂ inject-left-u₁≡inject'left-u₁ rewrite inject-left-u₁≡inject'left-u₁ =  inject'left-u₁>inject'right-u₂
             ... | inj₁ inject-left-u₁>inject'left-u₁ = >-trans inject-left-u₁>inject'left-u₁ inject'left-u₁>inject'right-u₂
 
-        prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
+        
 
         fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁-right-q : (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject' soundEv')
         fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁-right-q = ≥-pdi inject soundEv inject' soundEv' prf₁ prf₂
@@ -1189,7 +1189,7 @@ oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
             injectrightu₁>inject'rightu₂ : l + r ` loc  ⊢ inject (RightU u₁) >ⁱ inject' (RightU u₂)
             injectrightu₁>inject'rightu₂ rewrite injectrightu₁≡rightin₂u₁ | inject'rightu₂≡rightin₂u₂  = choice-rr  (v₁→v₂→v₁>v₂→in₂v₁>in₂v₂ u₁ u₂ u₁>u₂) 
 
-        prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) =  injectleft-u₁>inject'right-u₂
+        prf₁ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) =  injectleft-u₁>inject'right-u₂
           where
             len|injectv₁|≡len|inject'v₂| : length (proj₁ (flat (inject v₁))) ≡ length (proj₁ (flat (inject' v₂)))
             len|injectv₁|≡len|inject'v₂| rewrite len-|inject-u|≡len-|u|+1 v₁ |  len-|inject'-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl
@@ -1200,12 +1200,12 @@ oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
               PosixOrder.>-inc-fuse-left-right pdi pdi₂ (PosixOrder.>-inc-left {l} {r} {loc} {c} (pdinstance in₁' s-ev₁') (>-inc v₁→v₂→v₁>v₂→in₁'v₁>in₁'v₂)) (PosixOrder.>-inc-right {l} {r} {loc} {c} (pdinstance in₂ s-ev₂) (>-inc v₁→v₂→v₁>v₂→in₂v₁>in₂v₂) ) 
             inject'left-u₁>inject'right-u₂ : l + r ` loc  ⊢ inject' (LeftU u₁) > inject' (RightU u₂)
             inject'left-u₁>inject'right-u₂ with >-inc-fuse-in₁'-in₂
-            ... | >-inc v₁→v₂→v₁>v₂→inject'v₁>inject'v₂  = v₁→v₂→v₁>v₂→inject'v₁>inject'v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) 
+            ... | >-inc v₁→v₂→v₁>v₂→inject'v₁>inject'v₂  = v₁→v₂→v₁>v₂→inject'v₁>inject'v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) 
             injectleft-u₁>inject'right-u₂ : l + r ` loc  ⊢ inject (LeftU u₁) > inject' (RightU u₂)
             injectleft-u₁>inject'right-u₂ with  injectleft-u₁≥inject'left-u₁
             ... | inj₂ inject-left-u₁≡inject'left-u₁ rewrite inject-left-u₁≡inject'left-u₁ =  inject'left-u₁>inject'right-u₂
             ... | inj₁ inject-left-u₁>inject'left-u₁ = >-trans inject-left-u₁>inject'left-u₁ inject'left-u₁>inject'right-u₂
-        prf₁ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
+        
 
 
         fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂ :  (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject' soundEv')
@@ -1276,7 +1276,7 @@ oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
                 injectrightu₁>inject''rightu₂ : l + r ` loc  ⊢ inject (RightU u₁) >ⁱ inject'' (RightU u₂)
                 injectrightu₁>inject''rightu₂ rewrite injectrightu₁≡rightin₂u₁ | inject''rightu₂≡rightin₂'u₂  = choice-rr  (v₁→v₂→v₁>v₂→in₂v₁>in₂'v₂ u₁ u₂ u₁>u₂)                 
 
-            prf₃ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) =  injectleft-u₁>inject''right-u₂
+            prf₃ v₁@(LeftU u₁) v₂@(RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) =  injectleft-u₁>inject''right-u₂
               where
                 len|injectv₁|≡len|inject''v₂| : length (proj₁ (flat (inject v₁))) ≡ length (proj₁ (flat (inject'' v₂)))
                 len|injectv₁|≡len|inject''v₂| rewrite len-|inject-u|≡len-|u|+1 v₁ |  len-|inject''-u|≡len-|u|+1 v₂ |  len|v₁|≡len|v₂| = refl
@@ -1287,12 +1287,12 @@ oplus-+-ex-maximal {l} {r} {loc} {c} (pdi₁@(pdinstance {p₁} .{l} {c} in₁ s
                   PosixOrder.>-inc-fuse-left-right pdi qdi (PosixOrder.>-inc-left {l} {r} {loc} {c} (pdinstance in₁' s-ev₁') (>-inc v₁→v₂→v₁>v₂→in₁'v₁>in₁'v₂)) (PosixOrder.>-inc-right {l} {r} {loc} {c} (pdinstance in₂' s-ev₂') (>-inc v₁→v₂→v₁>v₂→in₂'v₁>in₂'v₂) ) 
                 inject''left-u₁>inject''right-u₂ : l + r ` loc  ⊢ inject'' (LeftU u₁) > inject'' (RightU u₂)
                 inject''left-u₁>inject''right-u₂ with >-inc-fuse-in₁'-in₂'
-                ... | >-inc v₁→v₂→v₁>v₂→inject''v₁>inject''v₂  = v₁→v₂→v₁>v₂→inject''v₁>inject''v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|u₁|≥|len|u₂|)) 
+                ... | >-inc v₁→v₂→v₁>v₂→inject''v₁>inject''v₂  = v₁→v₂→v₁>v₂→inject''v₁>inject''v₂ (LeftU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) 
                 injectleft-u₁>inject''right-u₂ : l + r ` loc  ⊢ inject (LeftU u₁) > inject'' (RightU u₂)
                 injectleft-u₁>inject''right-u₂ with  injectleft-u₁≥inject''left-u₁
                 ... | inj₂ inject-left-u₁≡inject''left-u₁ rewrite inject-left-u₁≡inject''left-u₁ =  inject''left-u₁>inject''right-u₂
                 ... | inj₁ inject-left-u₁>inject''left-u₁ = >-trans inject-left-u₁>inject''left-u₁ inject''left-u₁>inject''right-u₂
-            prf₃ v₁@(RightU u₁) v₂@(LeftU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>|len|u₂|)) = Nullary.contradiction len|u₁|>|len|u₂| (<-irrefl (sym len|v₁|≡len|v₂| ) )
+            
                 
             
             fuse-left-pdi₁-right-pdi₂≥fuse-left-pdi₁'-right-pdi₂' :  (l + r ` loc) , c ⊢  (pdinstance inject soundEv) ≥ (pdinstance inject'' soundEv'')
@@ -1571,7 +1571,7 @@ oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
              where
                len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (LeftU (PairU u₁ w₁))))) ≡ length (proj₁ (flat (inject₂ (LeftU (PairU u₂ w₂)))))
                len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (LeftU (PairU u₁ w₁)) | len-|inject₂-u|≡len-|u|+1 (LeftU (PairU u₂ w₂)) | len|v₁|≡len|v₂| = refl
-           sub_sub_prf₁ (LeftU (PairU u₁ w₁)) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|pair₁|≥len|u₂|)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ (len-> len|in₁u₁|>len|e|))
+           sub_sub_prf₁ (LeftU (PairU u₁ w₁)) (RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ (len-> len|in₁u₁|>len|e|))
              where
                len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (LeftU (PairU u₁ w₁))))) ≡ length (proj₁ (flat (inject₂ (RightU u₂))))
                len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (LeftU (PairU u₁ w₁)) | len-|inject₂-u|≡len-|u|+1 (RightU u₂) | len|v₁|≡len|v₂| = refl
@@ -1581,7 +1581,7 @@ oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
              where
                len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (RightU u₁)))) ≡ length (proj₁ (flat (inject₂ (RightU u₂))))
                len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (RightU u₁) | len-|inject₂-u|≡len-|u|+1 (RightU u₂) | len|v₁|≡len|v₂| = refl
-           sub_sub_prf₁ (RightU u₁) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>len|pair₂|)) rewrite len|v₁|≡len|v₂| = Nullary.contradiction len|u₁|>len|pair₂| (<-irrefl refl)
+           
       sub_prf₅ : ( xs : List (U l+s))
         → (flat-[]-xs : All (Flat-[] l+s) xs )
         → All (_⊢_>_ l+s e) xs 
@@ -1699,7 +1699,7 @@ oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                        where
                          len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (LeftU (PairU u₁ w₁))))) ≡ length (proj₁ (flat (inject₂ (LeftU (PairU u₂ w₂)))))
                          len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (LeftU (PairU u₁ w₁)) | len-|inject₂-u|≡len-|u|+1 (LeftU (PairU u₂ w₂)) | len|v₁|≡len|v₂| = refl
-                     sub_sub_prf₃ (LeftU (PairU u₁ w₁)) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|pair₁|≥len|u₂|)) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ (len-> len|in₁u₁|>len|x|))
+                     sub_sub_prf₃ (LeftU (PairU u₁ w₁)) (RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) = len-≡ len|inject₁v₁|≡len|inject₂v₂| (seq₁ (len-> len|in₁u₁|>len|x|))
                        where
                          len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (LeftU (PairU u₁ w₁))))) ≡ length (proj₁ (flat (inject₂ (RightU u₂))))
                          len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (LeftU (PairU u₁ w₁)) | len-|inject₂-u|≡len-|u|+1 (RightU u₂) | len|v₁|≡len|v₂| = refl
@@ -1709,7 +1709,7 @@ oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                        where
                          len|inject₁v₁|≡len|inject₂v₂| : length (proj₁ (flat (inject₁ (RightU u₁)))) ≡ length (proj₁ (flat (inject₂ (RightU u₂))))
                          len|inject₁v₁|≡len|inject₂v₂| rewrite len-|inject₁-u|≡len-|u|+1 (RightU u₁) | len-|inject₂-u|≡len-|u|+1 (RightU u₂) | len|v₁|≡len|v₂| = refl
-                     sub_sub_prf₃ (RightU u₁) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>len|pair₂|)) rewrite len|v₁|≡len|v₂| = Nullary.contradiction len|u₁|>len|pair₂| (<-irrefl refl)
+                     
 
       sub_prf₃ : All (_,_⊢_≥_ (l+s ● r ` loc) c (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁) (mk-snd-pdi (e , flat-[] e |e|≡[]) pdi₂)))
                      ( (List.map (fuse {l+s ● r ` loc} {loc} (pdinstance-fst pdi₁))
@@ -1882,7 +1882,7 @@ oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                     where
                       len|inject₁'v₁|≡len|inject₂'v₂| : length (proj₁ (flat (inject₁' (LeftU (PairU u₂ w₁))))) ≡ length (proj₁ (flat (inject₂' (LeftU (PairU u₂ w₂)))))
                       len|inject₁'v₁|≡len|inject₂'v₂| rewrite len-|inject₁'-u|≡len-|u|+1 (LeftU (PairU u₂ w₁)) | len-|inject₂'-u|≡len-|u|+1 (LeftU (PairU u₂ w₂)) | len|v₁|≡len|v₂| = refl
-                  sub_sub_prf_strict (LeftU (PairU u₁ w₁)) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-lr len|pair₁|≥len|u₂|)) with snd-inj u₂ | fst-flat-[]-ev u₂ | snd-sev u₂
+                  sub_sub_prf_strict (LeftU (PairU u₁ w₁)) (RightU u₂) (len-≡ len|v₁|≡len|v₂| choice-lr) with snd-inj u₂ | fst-flat-[]-ev u₂ | snd-sev u₂
                   ... | PairU a b | flat-[]-fst .a .b |a|≡[] | snd-sev-u₂ = len-≡ len-eq (seq₁ (len-> len|in₁u₁|>len|a|))
                     where
                       len-eq : length (proj₁ (flat (PairU {l+s} {r} {loc} (in₁ u₁) w₁))) ≡ length (proj₁ (flat (PairU {l+s} {r} {loc} a b)))
@@ -1890,7 +1890,7 @@ oplus-+●-ex-maximal {l+s} {r} {ε∈l+s} {loc} {c} (pdi₁@(pdinstance {p₁} 
                       len|in₁u₁|>len|a| : length (proj₁ (flat (in₁ u₁))) Nat.> length (proj₁ (flat a))
                       len|in₁u₁|>len|a| rewrite |a|≡[] | len-|in₁-u|≡len-|u|+1 u₁ = Nat.s≤s Nat.z≤n
                   sub_sub_prf_strict (RightU u₁) (RightU u₂) (len-≡ len|v₁|≡len|v₂| (choice-rr u₁>u₂)) = snd-preserves u₁ u₂ u₁>u₂
-                  sub_sub_prf_strict (RightU u₁) (LeftU (PairU u₂ w₂)) (len-≡ len|v₁|≡len|v₂| (choice-rl len|u₁|>len|pair₂|)) rewrite len|v₁|≡len|v₂| = Nullary.contradiction len|u₁|>len|pair₂| (<-irrefl refl)
+                  
 
 
 -- 38.14

@@ -52,15 +52,19 @@ side conditions, in the style of `cgp.ambig.AmbigCheck`'s `crit`.
 Contents:
 
 1. `NonIso₁` / `NonIso₂` — the pair forms of failure, `NonIsoᵢ → ¬Iso`;
-   and the four *meta-facts* that explain the whole gap between the two
-   rule sets (two per side: posix's length filter and length totality;
-   greedy's two unconditional shape rules with no posix counterpart guard).
+   and the four *meta-facts* that pin the gap down to two sources only:
+   posix's top-level length filter and length totality (meta-facts 1–2).
+   The choice and star rules of the two orders now match — both carry an
+   unguarded `choice-lr`, neither has a `choice-rl`, and `star-cons-nil` is
+   one-directional in both (meta-facts 3–4) — so no pair ever diverges at a
+   rule shape; every divergence comes from the length handling on top.
 2. Three counterexample families, each fully formalized at its minimal
-   regex: **B** (unguarded `choice-lr` vs the length guard), **C** (a
-   *balanced* sum whose length-neutral greedy pair is length-skewed by a
-   concatenation sibling — no occurrence locally violates the guard, so
-   the naive one-occurrence criterion is incomplete), **A** (the reversed
-   star pair, decided by posix `len->` but never derivable greedily).
+   regex: **B** (a choice pair whose winner is the shorter branch —
+   greedy's `choice-lr` fires but the posix length filter rejects it), **C**
+   (a *balanced* sum whose length-neutral greedy pair is length-skewed by a
+   concatenation sibling — no single occurrence looks unbalanced, so the
+   naive one-occurrence test is incomplete), **A** (the reversed star pair,
+   decided by posix `len->` but never derivable greedily).
 3. Two positive proofs: `Iso ($ 'b')` and `Iso ($ 'b' + $ 'b')` — the
    shape of a positive certificate (all pairs settled by shape gaps or
    matching rules).
@@ -143,16 +147,19 @@ no-ᵍ-empty-nonempty : ∀ { m : RE } { nε : ε∉ m } { loc : ℕ }
 no-ᵍ-empty-nonempty (GreedyOrder.sub ())
 ```
 
-Read together: **greedy is shape-total at two points** (`choice-lr`
-unconditional — meta-fact 3 shows its converse is absent; `star-cons-nil`)
-**while posix is length-total** (meta-facts 1–2) **and shape-guarded**
-(`choice-lr` needs the left reading at least as long, `choice-rl` strictly
-longer). Every `Iso` failure is one of these asymmetries seen through a
-tree-pair shape.
+Read together: the two orders **share their shape rules** — `choice-lr` is
+unguarded in both, `choice-rl` (a right reading above a left reading) is
+absent from both, and `star-cons-nil` is one-directional in both (meta-facts
+3–4), so no pair diverges at a rule shape. The **only** asymmetry is the
+top-level length layer: greedy promotes any inner `u >ⁱ v` to `u > v` via
+`sub` regardless of length, whereas posix is length-filtered and
+length-total (meta-facts 1–2). Every `Iso` failure is a pair one order's
+length layer reaches and the other's does not — a shorter winner
+(families B/C) or a reversed star (family A).
 
 ## 2. The counterexample families
 
-### Family B — the unguarded choice rule
+### Family B — a shorter-branch winner
 
 ```agda
 -- Purpose: minimal family-B regex: the choice branch a against the branch
@@ -191,25 +198,25 @@ noniso₂-aa = aa-r , aa-l , ( pos-long-wins 1<2 , no-ᵍ-rl )
 ¬iso-aa = noniso₁→¬iso noniso₁-aa
 ```
 
-At the choice occurrence itself the guard fails (`minLen(a) = 1 <
-maxLen(a●a) = 2`); the same pair then witnesses BOTH halves: `(a, aa)` is
-greedy but filtered by length, `(aa, a)` is posix (`len->`) but has no
-greedy rule.
+The left branch `a` (length 1) is shorter than the right branch `a●a`
+(length 2); the same pair then witnesses BOTH halves: `(a, aa)` is greedy
+(`choice-lr`) but the posix length filter rejects it (`no-ᵖ-if-shorter`),
+`(aa, a)` is posix (`len->`) but has no greedy rule.
 
 ### Family C — balanced sums, skewed by context
 
-Family B's occurrence test (`minLen(left) ≥ maxLen(right)` at every sum)
-is NOT sufficient. The regex below has two sum occurrences, both
-*balanced* (single letters on both sides; and the right sum puts the
-longer branch on the LEFT, which satisfies the guard direction) — yet the
-lexicographic `seq₁` rule leaves the right siblings unconstrained, so a
-length-neutral greedy pair at the left sum pairs with *any* pair of right
-siblings, and choosing shorter-then-longer siblings makes the whole pair
-fail the posix length filter.
+The per-occurrence length test that catches family B (a sum whose chosen
+branch is shorter than its sibling branch) is NOT sufficient. The regex
+below has two sum occurrences, neither of them locally length-skewed
+(single letters on both sides; the right sum even puts the longer branch on
+the LEFT) — yet the lexicographic `seq₁` rule leaves the right siblings
+unconstrained, so a length-neutral greedy pair at the left sum pairs with
+*any* pair of right siblings, and choosing shorter-then-longer siblings
+makes the whole pair fail the posix length filter.
 
 ```agda
--- Purpose: minimal family-C regex: (d + d) ● (e●e + e). Every sum
---   occurrence has minLen(left) ≥ maxLen(right).
+-- Purpose: minimal family-C regex: (d + d) ● (e●e + e). Neither sum
+--   occurrence is locally length-skewed.
 -- Used by: noniso₁-maskC, ¬iso-maskC.
 -- Proof idea: N/A (definition).
 maskC : RE
@@ -243,15 +250,17 @@ noniso₁-maskC = maskC-u , maskC-v
 ```
 
 Note the right siblings `(RightU e, LeftU(e●e))` are related by NEITHER
-order (meta-fact 3 kills the greedy one; the posix guard would need
-`1 > 2`) — they are legal precisely because `seq₁` never looks at them.
+order — both lack a `choice-rl` rule, so `RightU >ⁱ LeftU` is unprovable
+(meta-fact 3 now holds for the posix order too) — they are legal precisely
+because `seq₁` never looks at them.
 
 ### Family A — the reversed star pair, no sums at all
 
 ```agda
 -- Purpose: minimal sum-free counterexample: b* ● c*. The right star
---   supplies the length; no sum occurrence exists, so no guard test of
---   any kind can fire here — the failure is pure rule-set shape.
+--   supplies the length; there is no sum occurrence for a per-occurrence
+--   length test to flag — the failure is purely the top-level length layer
+--   (positional `len->` versus greedy's shape rules).
 -- Used by: noniso₂-star, ¬iso-star.
 -- Proof idea: N/A (definition).
 starC : RE
@@ -308,12 +317,13 @@ iso-b₁ = iso λ { (LetterU 'b') (LetterU 'b')
   → ( (λ d → ⊥-elim (>ᵍ→¬≡ d refl)) , (λ d → ⊥-elim (>ᵖ→¬≡ d refl)) ) }
 
 -- Purpose: the balanced choice b + b IS Iso: the only cross pair agrees
---   in both orders (the guard 1 ≥ 1 holds; the reverse pair is a shape
---   gap on both sides), same-side pairs are never related.
--- Used by: criterion calibration (minLen(left) ≥ maxLen(right) at a sum is
---   exactly the surviving condition).
+--   in both orders (each relates `L > R` by its unguarded `choice-lr` at
+--   equal length; the reverse pair is a shape gap in both orders), same-side
+--   pairs are never related.
+-- Used by: criterion calibration (a choice with no length-skew between its
+--   branches — equal-length here — is Iso: no pair can trip the length filter).
 -- Proof idea: four shape lemmas + reconstruction for the (LeftU, RightU)
---   pair: len-≡ refl (choice-lr (1 ≤ 1)) and sub choice-lr.  Unlisted
+--   pair: len-≡ refl choice-lr and sub choice-lr.  Unlisted
 --   clause heads close by constructor clash (absurd automatically).
 b+b : RE
 b+b = ( $ 'b' ` 81 ) + ( $ 'b' ` 82 ) ` 83
@@ -334,7 +344,6 @@ no-ᵖ-rr (PosixOrder.len-≡ _ (PosixOrder.choice-rr d)) = ⊥-elim (>ᵖ→¬�
 
 no-ᵖ-rl : ¬ ( b+b ⊢ RightU (LetterU 'b') >ᵖ LeftU (LetterU 'b') )
 no-ᵖ-rl (PosixOrder.len-> n) = ⊥-elim (<-irrefl refl n)
-no-ᵖ-rl (PosixOrder.len-≡ _ (PosixOrder.choice-rl q)) = ⊥-elim (<-irrefl refl q)
 
 iso-b+b : Iso b+b
 iso-b+b = iso λ
@@ -343,7 +352,7 @@ iso-b+b = iso λ
   ; (RightU (LetterU 'b')) (RightU (LetterU 'b'))
       → ( (λ d → ⊥-elim (no-ᵍ-rr d)) , (λ d → ⊥-elim (no-ᵖ-rr d)) )
   ; (LeftU (LetterU 'b')) (RightU (LetterU 'b')) →
-      ( (λ _ → PosixOrder.len-≡ refl (PosixOrder.choice-lr (s≤s z≤n)))
+      ( (λ _ → PosixOrder.len-≡ refl PosixOrder.choice-lr)
       , (λ _ → GreedyOrder.sub GreedyOrder.choice-lr) )
   ; (RightU (LetterU 'b')) (LeftU (LetterU 'b'))
       → ( (λ d → ⊥-elim (no-ᵍ-rl d)) , (λ d → ⊥-elim (no-ᵖ-rl d)) ) }
@@ -359,17 +368,18 @@ plausible; its exact side conditions are worked out below, and the
 completeness proof is the open half.
 
 **The four meta-facts of §1 are the entire rule-set gap.** For any pair
-of trees, both orders follow the pair shape identically (seq/star/choice-
-same-side rules match). They differ only at:
+of trees, both orders follow the pair shape identically: the seq, star and
+choice rules now match exactly (both carry an unguarded `choice-lr`, neither
+has a `choice-rl`). They differ only in the top-level layer that promotes an
+inner `>ⁱ` to a `>`:
 
 - posix `len->`: *every* pair with |u| > |v| is posix-related (top-level
   totality — this is what family A exploits);
 - posix `len-≡`: nothing with |u| < |v| ever is (length filter);
-- posix guards at choice nodes (`choice-lr` needs |left| ≥ |right|;
-  `choice-rl` needs strict >) versus greedy's unconditional `choice-lr`
-  and absent `choice-rl`;
-- the one-directional `star-cons-nil` in both, which only becomes an
-  obstruction when combined with the length filter (family A).
+- greedy's `sub`, by contrast, promotes *any* inner `u >ⁱ v` to `u > v`
+  with no length test at all;
+- the one-directional `star-cons-nil` is shared, but only becomes an
+  obstruction combined with the length filter (family A).
 
 **The criterion shape.** Enumerate occurrences of `r` (finite, structural,
 like `AmbigCheck`'s `Ctx`), with per-subterm arithmetic computed by
@@ -396,8 +406,8 @@ star guarded by `ε∉`):
   - **A**: a star occurrence `m*` whose position in a concatenation
     continuation lets the empty-list-wins pair be length-descending
     (§2 `starC`: the `c*` continuation of the `b*` occurrence supplies
-    lengths 2 vs 1 — this family is invisible to every sum-guard test,
-    the regex has no sums).
+    lengths 2 vs 1 — this family is invisible to every sum-based length
+    test, the regex has no sums).
 
 Soundness ("pattern fires ⇒ `¬Iso`") is exactly what §2 proves at three
 instances: the pattern is the pair, and its two halves follow from

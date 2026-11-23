@@ -117,7 +117,12 @@ refer to the MatchingIssue.md, section "Updated on Feb 6 2026".
 
 The adjustment is to introduce a top level > and an internal level >ⁱ
 
-The internal level >ⁱ is the same as the one defined in FLOPS 2024 modulo the inductive call.
+The internal level >ⁱ follows the FLOPS 2024 definition modulo the inductive
+call, except that the choice rules are simplified: ChoiceLR has no length
+premise and there is no ChoiceRL rule. Both are redundant here because the
+top level > already decides on the lengths of |v₁| and |v₂| (its len-≡ and
+len-> premises), so every length comparison at a choice node is forced above
+rather than re-tested at the rule.
 
 
 
@@ -142,15 +147,13 @@ r₂ ⊢ v₂ > v₂'
 r₁ + r₂ ⊢ RightU v₂ >ⁱ RightU v₂' 
 
 
-length |v₁| ≥ length |v₂|
-----------------------------------------------(ChoiceLR)
 r₁ + r₂ ⊢ LeftU v₁ >ⁱ RightU v₂ 
+----------------------------------------------(ChoiceLR)
 
-
-
-length |v₂| > length |v₁|
-----------------------------------------------(ChoiceRL)
-r₁ + r₂ ⊢ RightU v₂ >ⁱ LeftU v₁ 
+(note: ChoiceLR has no length premise, and there is no ChoiceLR-RL/ChoiceRL
+ rule. The top level > already splits on the lengths of |v₁| and |v₂| via its
+ len-≡ / len-> premises, so any length comparison at a choice node is forced by
+ the top level and does not need to be re-stated at the choice rule.)
 
 
 r ⊢ v₁ > v₂ 
@@ -229,15 +232,20 @@ data _⊢_>ⁱ_  where
     → ( l ● r ` loc) ⊢ (PairU v₁ v₂) >ⁱ (PairU v₁' v₂')
 
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    -- → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))                -- is this check redunant? if we come from the top level >, the length of both parse trees must be same
+    -- removed premise (was: length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))) --
+    -- redundant: from the top level > the lengths of both parse trees are already
+    -- split out by len-≡ / len->, so the choice rule never needs to re-test them
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (LeftU v₁) >ⁱ (RightU v₂)
 
   {-
-  choice-rl : ∀ { l r : RE } { loc : ℕ } { v₁ : U r } { v₂ : U l }       -- is this rule reduant? if we come from the top level >, the length of both parse trees must be same
-    → length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))               
-    -------------------------------------------------------------------    
-    → ( l + r ` loc ) ⊢ (RightU v₁) >ⁱ  (LeftU v₂)
+  choice-rl -- removed as redundant. The reverse reading RightU >ⁱ LeftU only ever
+    -- applies when the right reading is strictly shorter, which the top level >
+    -- already routes through len-> / never relates; with no such rule,
+    -- RightU >ⁱ LeftU is simply unprovable. The original was:
+    --   choice-rl : ∀ { l r : RE } { loc : ℕ } { v₁ : U r } { v₂ : U l }
+    --     → length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))
+    --     → ( l + r ` loc ) ⊢ (RightU v₁) >ⁱ  (LeftU v₂)
   -}
   
   choice-ll : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
@@ -399,18 +407,11 @@ Note : The > order is transitive.
   (star-tail v₁≡v₂ vs₁>vs₂) (star-head v₂>v₃) rewrite v₁≡v₂ = star-head v₂>v₃
   
 >ⁱ-trans {r * ε∉r ` loc} (star-tail v₁≡v₂ vs₁>vs₂) star-cons-nil  = star-cons-nil
->ⁱ-trans {l + r ` loc} (choice-ll {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} .{loc} .{v₂} {v₃} len|v₂|≥len|v₃|) = choice-lr ( ≤-trans len|v₂|≥len|v₃| ( >→len|≥| v₁>v₂) ) 
+>ⁱ-trans {l + r ` loc} (choice-ll {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-lr {l} {r} .{loc} .{v₂} {v₃}) = choice-lr
 >ⁱ-trans {l + r ` loc} (choice-ll {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-ll {l} {r} .{loc} .{v₂} {v₃} v₂>v₃)     = choice-ll (>-trans v₁>v₂ v₂>v₃)
->ⁱ-trans {l + r ` loc} (choice-lr {l} {r} .{loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rr {l} {r} .{loc} .{v₂} {v₃} v₂>v₃) = choice-lr ( ≤-trans (>→len|≥| v₂>v₃) len|v₁|≥len|v₂| )
->ⁱ-trans {l + r ` loc} (choice-lr {l} {r} .{loc} {v₁} {v₂} len|v₁|≥len|v₂|) (choice-rl {l} {r} .{loc} .{v₂} {v₃} len|v₂|>len|v₃|) = choice-ll (len|>|→> len|v₁|>len|v₃| )
-  where
-    len|v₁|>len|v₃| : length (proj₁ (flat v₁)) > length (proj₁ (flat v₃))
-    len|v₁|>len|v₃| = ≤-trans len|v₂|>len|v₃| len|v₁|≥len|v₂|  
+>ⁱ-trans {l + r ` loc} (choice-lr {l} {r} .{loc} {v₁} {v₂}) (choice-rr {l} {r} .{loc} .{v₂} {v₃} v₂>v₃) = choice-lr
 
 >ⁱ-trans {l + r ` loc} (choice-rr {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-rr {l} {r} .{loc} .{v₂} {v₃} v₂>v₃)     = choice-rr (>-trans v₁>v₂ v₂>v₃)
->ⁱ-trans {l + r ` loc} (choice-rr {l} {r} .{loc} {v₁} {v₂} v₁>v₂) (choice-rl {l} {r} .{loc} .{v₂} {v₃} len|v₂|>len|v₃|) =  choice-rl ( ≤-trans len|v₂|>len|v₃| (>→len|≥| v₁>v₂ ) ) 
->ⁱ-trans {l + r ` loc} (choice-rl {l} {r} .{loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-lr {l} {r} .{loc} .{v₂} {v₃} len|v₂|≥len|v₃|) = choice-rr (len|>|→> (≤-trans (Nat.s≤s len|v₂|≥len|v₃|)  len|v₁|>len|v₂|) )
->ⁱ-trans {l + r ` loc} (choice-rl {l} {r} .{loc} {v₁} {v₂} len|v₁|>len|v₂|) (choice-ll {l} {r} .{loc} .{v₂} {v₃} v₂>v₃) = choice-rl ( ≤-trans (Nat.s≤s (>→len|≥| v₂>v₃ )) len|v₁|>len|v₂| )
 >ⁱ-trans {l ● r ` loc} (seq₁ v₁>v₂) (seq₁ v₂>v₃) = seq₁ (>-trans v₁>v₂ v₂>v₃ )
 >ⁱ-trans {l ● r ` loc} (seq₁ v₁>v₂) (seq₂ v₂≡v₃ vs₂>vs₃) rewrite v₂≡v₃ = seq₁ v₁>v₂ 
 >ⁱ-trans {l ● r ` loc} (seq₂ v₁≡v₂ vs₁>vs₂) (seq₂ v₂≡v₃ vs₂>vs₃) rewrite (sym v₁≡v₂) = seq₂ v₂≡v₃ (>-trans vs₁>vs₂ vs₂>vs₃)
@@ -419,7 +420,11 @@ Note : The > order is transitive.
 
 Maybe we need to weaken the transitivity lemma to include the underlying word.
 
-a) Does r ⊢ v₁ > v₂ imply |v₁| ≥ |v₂| ? no.
+a) Does r ⊢ v₁ > v₂ imply |v₁| ≥ |v₂| ? YES — proved directly by the
+`>→len|≥|` lemma above: the top rules are only len-≡ (equal length) and
+len-> (strictly longer), so a strictly shorter winner is never `>`-related.
+(This note predates the two-level design; the counterexample below does not
+type-check as a top-level `>`.)
 counter example: r = ( a ● (a + ε) )*
 
 r ⊢ 
@@ -428,21 +433,23 @@ r ⊢
  Cons (Pair a (R Empty)) (Cons (Pair a (L a)) (Cons (Pair a (R Empty)) Nil))
 
 with star-head (seq₂ (choice-rl 1>0)) as the proof
+-- (stale: `choice-rl` was removed; and this is only an inner `>ⁱ` — it could
+--  not be lifted to a top-level `>` here anyway, since neither 3 ≡ 4 nor
+--  3 > 4 holds for the lengths shown)
 
 but | Cons (Pair a (L a))     (Cons (Pair a (R Empty)) Nil) | = aaa
     | Cons (Pair a (R Empty)) (Cons (Pair a (L a)) (Cons (Pair a (R Empty)) Nil)) | = aaaa
     
 
-b) Does |v₁| ≥ |v₂| imply  r ⊢ v₁ > v₂ ? no. 
+b) Does |v₁| ≥ |v₂| imply  r ⊢ v₁ > v₂ ? no.
 
-same counter example above i.e. a).
+take u ≡ v: then |u| ≥ |v| holds, yet ¬ r ⊢ u > v by irreflexivity
+(>→¬≡ below).
 
 
-For a) to hold, the only rule that we need to weaken is star-head
-
-we need to ensure that |v₁| ≥ |v₂| and |v₁| + |vs₁| ≥ |v₂| + |vs₂|
-
-which will reject the counter example above. 
+(Historical, predates the current two-level design: a) is already guaranteed
+by the length-guarded top level, so no weakening of star-head is required.
+The >>> notes that follow are kept only as historical context.)
 
 >>> what about nested *, the ≡ won't hold but that's problematic.
 
@@ -555,8 +562,6 @@ Lemma (asymmetry) :
 >-asym { $ c ` loc } { LetterU _ } { LetterU _ } (len-≡ refl ())
 >-asym { l + r ` loc } { LeftU u } { LeftU v } (len-≡ len|left-u|≡len|left-v| (choice-ll u>v)) (len-≡ len|left-v|≡len|left-u| (choice-ll v>u)) =  >-asym u>v v>u 
 >-asym { l + r ` loc } { RightU u } { RightU v } (len-≡ len|right-u|≡len|right-v| (choice-rr u>v)) (len-≡ len|right-v|≡len|right-u| (choice-rr v>u)) = >-asym u>v v>u
->-asym { l + r ` loc } { LeftU u } { RightU v }  (len-≡ len|left-u|≡len|right-v| (choice-lr len|u|≥len|v| )) (len-≡ len|right-v|≡len|left-u| (choice-rl len|v|>len|u|)) = <-irrefl (sym len|right-v|≡len|left-u|) len|v|>len|u|    -- this case is not needed after the cleanup
->-asym { l + r ` loc } { RightU u } { LeftU v }  (len-≡ len|right-u|≡len|left-v| (choice-rl len|u|>len|v| )) (len-≡ len|left-v|≡len|right-u| (choice-lr len|v|≥len|u|)) = <-irrefl (sym len|right-u|≡len|left-v|) len|u|>len|v| -- this case is not needed after the cleanup
 >-asym { l ● r ` loc } { PairU u₁ u₂ } { PairU v₁ v₂ } (len-≡ len|pairu₁u₂|≡len|pairv₁v₂| (seq₁ u₁>v₁))  (len-≡ len|pairv₁v₂|≡len|pairu₁u₂| (seq₁ v₁>u₁)) = >-asym u₁>v₁ v₁>u₁
 >-asym { l ● r ` loc } { PairU u₁ u₂ } { PairU v₁ v₂ } (len-≡ len|pairu₁u₂|≡len|pairv₁v₂| (seq₁ u₁>v₁))  (len-≡ len|pairv₁v₂|≡len|pairu₁u₂| (seq₂ v₁≡u₁ v₂>u₂)) = >→¬≡ u₁>v₁ (sym v₁≡u₁)
 >-asym { l ● r ` loc } { PairU u₁ u₂ } { PairU v₁ v₂ } (len-≡ len|pairu₁u₂|≡len|pairv₁v₂| (seq₂ u₁≡v₁ u₂>v₂))  (len-≡ len|pairv₁v₂|≡len|pairu₁u₂| (seq₁ v₁>u₁)) =  >→¬≡ v₁>u₁ (sym u₁≡v₁)
@@ -713,7 +718,7 @@ map-leftU-rightU-sorted               []  vs    >-sorted-l-[] >-sorted-r-vs _ fl
 map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} us               []        >-sorted-l-us >-sorted-r-[] flat-[]-us flat-[]-vs rewrite (cong (λ x → >-sorted x) (++-identityʳ (List.map (LeftU {l} {r} {loc}) us)))
   = map-leftU-sorted us >-sorted-l-us flat-[]-us
 map-leftU-rightU-sorted {l} {r} {ε∈l} {ε∈r} {loc} (u ∷ [])        (v ∷ vs) >-sorted-l-uus >-sorted-r-vs ((flat-[] _ proj₁flatu≡[]) ∷ []) ((flat-[] _ proj₁flatv≡[]) ∷ all-flat-[]-vs)
-  = >-cons (map-rightU-sorted (v ∷ vs) >-sorted-r-vs ((flat-[] _ proj₁flatv≡[]) ∷ all-flat-[]-vs) ) (>-just (len-≡ len-|left-u|≡len-|right-v| (choice-lr (≤-reflexive (sym len-|left-u|≡len-|right-v|) ) ) ) )
+  = >-cons (map-rightU-sorted (v ∷ vs) >-sorted-r-vs ((flat-[] _ proj₁flatv≡[]) ∷ all-flat-[]-vs) ) (>-just (len-≡ len-|left-u|≡len-|right-v| choice-lr ) )
   where
     |left-u|≡[] : proj₁ (flat (LeftU {l} {r} {loc} u)) ≡ []
     |left-u|≡[] with flat-[]→flat-[]-left {l} {r} {loc} {u} (flat-[] u proj₁flatu≡[])
@@ -1273,21 +1278,13 @@ Then for all pdi ∈ pdU[ r , c], pdi is >-strict increasing .
     ev-> (LeftU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|left-v₂| (choice-ll v₁>v₂) ) = u₁>u₂→inj-l-u₁>inj-l-u₂ v₁ v₂ v₁>v₂ 
     ev-> (RightU v₁) (RightU v₂) (len-≡ len-|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂) ) = u₁>u₂→inj-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂ 
         
-    ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-lr len|v₁|≥len|v₂|) ) = inj-left-v₁>inj-right-v₂ 
+    ev-> (LeftU v₁) (RightU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| choice-lr ) = inj-left-v₁>inj-right-v₂ 
       where
         len|inj-left-v₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU v₁)))) ≡ length (proj₁ (flat (inj (RightU v₂))))
         len|inj-left-v₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1 (LeftU v₁) | len-|inj-u|≡len-|u|+1 (RightU v₂) = cong suc len-|left-v₁|≡len|right-v₂|
-        len|inj-l-v₁|≡len|inj-r-v₂| : length (proj₁ (flat (inj-l v₁))) ≡ length (proj₁ (flat (inj-r v₂)))
-        len|inj-l-v₁|≡len|inj-r-v₂| rewrite len-|inj-l-u|≡len-|u|+1 v₁ | len-|inj-r-u|≡len-|u|+1 v₂  = cong suc len-|left-v₁|≡len|right-v₂| 
         inj-left-v₁>inj-right-v₂ : l + r ` loc  ⊢ inj (LeftU v₁) > inj (RightU v₂)
         inj-left-v₁>inj-right-v₂ =
-          len-≡ len|inj-left-v₁|≡len|inj-right-v₂| (choice-lr (≤-reflexive  (sym len|inj-l-v₁|≡len|inj-r-v₂| )) )  
-    ev-> (RightU v₁) (LeftU v₂) (len-≡ len-|left-v₁|≡len|right-v₂| (choice-rl len|v₁|>len|v₂|) ) = Nullary.contradiction len|v₁|>len|v₂|  ¬len|v₁|>len|v₂|
-      where
-        len|v₁|≡len|v₂| : length (proj₁ (flat v₁)) ≡ length (proj₁ (flat v₂))
-        len|v₁|≡len|v₂| = len-|left-v₁|≡len|right-v₂| 
-        ¬len|v₁|>len|v₂| : ¬ length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))
-        ¬len|v₁|>len|v₂| = <-irrefl (sym len|v₁|≡len|v₂|) 
+          len-≡ len|inj-left-v₁|≡len|inj-right-v₂| choice-lr  
     ev-> v₁ v₂ (len-> len-|v₁|>len|v₂|) = len-> len|inj-v₁|>len|inj-v₂|
       where
         len|inj-v₁|>len|inj-v₂| : length (proj₁ (flat (inj v₁))) > length (proj₁ (flat (inj v₂)))
@@ -1528,7 +1525,7 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
           
 
 
-    ev (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| (choice-lr len|v₁w₁|≥len|v₂|)) = len-≡ len|inj-left-v₁w₁|≡len|inj-right-v₂| prf  
+    ev (LeftU (PairU v₁ w₁)) (RightU v₂) (len-≡ len|left-v₁w₁|≡len|right-v₂| choice-lr) = len-≡ len|inj-left-v₁w₁|≡len|inj-right-v₂| prf  
         where
           len|inj-left-v₁w₁|≡len|inj-right-v₂| : length (proj₁ (flat (inj (LeftU (PairU v₁ w₁))))) ≡  length (proj₁ (flat (inj  (RightU v₂ ))))
           len|inj-left-v₁w₁|≡len|inj-right-v₂| rewrite len-|inj-u|≡len-|u|+1  (LeftU (PairU v₁ w₁)) | len-|inj-u|≡len-|u|+1  (RightU v₂) = cong suc  len|left-v₁w₁|≡len|right-v₂| 
@@ -1564,7 +1561,6 @@ flat-[]-fst-concatmap-pdinstance-snd-sub  {l} {r} {ε∈l} {loc} {c} ( e-flat-[]
     ev (RightU v₁) (RightU v₂) (len-≡ len|right-v₁|≡len|right-v₂| (choice-rr v₁>v₂)) = u₁>u₂→inj-snd-r-u₁>inj-r-u₂ v₁ v₂ v₁>v₂
     ev (RightU v₁) (RightU v₂) (len-> len|right-v₁|>len|right-v₂|) = u₁>u₂→inj-snd-r-u₁>inj-r-u₂ v₁ v₂ (len-> len|right-v₁|>len|right-v₂|)
 
-    ev (RightU v₁) (LeftU (PairU v₂ w₂)) (len-≡ len|right-v₁|≡len|left-v₂w₂| (choice-rl len|right-v₁|>len|left-v₂w₂|)) rewrite len|right-v₁|≡len|left-v₂w₂|  = Nullary.contradiction len|right-v₁|>len|left-v₂w₂| (<-irrefl refl)
     ev (RightU v₁) (LeftU (PairU v₂ w₂)) (len-> len|right-v₁|>len|left-v₂w₂|) = len-> len|inj-right-v₁|>len|pair-inj-l-v₂-w₂| 
       where
         len|pair-inj-l-v₂-w₂|≡len|pair-v₂-w₂|+1 : length (proj₁ (flat (PairU {l} {r} {loc} (inj-l v₂) w₂))) ≡ suc (length (proj₁ (flat (PairU {pˡ} {r} {loc} v₂ w₂))))

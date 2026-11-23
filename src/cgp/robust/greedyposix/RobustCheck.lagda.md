@@ -29,18 +29,21 @@ criteria of `cgp.ambig.AmbigCheck` §13 (`crit`). Four layers:
    static search (subterm `Ctx`/`plug` patterns à la `crit` §13, with the
    shifted-split emptiness test at a concatenation boundary) that fires
    for *every* non-robust regex — see the note after §4.
-5. The investigation of that bounded search: the two order rule sets
-   differ ONLY at choice-node guards, so every divergent pair has the
-   shifted-split shape (a bounded position search generates all of
+5. The investigation of that bounded search: the two orders share their
+   inner rule sets (the choice-node guard and `choice-rl` have been removed)
+   and differ only in the top-level promotion — greedy's unguarded `sub`
+   versus posix's length-guarded `len-≡`/`len->` — so every divergent pair
+   has the shifted-split shape (a bounded position search generates all of
    them); but `OrderDiverge` does NOT imply `NonRobust` — the formal
    `sepx` regex is `Robust` while firing a divergent pair — so a
    dominance side condition is provably required.
 
 Why a `crit`-style test can never be A1/A3-shaped: at equal word length
-the two orders coincide at every choice node (`choice-lr` fires on both
-sides; `choice-rl`/`len->` need strict length difference — this is
-precisely why `a + a` is robust). Divergence requires the comparison to
-reach *unequal-length* prefix trees across a concatenation boundary.
+the two orders coincide everywhere — their inner `>ⁱ` rules match, and
+posix's `len-≡` simply mirrors greedy's `sub` at equal length (there is
+no `choice-rl` guard left to differ on) — precisely why `a + a` is robust.
+Divergence requires the comparison to reach *unequal-length* prefix trees
+across a concatenation boundary.
 
 ```agda
 {-# OPTIONS --rewriting  #-}
@@ -561,11 +564,13 @@ for two trees of a *common word* the top levels are equivalent wrappers
 (greedy `sub` versus posix `len-≡` at equal lengths — `len->` can never
 fire inside one fiber), and the descent rules are *identical*:
 `seq₁`/`seq₂` (lexicographic — the `seq₁` sibling is unconstrained),
-`choice-ll`/`choice-rr`, and the three star rules. The only
-difference is the guard at choice occurrences: greedy `choice-lr` is
-unconditional (left always beats right), while posix `choice-lr`
-requires |left reading| ≥ |right reading| and has `choice-rl` only for
-a *strictly longer* right reading. Any derivation for a fixed tree pair
+`choice-ll`/`choice-rr`/`choice-lr` (now all unconditional, identical in
+both orders) and the three star rules. With no `choice-rl` and no choice
+guard left, the only remaining difference is the *top-level promotion*:
+greedy promotes any inner `u >ⁱ v` through `sub`, so at a choice it can
+always let the left reading win; posix can relate the reversed `RightU >
+LeftU` reading only through `len->`, i.e. only when that right reading is
+a *strictly longer* reading. Any derivation for a fixed tree pair
 follows the structure of the pair (each shape admits one rule family),
 and both orders follow it identically until the first choice occurrence
 where the trees pick different branches. Hence: an `OrderDiverge` pair
@@ -645,24 +650,23 @@ sepx-diverge = sepx-t1 , sepx-t4 , ( refl
           (PosixOrder.len-> (Nat.s≤s (Nat.s≤s Nat.z≤n))))))) ) )
 
 -- Purpose: the literal branch beats the divergent trees in both orders
---   (their comparison ends at the top choice; the guards fail).
+--   (their comparison ends at the top choice; no rule applies there).
 -- Used by: ¬NonRobust-sepx.
 -- Proof idea: no rule derives RightU > LeftU in the greedy inner order;
---   posix choice-rl needs 3 > 3; len-> needs 3 > 3; equality is absurd.
--- 4 ≤ 3: the guard that both length guards above reduce to (all three
---   trees read "aab", so every strict-length guard here is 3 > 3).
+--   in the posix order RightU >ⁱ LeftU has no constructor (no choice-rl),
+--   and the only top route, len->, needs 3 > 3; equality is absurd.
+-- 4 ≤ 3: the absurd inequality the length check above reduces to (all
+--   three trees read "aab", so every strict-length test here is 3 > 3).
 -- Used by: not-t1≥ᵖm, not-t4≥ᵖm.
 ¬4≤3 : ¬ ( suc (suc (suc (suc zero))) Nat.≤ (suc (suc (suc zero))) )
 ¬4≤3 (Nat.s≤s (Nat.s≤s (Nat.s≤s ())))
 
 not-t1≥ᵖm : ¬ ( PosixMax._⊢_≥_ sepx sepx-t1 sepx-m )
 not-t1≥ᵖm (inj₁ (PosixOrder.len-> n)) = ¬4≤3 n
-not-t1≥ᵖm (inj₁ (PosixOrder.len-≡ refl (PosixOrder.choice-rl q))) = ¬4≤3 q
 not-t1≥ᵖm (inj₂ ())
 
 not-t4≥ᵖm : ¬ ( PosixMax._⊢_≥_ sepx sepx-t4 sepx-m )
 not-t4≥ᵖm (inj₁ (PosixOrder.len-> n)) = ¬4≤3 n
-not-t4≥ᵖm (inj₁ (PosixOrder.len-≡ refl (PosixOrder.choice-rl q))) = ¬4≤3 q
 not-t4≥ᵖm (inj₂ ())
 
 not-t1≥ᵍm : ¬ ( GreedyMax._⊢_≥_ sepx sepx-t1 sepx-m )
@@ -686,12 +690,13 @@ wmismatch p q ¬eq = ¬eq (trans p (sym q))
 -- Purpose: sepx is not NonRobust: every candidate pair of its nine
 --   trees is killed — different fibers by word mismatch; the shared
 --   fiber at "aab" has literal maximum sepx-m in both orders, and a
---   right-branch tree is never ≥ the literal tree (the guards fail).
+--   right-branch tree is never ≥ the literal tree (no choice-rl, and the
+--   equal lengths defeat len->).
 -- Used by: robust-sepx.
 -- Proof idea: case analysis on the two tree shapes (five forms each);
 --   equal trees contradict u≢v; the (m, t1), (m, t4), (t1, ·), (t4, ·)
 --   same-fiber cases apply a maximality field to sepx-m, contradicting
---   the guard lemmas; all other pairs read different words (wmismatch,
+--   the not-t1≥ᵖm / not-t4≥ᵖm lemmas; all other pairs read different words (wmismatch,
 --   discharged by kernel evaluation of the two words).
 ¬NonRobust-sepx : ¬ NonRobust sepx
 ¬NonRobust-sepx (u , v , w , ( ≥-maxᵍ .w u u≡w cmpᵍ ,

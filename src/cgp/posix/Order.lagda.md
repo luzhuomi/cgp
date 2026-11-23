@@ -229,16 +229,17 @@ data _⊢_>ⁱ_  where
     → ( l ● r ` loc) ⊢ (PairU v₁ v₂) >ⁱ (PairU v₁' v₂')
 
   choice-lr : ∀ { l r : RE } { loc : ℕ } { v₁ : U l } { v₂ : U r }
-    → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))                -- is this check redunant? if we come from the top level >, the length of both parse trees must be same
+    -- → length (proj₁ (flat v₁)) ≥ length (proj₁ (flat v₂))                -- is this check redunant? if we come from the top level >, the length of both parse trees must be same
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (LeftU v₁) >ⁱ (RightU v₂)
 
-
+  {-
   choice-rl : ∀ { l r : RE } { loc : ℕ } { v₁ : U r } { v₂ : U l }       -- is this rule reduant? if we come from the top level >, the length of both parse trees must be same
     → length (proj₁ (flat v₁)) > length (proj₁ (flat v₂))               
     -------------------------------------------------------------------    
     → ( l + r ` loc ) ⊢ (RightU v₁) >ⁱ  (LeftU v₂)
-
+  -}
+  
   choice-ll : ∀ { l r : RE } { loc : ℕ } { v₁ v₁'  : U l }
     → l ⊢ v₁ > v₁'
     -------------------------------------------------------------------

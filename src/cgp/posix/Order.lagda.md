@@ -117,7 +117,7 @@ refer to the MatchingIssue.md, section "Updated on Feb 6 2026".
 
 The adjustment is to introduce a top level > and an internal level >ⁱ
 
-The internal level >ⁱ follows the FLOPS 2024 definition modulo the inductive
+The internal level >ⁱ follows the FLOPS 2014 definition modulo the inductive
 call, except that the choice rules are simplified: ChoiceLR has no length
 premise and there is no ChoiceRL rule. Both are redundant here because the
 top level > already decides on the lengths of |v₁| and |v₂| (its len-≡ and
@@ -194,8 +194,6 @@ r ⊢ v₁ > v₂
 
 ```agda
 
--- TODO: greedy order can be adjusted into this 2-level style, can lne order be adjusted in this 2-level style?
--- if yes, the robustness check will be easier to establish.
 infix 4 _⊢_>_
 infix 4 _⊢_>ⁱ_
 

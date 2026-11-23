@@ -892,20 +892,26 @@ Consequences for the static criterion (updating §4):
   (`aa`, `maskC` → `false`; `b₁`, `b+b` → `true`).
 - With stars the per-skeleton length pairs range over unbounded sums
   (`ListU` lists of arbitrary length), so the questions become
-  Presburger-style emptiness problems over semilinear length sets. One
-  layer of the bounded-witness lemma is now built:
-  `cgp.robust.greedyposix.StarBound` proves the STAR layer for the
-  `ShortPair` half — every `ShortPair (m * nε ` loc)` either descends
-  to a `ShortPair m` in the body or yields a normalized witness
+  Presburger-style emptiness problems over semilinear length sets. Two
+  layers of the bounded-witness lemma are now built:
+  `cgp.robust.greedyposix.StarBound` proves the STAR layer for BOTH
+  halves — every `ShortPair (m * nε ` loc)` either descends to a
+  `ShortPair m` in the body or yields a normalized witness
   `(ListU [ w₁ ] , ListU (w₂ ∷ t))` derived by one `star-head` step
-  with tail bound `length t ≤ |w₁| ∸ |w₂| + 1` (the bound is real:
-  their `mb2 = (b●b) + b` example has NO `ShortPair` in the body and
-  no witness with both forests of length ≤ 1). Still open: the
-  `LongPair` dual at a star (a case analysis over ABSENT derivations),
-  and the induction over regex structure that turns those tree-length
-  bounds into a bound computable from the regex alone (the analogue of
-  the `crit` bound), as is the exact per-subterm difference-set
-  computation (former §4 item 1).
+  with tail bound `length t ≤ |w₁| ∸ |w₂| + 1`; dually, every
+  `LongPair (m * nε ` loc)` is realized at the star itself by a
+  witness `(ListU (w₁ ∷ t) , ListU [ w₂ ])` with tail bound
+  `length t ≤ |w₂| ∸ |w₁| + 1` whose NON-derivation is certified by a
+  parse-tree equality decision (the body branch is structurally
+  unreachable there). Their `mb2 = (b●b) + b` example shows both star
+  layers genuinely firing (its body has neither a `ShortPair` nor a
+  `LongPair`, and no witness with both forests of length ≤ 1 exists).
+  StarBound §8 also gives the regex-computable bound: `MaxLen r k`
+  evidence (no case at a star, matching `maxLen(m* nε) = ∞`) upgrades
+  both normal forms to the explicit bound `suc (k ∸ 1)`.
+  Still open: the DESCEND lemmas composing these star results through
+  `●`/`+` (pairs whose difference lives in a sub-derivation), and the
+  exact per-subterm difference-set computation (former §4 item 1).
 - The `a + a` calibration is unchanged and lands on the right side:
   its only cross pair has difference 0 — neither a `ShortPair` nor a
   `LongPair` exists, matching `iso-b+b` of §3.

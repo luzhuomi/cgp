@@ -89,7 +89,9 @@ What is NOT connected: the completeness direction (every `¬Iso` regex
 fires one of the families). Neither is claimed; §4 states precisely what
 each side would need. (§5 updates the status of these open halves; the
 decision procedure for STAR-FREE regexes has since been built in
-`cgp.robust.greedyposix.StarFreeDecide`.)
+`cgp.robust.greedyposix.StarFreeDecide`, and the star layer of the
+bounded-witness lemma for the `ShortPair` half in
+`cgp.robust.greedyposix.StarBound`.)
 
 ## 1. Pair-form failure and the four meta-facts
 
@@ -890,11 +892,20 @@ Consequences for the static criterion (updating §4):
   (`aa`, `maskC` → `false`; `b₁`, `b+b` → `true`).
 - With stars the per-skeleton length pairs range over unbounded sums
   (`ListU` lists of arbitrary length), so the questions become
-  Presburger-style emptiness problems over semilinear length sets —
-  decidable in principle, but the bounded-witness lemma ("if inhabited,
-  witnessed with list lengths bounded by the regex structure", the
-  analogue of the `crit` bound) is still open, as is the exact
-  per-subterm difference-set computation (former §4 item 1).
+  Presburger-style emptiness problems over semilinear length sets. One
+  layer of the bounded-witness lemma is now built:
+  `cgp.robust.greedyposix.StarBound` proves the STAR layer for the
+  `ShortPair` half — every `ShortPair (m * nε ` loc)` either descends
+  to a `ShortPair m` in the body or yields a normalized witness
+  `(ListU [ w₁ ] , ListU (w₂ ∷ t))` derived by one `star-head` step
+  with tail bound `length t ≤ |w₁| ∸ |w₂| + 1` (the bound is real:
+  their `mb2 = (b●b) + b` example has NO `ShortPair` in the body and
+  no witness with both forests of length ≤ 1). Still open: the
+  `LongPair` dual at a star (a case analysis over ABSENT derivations),
+  and the induction over regex structure that turns those tree-length
+  bounds into a bound computable from the regex alone (the analogue of
+  the `crit` bound), as is the exact per-subterm difference-set
+  computation (former §4 item 1).
 - The `a + a` calibration is unchanged and lands on the right side:
   its only cross pair has difference 0 — neither a `ShortPair` nor a
   `LongPair` exists, matching `iso-b+b` of §3.
